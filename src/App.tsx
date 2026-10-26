@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
@@ -461,7 +461,7 @@ function App(){
 
 function paymentLabel(v:string){return v==='pix'?'PIX':v==='cartao'?'Cartão':v==='boleto'?'Boleto':v||'—'}
 
-function EditableEntityTable({title,headers,rows}:{title:string;headers:string[];rows:{id:string;cells:(string|number)[];opened:boolean;onToggle:()=>void;panel:React.ReactNode}[]}){
+function EditableEntityTable({title,headers,rows}:{title:string;headers:string[];rows:{id:string;cells:(string|number)[];opened:boolean;onToggle:()=>void;panel:ReactNode}[]}){
   return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3></div><div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map(r=><Fragment key={r.id}><tr>{r.cells.map((c,i)=><td key={i}>{c}</td>)}<td><button className="ghost" onClick={r.onToggle}><SlidersHorizontal size={15}/>Painel {r.opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button></td></tr>{r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
