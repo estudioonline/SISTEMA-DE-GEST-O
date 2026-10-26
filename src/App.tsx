@@ -1101,8 +1101,199 @@ function App(){
       </section>}
 
       {active==='vendas'&&<section>
-        {showForm&&<form className="panel saleForm" onSubmit={saveSale}><div className="formTitle"><div><h3>{editingSale?`Editar fatura ${invoiceNo(editingSale.fatura_numero)}`:'Nova venda / fatura'}</h3><p>Pagamento e fatura são obrigatórios.</p></div></div><div className="saleHeader saleHeaderExpanded"><label>Cliente<select value={saleClient} onChange={e=>setSaleClient(e.target.value)}><option value="">Consumidor</option>{clientes.filter(c=>c.ativo).map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</select></label><label>Status<select value={saleStatus} onChange={e=>setSaleStatus(e.target.value)}><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option></select></label><label>Pagamento<select value={salePayment} onChange={e=>changePayment(e.target.value as PaymentMethod)}><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label><label>Parcelas<select value={saleInstallments} onChange={e=>setSaleInstallments(Number(e.target.value))} disabled={salePayment==='pix'}>{Array.from({length:salePayment==='pix'?1:salePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n}>{n}</option>)}</select></label><label>1º vencimento<input type="date" value={saleDueDate} onChange={e=>setSaleDueDate(e.target.value)} required/></label><label className="saleNotes">Observações<input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)}/></label></div><div className="paymentNotice"><strong>Fatura obrigatória</strong><span>{paymentLabel(salePayment)} • {saleInstallments}x • vencimento {dateBr(saleDueDate)}</span></div><div className="saleItemsHead"><h3>Itens</h3><button type="button" className="ghost" onClick={()=>setSaleItems(x=>[...x,newSaleItem()])}><Plus size={16}/>Adicionar item</button></div><div className="saleItems">{saleItems.map(i=><div className="saleItemRow" key={i.key}><select value={i.produto_id} onChange={e=>chooseProduct(i.key,e.target.value)} required><option value="">Produto</option>{produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — estoque {Number(p.estoque_atual).toLocaleString('pt-BR')}</option>)}</select><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/><input type="number" min="0" step="0.01" value={i.valor_unitario} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/><strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong><button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button></div>)}</div><div className="saleTotals"><div><span>Subtotal</span><strong>{money(saleSubtotal)}</strong></div><div><span>Desconto</span><strong>{money(saleDiscount)}</strong></div><div className="grandTotal"><span>Total</span><strong>{money(saleTotal)}</strong></div></div><div className="saleActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm()}}>Cancelar</button><button className="primary" disabled={savingSale}>{savingSale?'Salvando...':editingSale?'Salvar e reemitir':'Salvar e emitir fatura'}</button></div></form>}
-        <article className="panel tablePanel"><div className="panelHead"><h3>Vendas e faturas</h3></div><div className="tableWrap"><table><thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead><tbody>{vendas.map(v=>{const c=clientes.find(x=>x.id===v.cliente_id);const opened=salePanel===v.id;return <Fragment key={v.id}><tr><td><strong>#{invoiceNo(v.fatura_numero)}</strong></td><td>{new Date(v.created_at).toLocaleString('pt-BR')}</td><td>{c?.nome||'Consumidor'}</td><td><span className={`statusBadge status-${v.status}`}>{v.status}</span></td><td>{paymentLabel(v.forma_pagamento)} {Number(v.parcelas)>1?`• ${v.parcelas}x`:''}</td><td>{money(Number(v.total))}</td><td>{isViewer?<button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>:<button className="ghost" onClick={()=>setSalePanel(opened?null:v.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{opened&&<tr className="manageRow"><td colSpan={7}><div className="actionPanel"><div className="actionMeta"><strong>Fatura #{invoiceNo(v.fatura_numero)}</strong><span>{paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)}</span></div><div className="rowActions"><button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button><button className="ghost" disabled={v.status==='cancelado'} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button><button className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+        {showForm&&<form className="panel saleForm" onSubmit={saveSale}>
+          <div className="formTitle">
+            <div>
+              <h3>{editingSale?'Editar fatura '+invoiceNo(editingSale.fatura_numero):'Nova venda / fatura'}</h3>
+              <p>Pagamento e fatura são obrigatórios. O vendedor define quem recebe a comissão quando houver recebimento.</p>
+            </div>
+          </div>
+
+          <div className="saleHeader saleHeaderExpanded">
+            <label>Cliente
+              <select value={saleClient} onChange={e=>setSaleClient(e.target.value)}>
+                <option value="">Consumidor</option>
+                {clientes.filter(c=>c.ativo).map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </label>
+            <label>Vendedor
+              <select value={saleSeller} onChange={e=>setSaleSeller(e.target.value)}>
+                <option value="">Sem vendedor / sem comissão</option>
+                {vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=><option key={v.id} value={v.id}>{v.nome} — {Number(v.percentual_comissao).toLocaleString('pt-BR')}%</option>)}
+              </select>
+            </label>
+            <label>Status
+              <select value={saleStatus} onChange={e=>setSaleStatus(e.target.value)}>
+                <option value="orcamento">Orçamento</option>
+                <option value="pedido">Pedido</option>
+                <option value="faturado">Faturado</option>
+              </select>
+            </label>
+            <label>Pagamento
+              <select value={salePayment} onChange={e=>changePayment(e.target.value as PaymentMethod)}>
+                <option value="pix">PIX</option>
+                <option value="cartao">Cartão</option>
+                <option value="boleto">Boleto</option>
+              </select>
+            </label>
+            <label>Parcelas
+              <select value={saleInstallments} onChange={e=>setSaleInstallments(Number(e.target.value))} disabled={salePayment==='pix'}>
+                {Array.from({length:salePayment==='pix'?1:salePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n}>{n}</option>)}
+              </select>
+            </label>
+            <label>1º vencimento
+              <input type="date" value={saleDueDate} onChange={e=>setSaleDueDate(e.target.value)} required/>
+            </label>
+            <label className="saleNotes">Observações
+              <input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)}/>
+            </label>
+          </div>
+
+          <div className="paymentNotice">
+            <strong>Fatura obrigatória</strong>
+            <span>{paymentLabel(salePayment)} • {saleInstallments}x • vencimento {dateBr(saleDueDate)}{saleSeller?' • comissão: '+String(vendedores.find(v=>v.id===saleSeller)?.percentual_comissao||0)+'%':''}</span>
+          </div>
+
+          <div className="saleItemsHead">
+            <h3>Itens</h3>
+            <button type="button" className="ghost" onClick={()=>setSaleItems(x=>[...x,newSaleItem()])}><Plus size={16}/>Adicionar item</button>
+          </div>
+
+          <div className="saleItems">
+            {saleItems.map(i=><div className="saleItemRow" key={i.key}>
+              <select value={i.produto_id} onChange={e=>chooseProduct(i.key,e.target.value)} required>
+                <option value="">Produto</option>
+                {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — estoque {Number(p.estoque_atual).toLocaleString('pt-BR')}</option>)}
+              </select>
+              <input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/>
+              <input type="number" min="0" step="0.01" value={i.valor_unitario} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/>
+              <input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/>
+              <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
+              <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
+            </div>)}
+          </div>
+
+          <div className="saleTotals">
+            <div><span>Subtotal</span><strong>{money(saleSubtotal)}</strong></div>
+            <div><span>Desconto</span><strong>{money(saleDiscount)}</strong></div>
+            <div className="grandTotal"><span>Total</span><strong>{money(saleTotal)}</strong></div>
+          </div>
+
+          <div className="saleActions">
+            <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm()}}>Cancelar</button>
+            <button className="primary" disabled={savingSale}>{savingSale?'Salvando...':editingSale?'Salvar e reemitir':'Salvar e emitir fatura'}</button>
+          </div>
+        </form>}
+
+        <article className="panel tablePanel">
+          <div className="panelHead"><h3>Vendas e faturas</h3></div>
+          <div className="tableWrap"><table>
+            <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
+            <tbody>{vendas.map(v=>{
+              const client=clientes.find(x=>x.id===v.cliente_id)
+              const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
+              const opened=salePanel===v.id
+              return <Fragment key={v.id}>
+                <tr>
+                  <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
+                  <td>{new Date(v.created_at).toLocaleString('pt-BR')}</td>
+                  <td>{client?.nome||'Consumidor'}</td>
+                  <td>{seller?.nome||'—'}</td>
+                  <td><span className={'statusBadge status-'+v.status}>{v.status}</span></td>
+                  <td>{paymentLabel(v.forma_pagamento)} {Number(v.parcelas)>1?'• '+v.parcelas+'x':''}</td>
+                  <td><strong>{money(Number(v.total))}</strong></td>
+                  <td><button className="ghost" onClick={()=>setSalePanel(opened?null:v.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button></td>
+                </tr>
+                {opened&&<tr className="manageRow"><td colSpan={8}>
+                  <div className="invoiceManagePanel">
+                    <div className="actionPanel">
+                      <div className="actionMeta">
+                        <strong>Fatura #{invoiceNo(v.fatura_numero)}</strong>
+                        <span>{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}{paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)}</span>
+                      </div>
+                      <div className="rowActions">
+                        <button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
+                        {!isViewer&&<button className="ghost" disabled={v.status==='cancelado'} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
+                        {!isViewer&&<button className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
+                        {isAdmin&&<button className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
+                      </div>
+                    </div>
+                    {proofPanel('venda',v.id)}
+                  </div>
+                </td></tr>}
+              </Fragment>
+            })}</tbody>
+          </table></div>
+        </article>
+      </section>}
+
+      {active==='comissoes'&&<section>
+        {showForm&&<form className="panel sellerForm" onSubmit={saveSeller}>
+          <div className="formTitle">
+            <div><h3>{editingSeller?'Editar vendedor':'Novo vendedor'}</h3><p>O percentual é aplicado aos recebimentos registrados a partir daquele momento.</p></div>
+          </div>
+          <input name="nome" placeholder="Nome do vendedor" required defaultValue={editingSeller?.nome||''}/>
+          <input name="email" type="email" placeholder="E-mail" defaultValue={editingSeller?.email||''}/>
+          <input name="telefone" placeholder="Telefone" defaultValue={editingSeller?.telefone||''}/>
+          <label>Comissão %
+            <input name="percentual_comissao" type="number" min="0" max="100" step="0.01" required defaultValue={editingSeller?.percentual_comissao||0}/>
+          </label>
+          <select name="ativo" defaultValue={editingSeller?.ativo===false?'false':'true'}>
+            <option value="true">Ativo</option>
+            <option value="false">Inativo</option>
+          </select>
+          <div className="formActions">
+            <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSeller(null)}}>Cancelar</button>
+            <button className="primary" disabled={!isAdmin}>Salvar vendedor</button>
+          </div>
+        </form>}
+
+        <div className="panel commissionFilters">
+          <div><strong>Período de recebimentos</strong><span>A comissão considera somente valores efetivamente recebidos entre as datas abaixo.</span></div>
+          <label>De<input type="date" value={commissionStart} onChange={e=>setCommissionStart(e.target.value)}/></label>
+          <label>Até<input type="date" value={commissionEnd} onChange={e=>setCommissionEnd(e.target.value)}/></label>
+          <button className="ghost" onClick={()=>void loadCommissions()}><RefreshCw size={15}/>Atualizar</button>
+        </div>
+
+        {salesWithoutSeller>0&&<div className="commissionWarning">{salesWithoutSeller} venda(s) estão sem vendedor definido e não gerarão comissão até serem vinculadas a um vendedor.</div>}
+
+        <div className="cards compactCards">
+          <article className="card"><span>Recebido no período</span><strong>{money(commissionReceived)}</strong><small>{dateBr(commissionStart)} a {dateBr(commissionEnd)}</small></article>
+          <article className="card"><span>Comissões apuradas</span><strong>{money(commissionTotal)}</strong><small>sobre recebimentos</small></article>
+          <article className="card"><span>Vendedores ativos</span><strong>{vendedores.filter(v=>v.ativo).length}</strong><small>{salesWithoutSeller} venda(s) sem vendedor</small></article>
+        </div>
+
+        <article className="panel tablePanel">
+          <div className="panelHead"><h3>Vendedores e comissões</h3></div>
+          <div className="tableWrap"><table>
+            <thead><tr><th>Vendedor</th><th>% atual</th><th>Recebido no período</th><th>Comissão apurada</th><th>Recebimentos</th><th>Vendas</th><th>Status</th><th>Gerenciar</th></tr></thead>
+            <tbody>{vendedores.map(v=>{
+              const summary=comissoes.find(c=>c.vendedor_id===v.id)
+              const opened=sellerPanel===v.id
+              return <Fragment key={v.id}>
+                <tr>
+                  <td><strong>{v.nome}</strong><br/><small>{v.email||v.telefone||'—'}</small></td>
+                  <td>{Number(v.percentual_comissao).toLocaleString('pt-BR')}%</td>
+                  <td>{money(Number(summary?.total_recebido||0))}</td>
+                  <td><strong>{money(Number(summary?.comissao_apurada||0))}</strong></td>
+                  <td>{summary?.pagamentos||0}</td>
+                  <td>{summary?.vendas||0}</td>
+                  <td><span className={v.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{v.ativo?'ativo':'inativo'}</span></td>
+                  <td>{isAdmin?<button className="ghost" onClick={()=>setSellerPanel(opened?null:v.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>:<span className="readOnlyTag">Somente leitura</span>}</td>
+                </tr>
+                {isAdmin&&opened&&<tr className="manageRow"><td colSpan={8}>
+                  <div className="actionPanel">
+                    <div className="actionMeta"><strong>{v.nome}</strong><span>Comissão atual: {Number(v.percentual_comissao).toLocaleString('pt-BR')}%</span></div>
+                    <div className="rowActions">
+                      <button className="ghost" onClick={()=>startEditSeller(v)}><Pencil size={15}/>Editar % / dados</button>
+                      {v.ativo&&<button className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={15}/>Desativar</button>}
+                    </div>
+                  </div>
+                </td></tr>}
+              </Fragment>
+            })}</tbody>
+          </table></div>
+        </article>
       </section>}
 
       {active==='financeiro'&&<section>
