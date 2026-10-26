@@ -45,6 +45,7 @@ const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency
 const num=(v:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v||0)
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const paymentLabel=(v:PurchasePdfData['forma_pagamento'])=>v==='pix'?'PIX':v==='cartao'?'CARTÃO':'BOLETO'
+const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'fornecedor'
 
 function parseDate(value:string){
   if(/^\d{4}-\d{2}-\d{2}$/.test(value)){
@@ -297,5 +298,5 @@ export function generatePurchaseInvoicePdf(data:PurchasePdfData){
   drawNotes(doc,data,y)
   addFooters(doc,data)
 
-  doc.save(`compra-a-pagar-${invoiceNo(data.fatura_numero)}.pdf`)
+  doc.save(`fornecedor-${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-compra-${invoiceNo(data.fatura_numero)}.pdf`)
 }
