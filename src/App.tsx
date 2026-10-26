@@ -133,6 +133,7 @@ function App(){
   const isAdmin=profileRole==='administrador'
   const isViewer=profileRole==='visualizador'
   const canManageStock=isAdmin||profileRole==='estoque'
+  const canManageFinance=isAdmin||profileRole==='financeiro'
 
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
@@ -870,9 +871,9 @@ function App(){
                 <td>{money(Number(t.valor_pago))}</td>
                 <td><strong>{money(balance)}</strong></td>
                 <td><span className={'statusBadge status-'+(t.status==='pago'?'faturado':t.status==='cancelado'?'cancelado':'pedido')}>{t.status}</span></td>
-                <td>{isViewer?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>openFinancePanel(t)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td>
+                <td>{!canManageFinance?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>openFinancePanel(t)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td>
               </tr>
-              {!isViewer&&opened&&<tr className="manageRow"><td colSpan={8}>
+              {canManageFinance&&opened&&<tr className="manageRow"><td colSpan={8}>
                 <div className="financeManagePanel">
                   <div className="actionPanel">
                     <div className="actionMeta">
@@ -923,7 +924,8 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','produtos','compras','vendas','financeiro'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','produtos','compras','vendas'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
