@@ -1,13 +1,15 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import type { FormEvent, ReactNode } from 'react'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
-  Pencil, Ban, SlidersHorizontal, ChevronDown, ChevronUp, RefreshCw, CheckCircle2
+  Pencil, Ban, SlidersHorizontal, ChevronDown, ChevronUp, RefreshCw, CheckCircle2,
+  Upload, Download, FileSpreadsheet
 } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
+import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'
@@ -97,6 +99,7 @@ function App(){
 
   const title=useMemo(()=>menu.find(m=>m[0]===active)?.[1]||'Dashboard',[active])
   const isAdmin=profileRole==='administrador'
+  const canManageStock=isAdmin||profileRole==='estoque'
 
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
@@ -232,6 +235,62 @@ function App(){
       setMsg(d.error?d.error.message:'Produto com histórico foi desativado.')
     }else setMsg(r.error?r.error.message:'Produto excluído.')
     await loadData()
+  }
+
+  function exportProducts(){
+    try{
+      exportProductsExcel(produtos)
+      setMsg(`Relatório Excel exportado com ${produtos.length} produto(s).`)
+    }catch{
+      setMsg('Não foi possível exportar o relatório Excel.')
+    }
+  }
+
+  function downloadProductModel(){
+    try{
+      downloadProductsTemplate()
+      setMsg('Modelo Excel de importação gerado.')
+    }catch{
+      setMsg('Não foi possível gerar o modelo Excel.')
+    }
+  }
+
+  async function importProducts(e:ChangeEvent<HTMLInputElement>){
+    const file=e.target.files?.[0]
+    e.target.value=''
+    if(!file)return
+
+    if(!canManageStock){
+      setMsg('Somente administrador ou perfil de estoque pode importar produtos e ajustar estoque.')
+      return
+    }
+
+    try{
+      setMsg('Validando planilha...')
+      const rows=await parseProductsExcel(file)
+
+      const confirmed=window.confirm(
+        `Importar ${rows.length} linha(s)?\n\nProdutos com o mesmo código serão atualizados. O valor da coluna "Estoque Atual" substituirá o saldo atual e a diferença ficará registrada no histórico.`
+      )
+      if(!confirmed){
+        setMsg('Importação cancelada.')
+        return
+      }
+
+      const {data,error}=await supabase.rpc('importar_produtos_estoque',{p_linhas:rows})
+      if(error){
+        setMsg('Falha na importação: '+error.message)
+        return
+      }
+
+      const result=(data||{}) as {inseridos?:number;atualizados?:number;ajustes_estoque?:number;total_linhas?:number}
+      setMsg(
+        `Importação concluída: ${result.inseridos||0} novo(s), ${result.atualizados||0} atualizado(s) e ${result.ajustes_estoque||0} ajuste(s) de estoque.`
+      )
+      await loadData()
+    }catch(error){
+      setMsg(error instanceof Error?error.message:'Não foi possível ler a planilha Excel.')
+    }
   }
 
   // VENDAS
@@ -407,6 +466,21 @@ function App(){
       </section>}
 
       {active==='produtos'&&<section>
+        <div className="panel excelPanel">
+          <div className="excelPanelText">
+            <div className="excelIcon"><FileSpreadsheet size={22}/></div>
+            <div><strong>Importação e exportação Excel</strong><span>Exporte o cadastro atual ou importe uma planilha para cadastrar itens e ajustar o estoque pelo código do produto.</span></div>
+          </div>
+          <div className="excelActions">
+            <button type="button" className="ghost" onClick={downloadProductModel}><FileSpreadsheet size={16}/>Baixar modelo</button>
+            <button type="button" className="ghost" onClick={exportProducts}><Download size={16}/>Exportar Excel</button>
+            <label className={canManageStock?'primary excelUpload':'ghost excelUpload disabledUpload'}>
+              <Upload size={16}/>Importar Excel
+              <input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv" onChange={e=>void importProducts(e)} disabled={!canManageStock}/>
+            </label>
+          </div>
+          <small className="excelWarning">Na importação, o <strong>Estoque Atual</strong> da planilha substitui o saldo existente. Toda diferença é registrada como ajuste de estoque.</small>
+        </div>
         {showForm&&<form className="panel dataForm" onSubmit={saveProduct}><input name="codigo" placeholder="Código" required defaultValue={editingProduct?.codigo||''}/><input name="descricao" placeholder="Descrição" required defaultValue={editingProduct?.descricao||''}/><input name="unidade" defaultValue={editingProduct?.unidade||'UN'}/><input name="custo" type="number" step="0.01" placeholder="Custo" defaultValue={editingProduct?.custo||0}/><input name="preco_venda" type="number" step="0.01" placeholder="Preço de venda" defaultValue={editingProduct?.preco_venda||0}/>{!editingProduct&&<input name="estoque_atual" type="number" step="0.001" placeholder="Estoque inicial" defaultValue={0}/>}<input name="estoque_minimo" type="number" step="0.001" placeholder="Estoque mínimo" defaultValue={editingProduct?.estoque_minimo||0}/><select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
         {adjustingProduct&&<form className="panel stockForm" onSubmit={adjustStock}><div><strong>Ajustar estoque</strong><span>{adjustingProduct.codigo} - {adjustingProduct.descricao}</span></div><label>Novo estoque<input type="number" min="0" step="0.001" value={stockNew} onChange={e=>setStockNew(e.target.value)} required/></label><label>Motivo<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required/></label><div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div></form>}
         {<div className="cards compactCards"><article className="card"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article><article className="card"><span>Estoque baixo</span><strong>{low}</strong></article><article className="card"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article></div>}
