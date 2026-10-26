@@ -14,7 +14,8 @@
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-router-dom": "7.9.4",
-    "jspdf": "4.2.1"
+    "jspdf": "4.2.1",
+    "@stackline/xlsx": "1.0.9"
   },
   "devDependencies": {
     "@types/react": "19.1.16",
