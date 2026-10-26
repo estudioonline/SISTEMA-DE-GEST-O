@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
@@ -7,7 +8,7 @@ import {
   Pencil, Ban, SlidersHorizontal, ChevronDown, ChevronUp, RefreshCw, CheckCircle2,
   Upload, Download, FileSpreadsheet
 } from 'lucide-react'
-import { supabase, supabaseConfigured } from './lib/supabase'
+import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
 import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
 
@@ -58,6 +59,10 @@ function App(){
 
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
+  const [viewerName,setViewerName]=useState('Visualizador')
+  const [viewerEmail,setViewerEmail]=useState('')
+  const [viewerPassword,setViewerPassword]=useState('')
+  const [creatingViewer,setCreatingViewer]=useState(false)
 
   const [showForm,setShowForm]=useState(false)
   const [editingClient,setEditingClient]=useState<Cliente|null>(null)
@@ -385,6 +390,53 @@ function App(){
   async function deleteTitle(t:Titulo){if(!isAdmin){setMsg('Somente administrador pode excluir lançamento.');return}if(!window.confirm('Excluir este lançamento?'))return;const r=await supabase.from('titulos_financeiros').delete().eq('id',t.id);setMsg(r.error?r.error.message:'Lançamento excluído.');if(!r.error)await loadData()}
 
   // CONFIG
+  async function createViewerAccount(e:FormEvent<HTMLFormElement>){
+    e.preventDefault()
+    if(!isAdmin){
+      setMsg('Somente administrador pode criar usuário visualizador.')
+      return
+    }
+    if(!supabaseUrl||!supabasePublishableKey){
+      setMsg('Configuração do Supabase indisponível.')
+      return
+    }
+
+    setCreatingViewer(true)
+    setMsg('')
+
+    const creator=createClient(supabaseUrl,supabasePublishableKey,{
+      auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
+    })
+
+    const {data,error}=await creator.auth.signUp({
+      email:viewerEmail.trim(),
+      password:viewerPassword,
+      options:{data:{full_name:viewerName.trim()||'Visualizador'}}
+    })
+
+    if(error||!data.user){
+      setCreatingViewer(false)
+      setMsg(error?.message||'Não foi possível criar o usuário visualizador.')
+      return
+    }
+
+    const {error:roleError}=await supabase.rpc('definir_perfil_visualizador',{p_user_id:data.user.id})
+    if(roleError){
+      setCreatingViewer(false)
+      setMsg('Usuário criado, mas não foi possível aplicar o perfil visualizador: '+roleError.message)
+      return
+    }
+
+    if(data.session)await creator.auth.signOut()
+
+    setViewerEmail('')
+    setViewerPassword('')
+    setCreatingViewer(false)
+    setMsg(data.session
+      ? 'Usuário visualizador criado e liberado para acesso.'
+      : 'Usuário visualizador criado. Confirme o e-mail enviado para liberar o acesso.')
+  }
+
   async function saveCompany(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!isAdmin){setMsg('Somente administrador pode alterar configurações.');return}
@@ -511,6 +563,13 @@ function App(){
       </section>}
 
       {active==='config'&&<section>
+        {isAdmin&&<form className="panel viewerUserForm" onSubmit={createViewerAccount}>
+          <div className="formTitle"><div><h3>Criar usuário visualizador</h3><p>Acesso somente leitura. Pode consultar telas, relatórios e PDFs, mas não altera dados.</p></div><span className="readOnlyTag">Somente leitura</span></div>
+          <input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Nome do usuário" required/>
+          <input type="email" value={viewerEmail} onChange={e=>setViewerEmail(e.target.value)} placeholder="E-mail" required/>
+          <input type="password" value={viewerPassword} onChange={e=>setViewerPassword(e.target.value)} placeholder="Senha inicial" minLength={8} required/>
+          <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar visualizador'}</button>
+        </form>}
         <form className="panel configForm" onSubmit={saveCompany}>
           <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!isAdmin&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!isAdmin}>
           <input name="razao_social" placeholder="Razão social" defaultValue={empresa?.razao_social||''} required/>
@@ -541,7 +600,7 @@ function EditableEntityTable({title,headers,rows,readOnly=false}:{title:string;h
 }
 
 function ProductTable({produtos,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
-  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{produtos.length} cadastrados</p></div></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{produtos.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>onToggle(p.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{produtos.length} cadastrados</p></div></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{produtos.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>onToggle(p.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
 }
 
 export default App
