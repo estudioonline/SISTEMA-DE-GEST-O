@@ -827,6 +827,79 @@ function App(){
   const reportSalesTotal=filteredSales.filter(v=>v.status!=='cancelado').reduce((s,v)=>s+Number(v.total),0)
   const reportPurchaseTotal=filteredPurchases.filter(c=>c.status!=='cancelada').reduce((s,c)=>s+Number(c.total),0)
 
+  const commissionReceived=comissoes.reduce((s,c)=>s+Number(c.total_recebido),0)
+  const commissionTotal=comissoes.reduce((s,c)=>s+Number(c.comissao_apurada),0)
+  const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
+
+  function proofPanel(kind:'venda'|'compra',id:string){
+    const list=proofsFor(kind,id)
+    return <div className="proofPanel">
+      <div className="proofHead">
+        <div><strong>Comprovantes de pagamento</strong><span>{list.length?String(list.length)+' arquivo(s) anexado(s)':'Nenhum comprovante anexado'}</span></div>
+        {!isViewer&&<label className="ghost proofUpload"><Paperclip size={15}/>Anexar comprovante<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(kind,id,e)}/></label>}
+      </div>
+      {list.length>0&&<div className="proofList">{list.map(p=><div className="proofItem" key={p.id}>
+        <div><strong>{p.nome_arquivo}</strong><span>{dateBr(p.created_at)}{p.tamanho?' • '+(Number(p.tamanho)/1024).toFixed(0)+' KB':''}</span></div>
+        <div className="rowActions">
+          <button type="button" className="ghost" onClick={()=>void openProof(p)}><ExternalLink size={14}/>Abrir</button>
+          {(isAdmin||profileRole==='financeiro')&&<button type="button" className="dangerAction" onClick={()=>void deleteProof(p)}><Trash2 size={14}/>Excluir</button>}
+        </div>
+      </div>)}</div>}
+    </div>
+  }
+
+  function financeTable(type:'receber'|'pagar'){
+    const rows=titulos.filter(t=>t.tipo===type)
+    const groupTitle=type==='receber'?'Contas a receber':'Contas a pagar'
+    const empty=type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.'
+    return <article className="panel tablePanel financeGroup">
+      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div></div>
+      <div className="tableWrap"><table>
+        <thead><tr><th>Descrição</th><th>Cliente / Fornecedor</th><th>Vencimento</th><th>Valor</th><th>{type==='receber'?'Recebido':'Pago'}</th><th>Saldo</th><th>Status</th><th>Gerenciar</th></tr></thead>
+        <tbody>
+          {rows.length===0&&<tr><td colSpan={8}>{empty}</td></tr>}
+          {rows.map(t=>{
+            const opened=financePanel===t.id
+            const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
+            return <Fragment key={t.id}>
+              <tr>
+                <td>{t.descricao}</td>
+                <td>{t.entidade_nome||'—'}</td>
+                <td>{dateBr(t.vencimento)}</td>
+                <td><strong>{money(Number(t.valor))}</strong></td>
+                <td>{money(Number(t.valor_pago))}</td>
+                <td><strong>{money(balance)}</strong></td>
+                <td><span className={'statusBadge status-'+(t.status==='pago'?'faturado':t.status==='cancelado'?'cancelado':'pedido')}>{t.status}</span></td>
+                <td>{isViewer?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>openFinancePanel(t)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td>
+              </tr>
+              {!isViewer&&opened&&<tr className="manageRow"><td colSpan={8}>
+                <div className="financeManagePanel">
+                  <div className="actionPanel">
+                    <div className="actionMeta">
+                      <strong>{t.descricao}</strong>
+                      <span>{t.venda_id?'Ligado à venda • parcela '+(t.parcela_numero||1):t.compra_id?'Ligado à compra • parcela '+(t.parcela_numero||1):'Lançamento manual'} • saldo {money(balance)}</span>
+                    </div>
+                    <div className="rowActions">
+                      <button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>Editar</button>
+                      <button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>
+                      {isAdmin&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}
+                    </div>
+                  </div>
+                  {t.status!=='pago'&&t.status!=='cancelado'&&balance>0&&<div className="paymentEntry">
+                    <div><strong>{type==='receber'?'Registrar recebimento':'Registrar pagamento'}</strong><span>A data informada será usada no histórico{type==='receber'?' e no período da comissão':''}.</span></div>
+                    <label>Data<input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)}/></label>
+                    <label>Valor<input type="number" min="0.01" step="0.01" max={balance} value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)}/></label>
+                    <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
+                  </div>}
+                </div>
+              </td></tr>}
+            </Fragment>
+          })}
+        </tbody>
+      </table></div>
+    </article>
+  }
+
   function headerAction(){
     if(active==='clientes')startNewClient()
     else if(active==='fornecedores')startNewSupplier()
