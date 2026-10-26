@@ -47,6 +47,7 @@ export type InvoiceData = {
   forma_pagamento: 'pix' | 'cartao' | 'boleto'
   parcelas: number
   primeiro_vencimento: string
+  vendedor_nome?: string | null
   cliente?: InvoiceCustomer | null
   company?: InvoiceCompany
   items: InvoiceItem[]
@@ -54,14 +55,11 @@ export type InvoiceData = {
 
 const COMPANY = {
   nome: 'SUA EMPRESA',
-  slogan: 'SEU SLOGAN OU RAMO DE ATIVIDADE',
-  endereco1: 'Endereço da sua empresa, Número',
-  endereco2: 'Bairro / Complemento',
-  cidade: 'Cidade - UF | CEP | Brasil',
+  endereco: 'Endereço da sua empresa',
+  cidade: 'Cidade - UF',
+  cep: 'CEP',
   cnpj: '00.000.000/0000-00',
   email: 'contato@suaempresa.com.br',
-  pagamento1: 'Ag: 0000 | CC: 00000-0 - Banco',
-  pagamento2: 'Exemplo',
 }
 
 const CONDITIONS = [
@@ -70,322 +68,340 @@ const CONDITIONS = [
   '03) É necessario a apresentaçao da Ordem de serviço para retirada do produto ou Garantia.',
   '04) Nao aceitamos devoluçao do produto.',
   '05) Nosso atendimento é de 08:00 as 18:00 de segunda a sexta-feira, e de 08:00 as 12:00 aos sábados.',
-  '06) Os produtos não retirados pelo cliente no periodo de 60 dias. Serão Vendidos para cobrir as despesas.',
-  '07) É obrigatório verificar se os itens entregues pelo estoque correspondem aos itens no pedido. Reclamações posteriores nao seram aceitas.',
-  '08) Pagamento a prazo estarão sujeitos a multa de 4% e juros de 8% ao mês caso não seja feito o pagamento na data combinada. Sujeito a protesto.',
-  '09) Pedidos com produção devem obrigatoriamente serem pagos 50% do valor. Caso haja o cancelamento do mesmo o valor não será devolvido para cobrir os custos da produção.',
+  '06) Os produtos não retirados pelo cliente no periodo de 60 dias. Serão vendidos para cobrir as despesas.',
+  '07) É obrigatório verificar se os itens entregues pelo estoque correspondem aos itens no pedido. Reclamações posteriores não serão aceitas.',
+  '08) Pagamento a prazo estará sujeito às condições financeiras informadas na venda caso não seja feito o pagamento na data combinada.',
+  '09) Pedidos com produção poderão ter condições específicas de sinal, cancelamento e custos de produção conforme combinado.',
 ]
 
-const darkBlue:[number,number,number]=[37,65,145]
-const brightBlue:[number,number,number]=[50,126,255]
-const lightBlue:[number,number,number]=[241,246,255]
-const textColor:[number,number,number]=[38,52,78]
-const borderColor:[number,number,number]=[211,222,241]
+const blue:[number,number,number]=[34,99,190]
+const darkBlue:[number,number,number]=[24,52,86]
+const paleBlue:[number,number,number]=[244,248,254]
+const paleRow:[number,number,number]=[246,248,251]
+const text:[number,number,number]=[31,41,55]
+const muted:[number,number,number]=[102,112,128]
+const line:[number,number,number]=[196,205,218]
 
 const brl=(value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value||0)
 const num=(value:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value||0)
-const date=(value:string)=>new Intl.DateTimeFormat('pt-BR').format(new Date(value))
-const shortId=(value:string)=>value.replace(/-/g,'').slice(0,8).toUpperCase()
 const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
-const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='pix'?'PIX':value==='cartao'?'Cartão':'Boleto'
+const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
+const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
 
-function drawFirstHeader(doc:jsPDF,data:InvoiceData){
-  const company={
-    nome:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
-    slogan:COMPANY.slogan,
-    endereco1:data.company?.endereco||COMPANY.endereco1,
-    endereco2:[data.company?.cidade,data.company?.uf].filter(Boolean).join(' - ')||COMPANY.endereco2,
-    cidade:data.company?.cep?('CEP '+data.company.cep+' | Brasil'):COMPANY.cidade,
-    cnpj:data.company?.cnpj||COMPANY.cnpj,
-    email:data.company?.email||COMPANY.email,
+function asDate(value:string){
+  if(!value)return null
+  if(/^\d{4}-\d{2}-\d{2}$/.test(value)){
+    const [y,m,d]=value.split('-').map(Number)
+    return new Date(y,m-1,d,12,0,0)
   }
-  doc.setTextColor(...darkBlue)
-  doc.setFont('helvetica','bold')
-  doc.setFontSize(19)
-  doc.text(company.nome,18,19)
-
-  doc.setTextColor(...brightBlue)
-  doc.setFontSize(9)
-  doc.text(company.slogan,18,25)
-
-  doc.setTextColor(...textColor)
-  doc.setFont('helvetica','normal')
-  doc.setFontSize(8.5)
-  doc.text(company.endereco1,18,32)
-  doc.text(company.endereco2,18,37)
-  doc.text(company.cidade,18,42)
-  doc.text(`CNPJ: ${company.cnpj}`,18,47)
-  doc.text(company.email,18,52)
-
-  doc.setTextColor(...darkBlue)
-  doc.setFont('helvetica','bold')
-  doc.setFontSize(22)
-  doc.text('Fatura',192,20,{align:'right'})
-  doc.setFontSize(10)
-  doc.setTextColor(...textColor)
-  doc.text(`Fatura ${invoiceNo(data.fatura_numero)}`,192,30,{align:'right'})
-
-  doc.setDrawColor(...darkBlue)
-  doc.setLineWidth(1.2)
-  doc.line(18,58,192,58)
-
-  doc.setFillColor(...lightBlue)
-  doc.setDrawColor(...borderColor)
-  doc.roundedRect(18,66,102,45,1.5,1.5,'FD')
-  doc.setDrawColor(...brightBlue)
-  doc.setLineWidth(1)
-  doc.line(18,66,120,66)
-
-  doc.setTextColor(...textColor)
-  doc.setFont('helvetica','bold')
-  doc.setFontSize(9)
-  doc.text('FATURADO PARA:',22,76)
-
-  doc.setFontSize(10)
-  doc.text(data.cliente?.nome || 'CONSUMIDOR',22,85)
-  doc.setFont('helvetica','normal')
-  doc.setFontSize(8.5)
-  let cy=92
-  const clientLines=[
-    data.cliente?.documento ? `CPF/CNPJ: ${data.cliente.documento}` : '',
-    data.cliente?.email ? `E-mail: ${data.cliente.email}` : '',
-    data.cliente?.telefone ? `Telefone: ${data.cliente.telefone}` : '',
-  ].filter(Boolean)
-  clientLines.slice(0,3).forEach(line=>{doc.text(line,22,cy);cy+=5})
-
-  const infoX=126
-  const infoY=66
-  const infoW=66
-  const rowH=9
-  const labelW=34
-  const rows:Array<[string,string]>=[
-    ['Data da fatura',date(data.created_at)],
-    ['Data de vencimento',date(data.primeiro_vencimento)],
-    ['Origem','Venda'],
-    ['Código do cliente',data.cliente?.id ? shortId(data.cliente.id) : '-'],
-    ['Referência',`Venda ${shortId(data.id)}`],
-  ]
-
-  rows.forEach((row,index)=>{
-    const y=infoY+(index*rowH)
-    doc.setFillColor(...lightBlue)
-    doc.setDrawColor(...borderColor)
-    doc.rect(infoX,y,labelW,rowH,'FD')
-    doc.rect(infoX+labelW,y,infoW-labelW,rowH,'S')
-    doc.setFont('helvetica','bold')
-    doc.setFontSize(7.7)
-    doc.setTextColor(...darkBlue)
-    doc.text(row[0],infoX+2.5,y+5.8)
-    doc.setFont('helvetica','normal')
-    doc.setTextColor(...textColor)
-    doc.text(row[1],infoX+labelW+2.5,y+5.8)
-  })
+  const parsed=new Date(value)
+  return Number.isNaN(parsed.getTime())?null:parsed
 }
 
-function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
+function date(value:string){
+  const d=asDate(value)
+  return d?new Intl.DateTimeFormat('pt-BR').format(d):'-'
+}
+
+function dateTime(value:string){
+  const d=asDate(value)
+  return d?new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(d):'-'
+}
+
+function companyData(data:InvoiceData){
+  return {
+    nome:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
+    razao:data.company?.razao_social||'',
+    endereco:data.company?.endereco||COMPANY.endereco,
+    cidade:[data.company?.cidade,data.company?.uf].filter(Boolean).join(' ')||COMPANY.cidade,
+    cep:data.company?.cep||COMPANY.cep,
+    cnpj:data.company?.cnpj||COMPANY.cnpj,
+    email:data.company?.email||COMPANY.email,
+    telefone:data.company?.telefone||'',
+  }
+}
+
+function drawBrandHeader(doc:jsPDF,data:InvoiceData){
+  const company=companyData(data)
+
+  doc.setFillColor(...paleBlue)
+  doc.rect(0,0,210,49,'F')
+  doc.setFillColor(255,255,255)
+  doc.triangle(126,49,145,38,145,49,'F')
+
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(14)
-  doc.text(`Fatura ${invoiceNo(data.fatura_numero)} - Continuação`,18,18)
-  doc.setDrawColor(...darkBlue)
-  doc.setLineWidth(0.8)
-  doc.line(18,23,192,23)
+  doc.setFontSize(21)
+  doc.text(company.nome,12,17)
+
+  doc.setTextColor(...blue)
+  doc.setFontSize(7.5)
+  doc.setCharSpace(1.5)
+  doc.text('SISTEMA DE GESTÃO',12,23)
+  doc.setCharSpace(0)
+
+  doc.setTextColor(...text)
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(8.3)
+  const rightX=196
+  const companyLines=[
+    company.razao && company.razao!==company.nome ? company.razao : '',
+    company.endereco,
+    company.cidade,
+    company.cep,
+    'Brasil',
+  ].filter(Boolean)
+  let ry=12
+  companyLines.slice(0,5).forEach(v=>{doc.text(v,rightX,ry,{align:'right'});ry+=5.2})
+
+  doc.setTextColor(...blue)
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(20)
+  doc.text(`Pedido nº ${invoiceNo(data.fatura_numero)}`,196,46,{align:'right'})
+}
+
+function drawCustomer(doc:jsPDF,data:InvoiceData){
+  const c=data.cliente
+  doc.setTextColor(...text)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(9.5)
+  doc.text(c?.nome||'CONSUMIDOR',12,61)
+
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(8.2)
+  let y=67
+  const lines=[
+    c?.email||'',
+    c?.telefone||'',
+    c?.documento?`CPF/CNPJ: ${c.documento}`:'',
+  ].filter(Boolean)
+
+  lines.forEach(v=>{doc.text(v,12,y);y+=5})
+  return Math.max(84,y+4)
+}
+
+function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
+  const leftX=12
+  const sellerX=105
+
+  doc.setTextColor(...darkBlue)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(8.7)
+  doc.text('Data do pedido',leftX,y)
+  doc.text('Vendedor',sellerX,y)
+
+  doc.setTextColor(...text)
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(8.2)
+  doc.text(dateTime(data.created_at),leftX,y+5)
+  doc.text(data.vendedor_nome||'Equipe de vendas',sellerX,y+5)
+
+  doc.setFont('helvetica','bold')
+  doc.text(`Status: ${statusLabel(data.status)}`,leftX,y+13)
+  doc.text(`Método de pagamento combinado: ${paymentLabel(data.forma_pagamento)}${data.parcelas>1?` - ${data.parcelas}x`:''}`,leftX,y+19)
+  doc.text(`Data de vencimento: ${date(data.primeiro_vencimento)}`,leftX,y+25)
+
+  return y+34
 }
 
 function drawTableHeader(doc:jsPDF,y:number){
-  doc.setFillColor(...darkBlue)
-  doc.rect(18,y,174,13,'F')
-  doc.setTextColor(255,255,255)
+  doc.setTextColor(...text)
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(8.2)
+  doc.text('Descrição',14,y)
+  doc.text('Quantidade',130,y,{align:'right'})
+  doc.text('Preço unitário',166,y,{align:'right'})
+  doc.text('Valor',196,y,{align:'right'})
+  doc.setDrawColor(...line)
+  doc.setLineWidth(0.3)
+  doc.line(12,y+2,196,y+2)
+  return y+3
+}
+
+function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
+  doc.setFillColor(...paleBlue)
+  doc.rect(0,0,210,24,'F')
+  doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8.5)
-  doc.text('Descrição',22,y+8)
-  doc.text('Quantidade',126,y+8,{align:'center'})
-  doc.text('Preço',158,y+6,{align:'center'})
-  doc.text('unitário',158,y+10,{align:'center'})
-  doc.text('Valor',188,y+8,{align:'right'})
-  return y+13
+  doc.setFontSize(11)
+  doc.text(companyData(data).nome,12,10)
+  doc.setTextColor(...blue)
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(12)
+  doc.text(`Pedido nº ${invoiceNo(data.fatura_numero)} - continuação`,196,16,{align:'right'})
 }
 
 function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
   let y=drawTableHeader(doc,startY)
 
   data.items.forEach((item,index)=>{
-    const description=`${item.codigo ? item.codigo+' - ' : ''}${item.descricao}`
-    const lines=doc.splitTextToSize(description,88) as string[]
-    const rowHeight=Math.max(10,lines.length*4.2+3)
+    const description=`${item.codigo?`${item.codigo} - `:''}${item.descricao}`
+    const lines=doc.splitTextToSize(description,104) as string[]
+    const rowH=Math.max(7,lines.length*4.1+2)
 
-    if(y+rowHeight>245){
+    if(y+rowH>248){
       doc.addPage()
       drawContinuationHeader(doc,data)
-      y=drawTableHeader(doc,29)
+      y=drawTableHeader(doc,34)
     }
 
+    if(index%2===0){
+      doc.setFillColor(...paleRow)
+      doc.rect(12,y-1,184,rowH,'F')
+    }
+
+    doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
-    doc.setTextColor(...textColor)
-    doc.setFontSize(8.5)
-    doc.text(lines,22,y+6)
-    doc.text(`${num(item.quantidade)} ${item.unidade}`,126,y+6,{align:'center'})
-    doc.text(num(item.valor_unitario),158,y+6,{align:'center'})
-    doc.text(brl(item.total),188,y+6,{align:'right'})
+    doc.setFontSize(8.1)
+    doc.text(lines,14,y+4.3)
+    doc.text(`${num(item.quantidade)} ${item.unidade}`,130,y+4.3,{align:'right'})
+    doc.text(brl(item.valor_unitario),166,y+4.3,{align:'right'})
+    doc.text(brl(item.total),196,y+4.3,{align:'right'})
 
     if(item.desconto>0){
-      doc.setFontSize(6.8)
-      doc.setTextColor(105,116,135)
-      doc.text(`desconto: ${brl(item.desconto)}`,22,y+rowHeight-2)
+      doc.setFontSize(6.7)
+      doc.setTextColor(...muted)
+      doc.text(`Desconto: ${brl(item.desconto)}`,14,y+rowH-1.5)
     }
 
-    doc.setDrawColor(226,232,242)
-    doc.setLineWidth(0.3)
-    doc.line(18,y+rowHeight,192,y+rowHeight)
-    y+=rowHeight
-
-    if(index===data.items.length-1){
-      y+=4
-    }
+    doc.setDrawColor(225,230,237)
+    doc.setLineWidth(0.2)
+    doc.line(12,y+rowH-1,196,y+rowH-1)
+    y+=rowH
   })
 
-  return y
-}
-
-function drawPaymentAndTotal(doc:jsPDF,data:InvoiceData,y:number){
-  const bank=[data.company?.banco,data.company?.agencia?('Ag: '+data.company.agencia):'',data.company?.conta?('CC: '+data.company.conta):''].filter(Boolean).join(' | ')
-  const paymentLine=data.forma_pagamento==='pix'
-    ? (data.company?.pix_chave ? 'Chave PIX: '+data.company.pix_chave : 'PIX conforme condição da venda')
-    : data.forma_pagamento==='cartao'
-      ? 'Pagamento por cartão conforme condição da venda'
-      : (bank||`Conta: ${COMPANY.pagamento1}`)
-  const needed=42
-  if(y+needed>252){
+  if(y+9>250){
     doc.addPage()
     drawContinuationHeader(doc,data)
-    y=31
+    y=drawTableHeader(doc,34)
   }
 
-  doc.setFillColor(...lightBlue)
-  doc.setDrawColor(137,183,255)
-  doc.setLineDashPattern([1.5,1.5],0)
-  doc.roundedRect(18,y,88,29,1.5,1.5,'FD')
-  doc.setLineDashPattern([],0)
-
-  doc.setTextColor(...textColor)
+  doc.setFillColor(242,244,248)
+  doc.rect(105,y,91,7,'F')
+  doc.setTextColor(...blue)
   doc.setFont('helvetica','bold')
   doc.setFontSize(8.5)
-  doc.text('Dados para Pagamento:',22,y+8)
-  doc.setFont('helvetica','normal')
-  doc.text(`Fatura: ${invoiceNo(data.fatura_numero)} | Forma: ${paymentLabel(data.forma_pagamento)}`,22,y+15)
-  doc.text(`Parcelas: ${data.parcelas}x | 1º vencimento: ${date(data.primeiro_vencimento)}`,22,y+21)
-  doc.text(paymentLine,22,y+27)
-
-  const totalX=124
-  doc.setFillColor(...darkBlue)
-  doc.rect(totalX,y,68,12,'F')
-  doc.setTextColor(255,255,255)
-  doc.setFont('helvetica','bold')
-  doc.setFontSize(10)
-  doc.text('Total:',totalX+14,y+8)
-  doc.text(brl(data.total),188,y+8,{align:'right'})
+  doc.text('Total',130,y+4.8,{align:'right'})
+  doc.text(brl(data.total),196,y+4.8,{align:'right'})
 
   if(data.desconto>0){
-    doc.setTextColor(...textColor)
-    doc.setFontSize(7.5)
     doc.setFont('helvetica','normal')
-    doc.text(`Subtotal: ${brl(data.subtotal)}`,188,y+19,{align:'right'})
-    doc.text(`Desconto: ${brl(data.desconto)}`,188,y+25,{align:'right'})
+    doc.setTextColor(...muted)
+    doc.setFontSize(6.7)
+    doc.text(`Subtotal ${brl(data.subtotal)} | Desconto ${brl(data.desconto)}`,196,y+10,{align:'right'})
+    return y+14
   }
 
-  return y+36
+  return y+11
 }
 
-function drawConditions(doc:jsPDF,data:InvoiceData,y:number){
-  const lineWidth=174
-  const sourceConditions=data.company?.condicoes_gerais?.trim()
-    ? data.company.condicoes_gerais.split('\n').filter(Boolean)
-    : CONDITIONS
-  const wrapped=sourceConditions.map(item=>doc.splitTextToSize(item,lineWidth) as string[])
-  const conditionsHeight=wrapped.reduce((sum,lines)=>sum+(lines.length*4.2),0)+15
-  const signatureHeight=31
+function ensureSpace(doc:jsPDF,data:InvoiceData,y:number,needed:number){
+  if(y+needed<=274)return y
+  doc.addPage()
+  drawContinuationHeader(doc,data)
+  return 34
+}
 
-  if(y+conditionsHeight+signatureHeight>275){
-    doc.addPage()
-    drawContinuationHeader(doc,data)
-    y=32
-  }
+function drawNotesAndConditions(doc:jsPDF,data:InvoiceData,startY:number){
+  let y=startY
+  const notes=(data.observacoes||'').trim()
 
-  doc.setDrawColor(228,233,241)
-  doc.setLineWidth(0.3)
-  doc.line(18,y,192,y)
-  y+=8
-
+  y=ensureSpace(doc,data,y,18)
+  doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
-  doc.setTextColor(...brightBlue)
-  doc.setFontSize(9)
-  doc.text('Condições Gerais',18,y)
+  doc.setFontSize(8.3)
+  doc.text('Anotações:',12,y)
   y+=6
 
-  doc.setTextColor(...textColor)
-  doc.setFont('helvetica','normal')
-  doc.setFontSize(7)
-  wrapped.forEach(lines=>{
-    doc.text(lines,18,y)
-    y+=lines.length*4.2+1
-  })
-
-  if(data.observacoes){
-    const obs=doc.splitTextToSize(`Observações da venda: ${data.observacoes}`,174) as string[]
-    if(y+obs.length*4.2+26>278){
+  if(notes){
+    doc.setFont('helvetica','normal')
+    doc.setFontSize(7.5)
+    const noteLines=doc.splitTextToSize(notes,184) as string[]
+    if(y+noteLines.length*4.1>272){
       doc.addPage()
       drawContinuationHeader(doc,data)
-      y=32
+      y=34
     }
-    doc.setFont('helvetica','bold')
-    doc.text('Observações:',18,y)
-    y+=5
-    doc.setFont('helvetica','normal')
-    doc.text(obs,18,y)
-    y+=obs.length*4.2+4
+    doc.text(noteLines,12,y)
+    y+=noteLines.length*4.1+4
+  }else{
+    y+=4
   }
 
-  if(y+28>278){
+  y=ensureSpace(doc,data,y,22)
+  doc.setFont('helvetica','bold')
+  doc.setTextColor(...text)
+  doc.setFontSize(8.3)
+  doc.text('Condições Gerais:',12,y)
+  y+=5
+
+  const conditions=data.company?.condicoes_gerais?.trim()
+    ? data.company.condicoes_gerais.split('\n').map(v=>v.trim()).filter(Boolean)
+    : CONDITIONS
+
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(6.9)
+  doc.setTextColor(...text)
+
+  for(const condition of conditions){
+    const lines=doc.splitTextToSize(condition,184) as string[]
+    const h=lines.length*3.5+0.8
+    if(y+h>272){
+      doc.addPage()
+      drawContinuationHeader(doc,data)
+      y=34
+      doc.setFont('helvetica','normal')
+      doc.setFontSize(6.9)
+      doc.setTextColor(...text)
+    }
+    doc.text(lines,12,y)
+    y+=h
+  }
+
+  const declaration='Declaro estar ciente das condições acima mencionadas.'
+  if(y+7>272){
     doc.addPage()
     drawContinuationHeader(doc,data)
-    y=38
+    y=34
   }
-
-  doc.setFont('helvetica','italic')
-  doc.setTextColor(95,111,140)
-  doc.setFontSize(8.5)
-  doc.text('Declaro estar ciente das condições acima mencionadas.',105,y+8,{align:'center'})
-  doc.setDrawColor(...textColor)
-  doc.setLineWidth(0.3)
-  doc.line(66,y+20,144,y+20)
-  doc.text('Assinatura do Cliente',105,y+27,{align:'center'})
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(7.2)
+  doc.text(declaration,12,y+3)
 }
 
 function addFooters(doc:jsPDF,data:InvoiceData){
+  const company=companyData(data)
   const pages=doc.getNumberOfPages()
   for(let page=1;page<=pages;page++){
     doc.setPage(page)
-    doc.setTextColor(95,111,140)
+    doc.setDrawColor(...darkBlue)
+    doc.setLineWidth(0.35)
+    doc.line(12,282,196,282)
+
+    doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
     doc.setFontSize(7.2)
-    doc.text(`${data.company?.email||COMPANY.email} | CNPJ ${data.company?.cnpj||COMPANY.cnpj}`,18,289)
-    doc.text(`Página ${page}/${pages}`,192,289,{align:'right'})
+    const left=[company.email,company.cnpj].filter(Boolean).join('   ')
+    doc.text(left,12,289)
+    doc.setTextColor(...muted)
+    doc.text(`Página ${page}/${pages}`,196,289,{align:'right'})
   }
 }
 
 export function generateInvoicePdf(data:InvoiceData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
-    title:`Fatura ${invoiceNo(data.fatura_numero)}`,
-    subject:'Fatura de venda',
+    title:`Pedido ${invoiceNo(data.fatura_numero)}`,
+    subject:'Pedido / venda',
     author:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
   })
 
-  drawFirstHeader(doc,data)
-  let y=drawItems(doc,data,119)
-  y=drawPaymentAndTotal(doc,data,y)
-  drawConditions(doc,data,y)
+  drawBrandHeader(doc,data)
+  let y=drawCustomer(doc,data)
+  y=drawOrderInfo(doc,data,y)
+  y=drawItems(doc,data,y)
+  drawNotesAndConditions(doc,data,y+5)
   addFooters(doc,data)
 
-  doc.save(`fatura-${invoiceNo(data.fatura_numero)}.pdf`)
+  doc.save(`pedido-${invoiceNo(data.fatura_numero)}.pdf`)
 }
