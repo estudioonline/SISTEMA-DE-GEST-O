@@ -301,6 +301,7 @@ function App(){
     setEditingProduct(null)
     setAdjustingProduct(null)
     setEditingTitle(null)
+    setEditingSeller(null)
     resetSaleForm()
     resetPurchaseForm()
   }
@@ -655,19 +656,99 @@ function App(){
   async function deletePurchase(c:Compra){if(!isAdmin){setMsg('Somente administrador pode excluir compra.');return}if(!window.confirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
 
   // FINANCEIRO
-  function startNewTitle(){setEditingTitle(null);setShowForm(true);setMsg('')}
-  function startEditTitle(t:Titulo){setEditingTitle(t);setShowForm(true);setMsg('')}
+  function startNewTitle(){
+    setEditingTitle(null)
+    setShowForm(true)
+    setMsg('')
+  }
+
+  function startEditTitle(t:Titulo){
+    setEditingTitle(t)
+    setShowForm(true)
+    setMsg('')
+  }
+
+  function openFinancePanel(t:Titulo){
+    if(financePanel===t.id){
+      setFinancePanel(null)
+      return
+    }
+    setFinancePanel(t.id)
+    setPaymentDate(today())
+    setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))
+  }
+
   async function saveTitle(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const f=new FormData(e.currentTarget)
-    const payload={tipo:String(f.get('tipo')) as 'pagar'|'receber',descricao:String(f.get('descricao')||''),entidade_nome:String(f.get('entidade_nome')||'')||null,vencimento:String(f.get('vencimento')||today()),valor:Number(f.get('valor')||0),valor_pago:Number(f.get('valor_pago')||0),status:String(f.get('status')||'aberto'),categoria:String(f.get('categoria')||'')||null,centro_custo:String(f.get('centro_custo')||'')||null}
-    const r=editingTitle?await supabase.from('titulos_financeiros').update(payload).eq('id',editingTitle.id):await supabase.from('titulos_financeiros').insert(payload)
+    const valor=Number(f.get('valor')||0)
+    if(editingTitle&&valor<Number(editingTitle.valor_pago)){
+      setMsg('O valor do título não pode ficar abaixo do que já foi pago/recebido.')
+      return
+    }
+
+    const payload={
+      tipo:String(f.get('tipo')) as 'pagar'|'receber',
+      descricao:String(f.get('descricao')||''),
+      entidade_nome:String(f.get('entidade_nome')||'')||null,
+      vencimento:String(f.get('vencimento')||today()),
+      valor,
+      categoria:String(f.get('categoria')||'')||null,
+      centro_custo:String(f.get('centro_custo')||'')||null
+    }
+
+    const r=editingTitle
+      ? await supabase.from('titulos_financeiros').update(payload).eq('id',editingTitle.id)
+      : await supabase.from('titulos_financeiros').insert({...payload,valor_pago:0,status:'aberto'})
+
     setMsg(r.error?r.error.message:editingTitle?'Lançamento atualizado.':'Lançamento criado.')
-    if(!r.error){setShowForm(false);setEditingTitle(null);await loadData()}
+    if(!r.error){
+      setShowForm(false)
+      setEditingTitle(null)
+      await loadData()
+    }
   }
-  async function markPaid(t:Titulo){const r=await supabase.from('titulos_financeiros').update({valor_pago:Number(t.valor),status:'pago'}).eq('id',t.id);setMsg(r.error?r.error.message:'Lançamento marcado como pago.');if(!r.error)await loadData()}
-  async function cancelTitle(t:Titulo){const r=await supabase.from('titulos_financeiros').update({status:'cancelado'}).eq('id',t.id);setMsg(r.error?r.error.message:'Lançamento cancelado.');if(!r.error)await loadData()}
-  async function deleteTitle(t:Titulo){if(!isAdmin){setMsg('Somente administrador pode excluir lançamento.');return}if(!window.confirm('Excluir este lançamento?'))return;const r=await supabase.from('titulos_financeiros').delete().eq('id',t.id);setMsg(r.error?r.error.message:'Lançamento excluído.');if(!r.error)await loadData()}
+
+  async function registerPayment(t:Titulo){
+    const amount=Number(paymentAmount)
+    const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
+    if(!paymentDate){setMsg('Informe a data do pagamento/recebimento.');return}
+    if(!Number.isFinite(amount)||amount<=0){setMsg('Informe um valor válido.');return}
+    if(amount>balance){setMsg('O valor informado é maior que o saldo em aberto.');return}
+
+    const {error}=await supabase.rpc('registrar_pagamento_titulo',{
+      p_titulo_id:t.id,
+      p_valor:amount,
+      p_data_pagamento:paymentDate,
+      p_observacao:t.tipo==='receber'?'Recebimento registrado no financeiro':'Pagamento registrado no financeiro'
+    })
+
+    setMsg(error
+      ? error.message
+      : t.tipo==='receber'
+        ? 'Recebimento registrado. A comissão foi atualizada pela data informada.'
+        : 'Pagamento registrado.')
+
+    if(!error){
+      setFinancePanel(null)
+      await loadData()
+      if(active==='comissoes')await loadCommissions()
+    }
+  }
+
+  async function cancelTitle(t:Titulo){
+    const r=await supabase.from('titulos_financeiros').update({status:'cancelado'}).eq('id',t.id)
+    setMsg(r.error?r.error.message:'Lançamento cancelado.')
+    if(!r.error)await loadData()
+  }
+
+  async function deleteTitle(t:Titulo){
+    if(!isAdmin){setMsg('Somente administrador pode excluir lançamento.');return}
+    if(!window.confirm('Excluir este lançamento?'))return
+    const r=await supabase.from('titulos_financeiros').delete().eq('id',t.id)
+    setMsg(r.error?r.error.message:'Lançamento excluído.')
+    if(!r.error)await loadData()
+  }
 
   // CONFIG
   async function createViewerAccount(e:FormEvent<HTMLFormElement>){
@@ -752,6 +833,7 @@ function App(){
     else if(active==='produtos')startNewProduct()
     else if(active==='compras')startNewPurchase()
     else if(active==='vendas')startNewSale()
+    else if(active==='comissoes')startNewSeller()
     else if(active==='financeiro')startNewTitle()
   }
 
@@ -768,7 +850,7 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {!isViewer&&['clientes','fornecedores','produtos','compras','vendas','financeiro'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {!isViewer&&['clientes','fornecedores','produtos','compras','vendas','comissoes','financeiro'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='comissoes'?'Novo vendedor':'Novo'}</button>}
         </div>
       </header>
 
