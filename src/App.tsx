@@ -923,7 +923,8 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {!isViewer&&['clientes','fornecedores','produtos','compras','vendas','comissoes','financeiro'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='comissoes'?'Novo vendedor':'Novo'}</button>}
+          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','produtos','compras','vendas','financeiro'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
 
@@ -1297,9 +1298,33 @@ function App(){
       </section>}
 
       {active==='financeiro'&&<section>
-        {showForm&&<form className="panel dataForm" onSubmit={saveTitle}><select name="tipo" defaultValue={editingTitle?.tipo||'receber'}><option value="receber">A receber</option><option value="pagar">A pagar</option></select><input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/><input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/><input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/><input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/><input name="valor_pago" type="number" min="0" step="0.01" defaultValue={editingTitle?.valor_pago||0}/><select name="status" defaultValue={editingTitle?.status||'aberto'}><option value="aberto">Aberto</option><option value="parcial">Parcial</option><option value="pago">Pago</option><option value="cancelado">Cancelado</option></select><input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/><input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
-        <div className="cards compactCards"><article className="card"><span>A receber</span><strong>{money(openReceivables)}</strong></article><article className="card"><span>A pagar</span><strong>{money(openPayables)}</strong></article><article className="card"><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong></article></div>
-        <article className="panel tablePanel"><div className="panelHead"><h3>Lançamentos financeiros</h3></div><div className="tableWrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Entidade</th><th>Vencimento</th><th>Valor</th><th>Pago</th><th>Status</th><th>Gerenciar</th></tr></thead><tbody>{titulos.map(t=>{const opened=financePanel===t.id;return <Fragment key={t.id}><tr><td>{t.tipo==='receber'?'Receber':'Pagar'}</td><td>{t.descricao}</td><td>{t.entidade_nome||'—'}</td><td>{dateBr(t.vencimento)}</td><td>{money(Number(t.valor))}</td><td>{money(Number(t.valor_pago))}</td><td><span className={`statusBadge status-${t.status==='pago'?'faturado':t.status==='cancelado'?'cancelado':'pedido'}`}>{t.status}</span></td><td>{isViewer?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>setFinancePanel(opened?null:t.id)}><SlidersHorizontal size={15}/>Painel</button>}</td></tr>{!isViewer&&opened&&<tr className="manageRow"><td colSpan={8}><div className="actionPanel"><div className="actionMeta"><strong>{t.descricao}</strong><span>{t.venda_id?`Ligado à venda • parcela ${t.parcela_numero||1}`:t.compra_id?`Ligado à compra • parcela ${t.parcela_numero||1}`:'Lançamento manual'}</span></div><div className="rowActions"><button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>Editar</button><button className="ghost" disabled={t.status==='pago'||t.status==='cancelado'} onClick={()=>void markPaid(t)}><CheckCircle2 size={15}/>Marcar pago</button><button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+        {showForm&&<form className="panel dataForm" onSubmit={saveTitle}>
+          <select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
+            <option value="receber">Conta a receber</option>
+            <option value="pagar">Conta a pagar</option>
+          </select>
+          <input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/>
+          <input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/>
+          <input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/>
+          <input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/>
+          <input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/>
+          <input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/>
+          <div className="formActions">
+            <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button>
+            <button className="primary">Salvar</button>
+          </div>
+        </form>}
+
+        <div className="cards compactCards">
+          <article className="card"><span>Contas a receber</span><strong>{money(openReceivables)}</strong><small>saldo em aberto</small></article>
+          <article className="card"><span>Contas a pagar</span><strong>{money(openPayables)}</strong><small>saldo em aberto</small></article>
+          <article className="card"><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong><small>receber - pagar</small></article>
+        </div>
+
+        <div className="financeGroups">
+          {financeTable('receber')}
+          {financeTable('pagar')}
+        </div>
       </section>}
 
       {active==='relatorios'&&<section>
