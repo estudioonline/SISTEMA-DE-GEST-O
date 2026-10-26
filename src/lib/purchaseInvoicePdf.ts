@@ -27,6 +27,7 @@ export type PurchasePdfData = {
   forma_pagamento: 'pix' | 'cartao' | 'boleto'
   parcelas: number
   primeiro_vencimento: string
+  vencimentos_parcelas?: string[]
   fornecedor?: PurchaseSupplier | null
   company?: InvoiceCompany
   items: PurchasePdfItem[]
@@ -130,7 +131,7 @@ function drawInfo(doc:jsPDF,data:PurchasePdfData,y:number){
 
   doc.setFont('helvetica','bold')
   doc.text(`Status: ${data.status.toUpperCase()}`,12,y+13)
-  doc.text(`Primeiro vencimento: ${date(data.primeiro_vencimento)}`,12,y+19)
+  doc.text(`Primeiro vencimento: ${date(data.vencimentos_parcelas?.[0]||data.primeiro_vencimento)}`,12,y+19)
 
   return y+29
 }
@@ -224,7 +225,8 @@ function drawSchedule(doc:jsPDF,data:PurchasePdfData,startY:number){
   doc.setFont('helvetica','normal')
   doc.setFontSize(7.7)
   for(let i=0;i<data.parcelas;i++){
-    const due=addMonths(data.primeiro_vencimento,i)
+    const customDue=data.vencimentos_parcelas?.[i]
+    const due=customDue?parseDate(customDue):addMonths(data.primeiro_vencimento,i)
     const dueText=new Intl.DateTimeFormat('pt-BR').format(due)
     const value=installmentValue(data.total,data.parcelas,i)
 
