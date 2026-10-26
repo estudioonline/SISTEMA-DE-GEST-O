@@ -20,12 +20,16 @@ export type InvoiceItem = {
 
 export type InvoiceData = {
   id: string
+  fatura_numero?: number | null
   created_at: string
   status: string
   subtotal: number
   desconto: number
   total: number
   observacoes?: string | null
+  forma_pagamento: 'pix' | 'cartao' | 'boleto'
+  parcelas: number
+  primeiro_vencimento: string
   cliente?: InvoiceCustomer | null
   items: InvoiceItem[]
 }
@@ -64,6 +68,8 @@ const brl=(value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',curren
 const num=(value:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value||0)
 const date=(value:string)=>new Intl.DateTimeFormat('pt-BR').format(new Date(value))
 const shortId=(value:string)=>value.replace(/-/g,'').slice(0,8).toUpperCase()
+const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
+const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='pix'?'PIX':value==='cartao'?'Cartão':'Boleto'
 
 function drawFirstHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...darkBlue)
@@ -90,7 +96,7 @@ function drawFirstHeader(doc:jsPDF,data:InvoiceData){
   doc.text('Fatura',192,20,{align:'right'})
   doc.setFontSize(10)
   doc.setTextColor(...textColor)
-  doc.text(`Venda ${shortId(data.id)}`,192,30,{align:'right'})
+  doc.text(`Fatura ${invoiceNo(data.fatura_numero)}`,192,30,{align:'right'})
 
   doc.setDrawColor(...darkBlue)
   doc.setLineWidth(1.2)
@@ -127,10 +133,10 @@ function drawFirstHeader(doc:jsPDF,data:InvoiceData){
   const labelW=34
   const rows:Array<[string,string]>=[
     ['Data da fatura',date(data.created_at)],
-    ['Data de vencimento','A combinar'],
+    ['Data de vencimento',date(data.primeiro_vencimento)],
     ['Origem','Venda'],
     ['Código do cliente',data.cliente?.id ? shortId(data.cliente.id) : '-'],
-    ['Referência',shortId(data.id)],
+    ['Referência',`Venda ${shortId(data.id)}`],
   ]
 
   rows.forEach((row,index)=>{
@@ -153,7 +159,7 @@ function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
   doc.setFontSize(14)
-  doc.text(`Fatura ${shortId(data.id)} - Continuação`,18,18)
+  doc.text(`Fatura ${invoiceNo(data.fatura_numero)} - Continuação`,18,18)
   doc.setDrawColor(...darkBlue)
   doc.setLineWidth(0.8)
   doc.line(18,23,192,23)
@@ -233,9 +239,9 @@ function drawPaymentAndTotal(doc:jsPDF,data:InvoiceData,y:number){
   doc.setFontSize(8.5)
   doc.text('Dados para Pagamento:',22,y+8)
   doc.setFont('helvetica','normal')
-  doc.text(`Comunicação de pagamento: Fatura ${shortId(data.id)}`,22,y+15)
-  doc.text(`Nesta conta: ${COMPANY.pagamento1}`,22,y+21)
-  doc.text(COMPANY.pagamento2,22,y+27)
+  doc.text(`Fatura: ${invoiceNo(data.fatura_numero)} | Forma: ${paymentLabel(data.forma_pagamento)}`,22,y+15)
+  doc.text(`Parcelas: ${data.parcelas}x | 1º vencimento: ${date(data.primeiro_vencimento)}`,22,y+21)
+  doc.text(data.forma_pagamento==='cartao'?'Pagamento por cartão conforme condição da venda':`Conta: ${COMPANY.pagamento1}`,22,y+27)
 
   const totalX=124
   doc.setFillColor(...darkBlue)
@@ -334,7 +340,7 @@ function addFooters(doc:jsPDF){
 export function generateInvoicePdf(data:InvoiceData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
-    title:`Fatura ${shortId(data.id)}`,
+    title:`Fatura ${invoiceNo(data.fatura_numero)}`,
     subject:'Fatura de venda',
     author:COMPANY.nome,
   })
@@ -345,5 +351,5 @@ export function generateInvoicePdf(data:InvoiceData){
   drawConditions(doc,data,y)
   addFooters(doc)
 
-  doc.save(`fatura-${shortId(data.id)}.pdf`)
+  doc.save(`fatura-${invoiceNo(data.fatura_numero)}.pdf`)
 }
