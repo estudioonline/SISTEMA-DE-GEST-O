@@ -179,3 +179,41 @@
 @media(max-width:1050px){.installmentDatesGrid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.installmentDatesGrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.installmentDatesGrid{grid-template-columns:1fr}}
+
+.invoiceManagePanel{display:grid;gap:12px}
+.proofPanel{border-top:1px solid #e4e9f1;padding-top:12px;display:grid;gap:10px}
+.dark .proofPanel{border-color:#2b3548}
+.proofHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.proofHead strong,.proofHead span{display:block}
+.proofHead span{margin-top:3px;color:#7b8799;font-size:12px}
+.proofUpload{display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+.proofUpload input{display:none}
+.proofList{display:grid;gap:8px}
+.proofItem{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid #dfe6ef;border-radius:12px;background:#f9fbfd}
+.proofItem strong,.proofItem span{display:block}
+.proofItem span{margin-top:3px;color:#7b8799;font-size:11px}
+.dark .proofItem{background:#141c29;border-color:#2a3648}
+.sellerForm{display:grid;grid-template-columns:1.5fr 1.5fr 1fr 170px 140px;gap:12px;margin-bottom:14px}
+.sellerForm .formTitle,.sellerForm .formActions{grid-column:1/-1}
+.sellerForm label{display:grid;gap:6px;font-size:13px;font-weight:700;color:#5f6b7d}
+.sellerForm input,.sellerForm select{height:42px;border:1px solid #dbe2ec;border-radius:10px;padding:0 11px;background:#fff;color:#172033}
+.dark .sellerForm input,.dark .sellerForm select{background:#101725;border-color:#253047;color:#eef3ff}
+.commissionFilters{display:grid;grid-template-columns:minmax(260px,1fr) 180px 180px auto;gap:12px;align-items:end;margin-bottom:14px}
+.commissionFilters>div strong,.commissionFilters>div span{display:block}
+.commissionFilters>div span{margin-top:4px;color:#7b8799;font-size:12px}
+.commissionFilters label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#5f6b7d}
+.commissionFilters input{height:40px;border:1px solid #dbe2ec;border-radius:10px;padding:0 10px;background:#fff;color:#172033}
+.dark .commissionFilters input{background:#101725;border-color:#253047;color:#eef3ff}
+.commissionWarning{margin-bottom:14px;padding:12px 14px;border:1px solid #f2d35f;border-radius:12px;background:#fff9db;color:#7a5d00;font-weight:700;font-size:13px}
+.dark .commissionWarning{background:#2a2410;border-color:#6c5c21;color:#ffe37d}
+.financeGroups{display:grid;gap:18px}
+.financeManagePanel{display:grid;gap:12px}
+.paymentEntry{display:grid;grid-template-columns:minmax(260px,1fr) 170px 170px auto;gap:10px;align-items:end;padding:12px;border:1px solid #dfe6ef;border-radius:12px;background:#f9fbfd}
+.paymentEntry>div strong,.paymentEntry>div span{display:block}
+.paymentEntry>div span{margin-top:4px;color:#7b8799;font-size:12px}
+.paymentEntry label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#5f6b7d}
+.paymentEntry input{height:40px;border:1px solid #d7e0eb;border-radius:9px;padding:0 10px;background:#fff;color:#172033}
+.dark .paymentEntry{background:#141c29;border-color:#2a3648}
+.dark .paymentEntry input{background:#101725;border-color:#2a3648;color:#eef3ff}
+@media(max-width:1100px){.sellerForm{grid-template-columns:repeat(2,1fr)}.commissionFilters{grid-template-columns:1fr 1fr}.paymentEntry{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.proofHead,.proofItem{align-items:stretch;flex-direction:column}.sellerForm,.commissionFilters,.paymentEntry{grid-template-columns:1fr}}
