@@ -102,3 +102,11 @@
 .configFieldset{border:0;padding:0;margin:0;display:contents}
 .configFieldset:disabled{opacity:.72}
 .configFieldset:disabled input,.configFieldset:disabled textarea,.configFieldset:disabled select{cursor:not-allowed}
+
+.viewerUserForm{margin-bottom:14px;display:grid;grid-template-columns:1.2fr 1.5fr 1fr auto;gap:12px;align-items:end}
+.viewerUserForm .formTitle{grid-column:1/-1;margin-bottom:0}
+.viewerUserForm input{height:42px;border:1px solid #dbe2ec;border-radius:10px;padding:0 12px;background:#fff;color:#172033}
+.dark .viewerUserForm input{background:#101725;border-color:#253047;color:#eef3ff}
+.viewerUserForm .primary{justify-content:center}
+@media(max-width:1000px){.viewerUserForm{grid-template-columns:1fr 1fr}.viewerUserForm .primary{width:100%}}
+@media(max-width:700px){.viewerUserForm{grid-template-columns:1fr}}
