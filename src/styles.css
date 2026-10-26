@@ -31,3 +31,34 @@
 .dark .statusBadge{background:#202b3d}
 @media(max-width:1100px){.saleHeader{grid-template-columns:1fr 1fr}.saleNotes{grid-column:1/-1}.saleItemRow{grid-template-columns:2fr 90px 110px 110px 100px 42px}}
 @media(max-width:820px){.saleHeader{grid-template-columns:1fr}.saleNotes{grid-column:auto}.saleItemRow{grid-template-columns:1fr 1fr}.saleItemRow select{grid-column:1/-1}.saleItemRow strong{text-align:left}.saleItemsHead{align-items:flex-start;flex-direction:column}}
+
+.dataForm select{height:42px;border:1px solid #dbe2ec;border-radius:10px;padding:0 12px;background:#fff;color:#172033}
+.dark .dataForm select{background:#101725;border-color:#253047;color:#eef3ff}
+.formActions{display:flex;justify-content:flex-end;align-items:center;gap:9px;grid-column:1/-1}
+.formTitle{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:16px}
+.formTitle h3{margin:0 0 4px}.formTitle p{margin:0;color:#7b8799}
+.saleHeaderExpanded{grid-template-columns:1.2fr .75fr .8fr .65fr .9fr 1.5fr}
+.paymentNotice{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:12px 14px;margin:-4px 0 18px;border-radius:12px;background:#eef5ff;border:1px solid #d5e5ff;color:#244b8f}
+.paymentNotice strong,.paymentNotice span{display:block}
+.dark .paymentNotice{background:#14223c;border-color:#28436d;color:#c8ddff}
+.stockForm{display:grid;grid-template-columns:1.3fr .8fr 1.5fr auto;align-items:end;gap:12px;margin-bottom:14px}
+.stockForm>div:first-child strong,.stockForm>div:first-child span{display:block}
+.stockForm>div:first-child span{margin-top:5px;color:#7b8799;font-size:13px}
+.stockForm label{display:grid;gap:6px;font-size:13px;font-weight:700;color:#5f6b7d}
+.stockForm input{height:42px;border:1px solid #dbe2ec;border-radius:10px;padding:0 12px;background:#fff;color:#172033}
+.dark .stockForm input{background:#101725;border-color:#253047;color:#eef3ff}
+.compactCards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.manageRow td{padding:0 12px 12px;background:#f8fafc}
+.dark .manageRow td{background:#101725}
+.actionPanel{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:13px 14px;border:1px solid #e0e7f0;border-radius:12px;background:#fff}
+.dark .actionPanel{background:#151c2b;border-color:#253047}
+.actionMeta strong,.actionMeta span{display:block}
+.actionMeta span{font-size:13px;color:#7b8799;margin-top:4px}
+.rowActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.warningBtn,.dangerAction{height:34px;border-radius:10px;display:inline-flex;align-items:center;gap:7px;padding:0 11px;cursor:pointer;font-weight:600}
+.warningBtn{border:1px solid #f4c463;background:#fff8e6;color:#8b5a00}
+.dangerAction{border:1px solid #f0b6b6;background:#fff0f0;color:#a42323}
+.warningBtn:disabled,.dangerAction:disabled,.ghost:disabled,.primary:disabled{opacity:.5;cursor:not-allowed}
+.stockLow{color:#b42318}
+@media(max-width:1250px){.saleHeaderExpanded{grid-template-columns:repeat(3,1fr)}.saleNotes{grid-column:span 2}.stockForm{grid-template-columns:1fr 1fr}.stockForm .formActions{grid-column:1/-1}.actionPanel{align-items:flex-start;flex-direction:column}.rowActions{justify-content:flex-start}}
+@media(max-width:820px){.saleHeaderExpanded{grid-template-columns:1fr}.saleNotes{grid-column:auto}.paymentNotice{align-items:flex-start;flex-direction:column}.stockForm{grid-template-columns:1fr}.compactCards{grid-template-columns:1fr}.formActions{justify-content:flex-start}}
