@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
+import { generatePurchaseInvoicePdf } from './lib/purchaseInvoicePdf'
 import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
@@ -22,10 +23,10 @@ type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:numb
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
-type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string}
+type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
-type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
+type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
 type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null}
 
 const menu=[
@@ -92,6 +93,9 @@ function App(){
   const [purchaseSupplier,setPurchaseSupplier]=useState('')
   const [purchaseStatus,setPurchaseStatus]=useState('aberta')
   const [purchaseNotes,setPurchaseNotes]=useState('')
+  const [purchasePayment,setPurchasePayment]=useState<PaymentMethod>('pix')
+  const [purchaseInstallments,setPurchaseInstallments]=useState(1)
+  const [purchaseDueDate,setPurchaseDueDate]=useState(today())
   const [purchaseItems,setPurchaseItems]=useState<PurchaseItemDraft[]>([newPurchaseItem()])
   const [savingPurchase,setSavingPurchase]=useState(false)
 
@@ -346,32 +350,144 @@ function App(){
   async function deleteSale(v:Venda){if(!isAdmin){setMsg('Somente administrador pode excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
 
   // COMPRAS
-  function resetPurchaseForm(){setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('aberta');setPurchaseNotes('');setPurchaseItems([newPurchaseItem()])}
+  function resetPurchaseForm(){setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('aberta');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(today());setPurchaseItems([newPurchaseItem()])}
   function startNewPurchase(){resetPurchaseForm();setShowForm(true);setMsg('')}
   async function startEditPurchase(c:Compra){
     if(c.status==='cancelada'){setMsg('Compra cancelada não pode ser editada.');return}
     const {data,error}=await supabase.from('compra_itens').select('produto_id,quantidade,custo_unitario,total').eq('compra_id',c.id)
     if(error){setMsg(error.message);return}
     const items=(data||[]) as CompraItem[]
-    setEditingPurchase(c);setPurchaseSupplier(c.fornecedor_id||'');setPurchaseStatus(c.status);setPurchaseNotes(c.observacoes||'')
+    setEditingPurchase(c);setPurchaseSupplier(c.fornecedor_id||'');setPurchaseStatus(c.status);setPurchaseNotes(c.observacoes||'');setPurchasePayment(c.forma_pagamento||'pix');setPurchaseInstallments(Number(c.parcelas)||1);setPurchaseDueDate(c.primeiro_vencimento||today())
     setPurchaseItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),custo_unitario:Number(i.custo_unitario)})))
     setShowForm(true);setMsg('')
   }
   function choosePurchaseProduct(key:string,id:string){const p=produtos.find(x=>x.id===id);setPurchaseItems(items=>items.map(i=>i.key===key?{...i,produto_id:id,custo_unitario:p?Number(p.custo):0}:i))}
   function updatePurchaseItem(key:string,field:'quantidade'|'custo_unitario',value:number){setPurchaseItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
   function removePurchaseItem(key:string){setPurchaseItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
+  function changePurchasePayment(v:PaymentMethod){
+    setPurchasePayment(v)
+    if(v==='pix')setPurchaseInstallments(1)
+    if(v==='cartao')setPurchaseInstallments(x=>Math.min(Math.max(x,1),12))
+    if(v==='boleto')setPurchaseInstallments(x=>Math.min(Math.max(x,1),24))
+  }
+
+  function purchasePdfItems(items:PurchaseItemDraft[]){
+    return items.map(i=>{
+      const p=produtos.find(x=>x.id===i.produto_id)
+      return {
+        codigo:p?.codigo,
+        descricao:p?.descricao||'Produto',
+        unidade:p?.unidade||'UN',
+        quantidade:i.quantidade,
+        custo_unitario:i.custo_unitario,
+        total:i.quantidade*i.custo_unitario
+      }
+    })
+  }
+
   async function savePurchase(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const items=purchaseItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
+
+    const maxInstallments=purchasePayment==='pix'?1:purchasePayment==='cartao'?12:24
+    if(purchaseInstallments<1||purchaseInstallments>maxInstallments){
+      setMsg('Quantidade de parcelas inválida para a forma de pagamento.')
+      return
+    }
+
     setSavingPurchase(true)
-    const args={p_fornecedor_id:purchaseSupplier||null,p_status:purchaseStatus,p_observacoes:purchaseNotes,p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,custo_unitario:i.custo_unitario}))}
-    const r=editingPurchase?await supabase.rpc('atualizar_compra_completa',{p_compra_id:editingPurchase.id,...args}):await supabase.rpc('criar_compra_completa',args)
+    const args={
+      p_fornecedor_id:purchaseSupplier||null,
+      p_status:purchaseStatus,
+      p_forma_pagamento:purchasePayment,
+      p_parcelas:purchaseInstallments,
+      p_primeiro_vencimento:purchaseDueDate,
+      p_observacoes:purchaseNotes,
+      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,custo_unitario:i.custo_unitario}))
+    }
+    const r=editingPurchase
+      ? await supabase.rpc('atualizar_compra_completa',{p_compra_id:editingPurchase.id,...args})
+      : await supabase.rpc('criar_compra_completa',args)
+
+    if(r.error||!r.data){
+      setSavingPurchase(false)
+      setMsg(r.error?.message||'Não foi possível salvar a compra.')
+      return
+    }
+
+    const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Compra
+    const total=items.reduce((s,i)=>s+(i.quantidade*i.custo_unitario),0)
+    const fornecedor=fornecedores.find(f=>f.id===purchaseSupplier)||null
+
+    try{
+      generatePurchaseInvoicePdf({
+        id:saved.id,
+        fatura_numero:saved.fatura_numero,
+        created_at:saved.created_at||new Date().toISOString(),
+        status:saved.status,
+        total,
+        observacoes:purchaseNotes||null,
+        forma_pagamento:purchasePayment,
+        parcelas:purchaseInstallments,
+        primeiro_vencimento:purchaseDueDate,
+        fornecedor,
+        company:empresa||undefined,
+        items:purchasePdfItems(items)
+      })
+      await supabase.from('compras').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
+      setMsg(editingPurchase?'Compra atualizada, contas a pagar recalculadas e PDF reemitido.':'Compra criada, contas a pagar geradas e PDF emitido.')
+    }catch{
+      setMsg('Compra salva e contas a pagar geradas. O PDF pode ser reemitido pelo painel.')
+    }
+
     setSavingPurchase(false)
-    setMsg(r.error?r.error.message:editingPurchase?'Compra atualizada.':'Compra criada.')
-    if(!r.error){setShowForm(false);resetPurchaseForm();await loadData()}
+    setShowForm(false)
+    resetPurchaseForm()
+    await loadData()
   }
-  async function cancelPurchase(c:Compra){if(c.status==='cancelada'||!window.confirm('Cancelar esta compra?'))return;const r=await supabase.from('compras').update({status:'cancelada'}).eq('id',c.id);setMsg(r.error?r.error.message:'Compra cancelada e estoque estornado.');if(!r.error){setPurchasePanel(null);await loadData()}}
+
+  async function downloadPurchasePdf(compra:Compra){
+    const {data,error}=await supabase.from('compra_itens')
+      .select('produto_id,quantidade,custo_unitario,total')
+      .eq('compra_id',compra.id)
+
+    if(error){setMsg(error.message);return}
+
+    const items=(data||[]) as CompraItem[]
+    const fornecedor=fornecedores.find(f=>f.id===compra.fornecedor_id)||null
+
+    try{
+      generatePurchaseInvoicePdf({
+        id:compra.id,
+        fatura_numero:compra.fatura_numero,
+        created_at:compra.created_at,
+        status:compra.status,
+        total:Number(compra.total),
+        observacoes:compra.observacoes,
+        forma_pagamento:compra.forma_pagamento,
+        parcelas:Number(compra.parcelas),
+        primeiro_vencimento:compra.primeiro_vencimento,
+        fornecedor,
+        company:empresa||undefined,
+        items:items.map(i=>{
+          const p=produtos.find(x=>x.id===i.produto_id)
+          return {
+            codigo:p?.codigo,
+            descricao:p?.descricao||'Produto',
+            unidade:p?.unidade||'UN',
+            quantidade:Number(i.quantidade),
+            custo_unitario:Number(i.custo_unitario),
+            total:Number(i.total)
+          }
+        })
+      })
+      await supabase.from('compras').update({fatura_gerada_em:new Date().toISOString()}).eq('id',compra.id)
+    }catch{
+      setMsg('Não foi possível gerar o PDF desta compra.')
+    }
+  }
+  async function cancelPurchase(c:Compra){if(c.status==='cancelada'||!window.confirm('Cancelar esta compra? O estoque será estornado e as contas a pagar em aberto serão canceladas.'))return;const r=await supabase.from('compras').update({status:'cancelada'}).eq('id',c.id);setMsg(r.error?r.error.message:'Compra cancelada, estoque estornado e contas a pagar canceladas.');if(!r.error){setPurchasePanel(null);await loadData()}}
   async function deletePurchase(c:Compra){if(!isAdmin){setMsg('Somente administrador pode excluir compra.');return}if(!window.confirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
 
   // FINANCEIRO
@@ -553,7 +669,7 @@ function App(){
       {active==='financeiro'&&<section>
         {showForm&&<form className="panel dataForm" onSubmit={saveTitle}><select name="tipo" defaultValue={editingTitle?.tipo||'receber'}><option value="receber">A receber</option><option value="pagar">A pagar</option></select><input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/><input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/><input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/><input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/><input name="valor_pago" type="number" min="0" step="0.01" defaultValue={editingTitle?.valor_pago||0}/><select name="status" defaultValue={editingTitle?.status||'aberto'}><option value="aberto">Aberto</option><option value="parcial">Parcial</option><option value="pago">Pago</option><option value="cancelado">Cancelado</option></select><input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/><input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
         <div className="cards compactCards"><article className="card"><span>A receber</span><strong>{money(openReceivables)}</strong></article><article className="card"><span>A pagar</span><strong>{money(openPayables)}</strong></article><article className="card"><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong></article></div>
-        <article className="panel tablePanel"><div className="panelHead"><h3>Lançamentos financeiros</h3></div><div className="tableWrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Entidade</th><th>Vencimento</th><th>Valor</th><th>Pago</th><th>Status</th><th>Gerenciar</th></tr></thead><tbody>{titulos.map(t=>{const opened=financePanel===t.id;return <Fragment key={t.id}><tr><td>{t.tipo==='receber'?'Receber':'Pagar'}</td><td>{t.descricao}</td><td>{t.entidade_nome||'—'}</td><td>{dateBr(t.vencimento)}</td><td>{money(Number(t.valor))}</td><td>{money(Number(t.valor_pago))}</td><td><span className={`statusBadge status-${t.status==='pago'?'faturado':t.status==='cancelado'?'cancelado':'pedido'}`}>{t.status}</span></td><td>{isViewer?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>setFinancePanel(opened?null:t.id)}><SlidersHorizontal size={15}/>Painel</button>}</td></tr>{!isViewer&&opened&&<tr className="manageRow"><td colSpan={8}><div className="actionPanel"><div className="actionMeta"><strong>{t.descricao}</strong><span>{t.venda_id?`Ligado à venda • parcela ${t.parcela_numero||1}`:'Lançamento manual'}</span></div><div className="rowActions"><button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>Editar</button><button className="ghost" disabled={t.status==='pago'||t.status==='cancelado'} onClick={()=>void markPaid(t)}><CheckCircle2 size={15}/>Marcar pago</button><button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+        <article className="panel tablePanel"><div className="panelHead"><h3>Lançamentos financeiros</h3></div><div className="tableWrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Entidade</th><th>Vencimento</th><th>Valor</th><th>Pago</th><th>Status</th><th>Gerenciar</th></tr></thead><tbody>{titulos.map(t=>{const opened=financePanel===t.id;return <Fragment key={t.id}><tr><td>{t.tipo==='receber'?'Receber':'Pagar'}</td><td>{t.descricao}</td><td>{t.entidade_nome||'—'}</td><td>{dateBr(t.vencimento)}</td><td>{money(Number(t.valor))}</td><td>{money(Number(t.valor_pago))}</td><td><span className={`statusBadge status-${t.status==='pago'?'faturado':t.status==='cancelado'?'cancelado':'pedido'}`}>{t.status}</span></td><td>{isViewer?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>setFinancePanel(opened?null:t.id)}><SlidersHorizontal size={15}/>Painel</button>}</td></tr>{!isViewer&&opened&&<tr className="manageRow"><td colSpan={8}><div className="actionPanel"><div className="actionMeta"><strong>{t.descricao}</strong><span>{t.venda_id?`Ligado à venda • parcela ${t.parcela_numero||1}`:t.compra_id?`Ligado à compra • parcela ${t.parcela_numero||1}`:'Lançamento manual'}</span></div><div className="rowActions"><button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>Editar</button><button className="ghost" disabled={t.status==='pago'||t.status==='cancelado'} onClick={()=>void markPaid(t)}><CheckCircle2 size={15}/>Marcar pago</button><button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
       </section>}
 
       {active==='relatorios'&&<section>
