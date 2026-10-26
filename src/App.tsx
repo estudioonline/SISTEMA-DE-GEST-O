@@ -11,6 +11,8 @@ import {
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
 import { generatePurchaseInvoicePdf } from './lib/purchaseInvoicePdf'
+import { generateCommissionReportPdf } from './lib/commissionReportPdf'
+import type { CommissionReportRow } from './lib/commissionReportPdf'
 import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'
@@ -180,6 +182,27 @@ function App(){
     })
     if(error){setMsg('Não foi possível calcular as comissões: '+error.message);return}
     setComissoes((data||[]) as ComissaoResumo[])
+  }
+
+  async function downloadCommissionReport(){
+    setMsg('')
+    const {data,error}=await supabase.rpc('relatorio_comissoes_vendas',{
+      p_inicio:commissionStart,
+      p_fim:commissionEnd
+    })
+    if(error){
+      setMsg('Não foi possível gerar o relatório de comissões: '+error.message)
+      return
+    }
+
+    const rows=(data||[]) as CommissionReportRow[]
+    generateCommissionReportPdf({
+      inicio:commissionStart,
+      fim:commissionEnd,
+      company:empresa,
+      rows
+    })
+    setMsg(`Relatório PDF gerado com ${rows.length} recebimento(s) apurado(s).`)
   }
 
   function startNewSeller(){
@@ -1276,6 +1299,7 @@ function App(){
           <label>De<input type="date" value={commissionStart} onChange={e=>setCommissionStart(e.target.value)}/></label>
           <label>Até<input type="date" value={commissionEnd} onChange={e=>setCommissionEnd(e.target.value)}/></label>
           <button className="ghost" onClick={()=>void loadCommissions()}><RefreshCw size={15}/>Atualizar</button>
+          <button className="primary" onClick={()=>void downloadCommissionReport()}><FileDown size={15}/>Gerar relatório PDF</button>
         </div>
 
         {salesWithoutSeller>0&&<div className="commissionWarning">{salesWithoutSeller} venda(s) estão sem vendedor definido e não gerarão comissão até serem vinculadas a um vendedor.</div>}
