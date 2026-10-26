@@ -9,7 +9,7 @@ import {
 import { supabase, supabaseConfigured } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
 
-type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'estoque'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
+type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'
 type PaymentMethod='pix'|'cartao'|'boleto'
 
@@ -27,7 +27,7 @@ type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:stri
 
 const menu=[
   ['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
-  ['produtos','Produtos',Package],['estoque','Estoque',Boxes],['compras','Compras',ShoppingCart],
+  ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
   ['vendas','Vendas',ReceiptText],['financeiro','Financeiro',WalletCards],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
 ] as const
 
@@ -392,7 +392,7 @@ function App(){
         <div className="cards compactCards">
           <article className="card"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>setActive('clientes')}>Gerenciar</button></article>
           <article className="card"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>setActive('fornecedores')}>Gerenciar</button></article>
-          <article className="card"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>setActive('estoque')}>Gerenciar</button></article>
+          <article className="card"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>setActive('produtos')}>Gerenciar</button></article>
         </div>
       </section>}
 
@@ -406,10 +406,10 @@ function App(){
         <EditableEntityTable title="Fornecedores" headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
       </section>}
 
-      {(active==='produtos'||active==='estoque')&&<section>
-        {active==='produtos'&&showForm&&<form className="panel dataForm" onSubmit={saveProduct}><input name="codigo" placeholder="Código" required defaultValue={editingProduct?.codigo||''}/><input name="descricao" placeholder="Descrição" required defaultValue={editingProduct?.descricao||''}/><input name="unidade" defaultValue={editingProduct?.unidade||'UN'}/><input name="custo" type="number" step="0.01" placeholder="Custo" defaultValue={editingProduct?.custo||0}/><input name="preco_venda" type="number" step="0.01" placeholder="Preço de venda" defaultValue={editingProduct?.preco_venda||0}/>{!editingProduct&&<input name="estoque_atual" type="number" step="0.001" placeholder="Estoque inicial" defaultValue={0}/>}<input name="estoque_minimo" type="number" step="0.001" placeholder="Estoque mínimo" defaultValue={editingProduct?.estoque_minimo||0}/><select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
+      {active==='produtos'&&<section>
+        {showForm&&<form className="panel dataForm" onSubmit={saveProduct}><input name="codigo" placeholder="Código" required defaultValue={editingProduct?.codigo||''}/><input name="descricao" placeholder="Descrição" required defaultValue={editingProduct?.descricao||''}/><input name="unidade" defaultValue={editingProduct?.unidade||'UN'}/><input name="custo" type="number" step="0.01" placeholder="Custo" defaultValue={editingProduct?.custo||0}/><input name="preco_venda" type="number" step="0.01" placeholder="Preço de venda" defaultValue={editingProduct?.preco_venda||0}/>{!editingProduct&&<input name="estoque_atual" type="number" step="0.001" placeholder="Estoque inicial" defaultValue={0}/>}<input name="estoque_minimo" type="number" step="0.001" placeholder="Estoque mínimo" defaultValue={editingProduct?.estoque_minimo||0}/><select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
         {adjustingProduct&&<form className="panel stockForm" onSubmit={adjustStock}><div><strong>Ajustar estoque</strong><span>{adjustingProduct.codigo} - {adjustingProduct.descricao}</span></div><label>Novo estoque<input type="number" min="0" step="0.001" value={stockNew} onChange={e=>setStockNew(e.target.value)} required/></label><label>Motivo<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required/></label><div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div></form>}
-        {active==='estoque'&&<div className="cards compactCards"><article className="card"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article><article className="card"><span>Estoque baixo</span><strong>{low}</strong></article><article className="card"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article></div>}
+        {<div className="cards compactCards"><article className="card"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article><article className="card"><span>Estoque baixo</span><strong>{low}</strong></article><article className="card"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article></div>}
         <ProductTable produtos={produtos} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin}/>
       </section>}
 
