@@ -142,6 +142,9 @@ function App(){
   },[])
 
   useEffect(()=>{if(session)void loadData()},[session])
+  useEffect(()=>{
+    if(session&&active==='comissoes')void loadCommissions()
+  },[session,active,commissionStart,commissionEnd])
 
   async function loadData(){
     if(!session)return
@@ -167,6 +170,116 @@ function App(){
     if(!pr.error&&pr.data?.perfil)setProfileRole(pr.data.perfil as PerfilRole)
     if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
+  }
+
+  async function loadCommissions(){
+    const {data,error}=await supabase.rpc('comissoes_por_periodo',{
+      p_inicio:commissionStart,
+      p_fim:commissionEnd
+    })
+    if(error){setMsg('Não foi possível calcular as comissões: '+error.message);return}
+    setComissoes((data||[]) as ComissaoResumo[])
+  }
+
+  function startNewSeller(){
+    setEditingSeller(null)
+    setShowForm(true)
+    setMsg('')
+  }
+
+  function startEditSeller(v:Vendedor){
+    setEditingSeller(v)
+    setShowForm(true)
+    setMsg('')
+  }
+
+  async function saveSeller(e:FormEvent<HTMLFormElement>){
+    e.preventDefault()
+    if(!isAdmin){setMsg('Somente administrador pode cadastrar ou editar vendedores.');return}
+    const f=new FormData(e.currentTarget)
+    const payload={
+      nome:String(f.get('nome')||'').trim(),
+      email:String(f.get('email')||'').trim()||null,
+      telefone:String(f.get('telefone')||'').trim()||null,
+      percentual_comissao:Number(f.get('percentual_comissao')||0),
+      ativo:String(f.get('ativo')||'true')==='true',
+      updated_at:new Date().toISOString()
+    }
+    const r=editingSeller
+      ? await supabase.from('vendedores').update(payload).eq('id',editingSeller.id)
+      : await supabase.from('vendedores').insert(payload)
+    setMsg(r.error?r.error.message:editingSeller?'Vendedor atualizado.':'Vendedor cadastrado.')
+    if(!r.error){
+      setEditingSeller(null)
+      setShowForm(false)
+      await loadData()
+      await loadCommissions()
+    }
+  }
+
+  async function deactivateSeller(v:Vendedor){
+    if(!isAdmin)return
+    const {error}=await supabase.from('vendedores').update({ativo:false,updated_at:new Date().toISOString()}).eq('id',v.id)
+    setMsg(error?error.message:'Vendedor desativado.')
+    if(!error){await loadData();await loadCommissions()}
+  }
+
+  function proofsFor(kind:'venda'|'compra',id:string){
+    return comprovantes.filter(p=>kind==='venda'?p.venda_id===id:p.compra_id===id)
+  }
+
+  async function uploadProof(kind:'venda'|'compra',id:string,e:ChangeEvent<HTMLInputElement>){
+    const file=e.target.files?.[0]
+    e.target.value=''
+    if(!file)return
+    if(isViewer){setMsg('Usuário visualizador não pode anexar comprovantes.');return}
+    const allowed=['application/pdf','image/jpeg','image/png','image/webp']
+    if(!allowed.includes(file.type)){setMsg('Envie um comprovante em PDF, JPG, PNG ou WEBP.');return}
+    if(file.size>10*1024*1024){setMsg('O comprovante deve ter no máximo 10 MB.');return}
+
+    const ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'')
+    const folder=kind==='venda'?'vendas':'compras'
+    const path=`${folder}/${id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
+
+    const upload=await supabase.storage.from('comprovantes-pagamento').upload(path,file,{
+      contentType:file.type,
+      upsert:false
+    })
+    if(upload.error){setMsg('Falha ao enviar comprovante: '+upload.error.message);return}
+
+    const payload={
+      venda_id:kind==='venda'?id:null,
+      compra_id:kind==='compra'?id:null,
+      storage_path:path,
+      nome_arquivo:file.name,
+      mime_type:file.type,
+      tamanho:file.size
+    }
+    const meta=await supabase.from('comprovantes_pagamento').insert(payload)
+    if(meta.error){
+      await supabase.storage.from('comprovantes-pagamento').remove([path])
+      setMsg('Falha ao registrar comprovante: '+meta.error.message)
+      return
+    }
+
+    setMsg('Comprovante anexado à fatura.')
+    await loadData()
+  }
+
+  async function openProof(p:Comprovante){
+    const {data,error}=await supabase.storage.from('comprovantes-pagamento').createSignedUrl(p.storage_path,300)
+    if(error||!data?.signedUrl){setMsg('Não foi possível abrir o comprovante.');return}
+    window.open(data.signedUrl,'_blank','noopener,noreferrer')
+  }
+
+  async function deleteProof(p:Comprovante){
+    if(!(isAdmin||profileRole==='financeiro')){setMsg('Somente administrador ou financeiro pode excluir comprovante.');return}
+    if(!window.confirm('Excluir este comprovante?'))return
+    const storage=await supabase.storage.from('comprovantes-pagamento').remove([p.storage_path])
+    if(storage.error){setMsg(storage.error.message);return}
+    const meta=await supabase.from('comprovantes_pagamento').delete().eq('id',p.id)
+    setMsg(meta.error?meta.error.message:'Comprovante excluído.')
+    if(!meta.error)await loadData()
   }
 
   async function login(e:FormEvent){
