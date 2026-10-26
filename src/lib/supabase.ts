@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+export const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
-export const supabaseConfigured = Boolean(url && key)
+export const supabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey)
 
 export const supabase = createClient(
-  url || 'https://placeholder.supabase.co',
-  key || 'placeholder'
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabasePublishableKey || 'placeholder'
 )
