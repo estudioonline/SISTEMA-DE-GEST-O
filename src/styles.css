@@ -96,3 +96,9 @@
 .excelWarning{display:block;padding:10px 12px;border-radius:10px;background:#fff8e6;color:#7c5a13;border:1px solid #f2dfad;line-height:1.45}
 .dark .excelWarning{background:#2b2414;border-color:#4c3d1d;color:#f2d78e}
 @media(max-width:760px){.excelActions{display:grid;grid-template-columns:1fr}.excelActions>*{justify-content:center;width:100%}}
+
+.readOnlyTag{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:#eef2f7;color:#5f6b7d;font-size:12px;font-weight:700;white-space:nowrap}
+.dark .readOnlyTag{background:#202b3d;color:#cbd5e1}
+.configFieldset{border:0;padding:0;margin:0;display:contents}
+.configFieldset:disabled{opacity:.72}
+.configFieldset:disabled input,.configFieldset:disabled textarea,.configFieldset:disabled select{cursor:not-allowed}
