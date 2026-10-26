@@ -23,7 +23,7 @@ type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:numb
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
-type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
+type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
 type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
@@ -41,6 +41,14 @@ const dateBr=(v:string)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v.le
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0})
 const newPurchaseItem=():PurchaseItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,custo_unitario:0})
+const addMonthsIso=(base:string,months:number)=>{
+  const [y,m,d]=base.split('-').map(Number)
+  const first=new Date(y,m-1+months,1,12)
+  const lastDay=new Date(first.getFullYear(),first.getMonth()+1,0,12).getDate()
+  const result=new Date(first.getFullYear(),first.getMonth(),Math.min(d,lastDay),12)
+  return `${result.getFullYear()}-${String(result.getMonth()+1).padStart(2,'0')}-${String(result.getDate()).padStart(2,'0')}`
+}
+const buildInstallmentDates=(base:string,count:number)=>Array.from({length:count},(_,i)=>addMonthsIso(base,i))
 
 function App(){
   const [session,setSession]=useState<Session|null>(null)
@@ -96,6 +104,7 @@ function App(){
   const [purchasePayment,setPurchasePayment]=useState<PaymentMethod>('pix')
   const [purchaseInstallments,setPurchaseInstallments]=useState(1)
   const [purchaseDueDate,setPurchaseDueDate]=useState(today())
+  const [purchaseInstallmentDates,setPurchaseInstallmentDates]=useState<string[]>([today()])
   const [purchaseItems,setPurchaseItems]=useState<PurchaseItemDraft[]>([newPurchaseItem()])
   const [savingPurchase,setSavingPurchase]=useState(false)
 
@@ -350,25 +359,41 @@ function App(){
   async function deleteSale(v:Venda){if(!isAdmin){setMsg('Somente administrador pode excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
 
   // COMPRAS
-  function resetPurchaseForm(){setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('aberta');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(today());setPurchaseItems([newPurchaseItem()])}
+  function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('aberta');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
   function startNewPurchase(){resetPurchaseForm();setShowForm(true);setMsg('')}
   async function startEditPurchase(c:Compra){
     if(c.status==='cancelada'){setMsg('Compra cancelada não pode ser editada.');return}
     const {data,error}=await supabase.from('compra_itens').select('produto_id,quantidade,custo_unitario,total').eq('compra_id',c.id)
     if(error){setMsg(error.message);return}
     const items=(data||[]) as CompraItem[]
-    setEditingPurchase(c);setPurchaseSupplier(c.fornecedor_id||'');setPurchaseStatus(c.status);setPurchaseNotes(c.observacoes||'');setPurchasePayment(c.forma_pagamento||'pix');setPurchaseInstallments(Number(c.parcelas)||1);setPurchaseDueDate(c.primeiro_vencimento||today())
+    const base=c.primeiro_vencimento||today();const count=Number(c.parcelas)||1;const dates=Array.isArray(c.vencimentos_parcelas)&&c.vencimentos_parcelas.length===count?c.vencimentos_parcelas:buildInstallmentDates(base,count);setEditingPurchase(c);setPurchaseSupplier(c.fornecedor_id||'');setPurchaseStatus(c.status);setPurchaseNotes(c.observacoes||'');setPurchasePayment(c.forma_pagamento||'pix');setPurchaseInstallments(count);setPurchaseDueDate(dates[0]||base);setPurchaseInstallmentDates(dates)
     setPurchaseItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),custo_unitario:Number(i.custo_unitario)})))
     setShowForm(true);setMsg('')
   }
   function choosePurchaseProduct(key:string,id:string){const p=produtos.find(x=>x.id===id);setPurchaseItems(items=>items.map(i=>i.key===key?{...i,produto_id:id,custo_unitario:p?Number(p.custo):0}:i))}
   function updatePurchaseItem(key:string,field:'quantidade'|'custo_unitario',value:number){setPurchaseItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
   function removePurchaseItem(key:string){setPurchaseItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
+  function resizePurchaseDates(count:number){
+    const base=purchaseInstallmentDates[0]||purchaseDueDate||today()
+    setPurchaseInstallments(count)
+    setPurchaseDueDate(base)
+    setPurchaseInstallmentDates(prev=>Array.from({length:count},(_,i)=>prev[i]||addMonthsIso(base,i)))
+  }
+
   function changePurchasePayment(v:PaymentMethod){
     setPurchasePayment(v)
-    if(v==='pix')setPurchaseInstallments(1)
-    if(v==='cartao')setPurchaseInstallments(x=>Math.min(Math.max(x,1),12))
-    if(v==='boleto')setPurchaseInstallments(x=>Math.min(Math.max(x,1),24))
+    if(v==='pix')resizePurchaseDates(1)
+    if(v==='cartao')resizePurchaseDates(Math.min(Math.max(purchaseInstallments,1),12))
+    if(v==='boleto')resizePurchaseDates(Math.min(Math.max(purchaseInstallments,1),24))
+  }
+
+  function changePurchaseInstallmentDate(index:number,value:string){
+    setPurchaseInstallmentDates(prev=>{
+      const next=[...prev]
+      next[index]=value
+      if(index===0)setPurchaseDueDate(value)
+      return next
+    })
   }
 
   function purchasePdfItems(items:PurchaseItemDraft[]){
@@ -396,13 +421,19 @@ function App(){
       return
     }
 
+    if(purchaseInstallmentDates.length!==purchaseInstallments||purchaseInstallmentDates.some(v=>!v)){
+      setMsg('Informe a data de vencimento de cada parcela.')
+      return
+    }
+
     setSavingPurchase(true)
     const args={
       p_fornecedor_id:purchaseSupplier||null,
       p_status:purchaseStatus,
       p_forma_pagamento:purchasePayment,
       p_parcelas:purchaseInstallments,
-      p_primeiro_vencimento:purchaseDueDate,
+      p_primeiro_vencimento:purchaseInstallmentDates[0]||purchaseDueDate,
+      p_vencimentos:purchaseInstallmentDates,
       p_observacoes:purchaseNotes,
       p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,custo_unitario:i.custo_unitario}))
     }
@@ -430,7 +461,8 @@ function App(){
         observacoes:purchaseNotes||null,
         forma_pagamento:purchasePayment,
         parcelas:purchaseInstallments,
-        primeiro_vencimento:purchaseDueDate,
+        primeiro_vencimento:purchaseInstallmentDates[0]||purchaseDueDate,
+        vencimentos_parcelas:purchaseInstallmentDates,
         fornecedor,
         company:empresa||undefined,
         items:purchasePdfItems(items)
@@ -468,6 +500,7 @@ function App(){
         forma_pagamento:compra.forma_pagamento,
         parcelas:Number(compra.parcelas),
         primeiro_vencimento:compra.primeiro_vencimento,
+        vencimentos_parcelas:Array.isArray(compra.vencimentos_parcelas)?compra.vencimentos_parcelas:buildInstallmentDates(compra.primeiro_vencimento,Number(compra.parcelas)),
         fornecedor,
         company:empresa||undefined,
         items:items.map(i=>{
@@ -686,12 +719,9 @@ function App(){
               </select>
             </label>
             <label>Parcelas
-              <select value={purchaseInstallments} onChange={e=>setPurchaseInstallments(Number(e.target.value))} disabled={purchasePayment==='pix'}>
+              <select value={purchaseInstallments} onChange={e=>resizePurchaseDates(Number(e.target.value))} disabled={purchasePayment==='pix'}>
                 {Array.from({length:purchasePayment==='pix'?1:purchasePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}
               </select>
-            </label>
-            <label>Primeiro vencimento
-              <input type="date" value={purchaseDueDate} onChange={e=>setPurchaseDueDate(e.target.value)} required/>
             </label>
             <label className="saleNotes">Observações
               <input value={purchaseNotes} onChange={e=>setPurchaseNotes(e.target.value)}/>
@@ -700,7 +730,20 @@ function App(){
 
           <div className="paymentNotice purchasePaymentNotice">
             <strong>Fatura de compra a pagar</strong>
-            <span>{paymentLabel(purchasePayment)} • {purchaseInstallments}x • 1º vencimento {dateBr(purchaseDueDate)}</span>
+            <span>{paymentLabel(purchasePayment)} • {purchaseInstallments}x • vencimentos personalizados</span>
+          </div>
+
+          <div className="panel installmentDatesPanel">
+            <div className="installmentDatesHead">
+              <div><strong>Datas de vencimento das parcelas</strong><span>Edite cada parcela individualmente.</span></div>
+            </div>
+            <div className="installmentDatesGrid">
+              {purchaseInstallmentDates.map((due,index)=><label key={index}>
+                <span>Parcela {index+1}/{purchaseInstallments}</span>
+                <input type="date" value={due} onChange={e=>changePurchaseInstallmentDate(index,e.target.value)} required/>
+                <small>{money(purchaseInstallments?Math.floor((purchaseTotal/purchaseInstallments)*100)/100:0)}{index===purchaseInstallments-1?' • ajuste final':''}</small>
+              </label>)}
+            </div>
           </div>
 
           <div className="saleItemsHead">
@@ -755,7 +798,7 @@ function App(){
                   <div className="actionPanel">
                     <div className="actionMeta">
                       <strong>Fatura de compra #{invoiceNo(c.fatura_numero)}</strong>
-                      <span>{f?.nome||'Sem fornecedor'} • {paymentLabel(c.forma_pagamento)} • {c.parcelas}x • 1º vencimento {dateBr(c.primeiro_vencimento)}</span>
+                      <span>{f?.nome||'Sem fornecedor'} • {paymentLabel(c.forma_pagamento)} • {c.parcelas}x • vencimentos individuais</span>
                     </div>
                     <div className="rowActions">
                       <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
