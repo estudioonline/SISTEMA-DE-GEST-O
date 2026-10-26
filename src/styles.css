@@ -164,3 +164,18 @@
 .tableWrap .manageRow .actionPanel{
   border-radius:14px;
 }
+
+.installmentDatesPanel{margin:0 0 18px;padding:14px}
+.installmentDatesHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.installmentDatesHead strong,.installmentDatesHead span{display:block}
+.installmentDatesHead span{margin-top:4px;color:#7b8799;font-size:13px}
+.installmentDatesGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.installmentDatesGrid label{display:grid;gap:6px;padding:10px;border:1px solid #dfe6ef;border-radius:12px;background:#f9fbfd}
+.installmentDatesGrid label>span{font-size:12px;font-weight:700;color:#5c697a}
+.installmentDatesGrid input{height:40px;border:1px solid #d7e0eb;border-radius:9px;padding:0 10px;background:#fff;color:#172033}
+.installmentDatesGrid small{font-size:11px;color:#7b8799}
+.dark .installmentDatesGrid label{background:#141c29;border-color:#2a3648}
+.dark .installmentDatesGrid input{background:#101725;border-color:#2a3648;color:#eef3ff}
+@media(max-width:1050px){.installmentDatesGrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.installmentDatesGrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.installmentDatesGrid{grid-template-columns:1fr}}
