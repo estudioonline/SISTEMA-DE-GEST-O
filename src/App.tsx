@@ -1075,23 +1075,23 @@ function App(){
                   <td><span className={`statusBadge status-${c.status==='recebida'?'faturado':c.status==='cancelada'?'cancelado':'pedido'}`}>{c.status}</span></td>
                   <td>{paymentLabel(c.forma_pagamento)} {Number(c.parcelas)>1?`• ${c.parcelas}x`:''}</td>
                   <td><strong>{money(Number(c.total))}</strong></td>
-                  <td>{isViewer
-                    ? <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
-                    : <button className="ghost" onClick={()=>setPurchasePanel(opened?null:c.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}
-                  </td>
+                  <td><button className="ghost" onClick={()=>setPurchasePanel(opened?null:c.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button></td>
                 </tr>
-                {!isViewer&&opened&&<tr className="manageRow"><td colSpan={7}>
-                  <div className="actionPanel">
-                    <div className="actionMeta">
-                      <strong>Fatura de compra #{invoiceNo(c.fatura_numero)}</strong>
-                      <span>{f?.nome||'Sem fornecedor'} • {paymentLabel(c.forma_pagamento)} • {c.parcelas}x • vencimentos individuais</span>
+                {opened&&<tr className="manageRow"><td colSpan={7}>
+                  <div className="invoiceManagePanel">
+                    <div className="actionPanel">
+                      <div className="actionMeta">
+                        <strong>Fatura de compra #{invoiceNo(c.fatura_numero)}</strong>
+                        <span>{f?.nome||'Sem fornecedor'} • {paymentLabel(c.forma_pagamento)} • {c.parcelas}x • vencimentos individuais</span>
+                      </div>
+                      <div className="rowActions">
+                        <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
+                        {!isViewer&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
+                        {!isViewer&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
+                        {isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
+                      </div>
                     </div>
-                    <div className="rowActions">
-                      <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
-                      <button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>
-                      <button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>
-                      {isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
-                    </div>
+                    {proofPanel('compra',c.id)}
                   </div>
                 </td></tr>}
               </Fragment>
