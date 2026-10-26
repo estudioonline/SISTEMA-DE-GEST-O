@@ -657,8 +657,118 @@ function App(){
       </section>}
 
       {active==='compras'&&<section>
-        {showForm&&<form className="panel saleForm" onSubmit={savePurchase}><div className="formTitle"><div><h3>{editingPurchase?'Editar compra':'Nova compra'}</h3><p>Compras recebidas entram automaticamente no estoque.</p></div></div><div className="saleHeader"><label>Fornecedor<select value={purchaseSupplier} onChange={e=>setPurchaseSupplier(e.target.value)}><option value="">Sem fornecedor</option>{fornecedores.filter(f=>f.ativo).map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}</select></label><label>Status<select value={purchaseStatus} onChange={e=>setPurchaseStatus(e.target.value)}><option value="aberta">Aberta</option><option value="recebida">Recebida</option></select></label><label className="saleNotes">Observações<input value={purchaseNotes} onChange={e=>setPurchaseNotes(e.target.value)}/></label></div><div className="saleItemsHead"><h3>Itens</h3><button type="button" className="ghost" onClick={()=>setPurchaseItems(x=>[...x,newPurchaseItem()])}><Plus size={16}/>Adicionar item</button></div><div className="saleItems">{purchaseItems.map(i=><div className="purchaseItemRow" key={i.key}><select value={i.produto_id} onChange={e=>choosePurchaseProduct(i.key,e.target.value)} required><option value="">Produto</option>{produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao}</option>)}</select><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updatePurchaseItem(i.key,'quantidade',Number(e.target.value))}/><input type="number" min="0" step="0.01" value={i.custo_unitario} onChange={e=>updatePurchaseItem(i.key,'custo_unitario',Number(e.target.value))}/><strong>{money(i.quantidade*i.custo_unitario)}</strong><button type="button" className="iconBtn dangerBtn" onClick={()=>removePurchaseItem(i.key)}><Trash2 size={16}/></button></div>)}</div><div className="saleTotals"><div className="grandTotal"><span>Total</span><strong>{money(purchaseTotal)}</strong></div></div><div className="saleActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);resetPurchaseForm()}}>Cancelar</button><button className="primary" disabled={savingPurchase}>{savingPurchase?'Salvando...':'Salvar compra'}</button></div></form>}
-        <article className="panel tablePanel"><div className="panelHead"><h3>Compras</h3></div><div className="tableWrap"><table><thead><tr><th>Data</th><th>Fornecedor</th><th>Status</th><th>Total</th><th>Gerenciar</th></tr></thead><tbody>{compras.map(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);const opened=purchasePanel===c.id;return <Fragment key={c.id}><tr><td>{new Date(c.created_at).toLocaleString('pt-BR')}</td><td>{f?.nome||'Sem fornecedor'}</td><td><span className={`statusBadge status-${c.status==='recebida'?'faturado':c.status==='cancelada'?'cancelado':'pedido'}`}>{c.status}</span></td><td>{money(Number(c.total))}</td><td>{isViewer?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>setPurchasePanel(opened?null:c.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!isViewer&&opened&&<tr className="manageRow"><td colSpan={5}><div className="actionPanel"><div className="actionMeta"><strong>{f?.nome||'Compra'}</strong><span>{money(Number(c.total))}</span></div><div className="rowActions"><button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button><button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+        {showForm&&<form className="panel saleForm" onSubmit={savePurchase}>
+          <div className="formTitle">
+            <div>
+              <h3>{editingPurchase?`Editar fatura de compra ${invoiceNo(editingPurchase.fatura_numero)}`:'Nova compra / conta a pagar'}</h3>
+              <p>Forma de pagamento e vencimento são obrigatórios. Compras recebidas entram automaticamente no estoque.</p>
+            </div>
+          </div>
+
+          <div className="saleHeader saleHeaderExpanded">
+            <label>Fornecedor
+              <select value={purchaseSupplier} onChange={e=>setPurchaseSupplier(e.target.value)}>
+                <option value="">Sem fornecedor</option>
+                {fornecedores.filter(f=>f.ativo).map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            </label>
+            <label>Status
+              <select value={purchaseStatus} onChange={e=>setPurchaseStatus(e.target.value)}>
+                <option value="aberta">Aberta</option>
+                <option value="recebida">Recebida</option>
+              </select>
+            </label>
+            <label>Pagamento
+              <select value={purchasePayment} onChange={e=>changePurchasePayment(e.target.value as PaymentMethod)} required>
+                <option value="pix">PIX</option>
+                <option value="cartao">Cartão</option>
+                <option value="boleto">Boleto</option>
+              </select>
+            </label>
+            <label>Parcelas
+              <select value={purchaseInstallments} onChange={e=>setPurchaseInstallments(Number(e.target.value))} disabled={purchasePayment==='pix'}>
+                {Array.from({length:purchasePayment==='pix'?1:purchasePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}
+              </select>
+            </label>
+            <label>Primeiro vencimento
+              <input type="date" value={purchaseDueDate} onChange={e=>setPurchaseDueDate(e.target.value)} required/>
+            </label>
+            <label className="saleNotes">Observações
+              <input value={purchaseNotes} onChange={e=>setPurchaseNotes(e.target.value)}/>
+            </label>
+          </div>
+
+          <div className="paymentNotice purchasePaymentNotice">
+            <strong>Fatura de compra a pagar</strong>
+            <span>{paymentLabel(purchasePayment)} • {purchaseInstallments}x • 1º vencimento {dateBr(purchaseDueDate)}</span>
+          </div>
+
+          <div className="saleItemsHead">
+            <h3>Itens da compra</h3>
+            <button type="button" className="ghost" onClick={()=>setPurchaseItems(x=>[...x,newPurchaseItem()])}><Plus size={16}/>Adicionar item</button>
+          </div>
+
+          <div className="saleItems">
+            {purchaseItems.map(i=><div className="purchaseItemRow" key={i.key}>
+              <select value={i.produto_id} onChange={e=>choosePurchaseProduct(i.key,e.target.value)} required>
+                <option value="">Produto</option>
+                {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao}</option>)}
+              </select>
+              <input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updatePurchaseItem(i.key,'quantidade',Number(e.target.value))}/>
+              <input type="number" min="0" step="0.01" value={i.custo_unitario} onChange={e=>updatePurchaseItem(i.key,'custo_unitario',Number(e.target.value))}/>
+              <strong>{money(i.quantidade*i.custo_unitario)}</strong>
+              <button type="button" className="iconBtn dangerBtn" onClick={()=>removePurchaseItem(i.key)}><Trash2 size={16}/></button>
+            </div>)}
+          </div>
+
+          <div className="saleTotals">
+            <div className="grandTotal"><span>Total a pagar</span><strong>{money(purchaseTotal)}</strong></div>
+          </div>
+
+          <div className="saleActions">
+            <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetPurchaseForm()}}>Cancelar</button>
+            <button className="primary" disabled={savingPurchase}>{savingPurchase?'Salvando...':editingPurchase?'Salvar e recalcular contas a pagar':'Salvar compra e gerar fatura'}</button>
+          </div>
+        </form>}
+
+        <article className="panel tablePanel">
+          <div className="panelHead"><h3>Compras e contas a pagar</h3></div>
+          <div className="tableWrap"><table>
+            <thead><tr><th>Fatura</th><th>Data</th><th>Fornecedor</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
+            <tbody>{compras.map(c=>{
+              const f=fornecedores.find(x=>x.id===c.fornecedor_id)
+              const opened=purchasePanel===c.id
+              return <Fragment key={c.id}>
+                <tr>
+                  <td><strong>#{invoiceNo(c.fatura_numero)}</strong></td>
+                  <td>{new Date(c.created_at).toLocaleString('pt-BR')}</td>
+                  <td>{f?.nome||'Sem fornecedor'}</td>
+                  <td><span className={`statusBadge status-${c.status==='recebida'?'faturado':c.status==='cancelada'?'cancelado':'pedido'}`}>{c.status}</span></td>
+                  <td>{paymentLabel(c.forma_pagamento)} {Number(c.parcelas)>1?`• ${c.parcelas}x`:''}</td>
+                  <td><strong>{money(Number(c.total))}</strong></td>
+                  <td>{isViewer
+                    ? <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
+                    : <button className="ghost" onClick={()=>setPurchasePanel(opened?null:c.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}
+                  </td>
+                </tr>
+                {!isViewer&&opened&&<tr className="manageRow"><td colSpan={7}>
+                  <div className="actionPanel">
+                    <div className="actionMeta">
+                      <strong>Fatura de compra #{invoiceNo(c.fatura_numero)}</strong>
+                      <span>{f?.nome||'Sem fornecedor'} • {paymentLabel(c.forma_pagamento)} • {c.parcelas}x • 1º vencimento {dateBr(c.primeiro_vencimento)}</span>
+                    </div>
+                    <div className="rowActions">
+                      <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
+                      <button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>
+                      <button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>
+                      {isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
+                    </div>
+                  </div>
+                </td></tr>}
+              </Fragment>
+            })}</tbody>
+          </table></div>
+        </article>
       </section>}
 
       {active==='vendas'&&<section>
