@@ -1,117 +1,130 @@
-import { useMemo, useState } from 'react'
-import {
-  LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText,
-  WalletCards, BarChart3, Settings, Moon, Sun, Search, Plus, Building2
-} from 'lucide-react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
+import { LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards, BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut } from 'lucide-react'
+import { supabase } from './lib/supabase'
 
-type ModuleKey =
-  | 'dashboard' | 'clientes' | 'fornecedores' | 'produtos' | 'estoque'
-  | 'compras' | 'vendas' | 'financeiro' | 'relatorios' | 'config'
+type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'estoque'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
+type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;preco_venda:number;estoque_atual:number;estoque_minimo:number;ativo:boolean}
 
-const menu: Array<{key: ModuleKey; label: string; icon: any}> = [
-  { key:'dashboard', label:'Dashboard', icon: LayoutDashboard },
-  { key:'clientes', label:'Clientes', icon: Users },
-  { key:'fornecedores', label:'Fornecedores', icon: Building2 },
-  { key:'produtos', label:'Produtos', icon: Package },
-  { key:'estoque', label:'Estoque', icon: Boxes },
-  { key:'compras', label:'Compras', icon: ShoppingCart },
-  { key:'vendas', label:'Vendas', icon: ReceiptText },
-  { key:'financeiro', label:'Financeiro', icon: WalletCards },
-  { key:'relatorios', label:'Relatórios', icon: BarChart3 },
-  { key:'config', label:'Configurações', icon: Settings },
-]
+const menu=[
+  ['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
+  ['produtos','Produtos',Package],['estoque','Estoque',Boxes],['compras','Compras',ShoppingCart],
+  ['vendas','Vendas',ReceiptText],['financeiro','Financeiro',WalletCards],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
+] as const
 
-const cards = [
-  ['Vendas no mês','R$ 184.320,00','+12,8%'],
-  ['A receber','R$ 67.850,00','34 títulos'],
-  ['A pagar','R$ 42.190,00','21 títulos'],
-  ['Saldo disponível','R$ 93.440,00','Caixa + bancos'],
-]
+const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
 
-const products = [
-  ['PRD-001','Perfil Alumínio Branco 6m','UN','86','R$ 189,90'],
-  ['PRD-002','Lona PVC 650g Azul','M²','142','R$ 49,50'],
-  ['PRD-003','Kit Braço Articulado','UN','18','R$ 320,00'],
-  ['PRD-004','Motor Tubular 60Nm','UN','7','R$ 890,00'],
-]
+function App(){
+  const [session,setSession]=useState<Session|null>(null)
+  const [loading,setLoading]=useState(true)
+  const [active,setActive]=useState<ModuleKey>('dashboard')
+  const [dark,setDark]=useState(false)
+  const [clientes,setClientes]=useState<Cliente[]>([])
+  const [produtos,setProdutos]=useState<Produto[]>([])
+  const [email,setEmail]=useState('')
+  const [password,setPassword]=useState('')
+  const [msg,setMsg]=useState('')
+  const [showForm,setShowForm]=useState(false)
+  const title=useMemo(()=>menu.find(m=>m[0]===active)?.[1]||'Dashboard',[active])
 
-function App() {
-  const [active, setActive] = useState<ModuleKey>('dashboard')
-  const [dark, setDark] = useState(false)
-  const title = useMemo(() => menu.find(m => m.key === active)?.label ?? 'Dashboard',[active])
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false)})
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s))
+    return ()=>subscription.unsubscribe()
+  },[])
 
-  return (
-    <div className={dark ? 'app dark' : 'app'}>
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brandMark">SG</div>
-          <div><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div>
-        </div>
-        <nav>
-          {menu.map(({key,label,icon:Icon}) => (
-            <button key={key} className={active===key?'navItem active':'navItem'} onClick={()=>setActive(key)}>
-              <Icon size={18}/><span>{label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="sidebarFooter">
-          <span>Administrador</span>
-          <small>Ambiente de demonstração</small>
-        </div>
-      </aside>
+  useEffect(()=>{ if(session) void loadData() },[session])
 
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <h1>{title}</h1>
-            <p>Visão consolidada da operação</p>
-          </div>
-          <div className="topActions">
-            <div className="search"><Search size={17}/><input placeholder="Buscar no sistema"/></div>
-            <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-            <button className="primary"><Plus size={17}/>Novo</button>
-          </div>
-        </header>
+  async function loadData(){
+    const [c,p]=await Promise.all([
+      supabase.from('clientes').select('*').order('nome'),
+      supabase.from('produtos').select('*').order('descricao')
+    ])
+    if(!c.error)setClientes((c.data||[]) as Cliente[])
+    if(!p.error)setProdutos((p.data||[]) as Produto[])
+  }
 
-        {active === 'dashboard' ? (
-          <section>
-            <div className="cards">
-              {cards.map(([label,value,note]) => <article className="card" key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}
-            </div>
-            <div className="grid2">
-              <article className="panel">
-                <div className="panelHead"><div><h3>Resumo financeiro</h3><p>Últimos 6 meses</p></div><span className="pill">Atualizado</span></div>
-                <div className="bars">
-                  {[48,62,55,76,69,88].map((h,i)=><div className="barCol" key={i}><div className="bar" style={{height:h+'%'}}/><span>{['Mai','Jun','Jul','Ago','Set','Out'][i]}</span></div>)}
-                </div>
-              </article>
-              <article className="panel">
-                <div className="panelHead"><div><h3>Alertas</h3><p>Pontos que exigem atenção</p></div></div>
-                <div className="alerts">
-                  <div><b>4 produtos</b><span>abaixo do estoque mínimo</span></div>
-                  <div><b>6 títulos</b><span>vencem hoje</span></div>
-                  <div><b>2 clientes</b><span>com limite excedido</span></div>
-                </div>
-              </article>
-            </div>
+  async function login(e:FormEvent){
+    e.preventDefault(); setMsg('')
+    const {error}=await supabase.auth.signInWithPassword({email,password})
+    if(error)setMsg(error.message)
+  }
 
-            <article className="panel tablePanel">
-              <div className="panelHead"><div><h3>Produtos em destaque</h3><p>Posição atual do estoque</p></div><button className="ghost">Ver todos</button></div>
-              <div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Un.</th><th>Estoque</th><th>Preço</th></tr></thead>
-              <tbody>{products.map(r=><tr key={r[0]}>{r.map((c,i)=><td key={i}>{c}</td>)}</tr>)}</tbody></table></div>
-            </article>
-          </section>
-        ) : (
-          <section className="modulePlaceholder">
-            <div className="moduleIcon">{(() => { const Icon=menu.find(m=>m.key===active)!.icon; return <Icon size={28}/> })()}</div>
-            <h2>{title}</h2>
-            <p>Este módulo já está previsto na estrutura do ERP e será conectado ao banco Supabase.</p>
-            <button className="primary"><Plus size={17}/>Novo registro</button>
-          </section>
-        )}
-      </main>
-    </div>
-  )
+  async function signup(){
+    setMsg('')
+    const {error}=await supabase.auth.signUp({email,password,options:{data:{full_name:email.split('@')[0]}}})
+    setMsg(error?error.message:'Conta criada. Verifique seu e-mail se a confirmação estiver habilitada.')
+  }
+
+  async function addCliente(e:FormEvent<HTMLFormElement>){
+    e.preventDefault(); const f=new FormData(e.currentTarget)
+    const {error}=await supabase.from('clientes').insert({
+      nome:String(f.get('nome')||''),documento:String(f.get('documento')||'')||null,
+      email:String(f.get('email')||'')||null,telefone:String(f.get('telefone')||'')||null,
+      limite_credito:Number(f.get('limite_credito')||0)
+    })
+    setMsg(error?error.message:'Cliente cadastrado.')
+    if(!error){setShowForm(false);await loadData()}
+  }
+
+  async function addProduto(e:FormEvent<HTMLFormElement>){
+    e.preventDefault(); const f=new FormData(e.currentTarget)
+    const {error}=await supabase.from('produtos').insert({
+      codigo:String(f.get('codigo')||''),descricao:String(f.get('descricao')||''),unidade:String(f.get('unidade')||'UN'),
+      custo:Number(f.get('custo')||0),preco_venda:Number(f.get('preco_venda')||0),
+      estoque_atual:Number(f.get('estoque_atual')||0),estoque_minimo:Number(f.get('estoque_minimo')||0)
+    })
+    setMsg(error?error.message:'Produto cadastrado.')
+    if(!error){setShowForm(false);await loadData()}
+  }
+
+  if(loading)return <div className="modulePlaceholder">Carregando...</div>
+  if(!session)return <div className="modulePlaceholder"><form onSubmit={login} className="panel dataForm" style={{maxWidth:420,width:'100%'}}>
+    <h2>Sistema de Gestão</h2><p>Acesse o ERP</p>
+    <input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/>
+    <input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/>
+    <button className="primary">Entrar</button><button type="button" className="ghost" onClick={signup}>Criar conta</button>{msg&&<p>{msg}</p>}
+  </form></div>
+
+  const low=produtos.filter(p=>Number(p.estoque_atual)<=Number(p.estoque_minimo)).length
+  const stockValue=produtos.reduce((s,p)=>s+Number(p.estoque_atual)*Number(p.custo),0)
+
+  return <div className={dark?'app dark':'app'}>
+    <aside className="sidebar">
+      <div className="brand"><div className="brandMark">SG</div><div><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div></div>
+      <nav>{menu.map(([k,l,I])=><button key={k} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);setShowForm(false);setMsg('')}}><I size={18}/><span>{l}</span></button>)}</nav>
+      <div className="sidebarFooter"><span>{session.user.email}</span><button className="navItem" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
+    </aside>
+    <main className="main">
+      <header className="topbar"><div><h1>{title}</h1><p>Supabase ORGJSS1</p></div><div className="topActions">
+        <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
+        {(active==='clientes'||active==='produtos')&&<button className="primary" onClick={()=>setShowForm(v=>!v)}><Plus size={17}/>Novo</button>}
+      </div></header>
+      {msg&&<div className="panel" style={{marginBottom:14}}>{msg}</div>}
+
+      {active==='dashboard'&&<section><div className="cards">
+        <article className="card"><span>Clientes ativos</span><strong>{clientes.filter(c=>c.ativo).length}</strong><small>cadastros</small></article>
+        <article className="card"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong><small>itens</small></article>
+        <article className="card"><span>Estoque baixo</span><strong>{low}</strong><small>atenção</small></article>
+        <article className="card"><span>Valor de custo</span><strong>{money(stockValue)}</strong><small>estoque atual</small></article>
+      </div><ProductTable produtos={produtos}/></section>}
+
+      {active==='clientes'&&<section>
+        {showForm&&<form className="panel dataForm" onSubmit={addCliente}><input name="nome" placeholder="Nome / Razão social" required/><input name="documento" placeholder="CPF / CNPJ"/><input name="email" type="email" placeholder="E-mail"/><input name="telefone" placeholder="Telefone"/><input name="limite_credito" type="number" step="0.01" placeholder="Limite de crédito"/><button className="primary">Salvar</button></form>}
+        <article className="panel tablePanel"><div className="panelHead"><h3>Clientes</h3></div><div className="tableWrap"><table><thead><tr><th>Nome</th><th>Documento</th><th>E-mail</th><th>Telefone</th><th>Limite</th></tr></thead><tbody>{clientes.map(c=><tr key={c.id}><td>{c.nome}</td><td>{c.documento||'—'}</td><td>{c.email||'—'}</td><td>{c.telefone||'—'}</td><td>{money(Number(c.limite_credito))}</td></tr>)}</tbody></table></div></article>
+      </section>}
+
+      {active==='produtos'&&<section>
+        {showForm&&<form className="panel dataForm" onSubmit={addProduto}><input name="codigo" placeholder="Código" required/><input name="descricao" placeholder="Descrição" required/><input name="unidade" defaultValue="UN"/><input name="custo" type="number" step="0.01" placeholder="Custo"/><input name="preco_venda" type="number" step="0.01" placeholder="Preço de venda"/><input name="estoque_atual" type="number" step="0.001" placeholder="Estoque atual"/><input name="estoque_minimo" type="number" step="0.001" placeholder="Estoque mínimo"/><button className="primary">Salvar</button></form>}
+        <ProductTable produtos={produtos}/>
+      </section>}
+
+      {!['dashboard','clientes','produtos'].includes(active)&&<section className="modulePlaceholder"><h2>{title}</h2><p>Módulo preparado para a próxima etapa.</p></section>}
+    </main>
+  </div>
 }
+
+function ProductTable({produtos}:{produtos:Produto[]}){return <article className="panel tablePanel"><div className="panelHead"><h3>Produtos</h3></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Un.</th><th>Estoque</th><th>Custo</th><th>Venda</th></tr></thead><tbody>{produtos.map(p=><tr key={p.id}><td>{p.codigo}</td><td>{p.descricao}</td><td>{p.unidade}</td><td>{Number(p.estoque_atual).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>)}</tbody></table></div></article>}
 
 export default App
