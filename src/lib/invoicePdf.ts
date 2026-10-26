@@ -18,6 +18,23 @@ export type InvoiceItem = {
   total: number
 }
 
+export type InvoiceCompany = {
+  razao_social?: string | null
+  nome_fantasia?: string | null
+  cnpj?: string | null
+  email?: string | null
+  telefone?: string | null
+  endereco?: string | null
+  cidade?: string | null
+  uf?: string | null
+  cep?: string | null
+  pix_chave?: string | null
+  banco?: string | null
+  agencia?: string | null
+  conta?: string | null
+  condicoes_gerais?: string | null
+}
+
 export type InvoiceData = {
   id: string
   fatura_numero?: number | null
@@ -31,6 +48,7 @@ export type InvoiceData = {
   parcelas: number
   primeiro_vencimento: string
   cliente?: InvoiceCustomer | null
+  company?: InvoiceCompany
   items: InvoiceItem[]
 }
 
@@ -72,23 +90,32 @@ const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
 const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='pix'?'PIX':value==='cartao'?'Cartão':'Boleto'
 
 function drawFirstHeader(doc:jsPDF,data:InvoiceData){
+  const company={
+    nome:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
+    slogan:COMPANY.slogan,
+    endereco1:data.company?.endereco||COMPANY.endereco1,
+    endereco2:[data.company?.cidade,data.company?.uf].filter(Boolean).join(' - ')||COMPANY.endereco2,
+    cidade:data.company?.cep?('CEP '+data.company.cep+' | Brasil'):COMPANY.cidade,
+    cnpj:data.company?.cnpj||COMPANY.cnpj,
+    email:data.company?.email||COMPANY.email,
+  }
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
   doc.setFontSize(19)
-  doc.text(COMPANY.nome,18,19)
+  doc.text(company.nome,18,19)
 
   doc.setTextColor(...brightBlue)
   doc.setFontSize(9)
-  doc.text(COMPANY.slogan,18,25)
+  doc.text(company.slogan,18,25)
 
   doc.setTextColor(...textColor)
   doc.setFont('helvetica','normal')
   doc.setFontSize(8.5)
-  doc.text(COMPANY.endereco1,18,32)
-  doc.text(COMPANY.endereco2,18,37)
-  doc.text(COMPANY.cidade,18,42)
-  doc.text(`CNPJ: ${COMPANY.cnpj}`,18,47)
-  doc.text(COMPANY.email,18,52)
+  doc.text(company.endereco1,18,32)
+  doc.text(company.endereco2,18,37)
+  doc.text(company.cidade,18,42)
+  doc.text(`CNPJ: ${company.cnpj}`,18,47)
+  doc.text(company.email,18,52)
 
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
@@ -221,6 +248,12 @@ function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
 }
 
 function drawPaymentAndTotal(doc:jsPDF,data:InvoiceData,y:number){
+  const bank=[data.company?.banco,data.company?.agencia?('Ag: '+data.company.agencia):'',data.company?.conta?('CC: '+data.company.conta):''].filter(Boolean).join(' | ')
+  const paymentLine=data.forma_pagamento==='pix'
+    ? (data.company?.pix_chave ? 'Chave PIX: '+data.company.pix_chave : 'PIX conforme condição da venda')
+    : data.forma_pagamento==='cartao'
+      ? 'Pagamento por cartão conforme condição da venda'
+      : (bank||`Conta: ${COMPANY.pagamento1}`)
   const needed=42
   if(y+needed>252){
     doc.addPage()
@@ -241,7 +274,7 @@ function drawPaymentAndTotal(doc:jsPDF,data:InvoiceData,y:number){
   doc.setFont('helvetica','normal')
   doc.text(`Fatura: ${invoiceNo(data.fatura_numero)} | Forma: ${paymentLabel(data.forma_pagamento)}`,22,y+15)
   doc.text(`Parcelas: ${data.parcelas}x | 1º vencimento: ${date(data.primeiro_vencimento)}`,22,y+21)
-  doc.text(data.forma_pagamento==='cartao'?'Pagamento por cartão conforme condição da venda':`Conta: ${COMPANY.pagamento1}`,22,y+27)
+  doc.text(paymentLine,22,y+27)
 
   const totalX=124
   doc.setFillColor(...darkBlue)
@@ -265,7 +298,10 @@ function drawPaymentAndTotal(doc:jsPDF,data:InvoiceData,y:number){
 
 function drawConditions(doc:jsPDF,data:InvoiceData,y:number){
   const lineWidth=174
-  const wrapped=CONDITIONS.map(item=>doc.splitTextToSize(item,lineWidth) as string[])
+  const sourceConditions=data.company?.condicoes_gerais?.trim()
+    ? data.company.condicoes_gerais.split('\n').filter(Boolean)
+    : CONDITIONS
+  const wrapped=sourceConditions.map(item=>doc.splitTextToSize(item,lineWidth) as string[])
   const conditionsHeight=wrapped.reduce((sum,lines)=>sum+(lines.length*4.2),0)+15
   const signatureHeight=31
 
@@ -325,14 +361,14 @@ function drawConditions(doc:jsPDF,data:InvoiceData,y:number){
   doc.text('Assinatura do Cliente',105,y+27,{align:'center'})
 }
 
-function addFooters(doc:jsPDF){
+function addFooters(doc:jsPDF,data:InvoiceData){
   const pages=doc.getNumberOfPages()
   for(let page=1;page<=pages;page++){
     doc.setPage(page)
     doc.setTextColor(95,111,140)
     doc.setFont('helvetica','normal')
     doc.setFontSize(7.2)
-    doc.text(`${COMPANY.email} | CNPJ ${COMPANY.cnpj}`,18,289)
+    doc.text(`${data.company?.email||COMPANY.email} | CNPJ ${data.company?.cnpj||COMPANY.cnpj}`,18,289)
     doc.text(`Página ${page}/${pages}`,192,289,{align:'right'})
   }
 }
@@ -342,14 +378,14 @@ export function generateInvoicePdf(data:InvoiceData){
   doc.setProperties({
     title:`Fatura ${invoiceNo(data.fatura_numero)}`,
     subject:'Fatura de venda',
-    author:COMPANY.nome,
+    author:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
   })
 
   drawFirstHeader(doc,data)
   let y=drawItems(doc,data,119)
   y=drawPaymentAndTotal(doc,data,y)
   drawConditions(doc,data,y)
-  addFooters(doc)
+  addFooters(doc,data)
 
   doc.save(`fatura-${invoiceNo(data.fatura_numero)}.pdf`)
 }
