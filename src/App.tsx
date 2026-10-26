@@ -832,6 +832,24 @@ function App(){
   const commissionTotal=comissoes.reduce((s,c)=>s+Number(c.comissao_apurada),0)
   const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
 
+  function salePaymentStatus(venda:Venda){
+    const related=titulos.filter(t=>t.venda_id===venda.id)
+    if(venda.status==='cancelado'||(related.length>0&&related.every(t=>t.status==='cancelado'))){
+      return {label:'Cancelado',key:'cancelado'}
+    }
+    if(!related.length)return {label:'Sem cobrança',key:'sem-cobranca'}
+
+    const valid=related.filter(t=>t.status!=='cancelado')
+    if(!valid.length)return {label:'Cancelado',key:'cancelado'}
+
+    const total=valid.reduce((s,t)=>s+Number(t.valor),0)
+    const paid=valid.reduce((s,t)=>s+Number(t.valor_pago),0)
+
+    if(total>0&&paid>=total-0.005)return {label:'Pago',key:'pago'}
+    if(paid>0)return {label:'Parcial',key:'parcial'}
+    return {label:'Pendente',key:'pendente'}
+  }
+
   function proofPanel(kind:'venda'|'compra',id:string){
     const list=proofsFor(kind,id)
     return <div className="proofPanel">
@@ -1191,11 +1209,12 @@ function App(){
         <article className="panel tablePanel">
           <div className="panelHead"><h3>Vendas e faturas</h3></div>
           <div className="tableWrap"><table>
-            <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
+            <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
             <tbody>{vendas.map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
               const opened=salePanel===v.id
+              const paymentStatus=salePaymentStatus(v)
               return <Fragment key={v.id}>
                 <tr>
                   <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
@@ -1204,15 +1223,16 @@ function App(){
                   <td>{seller?.nome||'—'}</td>
                   <td><span className={'statusBadge status-'+v.status}>{v.status}</span></td>
                   <td>{paymentLabel(v.forma_pagamento)} {Number(v.parcelas)>1?'• '+v.parcelas+'x':''}</td>
+                  <td><span className={'statusBadge payment-'+paymentStatus.key}>{paymentStatus.label}</span></td>
                   <td><strong>{money(Number(v.total))}</strong></td>
                   <td><button className="ghost" onClick={()=>setSalePanel(opened?null:v.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button></td>
                 </tr>
-                {opened&&<tr className="manageRow"><td colSpan={8}>
+                {opened&&<tr className="manageRow"><td colSpan={9}>
                   <div className="invoiceManagePanel">
                     <div className="actionPanel">
                       <div className="actionMeta">
                         <strong>Fatura #{invoiceNo(v.fatura_numero)}</strong>
-                        <span>{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}{paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)}</span>
+                        <span>{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}{paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)} • pagamento: {paymentStatus.label}</span>
                       </div>
                       <div className="rowActions">
                         <button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
