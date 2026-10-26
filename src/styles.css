@@ -110,3 +110,57 @@
 .viewerUserForm .primary{justify-content:center}
 @media(max-width:1000px){.viewerUserForm{grid-template-columns:1fr 1fr}.viewerUserForm .primary{width:100%}}
 @media(max-width:700px){.viewerUserForm{grid-template-columns:1fr}}
+
+/* Linhas das listas em formato de cards arredondados */
+.tableWrap table{
+  border-collapse:separate;
+  border-spacing:0 10px;
+}
+.tableWrap thead th{
+  border-bottom:0;
+  padding-top:4px;
+  padding-bottom:6px;
+}
+.tableWrap tbody tr:not(.manageRow) td{
+  background:#fff;
+  border-top:1px solid #e3e8ef;
+  border-bottom:1px solid #e3e8ef;
+  padding-top:14px;
+  padding-bottom:14px;
+  transition:background .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.tableWrap tbody tr:not(.manageRow) td:first-child{
+  border-left:1px solid #e3e8ef;
+  border-radius:14px 0 0 14px;
+}
+.tableWrap tbody tr:not(.manageRow) td:last-child{
+  border-right:1px solid #e3e8ef;
+  border-radius:0 14px 14px 0;
+}
+.tableWrap tbody tr:not(.manageRow):hover td{
+  background:#f8fafc;
+  border-color:#cfd8e6;
+}
+.dark .tableWrap tbody tr:not(.manageRow) td{
+  background:#1b2230;
+  border-top-color:#2b3548;
+  border-bottom-color:#2b3548;
+}
+.dark .tableWrap tbody tr:not(.manageRow) td:first-child{
+  border-left-color:#2b3548;
+}
+.dark .tableWrap tbody tr:not(.manageRow) td:last-child{
+  border-right-color:#2b3548;
+}
+.dark .tableWrap tbody tr:not(.manageRow):hover td{
+  background:#202938;
+  border-color:#3b4961;
+}
+.tableWrap .manageRow td{
+  border:0!important;
+  background:transparent!important;
+  padding:0 10px 14px!important;
+}
+.tableWrap .manageRow .actionPanel{
+  border-radius:14px;
+}
