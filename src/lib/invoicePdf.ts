@@ -87,6 +87,7 @@ const num=(value:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2
 const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
 const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
 const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
+const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'cliente'
 
 function asDate(value:string){
   if(!value)return null
@@ -403,5 +404,5 @@ export function generateInvoicePdf(data:InvoiceData){
   drawNotesAndConditions(doc,data,y+5)
   addFooters(doc,data)
 
-  doc.save(`pedido-${invoiceNo(data.fatura_numero)}.pdf`)
+  doc.save(`cliente-${safeFilePart(data.cliente?.nome||'consumidor')}-fatura-${invoiceNo(data.fatura_numero)}.pdf`)
 }
