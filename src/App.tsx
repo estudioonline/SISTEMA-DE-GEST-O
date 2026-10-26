@@ -1,7 +1,8 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards, BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut } from 'lucide-react'
-import { supabase } from './lib/supabase'
+import { supabase, supabaseConfigured } from './lib/supabase'
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'estoque'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
@@ -29,6 +30,7 @@ function App(){
   const title=useMemo(()=>menu.find(m=>m[0]===active)?.[1]||'Dashboard',[active])
 
   useEffect(()=>{
+    if(!supabaseConfigured){ setLoading(false); return }
     supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false)})
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s))
     return ()=>subscription.unsubscribe()
@@ -80,6 +82,7 @@ function App(){
   }
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
+  if(!supabaseConfigured)return <div className="modulePlaceholder"><div className="panel" style={{maxWidth:620}}><h2>Sistema de Gestão publicado</h2><p>O frontend está online, mas as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY ainda não estão configuradas no GitHub Actions.</p></div></div>
   if(!session)return <div className="modulePlaceholder"><form onSubmit={login} className="panel dataForm" style={{maxWidth:420,width:'100%'}}>
     <h2>Sistema de Gestão</h2><p>Acesse o ERP</p>
     <input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/>
