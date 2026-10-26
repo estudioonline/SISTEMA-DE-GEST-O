@@ -62,3 +62,21 @@
 .stockLow{color:#b42318}
 @media(max-width:1250px){.saleHeaderExpanded{grid-template-columns:repeat(3,1fr)}.saleNotes{grid-column:span 2}.stockForm{grid-template-columns:1fr 1fr}.stockForm .formActions{grid-column:1/-1}.actionPanel{align-items:flex-start;flex-direction:column}.rowActions{justify-content:flex-start}}
 @media(max-width:820px){.saleHeaderExpanded{grid-template-columns:1fr}.saleNotes{grid-column:auto}.paymentNotice{align-items:flex-start;flex-direction:column}.stockForm{grid-template-columns:1fr}.compactCards{grid-template-columns:1fr}.formActions{justify-content:flex-start}}
+
+.purchaseItemRow{display:grid;grid-template-columns:minmax(280px,2.4fr) 110px 140px 130px 42px;gap:8px;align-items:center}
+.purchaseItemRow input,.purchaseItemRow select{height:42px;border:1px solid #dbe2ec;border-radius:10px;padding:0 11px;background:#fff;color:#172033}
+.dark .purchaseItemRow input,.dark .purchaseItemRow select{background:#101725;border-color:#253047;color:#eef3ff}
+.purchaseItemRow strong{text-align:right}
+.reportFilters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.reportFilters label{display:grid;gap:6px;font-size:13px;font-weight:700;color:#5f6b7d}
+.reportFilters input,.reportFilters select{height:42px;border:1px solid #dbe2ec;border-radius:10px;padding:0 11px;background:#fff;color:#172033}
+.dark .reportFilters input,.dark .reportFilters select{background:#101725;border-color:#253047;color:#eef3ff}
+.configForm{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.configForm .formTitle,.configForm textarea,.configForm .formActions{grid-column:1/-1}
+.configForm input,.configForm textarea{border:1px solid #dbe2ec;border-radius:10px;padding:11px 12px;background:#fff;color:#172033;font:inherit}
+.configForm input{height:42px}
+.configForm textarea{min-height:150px;resize:vertical}
+.dark .configForm input,.dark .configForm textarea{background:#101725;border-color:#253047;color:#eef3ff}
+.card .ghost{margin-top:10px}
+@media(max-width:1050px){.configForm{grid-template-columns:repeat(2,1fr)}.purchaseItemRow{grid-template-columns:2fr 90px 120px 110px 42px}}
+@media(max-width:760px){.reportFilters,.configForm{grid-template-columns:1fr}.purchaseItemRow{grid-template-columns:1fr 1fr}.purchaseItemRow select{grid-column:1/-1}}
