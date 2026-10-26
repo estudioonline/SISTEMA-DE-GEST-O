@@ -82,3 +82,17 @@
 .card .ghost{margin-top:10px}
 @media(max-width:1050px){.configForm{grid-template-columns:repeat(2,1fr)}.purchaseItemRow{grid-template-columns:2fr 90px 120px 110px 42px}}
 @media(max-width:760px){.reportFilters,.configForm{grid-template-columns:1fr}.purchaseItemRow{grid-template-columns:1fr 1fr}.purchaseItemRow select{grid-column:1/-1}}
+
+.excelPanel{margin-bottom:14px;display:grid;gap:12px}
+.excelPanelText{display:flex;align-items:flex-start;gap:12px}
+.excelPanelText strong,.excelPanelText span{display:block}
+.excelPanelText span{margin-top:4px;color:#7b8799;font-size:13px;line-height:1.5}
+.excelIcon{width:42px;height:42px;border-radius:12px;background:#e9f7ef;color:#16804d;display:grid;place-items:center;flex:none}
+.dark .excelIcon{background:#173126;color:#67d89a}
+.excelActions{display:flex;flex-wrap:wrap;gap:9px}
+.excelUpload{height:40px;display:inline-flex;align-items:center;gap:7px;padding:0 13px;border-radius:10px;cursor:pointer;font-weight:700}
+.excelUpload input{display:none}
+.disabledUpload{opacity:.55;cursor:not-allowed}
+.excelWarning{display:block;padding:10px 12px;border-radius:10px;background:#fff8e6;color:#7c5a13;border:1px solid #f2dfad;line-height:1.45}
+.dark .excelWarning{background:#2b2414;border-color:#4c3d1d;color:#f2d78e}
+@media(max-width:760px){.excelActions{display:grid;grid-template-columns:1fr}.excelActions>*{justify-content:center;width:100%}}
