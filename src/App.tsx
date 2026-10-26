@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, SlidersHorizontal, ChevronDown, ChevronUp, RefreshCw, CheckCircle2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
@@ -62,6 +62,7 @@ function App(){
   const [dark,setDark]=useState(false)
   const [profileRole,setProfileRole]=useState<PerfilRole>('vendas')
   const [msg,setMsg]=useState('')
+  const [tableSearch,setTableSearch]=useState<Record<string,string>>({})
 
   const [clientes,setClientes]=useState<Cliente[]>([])
   const [fornecedores,setFornecedores]=useState<Fornecedor[]>([])
@@ -851,6 +852,14 @@ function App(){
   const reportSalesTotal=filteredSales.filter(v=>v.status!=='cancelado').reduce((s,v)=>s+Number(v.total),0)
   const reportPurchaseTotal=filteredPurchases.filter(c=>c.status!=='cancelada').reduce((s,c)=>s+Number(c.total),0)
 
+  const normalizeSearch=(value:unknown)=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+  const searchMatches=(key:string,values:unknown[])=>{
+    const query=normalizeSearch(tableSearch[key]||'').trim()
+    if(!query)return true
+    return normalizeSearch(values.join(' ')).includes(query)
+  }
+  const setSearch=(key:string,value:string)=>setTableSearch(prev=>({...prev,[key]:value}))
+
   const commissionReceived=comissoes.reduce((s,c)=>s+Number(c.total_recebido),0)
   const commissionTotal=comissoes.reduce((s,c)=>s+Number(c.comissao_apurada),0)
   const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
@@ -891,11 +900,12 @@ function App(){
   }
 
   function financeTable(type:'receber'|'pagar'){
-    const rows=titulos.filter(t=>t.tipo===type)
+    const searchKey=type==='receber'?'financeiro-receber':'financeiro-pagar'
+    const rows=titulos.filter(t=>t.tipo===type).filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||'']))
     const groupTitle=type==='receber'?'Contas a receber':'Contas a pagar'
     const empty=type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.'
     return <article className="panel tablePanel financeGroup">
-      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div></div>
+      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
       <div className="tableWrap"><table>
         <thead><tr><th>Descrição</th><th>Cliente / Fornecedor</th><th>Vencimento</th><th>Valor</th><th>{type==='receber'?'Recebido':'Pago'}</th><th>Saldo</th><th>Status</th><th>Gerenciar</th></tr></thead>
         <tbody>
@@ -1105,10 +1115,10 @@ function App(){
         </form>}
 
         <article className="panel tablePanel">
-          <div className="panelHead"><h3>Compras e contas a pagar</h3></div>
+          <div className="panelHead"><h3>Compras e contas a pagar</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Fatura</th><th>Data</th><th>Fornecedor</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
-            <tbody>{compras.map(c=>{
+            <tbody>{compras.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])}).map(c=>{
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
               return <Fragment key={c.id}>
@@ -1230,10 +1240,10 @@ function App(){
         </form>}
 
         <article className="panel tablePanel">
-          <div className="panelHead"><h3>Vendas e faturas</h3></div>
+          <div className="panelHead"><h3>Vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
-            <tbody>{vendas.map(v=>{
+            <tbody>{vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',v.status,paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])}).map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
               const opened=salePanel===v.id
@@ -1311,10 +1321,10 @@ function App(){
         </div>
 
         <article className="panel tablePanel">
-          <div className="panelHead"><h3>Vendedores e comissões</h3></div>
+          <div className="panelHead"><h3>Vendedores e comissões</h3><SearchField value={tableSearch.comissoes||''} onChange={v=>setSearch('comissoes',v)} placeholder="Pesquisar vendedores e valores"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Vendedor</th><th>% atual</th><th>Recebido no período</th><th>Comissão apurada</th><th>Recebimentos</th><th>Vendas</th><th>Status</th><th>Gerenciar</th></tr></thead>
-            <tbody>{vendedores.map(v=>{
+            <tbody>{vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])}).map(v=>{
               const summary=comissoes.find(c=>c.vendedor_id===v.id)
               const opened=sellerPanel===v.id
               return <Fragment key={v.id}>
@@ -1376,7 +1386,7 @@ function App(){
       {active==='relatorios'&&<section>
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
         <div className="cards compactCards"><article className="card"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className="card"><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
-        <div className="grid2"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3></div><div className="tableWrap"><table><thead><tr><th>Fatura</th><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredSales.map(v=><tr key={v.id}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3></div><div className="tableWrap"><table><thead><tr><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredPurchases.map(c=><tr key={c.id}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
+        <div className="grid2"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Fatura</th><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.fatura_numero),dateBr(v.created_at),v.status,money(Number(v.total))])).map(v=><tr key={v.id}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])).map(c=><tr key={c.id}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
       </section>}
 
       {active==='config'&&<section>
@@ -1410,14 +1420,28 @@ function App(){
   </div>
 }
 
+function SearchField({value,onChange,placeholder='Pesquisar'}:{value:string;onChange:(value:string)=>void;placeholder?:string}){
+  return <div className="tableSearch">
+    <Search size={16}/>
+    <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder}/>
+    {value&&<button type="button" onClick={()=>onChange('')} title="Limpar pesquisa"><X size={14}/></button>}
+  </div>
+}
+
 function paymentLabel(v:string){return v==='pix'?'PIX':v==='cartao'?'Cartão':v==='boleto'?'Boleto':v||'—'}
 
 function EditableEntityTable({title,headers,rows,readOnly=false}:{title:string;headers:string[];rows:{id:string;cells:(string|number)[];opened:boolean;onToggle:()=>void;panel:ReactNode}[];readOnly?:boolean}){
-  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3></div><div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map(r=><Fragment key={r.id}><tr>{r.cells.map((c,i)=><td key={i}>{c}</td>)}<td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={r.onToggle}><SlidersHorizontal size={15}/>Painel {r.opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!readOnly&&r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
+  const [query,setQuery]=useState('')
+  const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
+  const filtered=normalized?rows.filter(r=>r.cells.join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)):rows
+  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=><Fragment key={r.id}><tr>{r.cells.map((c,i)=><td key={i}>{c}</td>)}<td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={r.onToggle}><SlidersHorizontal size={15}/>Painel {r.opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!readOnly&&r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
 function ProductTable({produtos,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
-  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{produtos.length} cadastrados</p></div></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{produtos.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>onToggle(p.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+  const [query,setQuery]=useState('')
+  const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
+  const filtered=normalized?produtos.filter(p=>[p.codigo,p.descricao,p.ativo?'ativo':'inativo',p.unidade,p.estoque_atual,p.estoque_minimo,money(Number(p.custo)),money(Number(p.preco_venda))].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)):produtos
+  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{filtered.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>onToggle(p.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
 }
 
 export default App
