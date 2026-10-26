@@ -229,3 +229,61 @@
 .dark .payment-pago{background:#173628;color:#7de0a8}
 .dark .payment-cancelado{background:#3b1d22;color:#ff9aa4}
 .dark .payment-sem-cobranca{background:#202b3d;color:#b8c2d1}
+
+
+.tableSearch{
+  width:min(330px,100%);
+  height:40px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 10px 0 12px;
+  border:1px solid #dbe2ec;
+  border-radius:11px;
+  background:#fff;
+  color:#78859a;
+}
+.tableSearch:focus-within{
+  border-color:#8db4ff;
+  box-shadow:0 0 0 3px rgba(37,99,235,.10);
+}
+.tableSearch input{
+  min-width:0;
+  width:100%;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  color:#172033;
+  font:inherit;
+  box-shadow:none!important;
+}
+.tableSearch input::placeholder{color:#98a3b5}
+.tableSearch button{
+  width:25px;
+  height:25px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#8a96a8;
+  cursor:pointer;
+}
+.tableSearch button:hover{background:#eef2f7;color:#344054}
+.dark .tableSearch{
+  background:#101725;
+  border-color:#2a3648;
+  color:#9aa8bb;
+}
+.dark .tableSearch input{color:#eef3ff}
+.dark .tableSearch button:hover{background:#202b3d;color:#eef3ff}
+.tablePanel .panelHead{
+  gap:14px;
+  align-items:center;
+  justify-content:space-between;
+}
+@media(max-width:760px){
+  .tablePanel .panelHead{align-items:stretch;flex-direction:column}
+  .tableSearch{width:100%}
+}
