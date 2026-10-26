@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards, BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2 } from 'lucide-react'
+import { LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards, BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown } from 'lucide-react'
 import { supabase, supabaseConfigured } from './lib/supabase'
+import { generateInvoicePdf } from './lib/invoicePdf'
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'estoque'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;preco_venda:number;estoque_atual:number;estoque_minimo:number;ativo:boolean}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string}
+type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
 
 const menu=[
@@ -151,7 +153,7 @@ function App(){
       desconto,
       total,
       observacoes:saleNotes||null
-    }).select('id').single()
+    }).select('*').single()
 
     if(vendaError||!venda){
       setSavingSale(false)
@@ -180,11 +182,87 @@ function App(){
       return
     }
 
+    const savedSale=venda as Venda
+    try{
+      const cliente=clientes.find(c=>c.id===saleClient)||null
+      generateInvoicePdf({
+        id:savedSale.id,
+        created_at:savedSale.created_at||new Date().toISOString(),
+        status:saleStatus,
+        subtotal,
+        desconto,
+        total,
+        observacoes:saleNotes||null,
+        cliente,
+        items:validItems.map(item=>{
+          const produto=produtos.find(p=>p.id===item.produto_id)
+          return {
+            codigo:produto?.codigo,
+            descricao:produto?.descricao||'Produto',
+            unidade:produto?.unidade||'UN',
+            quantidade:item.quantidade,
+            valor_unitario:item.valor_unitario,
+            desconto:Math.min(item.desconto,item.quantidade*item.valor_unitario),
+            total:Math.max(0,(item.quantidade*item.valor_unitario)-item.desconto),
+          }
+        }),
+      })
+      setMsg('Venda criada com sucesso. O PDF da fatura foi gerado.')
+    }catch{
+      setMsg('Venda criada com sucesso, mas não foi possível gerar o PDF automaticamente.')
+    }
+
     setSavingSale(false)
     setShowForm(false)
     resetSaleForm()
-    setMsg('Venda criada com sucesso.')
     await loadData()
+  }
+
+  async function downloadSalePdf(venda:Venda){
+    setMsg('')
+    const {data,error}=await supabase.from('venda_itens')
+      .select('produto_id,quantidade,valor_unitario,desconto,total')
+      .eq('venda_id',venda.id)
+
+    if(error){
+      setMsg('Não foi possível carregar os itens da venda para gerar o PDF: '+error.message)
+      return
+    }
+
+    const itens=(data||[]) as VendaItem[]
+    if(!itens.length){
+      setMsg('Esta venda não possui itens para gerar a fatura.')
+      return
+    }
+
+    const cliente=clientes.find(c=>c.id===venda.cliente_id)||null
+
+    try{
+      generateInvoicePdf({
+        id:venda.id,
+        created_at:venda.created_at,
+        status:venda.status,
+        subtotal:Number(venda.subtotal),
+        desconto:Number(venda.desconto),
+        total:Number(venda.total),
+        observacoes:venda.observacoes,
+        cliente,
+        items:itens.map(item=>{
+          const produto=produtos.find(p=>p.id===item.produto_id)
+          return {
+            codigo:produto?.codigo,
+            descricao:produto?.descricao||'Produto',
+            unidade:produto?.unidade||'UN',
+            quantidade:Number(item.quantidade),
+            valor_unitario:Number(item.valor_unitario),
+            desconto:Number(item.desconto),
+            total:Number(item.total),
+          }
+        }),
+      })
+    }catch{
+      setMsg('Não foi possível gerar o PDF desta venda.')
+    }
   }
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
@@ -286,10 +364,10 @@ function App(){
 
         <article className="panel tablePanel">
           <div className="panelHead"><div><h3>Vendas</h3><p>{vendas.length} registros</p></div></div>
-          <div className="tableWrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Status</th><th>Subtotal</th><th>Desconto</th><th>Total</th></tr></thead>
+          <div className="tableWrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Status</th><th>Subtotal</th><th>Desconto</th><th>Total</th><th>Fatura</th></tr></thead>
             <tbody>{vendas.map(v=>{
               const cliente=clientes.find(c=>c.id===v.cliente_id)
-              return <tr key={v.id}><td>{new Date(v.created_at).toLocaleString('pt-BR')}</td><td>{cliente?.nome||'Consumidor'}</td><td><span className={`statusBadge status-${v.status}`}>{v.status}</span></td><td>{money(Number(v.subtotal))}</td><td>{money(Number(v.desconto))}</td><td><strong>{money(Number(v.total))}</strong></td></tr>
+              return <tr key={v.id}><td>{new Date(v.created_at).toLocaleString('pt-BR')}</td><td>{cliente?.nome||'Consumidor'}</td><td><span className={`statusBadge status-${v.status}`}>{v.status}</span></td><td>{money(Number(v.subtotal))}</td><td>{money(Number(v.desconto))}</td><td><strong>{money(Number(v.total))}</strong></td><td><button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button></td></tr>
             })}</tbody>
           </table></div>
         </article>
