@@ -6,21 +6,21 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, SlidersHorizontal, ChevronDown, ChevronUp, RefreshCw, CheckCircle2,
-  Upload, Download, FileSpreadsheet
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
 import { generatePurchaseInvoicePdf } from './lib/purchaseInvoicePdf'
 import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
 
-type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'financeiro'|'relatorios'|'config'
+type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
 type PaymentMethod='pix'|'cartao'|'boleto'
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;preco_venda:number;estoque_atual:number;estoque_minimo:number;ativo:boolean}
-type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
+type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null}
@@ -28,11 +28,14 @@ type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
 type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
 type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null}
+type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
+type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
+type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string}
 
 const menu=[
   ['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['vendas','Vendas',ReceiptText],['financeiro','Financeiro',WalletCards],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
+  ['vendas','Vendas',ReceiptText],['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
@@ -65,6 +68,9 @@ function App(){
   const [compras,setCompras]=useState<Compra[]>([])
   const [titulos,setTitulos]=useState<Titulo[]>([])
   const [empresa,setEmpresa]=useState<EmpresaConfig|null>(null)
+  const [vendedores,setVendedores]=useState<Vendedor[]>([])
+  const [comprovantes,setComprovantes]=useState<Comprovante[]>([])
+  const [comissoes,setComissoes]=useState<ComissaoResumo[]>([])
 
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
@@ -88,6 +94,7 @@ function App(){
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
   const [saleClient,setSaleClient]=useState('')
+  const [saleSeller,setSaleSeller]=useState('')
   const [saleStatus,setSaleStatus]=useState('pedido')
   const [saleNotes,setSaleNotes]=useState('')
   const [salePayment,setSalePayment]=useState<PaymentMethod>('pix')
@@ -110,6 +117,13 @@ function App(){
 
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
+  const [paymentDate,setPaymentDate]=useState(today())
+  const [paymentAmount,setPaymentAmount]=useState('')
+
+  const [editingSeller,setEditingSeller]=useState<Vendedor|null>(null)
+  const [sellerPanel,setSellerPanel]=useState<string|null>(null)
+  const [commissionStart,setCommissionStart]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10))
+  const [commissionEnd,setCommissionEnd]=useState(today())
 
   const [reportStart,setReportStart]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10))
   const [reportEnd,setReportEnd]=useState(today())
@@ -131,7 +145,7 @@ function App(){
 
   async function loadData(){
     if(!session)return
-    const [c,f,p,v,cp,t,ec,pr]=await Promise.all([
+    const [c,f,p,v,cp,t,ec,pr,vd,cv]=await Promise.all([
       supabase.from('clientes').select('*').order('nome'),
       supabase.from('fornecedores').select('*').order('nome'),
       supabase.from('produtos').select('*').order('descricao'),
@@ -139,7 +153,9 @@ function App(){
       supabase.from('compras').select('*').order('created_at',{ascending:false}).limit(300),
       supabase.from('titulos_financeiros').select('*').order('vencimento',{ascending:true}).limit(500),
       supabase.from('empresa_config').select('*').eq('id',1).maybeSingle(),
-      supabase.from('profiles').select('perfil').eq('id',session.user.id).maybeSingle()
+      supabase.from('profiles').select('perfil').eq('id',session.user.id).maybeSingle(),
+      supabase.from('vendedores').select('*').order('nome'),
+      supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).limit(500)
     ])
     if(!c.error)setClientes((c.data||[]) as Cliente[])
     if(!f.error)setFornecedores((f.data||[]) as Fornecedor[])
@@ -149,6 +165,8 @@ function App(){
     if(!t.error)setTitulos((t.data||[]) as Titulo[])
     if(!ec.error&&ec.data)setEmpresa(ec.data as EmpresaConfig)
     if(!pr.error&&pr.data?.perfil)setProfileRole(pr.data.perfil as PerfilRole)
+    if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
+    if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
   }
 
   async function login(e:FormEvent){
