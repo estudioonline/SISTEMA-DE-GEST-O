@@ -217,3 +217,15 @@
 .dark .paymentEntry input{background:#101725;border-color:#2a3648;color:#eef3ff}
 @media(max-width:1100px){.sellerForm{grid-template-columns:repeat(2,1fr)}.commissionFilters{grid-template-columns:1fr 1fr}.paymentEntry{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.proofHead,.proofItem{align-items:stretch;flex-direction:column}.sellerForm,.commissionFilters,.paymentEntry{grid-template-columns:1fr}}
+
+
+.payment-pendente{background:#fff4d6;color:#8a5a00}
+.payment-parcial{background:#e9f1ff;color:#2457a7}
+.payment-pago{background:#e8f7ee;color:#177245}
+.payment-cancelado{background:#fdecec;color:#a62b2b}
+.payment-sem-cobranca{background:#eef2f7;color:#667085}
+.dark .payment-pendente{background:#3a3015;color:#ffd76a}
+.dark .payment-parcial{background:#182b4d;color:#8eb7ff}
+.dark .payment-pago{background:#173628;color:#7de0a8}
+.dark .payment-cancelado{background:#3b1d22;color:#ff9aa4}
+.dark .payment-sem-cobranca{background:#202b3d;color:#b8c2d1}
