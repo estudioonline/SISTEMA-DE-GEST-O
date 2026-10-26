@@ -122,6 +122,20 @@ function App(){
     const validItems=saleItems.filter(i=>i.produto_id && i.quantidade>0)
     if(!validItems.length){setMsg('Adicione pelo menos um produto à venda.');return}
 
+    if(saleStatus!=='orcamento'){
+      const demanda=new Map<string,number>()
+      validItems.forEach(item=>demanda.set(item.produto_id,(demanda.get(item.produto_id)||0)+item.quantidade))
+      const semEstoque=[...demanda.entries()].find(([produtoId,quantidade])=>{
+        const produto=produtos.find(p=>p.id===produtoId)
+        return !produto || Number(produto.estoque_atual)<quantidade
+      })
+      if(semEstoque){
+        const produto=produtos.find(p=>p.id===semEstoque[0])
+        setMsg(`Estoque insuficiente para ${produto?.descricao||'o produto selecionado'}. Disponível: ${Number(produto?.estoque_atual||0).toLocaleString('pt-BR')}`)
+        return
+      }
+    }
+
     const subtotal=validItems.reduce((sum,item)=>sum+(item.quantidade*item.valor_unitario),0)
     const desconto=validItems.reduce((sum,item)=>sum+Math.min(item.desconto,item.quantidade*item.valor_unitario),0)
     const total=Math.max(0,subtotal-desconto)
@@ -251,7 +265,7 @@ function App(){
               return <div className="saleItemRow" key={item.key}>
                 <select value={item.produto_id} onChange={e=>chooseProduct(item.key,e.target.value)} required>
                   <option value="">Selecione o produto</option>
-                  {produtos.filter(p=>p.ativo).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao}</option>)}
+                  {produtos.filter(p=>p.ativo).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')}</option>)}
                 </select>
                 <input type="number" min="0.001" step="0.001" value={item.quantidade} onChange={e=>updateSaleItem(item.key,'quantidade',Number(e.target.value))} title="Quantidade"/>
                 <input type="number" min="0" step="0.01" value={item.valor_unitario} onChange={e=>updateSaleItem(item.key,'valor_unitario',Number(e.target.value))} title="Valor unitário"/>
