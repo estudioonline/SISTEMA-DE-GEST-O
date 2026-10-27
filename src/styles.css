@@ -1339,3 +1339,94 @@
   background:#182235;
   border-color:#475569;
 }
+
+.movementReportHead{
+  align-items:flex-end;
+  gap:16px;
+}
+.movementReportFilters{
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.movementReportFilters label{
+  display:grid;
+  gap:5px;
+  font-size:11px;
+  font-weight:700;
+  color:#64748b;
+  text-transform:uppercase;
+}
+.movementReportFilters input{
+  height:40px;
+  border:1px solid #dbe2ec;
+  border-radius:10px;
+  padding:0 10px;
+  background:#fff;
+  color:#172033;
+  font:inherit;
+}
+.movementTotals{
+  display:flex;
+  justify-content:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #e6ebf2;
+}
+.movementTotal{
+  min-width:210px;
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid transparent;
+}
+.movementTotal span,
+.movementTotal strong{
+  display:block;
+}
+.movementTotal span{
+  font-size:12px;
+  font-weight:700;
+  margin-bottom:4px;
+}
+.movementTotalIn{
+  background:#ecfdf3;
+  border-color:#bbf7d0;
+  color:#166534;
+}
+.movementTotalOut{
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#b91c1c;
+}
+.dark .movementReportFilters input{
+  background:#101725;
+  border-color:#253047;
+  color:#eef3ff;
+}
+.dark .movementTotals{
+  border-top-color:#2b3548;
+}
+.dark .movementTotalIn{
+  background:#10251b;
+  border-color:#245b3d;
+  color:#86efac;
+}
+.dark .movementTotalOut{
+  background:#2b1719;
+  border-color:#63313a;
+  color:#fca5a5;
+}
+@media(max-width:900px){
+  .movementReportHead{align-items:stretch;flex-direction:column}
+  .movementReportFilters{justify-content:flex-start}
+}
+@media(max-width:600px){
+  .movementReportFilters{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .movementReportFilters .searchField{grid-column:1/-1}
+  .movementTotals{display:grid;grid-template-columns:1fr 1fr}
+  .movementTotal{min-width:0}
+}
