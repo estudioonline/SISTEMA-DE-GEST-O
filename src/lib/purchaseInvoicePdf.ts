@@ -298,5 +298,5 @@ export function generatePurchaseInvoicePdf(data:PurchasePdfData){
   drawNotes(doc,data,y)
   addFooters(doc,data)
 
-  doc.save(`fornecedor-${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-compra-${invoiceNo(data.fatura_numero)}.pdf`)
+  doc.save(`${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-${invoiceNo(data.fatura_numero)}.pdf`)
 }
