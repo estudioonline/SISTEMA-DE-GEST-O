@@ -2087,3 +2087,8 @@
 .dark .purchaseStage-cotacao{background:#3a2a0b!important;border-color:#6b4e12!important;color:#fde68a!important}
 .dark .purchaseStage-pedido_aprovado{background:#172554!important;border-color:#315b9c!important;color:#bfdbfe!important}
 .dark .purchaseStage-pedido_recebido{background:#123524!important;border-color:#276749!important;color:#bbf7d0!important}
+
+.purchasesTable:focus{
+  outline:2px solid #3B82F6;
+  outline-offset:3px;
+}
