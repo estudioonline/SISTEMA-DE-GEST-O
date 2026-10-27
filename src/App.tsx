@@ -919,7 +919,7 @@ function App(){
     const rows=titulos.filter(t=>t.tipo===type).filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||'']))
     const groupTitle=type==='receber'?'Contas a receber':'Contas a pagar'
     const empty=type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.'
-    return <article className="panel tablePanel financeGroup">
+    return <article className={'panel tablePanel financeGroup '+(type==='receber'?'financeReceivableGroup':'financePayableGroup')}>
       <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
       <div className="tableWrap"><table>
         <thead><tr><th>Descrição</th><th>Cliente / Fornecedor</th><th>Vencimento</th><th>Valor</th><th>{type==='receber'?'Recebido':'Pago'}</th><th>Saldo</th><th>Status</th><th>Gerenciar</th></tr></thead>
@@ -1365,7 +1365,7 @@ function App(){
         </article>
       </section>}
 
-      {active==='comissoes'&&<section>
+      {active==='comissoes'&&<section className="semanticPage commissionsPage">
         {showForm&&<form className="panel sellerForm" onSubmit={saveSeller}>
           <div className="formTitle">
             <div><h3>{editingSeller?'Editar vendedor':'Novo vendedor'}</h3><p>O percentual é aplicado aos recebimentos registrados a partir daquele momento.</p></div>
@@ -1402,10 +1402,10 @@ function App(){
 
         {salesWithoutSeller>0&&<div className="commissionWarning">{salesWithoutSeller} venda(s) estão sem vendedor definido e não gerarão comissão até serem vinculadas a um vendedor.</div>}
 
-        <div className="cards compactCards">
-          <article className="card"><span>Recebido no período</span><strong>{money(commissionReceived)}</strong><small>{dateBr(commissionStart)} a {dateBr(commissionEnd)}</small></article>
-          <article className="card"><span>Comissões apuradas</span><strong>{money(commissionTotal)}</strong><small>sobre recebimentos</small></article>
-          <article className="card"><span>Vendedores ativos</span><strong>{vendedores.filter(v=>v.ativo).length}</strong><small>{salesWithoutSeller} venda(s) sem vendedor</small></article>
+        <div className="cards compactCards semanticCards">
+          <article className="card semanticCard semanticPositive"><span>Recebido no período</span><strong>{money(commissionReceived)}</strong><small>{dateBr(commissionStart)} a {dateBr(commissionEnd)}</small></article>
+          <article className="card semanticCard semanticBlue"><span>Comissões apuradas</span><strong>{money(commissionTotal)}</strong><small>sobre recebimentos</small></article>
+          <article className="card semanticCard semanticNeutral"><span>Vendedores ativos</span><strong>{vendedores.filter(v=>v.ativo).length}</strong><small>{salesWithoutSeller} venda(s) sem vendedor</small></article>
         </div>
 
         <article className="panel tablePanel">
@@ -1441,7 +1441,7 @@ function App(){
         </article>
       </section>}
 
-      {active==='financeiro'&&<section>
+      {active==='financeiro'&&<section className="semanticPage financePage">
         {showForm&&<form className="panel dataForm" onSubmit={saveTitle}>
           <select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
             <option value="receber">Conta a receber</option>
@@ -1459,10 +1459,10 @@ function App(){
           </div>
         </form>}
 
-        <div className="cards compactCards">
-          <article className="card"><span>Contas a receber</span><strong>{money(openReceivables)}</strong><small>saldo em aberto</small></article>
-          <article className="card"><span>Contas a pagar</span><strong>{money(openPayables)}</strong><small>saldo em aberto</small></article>
-          <article className="card"><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong><small>receber - pagar</small></article>
+        <div className="cards compactCards semanticCards">
+          <article className="card semanticCard semanticPositive"><span>Contas a receber</span><strong>{money(openReceivables)}</strong><small>saldo em aberto</small></article>
+          <article className="card semanticCard semanticNegative"><span>Contas a pagar</span><strong>{money(openPayables)}</strong><small>saldo em aberto</small></article>
+          <article className={'card semanticCard '+(openReceivables-openPayables>=0?'semanticBlue':'semanticNegative')}><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong><small>receber - pagar</small></article>
         </div>
 
         <div className="financeGroups">
@@ -1471,9 +1471,9 @@ function App(){
         </div>
       </section>}
 
-      {active==='relatorios'&&<section>
+      {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
-        <div className="cards compactCards"><article className="card"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className="card"><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
+        <div className="cards compactCards semanticCards"><article className="card semanticCard semanticBlue"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card semanticCard semanticNegative"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className={'card semanticCard '+(reportSalesTotal-reportPurchaseTotal>=0?'semanticPositive':'semanticNegative')}><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
         <div className="grid2"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Fatura</th><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.fatura_numero),dateBr(v.created_at),v.status,money(Number(v.total))])).map(v=><tr key={v.id}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])).map(c=><tr key={c.id}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
       </section>}
 
