@@ -933,3 +933,59 @@
   }
 }
 
+
+
+/* Gerenciamento de usuários */
+.userManagementPanel{
+  margin-bottom:14px;
+  border-top:4px solid #3B82F6!important;
+}
+.userManagementPanel .panelHead{
+  margin-bottom:12px;
+}
+.userManagementPanel>.tableSearch{
+  margin-bottom:12px;
+}
+.userManagementTable{
+  overflow:auto;
+}
+.userManagementTable table{
+  min-width:920px;
+}
+.userManagementTable td{
+  vertical-align:middle;
+}
+.userInlineInput,
+.userInlineSelect{
+  height:38px!important;
+  min-width:150px;
+  border:1px solid #D7DEE8!important;
+  border-radius:9px!important;
+  padding:0 10px!important;
+  background:#FFFFFF!important;
+  color:#1E293B!important;
+}
+.userInlineInput{
+  min-width:180px;
+}
+.currentUserMark{
+  display:block;
+  margin-top:4px;
+  color:#3B82F6;
+  font-weight:700;
+}
+.userSaveBtn{
+  height:36px;
+  min-width:86px;
+  justify-content:center;
+}
+.dark .userInlineInput,
+.dark .userInlineSelect{
+  background:#101725!important;
+  border-color:#334155!important;
+  color:#F8FAFC!important;
+}
+.dark .currentUserMark{
+  color:#60A5FA;
+}
+
