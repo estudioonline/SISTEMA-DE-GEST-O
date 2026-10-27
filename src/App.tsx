@@ -5,7 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
-  Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2,
+  Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight,
   Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
@@ -47,6 +47,27 @@ const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency
 const today=()=>new Date().toISOString().slice(0,10)
 const dateBr=(v:string)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v.length===10?v+'T12:00:00':v)):'—'
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
+const onlyDigits=(value:string,max:number)=>value.replace(/\D/g,'').slice(0,max)
+const maskDocument=(value:string)=>{
+  const d=onlyDigits(value,14)
+  if(d.length<=11){
+    return d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2')
+  }
+  return d.replace(/(\d{2})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1/$2').replace(/(\d{4})(\d{1,2})$/,'$1-$2')
+}
+const maskCnpj=(value:string)=>{
+  const d=onlyDigits(value,14)
+  return d.replace(/(\d{2})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1/$2').replace(/(\d{4})(\d{1,2})$/,'$1-$2')
+}
+const maskPhone=(value:string)=>{
+  const d=onlyDigits(value,11)
+  if(d.length<=10)return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{4})(\d{1,4})$/,'$1-$2')
+  return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d{1,4})$/,'$1-$2')
+}
+const maskCep=(value:string)=>{
+  const d=onlyDigits(value,8)
+  return d.replace(/(\d{5})(\d{1,3})$/,'$1-$2')
+}
 const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0})
 const newPurchaseItem=():PurchaseItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,custo_unitario:0})
 const addMonthsIso=(base:string,months:number)=>{
@@ -63,6 +84,7 @@ function App(){
   const [loading,setLoading]=useState(true)
   const [active,setActive]=useState<ModuleKey>('dashboard')
   const [dark,setDark]=useState(false)
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
   const [profileRole,setProfileRole]=useState<PerfilRole>('vendas')
   const [msg,setMsg]=useState('')
   const [tableSearch,setTableSearch]=useState<Record<string,string>>({})
@@ -929,6 +951,9 @@ function App(){
   const commissionReceived=comissoes.reduce((s,c)=>s+Number(c.total_recebido),0)
   const commissionTotal=comissoes.reduce((s,c)=>s+Number(c.comissao_apurada),0)
   const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
+  const visiblePurchases=compras.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])})
+  const visibleSales=vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',v.status,paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])})
+  const visibleSellers=vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])})
 
   function salePaymentStatus(venda:Venda){
     const related=titulos.filter(t=>t.venda_id===venda.id)
@@ -975,7 +1000,7 @@ function App(){
       <div className="tableWrap"><table>
         <thead><tr><th>Descrição</th><th>Cliente / Fornecedor</th><th>Vencimento</th><th>Valor</th><th>{type==='receber'?'Recebido':'Pago'}</th><th>Saldo</th><th>Status</th><th>Gerenciar</th></tr></thead>
         <tbody>
-          {rows.length===0&&<tr><td colSpan={8}>{empty}</td></tr>}
+          {rows.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={empty} actionLabel={canManageFinance?'+ Adicionar Lançamento':undefined} onAction={startNewTitle}/></td></tr>}
           {rows.map(t=>{
             const opened=financePanel===t.id
             const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
@@ -1028,11 +1053,12 @@ function App(){
     else if(active==='financeiro')startNewTitle()
   }
 
-  return <div className={dark?'app dark':'app'}>
+  return <div className={`${dark?'app dark':'app'}${sidebarCollapsed?' sidebarCollapsed':''}`}>
     <aside className="sidebar">
-      <div className="brand"><div className="brandMark">SG</div><div><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div></div>
-      <nav>{menu.map(([k,l,I])=><button key={k} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>)}</nav>
-      <div className="sidebarFooter"><span>{session.user.email}</span><small>{profileRole}</small><button className="navItem" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
+      <button className="sidebarToggle" onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed?'Expandir menu':'Recolher menu'} aria-label={sidebarCollapsed?'Expandir menu lateral':'Recolher menu lateral'}>{sidebarCollapsed?<ChevronRight size={17}/>:<ChevronLeft size={17}/>}</button>
+      <div className="brand"><div className="brandMark">SG</div><div className="brandText"><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div></div>
+      <nav>{menu.map(([k,l,I])=><button key={k} title={l} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>)}</nav>
+      <div className="sidebarFooter"><span>{session.user.email}</span><small>{profileRole}</small><button className="navItem" title="Sair" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
     </aside>
 
     <main className="main">
@@ -1058,20 +1084,20 @@ function App(){
           <article className="card dashboardCard dashboardCardLowStock"><span>Estoque baixo</span><strong>{low}</strong><small>de {produtos.filter(p=>p.ativo).length} produtos ativos</small></article>
         </div>
         <div className="cards compactCards dashboardCards">
-          <article className="card dashboardCard"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>setActive('clientes')}>Gerenciar</button></article>
-          <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>setActive('fornecedores')}>Gerenciar</button></article>
-          <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>setActive('produtos')}>Gerenciar</button></article>
+          <article className="card dashboardCard"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('clientes');if(clientes.length===0&&!isViewer)startNewClient()}}>{clientes.length===0&&!isViewer?'+ Adicionar Cliente':'Gerenciar'}</button></article>
+          <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('fornecedores');if(fornecedores.length===0&&!isViewer)startNewSupplier()}}>{fornecedores.length===0&&!isViewer?'+ Adicionar Fornecedor':'Gerenciar'}</button></article>
+          <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>{setActive('produtos');if(produtos.length===0&&!isViewer)startNewProduct()}}>{produtos.length===0&&!isViewer?'+ Adicionar Produto':'Gerenciar'}</button></article>
         </div>
       </section>}
 
       {active==='clientes'&&<section className="semanticPage clientsPage">
-        {showForm&&<form className="panel dataForm" onSubmit={saveClient}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/><input name="documento" placeholder="CPF / CNPJ" defaultValue={editingClient?.documento||''}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/><input name="telefone" placeholder="Telefone" defaultValue={editingClient?.telefone||''}/><input name="limite_credito" type="number" step="0.01" placeholder="Limite de crédito" defaultValue={editingClient?.limite_credito||0}/><select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
-        <EditableEntityTable readOnly={isViewer} title="Clientes" headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
+        {showForm&&<form className="panel dataForm" onSubmit={saveClient}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/><input name="documento" inputMode="numeric" placeholder="CPF / CNPJ" defaultValue={maskDocument(editingClient?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/><input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingClient?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/><input name="limite_credito" type="number" step="0.01" placeholder="Limite de crédito" defaultValue={editingClient?.limite_credito||0}/><select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
+        <EditableEntityTable readOnly={isViewer} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
       </section>}
 
       {active==='fornecedores'&&<section className="semanticPage suppliersPage">
-        {showForm&&<form className="panel dataForm" onSubmit={saveSupplier}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingSupplier?.nome||''}/><input name="documento" placeholder="CNPJ / CPF" defaultValue={editingSupplier?.documento||''}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingSupplier?.email||''}/><input name="telefone" placeholder="Telefone" defaultValue={editingSupplier?.telefone||''}/><select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
-        <EditableEntityTable readOnly={isViewer} title="Fornecedores" headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
+        {showForm&&<form className="panel dataForm" onSubmit={saveSupplier}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingSupplier?.nome||''}/><input name="documento" inputMode="numeric" placeholder="CNPJ / CPF" defaultValue={maskDocument(editingSupplier?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingSupplier?.email||''}/><input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingSupplier?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/><select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
+        <EditableEntityTable readOnly={isViewer} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
       </section>}
 
       {active==='produtos'&&<section className="semanticPage productsPage">
@@ -1128,7 +1154,7 @@ function App(){
             <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div>
           </form>}
 
-          <ProductTable produtos={produtos} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={isViewer}/>
+          <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={isViewer}/>
         </>}
 
         {productSubtab==='movimentos'&&<>
@@ -1256,7 +1282,7 @@ function App(){
           <div className="panelHead"><h3>Compras e contas a pagar</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Fatura</th><th>Data</th><th>Fornecedor</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
-            <tbody>{compras.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])}).map(c=>{
+            <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={compras.length===0&&!isViewer?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
               return <Fragment key={c.id}>
@@ -1382,7 +1408,7 @@ function App(){
           <div className="panelHead"><h3>Vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
-            <tbody>{vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',v.status,paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])}).map(v=>{
+            <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&!isViewer?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
               const opened=salePanel===v.id
@@ -1429,7 +1455,7 @@ function App(){
           </div>
           <input name="nome" placeholder="Nome do vendedor" required defaultValue={editingSeller?.nome||''}/>
           <input name="email" type="email" placeholder="E-mail" defaultValue={editingSeller?.email||''}/>
-          <input name="telefone" placeholder="Telefone" defaultValue={editingSeller?.telefone||''}/>
+          <input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingSeller?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/>
           <label>Comissão %
             <input name="percentual_comissao" type="number" min="0" max="100" step="0.01" required defaultValue={editingSeller?.percentual_comissao||0}/>
           </label>
@@ -1469,7 +1495,7 @@ function App(){
           <div className="panelHead"><h3>Vendedores e comissões</h3><SearchField value={tableSearch.comissoes||''} onChange={v=>setSearch('comissoes',v)} placeholder="Pesquisar vendedores e valores"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Vendedor</th><th>% atual</th><th>Recebido no período</th><th>Comissão apurada</th><th>Recebimentos</th><th>Vendas</th><th>Status</th><th>Gerenciar</th></tr></thead>
-            <tbody>{vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])}).map(v=>{
+            <tbody>{visibleSellers.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={vendedores.length===0?'Nenhum vendedor cadastrado.':'Nenhum vendedor encontrado para esta pesquisa.'} actionLabel={vendedores.length===0&&isAdmin?'+ Adicionar Vendedor':undefined} onAction={startNewSeller}/></td></tr>}{visibleSellers.map(v=>{
               const summary=comissoes.find(c=>c.vendedor_id===v.id)
               const opened=sellerPanel===v.id
               return <Fragment key={v.id}>
@@ -1588,13 +1614,13 @@ function App(){
           <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!isAdmin&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!isAdmin}>
           <label className="fieldLabel">Razão social<input name="razao_social" placeholder="Razão social da empresa" defaultValue={empresa?.razao_social||''} required/></label>
           <label className="fieldLabel">Nome fantasia<input name="nome_fantasia" placeholder="Nome fantasia" defaultValue={empresa?.nome_fantasia||''} required/></label>
-          <label className="fieldLabel">CNPJ<input name="cnpj" placeholder="00.000.000/0000-00" defaultValue={empresa?.cnpj||''}/></label>
+          <label className="fieldLabel">CNPJ<input name="cnpj" inputMode="numeric" placeholder="00.000.000/0000-00" defaultValue={maskCnpj(empresa?.cnpj||'')} onInput={e=>{e.currentTarget.value=maskCnpj(e.currentTarget.value)}}/></label>
           <label className="fieldLabel">E-mail<input name="email" type="email" placeholder="contato@empresa.com" defaultValue={empresa?.email||''}/></label>
-          <label className="fieldLabel">Telefone<input name="telefone" placeholder="(00) 00000-0000" defaultValue={empresa?.telefone||''}/></label>
+          <label className="fieldLabel">Telefone<input name="telefone" inputMode="tel" placeholder="(00) 00000-0000" defaultValue={maskPhone(empresa?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/></label>
           <label className="fieldLabel">Endereço<input name="endereco" placeholder="Rua, número e complemento" defaultValue={empresa?.endereco||''}/></label>
           <label className="fieldLabel">Cidade<input name="cidade" placeholder="Cidade" defaultValue={empresa?.cidade||''}/></label>
           <label className="fieldLabel">UF<input name="uf" placeholder="UF" maxLength={2} defaultValue={empresa?.uf||''}/></label>
-          <label className="fieldLabel">CEP<input name="cep" placeholder="00000-000" defaultValue={empresa?.cep||''}/></label>
+          <label className="fieldLabel">CEP<input name="cep" inputMode="numeric" placeholder="00000-000" defaultValue={maskCep(empresa?.cep||'')} onInput={e=>{e.currentTarget.value=maskCep(e.currentTarget.value)}}/></label>
           <label className="fieldLabel">Chave PIX<input name="pix_chave" placeholder="Chave PIX" defaultValue={empresa?.pix_chave||''}/></label>
           <label className="fieldLabel">Banco<input name="banco" placeholder="Banco" defaultValue={empresa?.banco||''}/></label>
           <label className="fieldLabel">Agência<input name="agencia" placeholder="Agência" defaultValue={empresa?.agencia||''}/></label>
@@ -1617,18 +1643,23 @@ function SearchField({value,onChange,placeholder='Pesquisar'}:{value:string;onCh
 
 function paymentLabel(v:string){return v==='dinheiro'?'Dinheiro':v==='pix'?'PIX':v==='cartao'?'Cartão':v==='boleto'?'Boleto':v||'—'}
 
-function EditableEntityTable({title,headers,rows,readOnly=false}:{title:string;headers:string[];rows:{id:string;cells:(string|number)[];opened:boolean;onToggle:()=>void;panel:ReactNode}[];readOnly?:boolean}){
+function EmptyState({message,actionLabel,onAction}:{message:string;actionLabel?:string;onAction?:()=>void}){
+  return <div className="emptyState"><span>{message}</span>{actionLabel&&onAction&&<button type="button" className="primary emptyStateAction" onClick={onAction}><Plus size={15}/>{actionLabel.replace(/^\+\s*/,'')}</button>}</div>
+}
+
+
+function EditableEntityTable({title,headers,rows,readOnly=false,emptyActionLabel,onEmptyAction}:{title:string;headers:string[];rows:{id:string;cells:(string|number)[];opened:boolean;onToggle:()=>void;panel:ReactNode}[];readOnly?:boolean;emptyActionLabel?:string;onEmptyAction?:()=>void}){
   const [query,setQuery]=useState('')
   const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
   const filtered=normalized?rows.filter(r=>r.cells.join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)):rows
-  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=><Fragment key={r.id}><tr>{r.cells.map((c,i)=><td key={i}>{c}</td>)}<td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{filtered.map(r=><Fragment key={r.id}><tr>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
-function ProductTable({produtos,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
+function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
   const [query,setQuery]=useState('')
   const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
   const filtered=normalized?produtos.filter(p=>[p.codigo,p.descricao,p.ativo?'ativo':'inativo',p.unidade,p.estoque_atual,p.estoque_minimo,money(Number(p.custo)),money(Number(p.preco_venda))].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)):produtos
-  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{filtered.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{filtered.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
 }
 
 export default App
