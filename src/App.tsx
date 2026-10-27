@@ -579,10 +579,10 @@ function App(){
       if(!produto)continue
       const custo=Number(produto.custo_medio??produto.custo??0)
       const percentual=Number(produto.percentual_minimo_custo_venda??100)
-      const minimo=custo*percentual/100
+      const minimo=custo*(1+percentual/100)
       const precoEfetivo=item.valor_unitario-Math.min(item.desconto,item.valor_unitario*item.quantidade)/item.quantidade
       if(precoEfetivo+0.000001<minimo){
-        setMsg(`Venda bloqueada: ${produto.descricao} está com preço líquido de ${money(precoEfetivo)}, abaixo do mínimo de ${money(minimo)} (${percentual.toLocaleString('pt-BR')}% do custo). Ajuste o preço/desconto ou a configuração do produto.`)
+        setMsg(`Venda bloqueada: ${produto.descricao} está com preço líquido de ${money(precoEfetivo)}, abaixo do mínimo de ${money(minimo)} (custo + ${percentual.toLocaleString('pt-BR')}% de acréscimo). Ajuste o preço/desconto ou a configuração do produto.`)
         return
       }
     }
@@ -1552,9 +1552,9 @@ function App(){
             <label className="fieldLabel">Preço de venda
               <input name="preco_venda" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={editingProduct?.preco_venda??''}/>
             </label>
-            <label className="fieldLabel">Preço mínimo de venda (% do custo)
-              <input name="percentual_minimo_custo_venda" type="number" min="0" max="100" step="0.01" defaultValue={editingProduct?.percentual_minimo_custo_venda??100} required/>
-              <small>100% = não vender abaixo do custo; 90% = permite até 10% abaixo do custo. Considera também o desconto da venda.</small>
+            <label className="fieldLabel">Acréscimo mínimo sobre custo (%)
+              <input name="percentual_minimo_custo_venda" type="number" min="0" max="1000" step="0.01" defaultValue={editingProduct?.percentual_minimo_custo_venda??100} required/>
+              <small>100% = custo × 2 (R$ 100 de custo → R$ 200 de preço mínimo). 0% = igual ao custo. Considera descontos da venda.</small>
             </label>
             {!editingProduct&&<label className="fieldLabel">Estoque inicial
               <input name="estoque_atual" type="number" min="0" step="0.001" placeholder="0" defaultValue="0"/>
@@ -2018,16 +2018,16 @@ function App(){
 
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingTitle?'Editar fatura':'Nova fatura'}><div className="saleModalShell financeModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveTitle}>
           <div className="formTitle saleModalTitle"><div><h3>{editingTitle?'Editar fatura':'Nova fatura'}</h3><p>Cadastre uma conta a receber ou uma conta a pagar.</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fatura" onClick={()=>{setShowForm(false);setEditingTitle(null)}}><X size={18}/></button></div>
-          <select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
+          <label className="fieldLabel">Tipo de fatura<select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
             <option value="receber">Conta a receber</option>
             <option value="pagar">Conta a pagar</option>
-          </select>
-          <input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/>
-          <input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/>
-          <input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/>
-          <input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/>
-          <input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/>
-          <input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/>
+          </select></label>
+          <label className="fieldLabel">Descrição<input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/></label>
+          <label className="fieldLabel">Cliente / Fornecedor<input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/></label>
+          <label className="fieldLabel">Data de vencimento<input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/></label>
+          <label className="fieldLabel">Valor (R$)<input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/></label>
+          <label className="fieldLabel">Categoria<input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/></label>
+          <label className="fieldLabel">Centro de custo<input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/></label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">{editingTitle?'Salvar alterações':'Criar fatura'}</button></div>
         </form></div></div>}
 
