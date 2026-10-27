@@ -404,5 +404,5 @@ export function generateInvoicePdf(data:InvoiceData){
   drawNotesAndConditions(doc,data,y+5)
   addFooters(doc,data)
 
-  doc.save(`cliente-${safeFilePart(data.cliente?.nome||'consumidor')}-fatura-${invoiceNo(data.fatura_numero)}.pdf`)
+  doc.save(`${safeFilePart(data.cliente?.nome||'consumidor')}-${invoiceNo(data.fatura_numero)}.pdf`)
 }
