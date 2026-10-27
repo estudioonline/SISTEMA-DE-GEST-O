@@ -17,7 +17,7 @@ import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } fro
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
-type PaymentMethod='pix'|'cartao'|'boleto'
+type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
@@ -498,7 +498,7 @@ function App(){
   function chooseProduct(key:string,id:string){const p=produtos.find(x=>x.id===id);setSaleItems(items=>items.map(i=>i.key===key?{...i,produto_id:id,valor_unitario:p?Number(p.preco_venda):0}:i))}
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
   function removeSaleItem(key:string){setSaleItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
-  function changePayment(v:PaymentMethod){setSalePayment(v);if(v==='pix')setSaleInstallments(1);if(v==='cartao')setSaleInstallments(x=>Math.min(Math.max(x,1),12));if(v==='boleto')setSaleInstallments(x=>Math.min(Math.max(x,1),24))}
+  function changePayment(v:PaymentMethod){setSalePayment(v);if(v==='dinheiro'){setSaleInstallments(1);setSaleDueDate(today())}if(v==='pix')setSaleInstallments(1);if(v==='cartao')setSaleInstallments(x=>Math.min(Math.max(x,1),12));if(v==='boleto')setSaleInstallments(x=>Math.min(Math.max(x,1),24))}
   function invoiceItems(items:SaleItemDraft[]){return items.map(i=>{const p=produtos.find(x=>x.id===i.produto_id);const d=Math.min(i.desconto,i.quantidade*i.valor_unitario);return{codigo:p?.codigo,descricao:p?.descricao||'Produto',unidade:p?.unidade||'UN',quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:d,total:Math.max(0,i.quantidade*i.valor_unitario-d)}})}
   async function saveSale(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(!session)return
@@ -1133,6 +1133,7 @@ function App(){
             </label>
             <label>Pagamento
               <select value={purchasePayment} onChange={e=>changePurchasePayment(e.target.value as PaymentMethod)} required>
+                <option value="dinheiro">Dinheiro</option>
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
                 <option value="boleto">Boleto</option>
@@ -1271,8 +1272,8 @@ function App(){
               </select>
             </label>
             <label>Parcelas
-              <select value={saleInstallments} onChange={e=>setSaleInstallments(Number(e.target.value))} disabled={salePayment==='pix'}>
-                {Array.from({length:salePayment==='pix'?1:salePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n}>{n}</option>)}
+              <select value={saleInstallments} onChange={e=>setSaleInstallments(Number(e.target.value))} disabled={salePayment==='pix'||salePayment==='dinheiro'}>
+                {Array.from({length:salePayment==='pix'||salePayment==='dinheiro'?1:salePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n}>{n}</option>)}
               </select>
             </label>
             <label>1º vencimento
@@ -1514,7 +1515,7 @@ function SearchField({value,onChange,placeholder='Pesquisar'}:{value:string;onCh
   </div>
 }
 
-function paymentLabel(v:string){return v==='pix'?'PIX':v==='cartao'?'Cartão':v==='boleto'?'Boleto':v||'—'}
+function paymentLabel(v:string){return v==='dinheiro'?'Dinheiro':v==='pix'?'PIX':v==='cartao'?'Cartão':v==='boleto'?'Boleto':v||'—'}
 
 function EditableEntityTable({title,headers,rows,readOnly=false}:{title:string;headers:string[];rows:{id:string;cells:(string|number)[];opened:boolean;onToggle:()=>void;panel:ReactNode}[];readOnly?:boolean}){
   const [query,setQuery]=useState('')
