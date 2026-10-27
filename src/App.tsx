@@ -1397,7 +1397,7 @@ function App(){
             </select>
           </label>
           <button className="ghost" onClick={()=>void loadCommissions()}><RefreshCw size={15}/>Atualizar</button>
-          <button className="primary" onClick={()=>void downloadCommissionReport()}><FileDown size={15}/>Gerar relatório PDF</button>
+          <button className="primary commissionPdfBtn" onClick={()=>void downloadCommissionReport()} title="Gerar relatório de comissões em PDF"><FileDown size={15}/>Gerar PDF</button>
         </div>
 
         {salesWithoutSeller>0&&<div className="commissionWarning">{salesWithoutSeller} venda(s) estão sem vendedor definido e não gerarão comissão até serem vinculadas a um vendedor.</div>}
