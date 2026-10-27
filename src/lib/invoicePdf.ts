@@ -44,7 +44,7 @@ export type InvoiceData = {
   desconto: number
   total: number
   observacoes?: string | null
-  forma_pagamento: 'pix' | 'cartao' | 'boleto'
+  forma_pagamento: 'dinheiro' | 'pix' | 'cartao' | 'boleto'
   parcelas: number
   primeiro_vencimento: string
   vendedor_nome?: string | null
@@ -85,7 +85,7 @@ const line:[number,number,number]=[196,205,218]
 const brl=(value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value||0)
 const num=(value:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value||0)
 const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
-const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
+const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='dinheiro'?'DINHEIRO':value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
 const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
 const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'cliente'
 
