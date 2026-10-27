@@ -91,6 +91,13 @@ function App(){
   const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
   const [profileRole,setProfileRole]=useState<PerfilRole>('vendas')
   const [msg,setMsg]=useState('')
+  const [saleNotice,setSaleNotice]=useState('')
+  useEffect(()=>{
+    if(active!=='vendas'||!msg)return
+    setSaleNotice(msg)
+    const timer=window.setTimeout(()=>setSaleNotice(''),10000)
+    return ()=>window.clearTimeout(timer)
+  },[msg,active])
   const [tableSearch,setTableSearch]=useState<Record<string,string>>({})
   const [tableSort,setTableSort]=useState<Record<string,{key:string;dir:'asc'|'desc'}>>({})
 
@@ -550,7 +557,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}resetSaleForm();setShowForm(true);setMsg('')}
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
@@ -571,6 +578,7 @@ function App(){
   async function saveSale(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(!session)return
     if(!canManageSales){setMsg('Seu perfil não tem permissão para criar ou editar vendas.');return}
+    setMsg('');setSaleNotice('')
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
     if(!saleRoute){setMsg('Selecione a rota de entrega.');return}
@@ -1408,7 +1416,7 @@ function App(){
         </div>
       </header>
 
-      {msg&&<div className="panel noticePanel">{msg}</div>}
+      {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
@@ -1664,6 +1672,7 @@ function App(){
             <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de compra" onClick={()=>{setShowForm(false);resetPurchaseForm();requestAnimationFrame(()=>document.getElementById('purchases-table')?.focus())}}><X size={18}/></button>
           </div>
 
+          {saleNotice&&<div role="alert" aria-live="assertive" style={{position:"sticky",top:0,zIndex:20,background:"#fff0f0",color:"#991b1b",border:"1px solid #fca5a5",borderRadius:10,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10,boxShadow:"0 5px 20px #00000016"}}><Ban size={20}/><span style={{flex:1}}><strong>Atenção:</strong> {saleNotice}</span><button type="button" aria-label="Fechar aviso" onClick={()=>setSaleNotice('')} style={{background:"transparent",border:"none",cursor:"pointer",color:"inherit"}}><X size={18}/></button></div>}
           <div className="saleHeader saleHeaderExpanded">
             <label>Fornecedor
               <select value={purchaseSupplier} onChange={e=>setPurchaseSupplier(e.target.value)}>
