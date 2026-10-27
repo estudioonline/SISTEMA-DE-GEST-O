@@ -152,6 +152,7 @@ function App(){
 
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
+  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'>('geral')
   const [paymentDate,setPaymentDate]=useState(today())
   const [paymentAmount,setPaymentAmount]=useState('')
 
@@ -930,6 +931,9 @@ function App(){
   const monthSales=vendas.filter(v=>{const d=new Date(v.created_at),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&v.status!=='cancelado'}).reduce((s,v)=>s+Number(v.total),0)
   const openReceivables=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   const openPayables=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const overdueTitles=titulos.filter(t=>t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0)
+  const overdueReceivables=overdueTitles.filter(t=>t.tipo==='receber').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const overduePayables=overdueTitles.filter(t=>t.tipo==='pagar').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   const saleSubtotal=saleItems.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
   const saleDiscount=saleItems.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
   const saleTotal=Math.max(0,saleSubtotal-saleDiscount)
@@ -990,11 +994,12 @@ function App(){
     </div>
   }
 
-  function financeTable(type:'receber'|'pagar'){
-    const searchKey=type==='receber'?'financeiro-receber':'financeiro-pagar'
-    const rows=titulos.filter(t=>t.tipo===type).filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||'']))
-    const groupTitle=type==='receber'?'Contas a receber':'Contas a pagar'
-    const empty=type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.'
+  function financeTable(type:'receber'|'pagar',overdueOnly=false){
+    const searchKey=(overdueOnly?'financeiro-vencidos-':'financeiro-')+(type==='receber'?'receber':'pagar')
+    const baseRows=titulos.filter(t=>t.tipo===type).filter(t=>!overdueOnly||(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0))
+    const rows=baseRows.filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||'']))
+    const groupTitle=overdueOnly?(type==='receber'?'Vencidos a receber':'Vencidos a pagar'):(type==='receber'?'Contas a receber':'Contas a pagar')
+    const empty=overdueOnly?(type==='receber'?'Nenhuma conta a receber vencida.':'Nenhuma conta a pagar vencida.'):(type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.')
     return <article className={'panel tablePanel financeGroup '+(type==='receber'?'financeReceivableGroup':'financePayableGroup')}>
       <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
       <div className="tableWrap"><table>
@@ -1005,10 +1010,10 @@ function App(){
             const opened=financePanel===t.id
             const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
             return <Fragment key={t.id}>
-              <tr>
+              <tr className={t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueRow':''}>
                 <td>{t.descricao}</td>
                 <td>{t.entidade_nome||'—'}</td>
-                <td>{dateBr(t.vencimento)}</td>
+                <td><span className={t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueDate':''}>{dateBr(t.vencimento)}</span></td>
                 <td><strong>{money(Number(t.valor))}</strong></td>
                 <td>{money(Number(t.valor_pago))}</td>
                 <td><strong>{money(balance)}</strong></td>
@@ -1525,33 +1530,53 @@ function App(){
       </section>}
 
       {active==='financeiro'&&<section className="semanticPage financePage">
-        {showForm&&<form className="panel dataForm" onSubmit={saveTitle}>
-          <select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
-            <option value="receber">Conta a receber</option>
-            <option value="pagar">Conta a pagar</option>
-          </select>
-          <input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/>
-          <input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/>
-          <input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/>
-          <input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/>
-          <input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/>
-          <input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/>
-          <div className="formActions">
-            <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button>
-            <button className="primary">Salvar</button>
+        <div className="subTabs financeSubTabs">
+          <button className={financeSubtab==='geral'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('geral');setFinancePanel(null)}}><WalletCards size={16}/>Visão geral</button>
+          <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
+        </div>
+
+        {financeSubtab==='geral'&&<>
+          {showForm&&<form className="panel dataForm" onSubmit={saveTitle}>
+            <select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
+              <option value="receber">Conta a receber</option>
+              <option value="pagar">Conta a pagar</option>
+            </select>
+            <input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/>
+            <input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/>
+            <input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/>
+            <input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/>
+            <input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/>
+            <input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/>
+            <div className="formActions">
+              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button>
+              <button className="primary">Salvar</button>
+            </div>
+          </form>}
+
+          <div className="cards compactCards semanticCards">
+            <article className="card semanticCard semanticPositive"><span>Contas a receber</span><strong>{money(openReceivables)}</strong><small>saldo em aberto</small></article>
+            <article className="card semanticCard semanticNegative"><span>Contas a pagar</span><strong>{money(openPayables)}</strong><small>saldo em aberto</small></article>
+            <article className={'card semanticCard '+(openReceivables-openPayables>=0?'semanticBlue':'semanticNegative')}><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong><small>receber - pagar</small></article>
           </div>
-        </form>}
 
-        <div className="cards compactCards semanticCards">
-          <article className="card semanticCard semanticPositive"><span>Contas a receber</span><strong>{money(openReceivables)}</strong><small>saldo em aberto</small></article>
-          <article className="card semanticCard semanticNegative"><span>Contas a pagar</span><strong>{money(openPayables)}</strong><small>saldo em aberto</small></article>
-          <article className={'card semanticCard '+(openReceivables-openPayables>=0?'semanticBlue':'semanticNegative')}><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong><small>receber - pagar</small></article>
-        </div>
+          <div className="financeGroups">
+            {financeTable('receber')}
+            {financeTable('pagar')}
+          </div>
+        </>}
 
-        <div className="financeGroups">
-          {financeTable('receber')}
-          {financeTable('pagar')}
-        </div>
+        {financeSubtab==='vencidos'&&<>
+          <div className="cards compactCards semanticCards overdueCards">
+            <article className="card semanticCard semanticNegative"><span>Vencidos a receber</span><strong>{money(overdueReceivables)}</strong><small>{overdueTitles.filter(t=>t.tipo==='receber').length} título(s)</small></article>
+            <article className="card semanticCard semanticNegative"><span>Vencidos a pagar</span><strong>{money(overduePayables)}</strong><small>{overdueTitles.filter(t=>t.tipo==='pagar').length} título(s)</small></article>
+            <article className="card semanticCard semanticWarning"><span>Total vencido</span><strong>{money(overdueReceivables+overduePayables)}</strong><small>{overdueTitles.length} título(s) em atraso</small></article>
+          </div>
+
+          <div className="financeGroups">
+            {financeTable('receber',true)}
+            {financeTable('pagar',true)}
+          </div>
+        </>}
       </section>}
 
       {active==='relatorios'&&<section className="semanticPage reportsPage">
