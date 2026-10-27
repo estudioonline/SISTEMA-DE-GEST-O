@@ -1084,6 +1084,31 @@ function App(){
   const monthSales=vendas.filter(v=>{const d=new Date(v.created_at),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&v.status!=='cancelado'}).reduce((s,v)=>s+Number(v.total),0)
   const openReceivables=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   const openPayables=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+
+  const dashboardSalesMonths=Array.from({length:6},(_,idx)=>{
+    const d=new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth()-(5-idx))
+    const year=d.getFullYear(),month=d.getMonth()
+    const total=vendas.filter(v=>{
+      const vd=new Date(v.created_at)
+      return v.status!=='cancelado'&&vd.getFullYear()===year&&vd.getMonth()===month
+    }).reduce((s,v)=>s+Number(v.total),0)
+    return {label:d.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''),total}
+  })
+  const dashboardSalesMax=Math.max(1,...dashboardSalesMonths.map(m=>m.total))
+  const dashboardStatusData=[
+    {label:'Orçamentos',value:vendas.filter(v=>v.status==='orcamento').length,key:'quote'},
+    {label:'Pedidos',value:vendas.filter(v=>v.status==='pedido').length,key:'order'},
+    {label:'Faturadas',value:vendas.filter(v=>v.status==='faturado').length,key:'billed'},
+    {label:'Canceladas',value:vendas.filter(v=>v.status==='cancelado').length,key:'cancelled'}
+  ]
+  const dashboardStatusMax=Math.max(1,...dashboardStatusData.map(s=>s.value))
+  const dashboardFinanceData=[
+    {label:'A receber',value:openReceivables,key:'in'},
+    {label:'A pagar',value:openPayables,key:'out'}
+  ]
+  const dashboardFinanceMax=Math.max(1,...dashboardFinanceData.map(i=>i.value))
   const overdueTitles=titulos.filter(t=>t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0)
   const overdueReceivables=overdueTitles.filter(t=>t.tipo==='receber').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   const overduePayables=overdueTitles.filter(t=>t.tipo==='pagar').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
@@ -1301,6 +1326,48 @@ function App(){
           <article className="card dashboardCard"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('clientes');if(clientes.length===0&&!isViewer)startNewClient()}}>{clientes.length===0&&!isViewer?'+ Adicionar Cliente':'Gerenciar'}</button></article>
           <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('fornecedores');if(fornecedores.length===0&&!isViewer)startNewSupplier()}}>{fornecedores.length===0&&!isViewer?'+ Adicionar Fornecedor':'Gerenciar'}</button></article>
           <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>{setActive('produtos');if(produtos.length===0&&!isViewer)startNewProduct()}}>{produtos.length===0&&!isViewer?'+ Adicionar Produto':'Gerenciar'}</button></article>
+        </div>
+
+        <div className={canViewFinance?'dashboardCharts dashboardChartsThree':'dashboardCharts'}>
+          <article className="panel dashboardChart">
+            <div className="dashboardChartHead">
+              <div><span>Desempenho</span><h3>Vendas nos últimos 6 meses</h3></div>
+              <strong>{money(dashboardSalesMonths.reduce((s,m)=>s+m.total,0))}</strong>
+            </div>
+            <div className="dashboardBarChart" aria-label="Gráfico de vendas dos últimos seis meses">
+              {dashboardSalesMonths.map(m=><div className="dashboardBarColumn" key={m.label}>
+                <div className="dashboardBarValue">{m.total>0?money(m.total):'R$ 0'}</div>
+                <div className="dashboardBarTrack"><span className="dashboardBar dashboardBarSales" style={{height:`${Math.max(m.total>0?8:2,(m.total/dashboardSalesMax)*100)}%`}}></span></div>
+                <small>{m.label}</small>
+              </div>)}
+            </div>
+          </article>
+
+          <article className="panel dashboardChart">
+            <div className="dashboardChartHead">
+              <div><span>Operação</span><h3>Status das vendas</h3></div>
+              <strong>{vendas.length}</strong>
+            </div>
+            <div className="dashboardHorizontalChart">
+              {dashboardStatusData.map(item=><div className="dashboardHorizontalRow" key={item.key}>
+                <div className="dashboardHorizontalLabel"><span>{item.label}</span><strong>{item.value}</strong></div>
+                <div className="dashboardHorizontalTrack"><span className={`dashboardHorizontalFill status-${item.key}`} style={{width:`${(item.value/dashboardStatusMax)*100}%`}}></span></div>
+              </div>)}
+            </div>
+          </article>
+
+          {canViewFinance&&<article className="panel dashboardChart">
+            <div className="dashboardChartHead">
+              <div><span>Financeiro</span><h3>Valores em aberto</h3></div>
+            </div>
+            <div className="dashboardFinanceChart">
+              {dashboardFinanceData.map(item=><div className="dashboardFinanceColumn" key={item.key}>
+                <strong>{money(item.value)}</strong>
+                <div className="dashboardFinanceTrack"><span className={`dashboardFinanceFill finance-${item.key}`} style={{height:`${Math.max(item.value>0?8:2,(item.value/dashboardFinanceMax)*100)}%`}}></span></div>
+                <small>{item.label}</small>
+              </div>)}
+            </div>
+          </article>}
         </div>
       </section>}
 
