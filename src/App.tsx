@@ -1370,7 +1370,7 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':'Novo'}</button>}
+          {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':active==='compras'?'Nova compra':'Novo'}</button>}
           {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
@@ -1572,12 +1572,13 @@ function App(){
           </table></div>}
         </article>
 
-        {showForm&&<form className="panel saleForm purchaseForm" onSubmit={savePurchase}>
-          <div className="formTitle">
+        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingPurchase?'Editar compra':'Nova compra'}><div className="saleModalShell"><form className="panel saleForm purchaseForm saleModalForm" onSubmit={savePurchase}>
+          <div className="formTitle saleModalTitle">
             <div>
-              <h3>{editingPurchase?`Editar fatura de compra ${invoiceNo(editingPurchase.fatura_numero)}`:'Nova compra / conta a pagar'}</h3>
+              <h3>{editingPurchase?`Editar compra ${invoiceNo(editingPurchase.fatura_numero)}`:'Nova compra'}</h3>
               <p>Cotação não gera financeiro nem estoque. Pedido aprovado confirma a fatura e gera contas a pagar. Pedido recebido lança a entrada no estoque.</p>
             </div>
+            <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de compra" onClick={()=>{setShowForm(false);resetPurchaseForm();requestAnimationFrame(()=>document.getElementById('purchases-table')?.focus())}}><X size={18}/></button>
           </div>
 
           <div className="saleHeader saleHeaderExpanded">
@@ -1659,12 +1660,12 @@ function App(){
           </div>
 
           <div className="saleActions">
-            <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetPurchaseForm()}}>Cancelar</button>
-            <button className="primary" disabled={savingPurchase}>{savingPurchase?'Salvando...':editingPurchase?'Salvar e recalcular contas a pagar':'Salvar compra e gerar fatura'}</button>
+            <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetPurchaseForm();requestAnimationFrame(()=>document.getElementById('purchases-table')?.focus())}}>Cancelar</button>
+            <button className="primary" disabled={savingPurchase}>{savingPurchase?'Salvando...':purchaseStatus==='cotacao'?'Salvar cotação':purchaseStatus==='pedido_aprovado'?'Aprovar pedido':'Receber pedido'}</button>
           </div>
-        </form>}
+        </form></div></div>}
 
-        <article className="panel tablePanel purchasesTable">
+        <article id="purchases-table" tabIndex={-1} className="panel tablePanel purchasesTable">
           <div className="panelHead"><h3>Cotações, pedidos e compras</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fatura')}>Fatura{sortMark('compras','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','data')}>Data{sortMark('compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fornecedor')}>Fornecedor{sortMark('compras','fornecedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','status')}>Status{sortMark('compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','pagamento')}>Pagamento{sortMark('compras','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','total')}>Total{sortMark('compras','total')}</button></th><th>Gerenciar</th></tr></thead>
