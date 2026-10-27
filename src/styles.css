@@ -1438,3 +1438,17 @@
   .movementTotals{display:grid;grid-template-columns:1fr 1fr}
   .movementTotal{min-width:0}
 }
+
+.iconOnlyProof{
+  width:40px;
+  min-width:40px;
+  height:40px;
+  padding:0!important;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+}
+.iconOnlyProof svg{
+  margin:0;
+}
