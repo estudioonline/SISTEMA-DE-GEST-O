@@ -49,6 +49,7 @@ const today=()=>new Date().toISOString().slice(0,10)
 const dateBr=(v:string)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v.length===10?v+'T12:00:00':v)):'—'
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const deliveryRouteLabel=(v:string|null|undefined)=>v==='norte'?'Norte':v==='sul'?'Sul':v==='leste'?'Leste':v==='interestadual'?'Interestadual':v==='retirada'?'Retirada':'—'
+const purchaseStatusLabel=(v:string|null|undefined)=>v==='cotacao'?'Cotação':v==='pedido_aprovado'?'Pedido aprovado':v==='pedido_recebido'?'Pedido recebido':v==='cancelada'?'Cancelada':String(v||'—')
 const profileLabel=(v:PerfilRole)=>v==='administrador'?'Administrador':v==='financeiro'?'Financeiro':v==='vendas'?'Vendedor':v==='visualizador'?'Usuário normal':'Estoque'
 const onlyDigits=(value:string,max:number)=>value.replace(/\D/g,'').slice(0,max)
 const maskDocument=(value:string)=>{
@@ -147,7 +148,7 @@ function App(){
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
   const [purchasePanel,setPurchasePanel]=useState<string|null>(null)
   const [purchaseSupplier,setPurchaseSupplier]=useState('')
-  const [purchaseStatus,setPurchaseStatus]=useState('aberta')
+  const [purchaseStatus,setPurchaseStatus]=useState('cotacao')
   const [purchaseNotes,setPurchaseNotes]=useState('')
   const [purchasePayment,setPurchasePayment]=useState<PurchasePaymentMethod>('pix')
   const [purchaseInstallments,setPurchaseInstallments]=useState(1)
@@ -682,7 +683,7 @@ function App(){
   async function deleteSale(v:Venda){if(!isAdmin){setMsg('Somente administrador pode excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
 
   // COMPRAS
-  function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('aberta');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
+  function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('cotacao');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
   function startNewPurchase(){resetPurchaseForm();setShowForm(true);setMsg('')}
   function addPurchaseSuggestion(produto:Produto,quantidade:number){
     const qty=Math.max(0.001,Number(quantidade)||0)
@@ -806,26 +807,34 @@ function App(){
     const total=items.reduce((s,i)=>s+(i.quantidade*i.custo_unitario),0)
     const fornecedor=fornecedores.find(f=>f.id===purchaseSupplier)||null
 
-    try{
-      generatePurchaseInvoicePdf({
-        id:saved.id,
-        fatura_numero:saved.fatura_numero,
-        created_at:saved.created_at||new Date().toISOString(),
-        status:saved.status,
-        total,
-        observacoes:purchaseNotes||null,
-        forma_pagamento:purchasePayment,
-        parcelas:purchaseInstallments,
-        primeiro_vencimento:purchaseInstallmentDates[0]||purchaseDueDate,
-        vencimentos_parcelas:purchaseInstallmentDates,
-        fornecedor,
-        company:empresa||undefined,
-        items:purchasePdfItems(items)
-      })
-      await supabase.from('compras').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
-      setMsg(editingPurchase?'Compra atualizada, contas a pagar recalculadas e PDF reemitido.':'Compra criada, contas a pagar geradas e PDF emitido.')
-    }catch{
-      setMsg('Compra salva e contas a pagar geradas. O PDF pode ser reemitido pelo painel.')
+    if(saved.status==='cotacao'){
+      setMsg(editingPurchase?'Cotação atualizada com sucesso. Sem financeiro e sem movimentação de estoque.':'Cotação salva com sucesso. Sem financeiro e sem movimentação de estoque.')
+    }else{
+      try{
+        generatePurchaseInvoicePdf({
+          id:saved.id,
+          fatura_numero:saved.fatura_numero,
+          created_at:saved.created_at||new Date().toISOString(),
+          status:purchaseStatusLabel(saved.status),
+          total,
+          observacoes:purchaseNotes||null,
+          forma_pagamento:purchasePayment,
+          parcelas:purchaseInstallments,
+          primeiro_vencimento:purchaseInstallmentDates[0]||purchaseDueDate,
+          vencimentos_parcelas:purchaseInstallmentDates,
+          fornecedor,
+          company:empresa||undefined,
+          items:purchasePdfItems(items)
+        })
+        await supabase.from('compras').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
+        setMsg(saved.status==='pedido_recebido'
+          ? 'Pedido recebido. Estoque atualizado e fatura mantida.'
+          : 'Pedido aprovado. Fatura confirmada e contas a pagar geradas. Estoque ainda não foi alterado.')
+      }catch{
+        setMsg(saved.status==='pedido_recebido'
+          ? 'Pedido recebido e estoque atualizado. O PDF pode ser reemitido pelo painel.'
+          : 'Pedido aprovado e contas a pagar geradas. O PDF pode ser reemitido pelo painel.')
+      }
     }
 
     setSavingPurchase(false)
@@ -849,7 +858,7 @@ function App(){
         id:compra.id,
         fatura_numero:compra.fatura_numero,
         created_at:compra.created_at,
-        status:compra.status,
+        status:purchaseStatusLabel(compra.status),
         total:Number(compra.total),
         observacoes:compra.observacoes,
         forma_pagamento:compra.forma_pagamento,
@@ -875,7 +884,17 @@ function App(){
       setMsg('Não foi possível gerar o PDF desta compra.')
     }
   }
-  async function cancelPurchase(c:Compra){if(c.status==='cancelada'||!window.confirm('Cancelar esta compra? O estoque será estornado e as contas a pagar em aberto serão canceladas.'))return;const r=await supabase.from('compras').update({status:'cancelada'}).eq('id',c.id);setMsg(r.error?r.error.message:'Compra cancelada, estoque estornado e contas a pagar canceladas.');if(!r.error){setPurchasePanel(null);await loadData()}}
+  async function cancelPurchase(c:Compra){
+    const detail=c.status==='pedido_recebido'
+      ? 'O estoque será estornado e as contas a pagar em aberto serão canceladas.'
+      : c.status==='pedido_aprovado'
+        ? 'As contas a pagar em aberto serão canceladas. O estoque não será alterado.'
+        : 'A cotação será cancelada sem alterar financeiro ou estoque.'
+    if(c.status==='cancelada'||!window.confirm(`Cancelar esta compra? ${detail}`))return
+    const r=await supabase.from('compras').update({status:'cancelada'}).eq('id',c.id)
+    setMsg(r.error?r.error.message:c.status==='pedido_recebido'?'Pedido cancelado, estoque estornado e contas a pagar em aberto canceladas.':c.status==='pedido_aprovado'?'Pedido cancelado e contas a pagar em aberto canceladas.':'Cotação cancelada.')
+    if(!r.error){setPurchasePanel(null);await loadData()}
+  }
   async function deletePurchase(c:Compra){if(!isAdmin){setMsg('Somente administrador pode excluir compra.');return}if(!window.confirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
 
   // FINANCEIRO
@@ -1557,7 +1576,7 @@ function App(){
           <div className="formTitle">
             <div>
               <h3>{editingPurchase?`Editar fatura de compra ${invoiceNo(editingPurchase.fatura_numero)}`:'Nova compra / conta a pagar'}</h3>
-              <p>Forma de pagamento e vencimento são obrigatórios. Compras recebidas entram automaticamente no estoque.</p>
+              <p>Cotação não gera financeiro nem estoque. Pedido aprovado confirma a fatura e gera contas a pagar. Pedido recebido lança a entrada no estoque.</p>
             </div>
           </div>
 
@@ -1570,8 +1589,9 @@ function App(){
             </label>
             <label>Status
               <select value={purchaseStatus} onChange={e=>setPurchaseStatus(e.target.value)}>
-                <option value="aberta">Aberta</option>
-                <option value="recebida">Recebida</option>
+                <option value="cotacao" disabled={editingPurchase?.status==='pedido_aprovado'||editingPurchase?.status==='pedido_recebido'}>Cotação</option>
+                <option value="pedido_aprovado" disabled={editingPurchase?.status==='pedido_recebido'}>Pedido aprovado</option>
+                <option value="pedido_recebido">Pedido recebido</option>
               </select>
             </label>
             <label>Pagamento
@@ -1591,9 +1611,11 @@ function App(){
             </label>
           </div>
 
-          <div className="paymentNotice purchasePaymentNotice">
-            <strong>Fatura de compra a pagar</strong>
-            <span>{paymentLabel(purchasePayment)} • {purchaseInstallments}x • vencimentos personalizados</span>
+          <div className={`paymentNotice purchasePaymentNotice purchaseStageNotice purchaseStage-${purchaseStatus}`}>
+            <strong>{purchaseStatus==='cotacao'?'Cotação — sem contas a pagar':purchaseStatus==='pedido_aprovado'?'Pedido aprovado — fatura confirmada':'Pedido recebido — estoque será atualizado'}</strong>
+            <span>{purchaseStatus==='cotacao'
+              ? 'O financeiro e o estoque permanecem inalterados.'
+              : `${paymentLabel(purchasePayment)} • ${purchaseInstallments}x • vencimentos personalizados${purchaseStatus==='pedido_aprovado'?' • sem entrada no estoque':' • entrada no estoque ao salvar'}`}</span>
           </div>
 
           <div className="panel installmentDatesPanel">
@@ -1643,7 +1665,7 @@ function App(){
         </form>}
 
         <article className="panel tablePanel purchasesTable">
-          <div className="panelHead"><h3>Compras e contas a pagar</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
+          <div className="panelHead"><h3>Cotações, pedidos e compras</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fatura')}>Fatura{sortMark('compras','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','data')}>Data{sortMark('compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fornecedor')}>Fornecedor{sortMark('compras','fornecedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','status')}>Status{sortMark('compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','pagamento')}>Pagamento{sortMark('compras','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','total')}>Total{sortMark('compras','total')}</button></th><th>Gerenciar</th></tr></thead>
             <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={compras.length===0&&!isViewer?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
@@ -1654,7 +1676,7 @@ function App(){
                   <td><strong>#{invoiceNo(c.fatura_numero)}</strong></td>
                   <td>{new Date(c.created_at).toLocaleString('pt-BR')}</td>
                   <td>{f?.nome||'Sem fornecedor'}</td>
-                  <td><span className={`statusBadge status-${c.status==='recebida'?'faturado':c.status==='cancelada'?'cancelado':'pedido'}`}>{c.status}</span></td>
+                  <td><span className={`statusBadge status-${c.status==='pedido_recebido'?'faturado':c.status==='cancelada'?'cancelado':c.status==='pedido_aprovado'?'pedido':'orcamento'}`}>{purchaseStatusLabel(c.status)}</span></td>
                   <td>{paymentLabel(c.forma_pagamento)} {Number(c.parcelas)>1?`• ${c.parcelas}x`:''}</td>
                   <td><strong>{money(Number(c.total))}</strong></td>
                   <td><button className="rowMenuBtn" onClick={()=>setPurchasePanel(opened?null:c.id)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></td>
@@ -1663,7 +1685,7 @@ function App(){
                   <div className="invoiceManagePanel">
                     <div className="actionPanel">
                       <div className="actionMeta">
-                        <strong>Fatura de compra #{invoiceNo(c.fatura_numero)}</strong>
+                        <strong>{c.status==='cotacao'?'Cotação':'Fatura de compra'} #{invoiceNo(c.fatura_numero)}</strong>
                         <span>{f?.nome||'Sem fornecedor'} • {paymentLabel(c.forma_pagamento)} • {c.parcelas}x • vencimentos individuais</span>
                       </div>
                       <div className="rowActions">
