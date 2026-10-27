@@ -202,14 +202,22 @@ function App(){
       return
     }
 
-    const rows=(data||[]) as CommissionReportRow[]
+    const allRows=(data||[]) as CommissionReportRow[]
+    const rows=commissionReportSeller==='todos'
+      ? allRows
+      : allRows.filter(r=>r.vendedor_id===commissionReportSeller)
+    const sellerName=commissionReportSeller==='todos'
+      ? null
+      : vendedores.find(v=>v.id===commissionReportSeller)?.nome||'Vendedor'
+
     generateCommissionReportPdf({
       inicio:commissionStart,
       fim:commissionEnd,
       company:empresa,
+      vendedorFiltro:sellerName,
       rows
     })
-    setMsg(`Relatório PDF gerado com ${rows.length} recebimento(s) apurado(s).`)
+    setMsg(`Relatório PDF gerado para ${sellerName||'todos os vendedores'} com ${rows.length} recebimento(s) apurado(s).`)
   }
 
   function startNewSeller(){
@@ -1314,6 +1322,12 @@ function App(){
           <div><strong>Período de recebimentos</strong><span>A comissão considera somente valores efetivamente recebidos entre as datas abaixo.</span></div>
           <label>De<input type="date" value={commissionStart} onChange={e=>setCommissionStart(e.target.value)}/></label>
           <label>Até<input type="date" value={commissionEnd} onChange={e=>setCommissionEnd(e.target.value)}/></label>
+          <label>Relatório de
+            <select value={commissionReportSeller} onChange={e=>setCommissionReportSeller(e.target.value)}>
+              <option value="todos">Todos os vendedores</option>
+              {vendedores.map(v=><option key={v.id} value={v.id}>{v.nome}{v.ativo?'':' (inativo)'}</option>)}
+            </select>
+          </label>
           <button className="ghost" onClick={()=>void loadCommissions()}><RefreshCw size={15}/>Atualizar</button>
           <button className="primary" onClick={()=>void downloadCommissionReport()}><FileDown size={15}/>Gerar relatório PDF</button>
         </div>
