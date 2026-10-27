@@ -2162,3 +2162,49 @@
     width:100%;
   }
 }
+
+
+/* Modal de cadastro/edição de produtos */
+.productModalShell{
+  width:min(860px,100%);
+}
+.productModalForm{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.productModalForm .formTitle,
+.productModalForm .formActions{
+  grid-column:1/-1;
+}
+.productModalForm .formTitle{
+  align-items:flex-start;
+}
+.productModalForm .formTitle h3{
+  margin:0 0 4px;
+}
+.productModalForm .formTitle p{
+  margin:0;
+  color:#64748b;
+  font-size:13px;
+}
+.productModalForm .fieldLabel{
+  min-width:0;
+}
+.productModalForm .fieldLabel input,
+.productModalForm .fieldLabel select{
+  width:100%;
+}
+.dark .productModalForm .formTitle p,
+.dark .productModalForm .fieldLabel{
+  color:#9aa8bb;
+}
+@media(max-width:680px){
+  .productModalForm{
+    grid-template-columns:1fr;
+  }
+  .productModalForm .formTitle,
+  .productModalForm .formActions{
+    grid-column:auto;
+  }
+}
