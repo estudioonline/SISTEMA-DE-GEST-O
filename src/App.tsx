@@ -33,6 +33,7 @@ type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:stri
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
 type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
 type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string}
+type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number;referencia:string|null;created_at:string}
 
 const menu=[
   ['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
@@ -74,6 +75,7 @@ function App(){
   const [vendedores,setVendedores]=useState<Vendedor[]>([])
   const [comprovantes,setComprovantes]=useState<Comprovante[]>([])
   const [comissoes,setComissoes]=useState<ComissaoResumo[]>([])
+  const [movimentosEstoque,setMovimentosEstoque]=useState<MovimentoEstoque[]>([])
 
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
@@ -93,6 +95,7 @@ function App(){
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
   const [stockReason,setStockReason]=useState('Ajuste manual')
+  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'>('cadastro')
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
@@ -127,6 +130,7 @@ function App(){
   const [sellerPanel,setSellerPanel]=useState<string|null>(null)
   const [commissionStart,setCommissionStart]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10))
   const [commissionEnd,setCommissionEnd]=useState(today())
+  const [commissionReportSeller,setCommissionReportSeller]=useState('todos')
 
   const [reportStart,setReportStart]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10))
   const [reportEnd,setReportEnd]=useState(today())
@@ -152,7 +156,7 @@ function App(){
 
   async function loadData(){
     if(!session)return
-    const [c,f,p,v,cp,t,ec,pr,vd,cv]=await Promise.all([
+    const [c,f,p,v,cp,t,ec,pr,vd,cv,me]=await Promise.all([
       supabase.from('clientes').select('*').order('nome'),
       supabase.from('fornecedores').select('*').order('nome'),
       supabase.from('produtos').select('*').order('descricao'),
@@ -162,7 +166,8 @@ function App(){
       supabase.from('empresa_config').select('*').eq('id',1).maybeSingle(),
       supabase.from('profiles').select('perfil').eq('id',session.user.id).maybeSingle(),
       supabase.from('vendedores').select('*').order('nome'),
-      supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).limit(500)
+      supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).limit(500),
+      supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).limit(1000)
     ])
     if(!c.error)setClientes((c.data||[]) as Cliente[])
     if(!f.error)setFornecedores((f.data||[]) as Fornecedor[])
@@ -174,6 +179,7 @@ function App(){
     if(!pr.error&&pr.data?.perfil)setProfileRole(pr.data.perfil as PerfilRole)
     if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
+    if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
   }
 
   async function loadCommissions(){
