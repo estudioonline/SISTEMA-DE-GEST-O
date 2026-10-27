@@ -18,6 +18,7 @@ import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } fro
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
 type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
+type PurchasePaymentMethod='pix'|'cartao'|'boleto'
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
@@ -25,7 +26,7 @@ type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:numb
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
-type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null}
+type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
 type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
@@ -114,7 +115,7 @@ function App(){
   const [purchaseSupplier,setPurchaseSupplier]=useState('')
   const [purchaseStatus,setPurchaseStatus]=useState('aberta')
   const [purchaseNotes,setPurchaseNotes]=useState('')
-  const [purchasePayment,setPurchasePayment]=useState<PaymentMethod>('pix')
+  const [purchasePayment,setPurchasePayment]=useState<PurchasePaymentMethod>('pix')
   const [purchaseInstallments,setPurchaseInstallments]=useState(1)
   const [purchaseDueDate,setPurchaseDueDate]=useState(today())
   const [purchaseInstallmentDates,setPurchaseInstallmentDates]=useState<string[]>([today()])
@@ -551,7 +552,7 @@ function App(){
     setPurchaseInstallmentDates(prev=>Array.from({length:count},(_,i)=>prev[i]||addMonthsIso(base,i)))
   }
 
-  function changePurchasePayment(v:PaymentMethod){
+  function changePurchasePayment(v:PurchasePaymentMethod){
     setPurchasePayment(v)
     if(v==='pix')resizePurchaseDates(1)
     if(v==='cartao')resizePurchaseDates(Math.min(Math.max(purchaseInstallments,1),12))
@@ -1132,7 +1133,7 @@ function App(){
               </select>
             </label>
             <label>Pagamento
-              <select value={purchasePayment} onChange={e=>changePurchasePayment(e.target.value as PaymentMethod)} required>
+              <select value={purchasePayment} onChange={e=>changePurchasePayment(e.target.value as PurchasePaymentMethod)} required>
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
                 <option value="boleto">Boleto</option>
