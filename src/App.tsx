@@ -1122,7 +1122,7 @@ function App(){
                     <label>Valor<input type="number" min="0.01" step="0.01" max={balance} value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)}/></label>
                     {(t.venda_id||t.compra_id)&&<label className="ghost proofUpload paymentProofUpload"><Paperclip size={15}/>Anexar comprovante<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id),e)}/></label>}
                     <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
-                  </div>
+                  </div>}
                   {(t.venda_id||t.compra_id)&&proofsFor(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id)).length>0&&<div className="financeProofSummary">
                     <Paperclip size={14}/><span>{proofsFor(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id)).length} comprovante(s) anexado(s)</span>
                   </div>}
