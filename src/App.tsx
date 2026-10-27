@@ -157,8 +157,7 @@ function App(){
 
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
-  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'>('geral')
-  const [financeDueFilters,setFinanceDueFilters]=useState<Record<string,{from:string;to:string}>>({})
+  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'>('geral')
   const [paymentDate,setPaymentDate]=useState(today())
   const [paymentAmount,setPaymentAmount]=useState('')
 
@@ -1076,26 +1075,16 @@ function App(){
 
   function financeTable(type:'receber'|'pagar',overdueOnly=false){
     const searchKey=(overdueOnly?'financeiro-vencidos-':'financeiro-')+(type==='receber'?'receber':'pagar')
-    const dueFilter=financeDueFilters[searchKey]||{from:'',to:''}
     const baseRows=titulos
       .filter(t=>t.tipo===type)
       .filter(t=>!overdueOnly||(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0))
-      .filter(t=>(!dueFilter.from||t.vencimento>=dueFilter.from)&&(!dueFilter.to||t.vencimento<=dueFilter.to))
     const rows=sortList(searchKey,baseRows.filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||''])),{
       descricao:t=>t.descricao,entidade:t=>t.entidade_nome||'',vencimento:t=>t.vencimento,valor:t=>Number(t.valor),pago:t=>Number(t.valor_pago),saldo:t=>Math.max(0,Number(t.valor)-Number(t.valor_pago)),status:t=>t.status
     })
     const groupTitle=overdueOnly?(type==='receber'?'Vencidos a receber':'Vencidos a pagar'):(type==='receber'?'Contas a receber':'Contas a pagar')
     const empty=overdueOnly?(type==='receber'?'Nenhuma conta a receber vencida.':'Nenhuma conta a pagar vencida.'):(type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.')
     return <article className={'panel tablePanel financeGroup '+(type==='receber'?'financeReceivableGroup':'financePayableGroup')}>
-      <div className="panelHead financePanelHead">
-        <div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div>
-        <div className="financeDueToolbar">
-          <label>Vencimento de<input type="date" value={dueFilter.from} onChange={e=>setFinanceDueFilters(prev=>({...prev,[searchKey]:{...dueFilter,from:e.target.value}}))}/></label>
-          <label>Até<input type="date" value={dueFilter.to} onChange={e=>setFinanceDueFilters(prev=>({...prev,[searchKey]:{...dueFilter,to:e.target.value}}))}/></label>
-          {(dueFilter.from||dueFilter.to)&&<button type="button" className="ghost financeClearFilter" onClick={()=>setFinanceDueFilters(prev=>({...prev,[searchKey]:{from:'',to:''}}))}>Limpar</button>}
-          <SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/>
-        </div>
-      </div>
+      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
       <div className="tableWrap"><table>
         <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'descricao')}>Descrição{sortMark(searchKey,'descricao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'entidade')}>Cliente / Fornecedor{sortMark(searchKey,'entidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'vencimento')}>Vencimento{sortMark(searchKey,'vencimento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'valor')}>Valor{sortMark(searchKey,'valor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'pago')}>{type==='receber'?'Recebido':'Pago'}{sortMark(searchKey,'pago')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'saldo')}>Saldo{sortMark(searchKey,'saldo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'status')}>Status{sortMark(searchKey,'status')}</button></th><th>Gerenciar</th></tr></thead>
         <tbody>
@@ -1656,6 +1645,8 @@ function App(){
         <div className="subTabs financeSubTabs">
           <button className={financeSubtab==='geral'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('geral');setFinancePanel(null)}}><WalletCards size={16}/>Visão geral</button>
           <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
+          <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount">{titulos.filter(t=>t.tipo==='receber').length}</span></button>
+          <button className={financeSubtab==='pagar'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('pagar');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Contas a pagar <span className="subTabCount">{titulos.filter(t=>t.tipo==='pagar').length}</span></button>
         </div>
 
         {financeSubtab==='geral'&&<>
@@ -1700,6 +1691,14 @@ function App(){
             {financeTable('pagar',true)}
           </div>
         </>}
+
+        {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">
+          {financeTable('receber')}
+        </div>}
+
+        {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">
+          {financeTable('pagar')}
+        </div>}
       </section>}
 
       {active==='relatorios'&&<section className="semanticPage reportsPage">
