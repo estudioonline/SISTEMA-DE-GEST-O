@@ -38,9 +38,9 @@ type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_p
 type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number;referencia:string|null;created_at:string}
 
 const menu=[
-  ['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
+  ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['vendas','Vendas',ReceiptText],['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
+  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
