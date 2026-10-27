@@ -49,6 +49,7 @@ const today=()=>new Date().toISOString().slice(0,10)
 const dateBr=(v:string)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v.length===10?v+'T12:00:00':v)):'—'
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const deliveryRouteLabel=(v:string|null|undefined)=>v==='norte'?'Norte':v==='sul'?'Sul':v==='leste'?'Leste':v==='interestadual'?'Interestadual':v==='retirada'?'Retirada':'—'
+const profileLabel=(v:PerfilRole)=>v==='administrador'?'Administrador':v==='financeiro'?'Financeiro':v==='vendas'?'Vendedor':v==='visualizador'?'Usuário normal':'Estoque'
 const onlyDigits=(value:string,max:number)=>value.replace(/\D/g,'').slice(0,max)
 const maskDocument=(value:string)=>{
   const d=onlyDigits(value,14)
@@ -1236,7 +1237,7 @@ function App(){
       <button className="sidebarToggle" onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed?'Expandir menu':'Recolher menu'} aria-label={sidebarCollapsed?'Expandir menu lateral':'Recolher menu lateral'}>{sidebarCollapsed?<ChevronRight size={17}/>:<ChevronLeft size={17}/>}</button>
       <div className="brand"><div className="brandMark">SG</div><div className="brandText"><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div></div>
       <nav>{visibleMenu.map(([k,l,I])=><button key={k} title={l} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>)}</nav>
-      <div className="sidebarFooter"><span>{session.user.email}</span><small>{profileRole}</small><button className="navItem" title="Sair" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
+      <div className="sidebarFooter"><span>{session.user.email}</span><small>{profileLabel(profileRole)}</small><button className="navItem" title="Sair" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
     </aside>
 
     <main className="main">
@@ -1257,8 +1258,8 @@ function App(){
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
           <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
-          <article className="card dashboardCard dashboardCardReceivable"><span>A receber</span><strong>{money(openReceivables)}</strong><small>em aberto</small></article>
-          <article className="card dashboardCard dashboardCardPayable"><span>A pagar</span><strong>{money(openPayables)}</strong><small>em aberto</small></article>
+          {canViewFinance&&<article className="card dashboardCard dashboardCardReceivable"><span>A receber</span><strong>{money(openReceivables)}</strong><small>em aberto</small></article>}
+          {canViewFinance&&<article className="card dashboardCard dashboardCardPayable"><span>A pagar</span><strong>{money(openPayables)}</strong><small>em aberto</small></article>}
           <article className="card dashboardCard dashboardCardLowStock"><span>Estoque baixo</span><strong>{low}</strong><small>de {produtos.filter(p=>p.ativo).length} produtos ativos</small></article>
         </div>
         <div className="cards compactCards dashboardCards">
