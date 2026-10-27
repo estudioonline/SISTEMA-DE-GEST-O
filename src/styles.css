@@ -2079,3 +2079,11 @@
     text-align:left;
   }
 }
+
+.purchaseStageNotice{transition:border-color .2s ease,background .2s ease}
+.purchaseStage-cotacao{background:#fff8e6!important;border-color:#f5c66a!important;color:#8a5a00!important}
+.purchaseStage-pedido_aprovado{background:#eef5ff!important;border-color:#9fc2ff!important;color:#1d4f91!important}
+.purchaseStage-pedido_recebido{background:#ecfdf3!important;border-color:#86efac!important;color:#166534!important}
+.dark .purchaseStage-cotacao{background:#3a2a0b!important;border-color:#6b4e12!important;color:#fde68a!important}
+.dark .purchaseStage-pedido_aprovado{background:#172554!important;border-color:#315b9c!important;color:#bfdbfe!important}
+.dark .purchaseStage-pedido_recebido{background:#123524!important;border-color:#276749!important;color:#bbf7d0!important}
