@@ -1013,17 +1013,17 @@ function App(){
         </div>
       </section>}
 
-      {active==='clientes'&&<section>
+      {active==='clientes'&&<section className="semanticPage clientsPage">
         {showForm&&<form className="panel dataForm" onSubmit={saveClient}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/><input name="documento" placeholder="CPF / CNPJ" defaultValue={editingClient?.documento||''}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/><input name="telefone" placeholder="Telefone" defaultValue={editingClient?.telefone||''}/><input name="limite_credito" type="number" step="0.01" placeholder="Limite de crédito" defaultValue={editingClient?.limite_credito||0}/><select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
         <EditableEntityTable readOnly={isViewer} title="Clientes" headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
       </section>}
 
-      {active==='fornecedores'&&<section>
+      {active==='fornecedores'&&<section className="semanticPage suppliersPage">
         {showForm&&<form className="panel dataForm" onSubmit={saveSupplier}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingSupplier?.nome||''}/><input name="documento" placeholder="CNPJ / CPF" defaultValue={editingSupplier?.documento||''}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingSupplier?.email||''}/><input name="telefone" placeholder="Telefone" defaultValue={editingSupplier?.telefone||''}/><select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
         <EditableEntityTable readOnly={isViewer} title="Fornecedores" headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
       </section>}
 
-      {active==='produtos'&&<section>
+      {active==='produtos'&&<section className="semanticPage productsPage">
         <div className="subTabs">
           <button className={productSubtab==='cadastro'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('cadastro');setMsg('')}}><Package size={16}/>Cadastro / Estoque</button>
           <button className={productSubtab==='movimentos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('movimentos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Entradas e saídas</button>
@@ -1065,20 +1065,20 @@ function App(){
             <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div>
           </form>}
 
-          <div className="cards compactCards">
-            <article className="card"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article>
-            <article className="card"><span>Estoque baixo</span><strong>{low}</strong></article>
-            <article className="card"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article>
+          <div className="cards compactCards semanticCards">
+            <article className="card semanticCard semanticBlue"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article>
+            <article className="card semanticCard semanticWarning"><span>Estoque baixo</span><strong>{low}</strong></article>
+            <article className="card semanticCard semanticBlue"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article>
           </div>
 
           <ProductTable produtos={produtos} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={isViewer}/>
         </>}
 
         {productSubtab==='movimentos'&&<>
-          <div className="cards compactCards">
-            <article className="card"><span>Entradas registradas</span><strong>{movimentosEstoque.filter(m=>m.tipo==='entrada').length}</strong><small>{movimentosEstoque.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0).toLocaleString('pt-BR')} unidades</small></article>
-            <article className="card"><span>Saídas registradas</span><strong>{movimentosEstoque.filter(m=>m.tipo==='saida').length}</strong><small>{movimentosEstoque.filter(m=>m.tipo==='saida').reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0).toLocaleString('pt-BR')} unidades</small></article>
-            <article className="card"><span>Ajustes</span><strong>{movimentosEstoque.filter(m=>m.tipo==='ajuste').length}</strong><small>alterações manuais/importação</small></article>
+          <div className="cards compactCards semanticCards">
+            <article className="card semanticCard semanticPositive"><span>Entradas registradas</span><strong>{movimentosEstoque.filter(m=>m.tipo==='entrada').length}</strong><small>{movimentosEstoque.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0).toLocaleString('pt-BR')} unidades</small></article>
+            <article className="card semanticCard semanticNegative"><span>Saídas registradas</span><strong>{movimentosEstoque.filter(m=>m.tipo==='saida').length}</strong><small>{movimentosEstoque.filter(m=>m.tipo==='saida').reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0).toLocaleString('pt-BR')} unidades</small></article>
+            <article className="card semanticCard semanticWarning"><span>Ajustes</span><strong>{movimentosEstoque.filter(m=>m.tipo==='ajuste').length}</strong><small>alterações manuais/importação</small></article>
           </div>
 
           <article className="panel tablePanel">
@@ -1110,8 +1110,8 @@ function App(){
         </>}
       </section>}
 
-      {active==='compras'&&<section>
-        {showForm&&<form className="panel saleForm" onSubmit={savePurchase}>
+      {active==='compras'&&<section className="semanticPage purchasesPage">
+        {showForm&&<form className="panel saleForm purchaseForm" onSubmit={savePurchase}>
           <div className="formTitle">
             <div>
               <h3>{editingPurchase?`Editar fatura de compra ${invoiceNo(editingPurchase.fatura_numero)}`:'Nova compra / conta a pagar'}</h3>
@@ -1195,7 +1195,7 @@ function App(){
           </div>
         </form>}
 
-        <article className="panel tablePanel">
+        <article className="panel tablePanel purchasesTable">
           <div className="panelHead"><h3>Compras e contas a pagar</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Fatura</th><th>Data</th><th>Fornecedor</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
@@ -1235,8 +1235,8 @@ function App(){
         </article>
       </section>}
 
-      {active==='vendas'&&<section>
-        {showForm&&<form className="panel saleForm" onSubmit={saveSale}>
+      {active==='vendas'&&<section className="semanticPage salesPage">
+        {showForm&&<form className="panel saleForm salesForm" onSubmit={saveSale}>
           <div className="formTitle">
             <div>
               <h3>{editingSale?'Editar fatura '+invoiceNo(editingSale.fatura_numero):'Nova venda / fatura'}</h3>
@@ -1321,7 +1321,7 @@ function App(){
           </div>
         </form>}
 
-        <article className="panel tablePanel">
+        <article className="panel tablePanel salesTable">
           <div className="panelHead"><h3>Vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
@@ -1408,7 +1408,7 @@ function App(){
           <article className="card semanticCard semanticNeutral"><span>Vendedores ativos</span><strong>{vendedores.filter(v=>v.ativo).length}</strong><small>{salesWithoutSeller} venda(s) sem vendedor</small></article>
         </div>
 
-        <article className="panel tablePanel">
+        <article className="panel tablePanel commissionsTable">
           <div className="panelHead"><h3>Vendedores e comissões</h3><SearchField value={tableSearch.comissoes||''} onChange={v=>setSearch('comissoes',v)} placeholder="Pesquisar vendedores e valores"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Vendedor</th><th>% atual</th><th>Recebido no período</th><th>Comissão apurada</th><th>Recebimentos</th><th>Vendas</th><th>Status</th><th>Gerenciar</th></tr></thead>
