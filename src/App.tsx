@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import { generateInvoicePdf } from './lib/invoicePdf'
@@ -1042,7 +1042,42 @@ function App(){
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
   if(!supabaseConfigured)return <div className="modulePlaceholder"><div className="panel" style={{maxWidth:620}}><h2>Sistema de Gestão publicado</h2><p>Configuração do Supabase ausente.</p></div></div>
-  if(!session)return <div className="modulePlaceholder loginPage" style={{backgroundImage:`url("${import.meta.env.BASE_URL}login-background.webp")`}}><form onSubmit={login} className="panel dataForm loginCard" style={{maxWidth:505,width:'100%'}}><h2>Sistema de Gestão</h2><p>Acesse o ERP</p><input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/><button className="primary">Entrar</button>{msg&&<p>{msg}</p>}</form></div>
+  if(!session)return <div className="loginPage">
+    <section className="loginInfo">
+      <div className="loginBrand"><BarChart3 size={48}/><div><h1>Sistema de<br/>Gestão</h1><p>Mais controle para o seu negócio.</p></div></div>
+      <div className="loginBenefits">
+        <div><span><BarChart3 size={24}/></span><p><strong>Gestão Integrada</strong><small>Todas as áreas do seu negócio em um só lugar.</small></p></div>
+        <div><span><Users size={24}/></span><p><strong>Mais Produtividade</strong><small>Processos mais ágeis e eficientes.</small></p></div>
+        <div><span><ShieldCheck size={24}/></span><p><strong>Segurança de Dados</strong><small>Suas informações sempre protegidas.</small></p></div>
+      </div>
+    </section>
+
+    <form onSubmit={login} className="panel dataForm loginCard">
+      <div className="loginCardIcon"><BarChart3 size={30}/></div>
+      <h2>Sistema de Gestão</h2>
+      <p>Acesse o ERP</p>
+      <input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/>
+      <input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/>
+      <button className="primary">Entrar</button>
+      {msg&&<p className="loginMsg">{msg}</p>}
+    </form>
+
+    <section className="loginVisual" aria-hidden="true">
+      <div className="loginLaptop">
+        <div className="loginLaptopBar"></div>
+        <div className="loginMiniCards">
+          <div><BarChart3 size={18}/><span>Receita</span><strong>R$ 125.430</strong></div>
+          <div><TrendingUp size={18}/><span>Vendas</span><strong>1.284</strong></div>
+          <div><Users size={18}/><span>Clientes</span><strong>892</strong></div>
+        </div>
+        <div className="loginChart">
+          <span></span><i></i><b></b><em></em><u></u>
+        </div>
+        <div className="loginDonut"></div>
+      </div>
+      <div className="loginLaptopBase"></div>
+    </section>
+  </div>
 
   const low=produtos.filter(p=>p.ativo&&Number(p.estoque_atual)<=Number(p.estoque_minimo)).length
   const stockValue=produtos.reduce((s,p)=>s+Number(p.estoque_atual)*Number(p.custo),0)
