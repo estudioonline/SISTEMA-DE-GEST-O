@@ -2092,3 +2092,45 @@
   outline:2px solid #3B82F6;
   outline-offset:3px;
 }
+
+/* Modais compactos para clientes, fornecedores e faturas */
+.entityModalShell,
+.financeModalShell{
+  width:min(760px,100%);
+}
+.entityModalForm{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.entityModalForm .formTitle,
+.entityModalForm .formActions{
+  grid-column:1/-1;
+}
+.entityModalForm .formTitle{
+  align-items:flex-start;
+}
+.entityModalForm .formTitle h3{
+  margin:0 0 4px;
+}
+.entityModalForm .formTitle p{
+  margin:0;
+  color:#64748b;
+  font-size:13px;
+}
+.entityModalForm input,
+.entityModalForm select{
+  width:100%;
+}
+.dark .entityModalForm .formTitle p{
+  color:#9aa8bb;
+}
+@media(max-width:680px){
+  .entityModalForm{
+    grid-template-columns:1fr;
+  }
+  .entityModalForm .formTitle,
+  .entityModalForm .formActions{
+    grid-column:auto;
+  }
+}
