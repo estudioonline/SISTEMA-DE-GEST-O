@@ -1953,3 +1953,129 @@
   background:#24344d!important;
   border-color:#4a5c76!important;
 }
+
+
+/* Sugestão automática de compra por estoque baixo */
+.purchaseSuggestionPanel{
+  margin-bottom:16px;
+  border-top:4px solid #f59e0b;
+  overflow:hidden;
+}
+.purchaseSuggestionHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  margin-bottom:14px;
+}
+.purchaseSuggestionHead h3{
+  margin:3px 0 4px;
+  color:#1f2937;
+  font-size:19px;
+}
+.purchaseSuggestionHead p{
+  margin:0;
+  color:#64748b;
+  font-size:13px;
+}
+.purchaseSuggestionEyebrow{
+  display:block;
+  color:#b45309;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.purchaseSuggestionActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.purchaseSuggestionActions>div{
+  display:grid;
+  gap:2px;
+  text-align:right;
+}
+.purchaseSuggestionActions>div span{
+  color:#64748b;
+  font-size:11px;
+  font-weight:700;
+}
+.purchaseSuggestionActions>div strong{
+  color:#b45309;
+  font-size:16px;
+}
+.purchaseSuggestionTable{
+  margin-top:8px;
+}
+.purchaseSuggestionTable table{
+  min-width:860px;
+}
+.purchaseSuggestionTable td{
+  vertical-align:middle;
+}
+.purchaseSuggestionDescription{
+  display:block;
+  margin-top:3px;
+  color:#64748b;
+  font-size:12px;
+  font-weight:500;
+}
+.stockLevel{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:4px 9px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.stockLevelLow{
+  background:#fef3c7;
+  color:#92400e;
+  border:1px solid #fde68a;
+}
+.purchaseSuggestionQty{
+  color:#2563eb;
+}
+.purchaseSuggestionAdd{
+  white-space:nowrap;
+}
+.dark .purchaseSuggestionPanel{
+  border-top-color:#fbbf24;
+}
+.dark .purchaseSuggestionHead h3{
+  color:#f1f5f9;
+}
+.dark .purchaseSuggestionHead p,
+.dark .purchaseSuggestionDescription,
+.dark .purchaseSuggestionActions>div span{
+  color:#94a3b8;
+}
+.dark .purchaseSuggestionEyebrow,
+.dark .purchaseSuggestionActions>div strong{
+  color:#fbbf24;
+}
+.dark .stockLevelLow{
+  background:#3a2a0b;
+  color:#fde68a;
+  border-color:#6b4e12;
+}
+.dark .purchaseSuggestionQty{
+  color:#60a5fa;
+}
+@media(max-width:760px){
+  .purchaseSuggestionHead{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .purchaseSuggestionActions{
+    justify-content:space-between;
+  }
+  .purchaseSuggestionActions>div{
+    text-align:left;
+  }
+}
