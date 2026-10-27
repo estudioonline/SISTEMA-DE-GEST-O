@@ -174,8 +174,20 @@ function App(){
   const title=useMemo(()=>menu.find(m=>m[0]===active)?.[1]||'Dashboard',[active])
   const isAdmin=profileRole==='administrador'
   const isViewer=profileRole==='visualizador'
+  const isSeller=profileRole==='vendas'
+  const isFinance=profileRole==='financeiro'
+  const canManageSales=isAdmin||isSeller
   const canManageStock=isAdmin||profileRole==='estoque'
-  const canManageFinance=isAdmin||profileRole==='financeiro'
+  const canManageFinance=isAdmin||isFinance
+  const canViewFinance=isAdmin||isFinance
+  const visibleMenu=menu.filter(([k])=>{
+    if(k==='financeiro')return canViewFinance
+    if(k==='config')return isAdmin
+    if(k==='comissoes')return isAdmin||isSeller
+    if(k==='compras'||k==='produtos'||k==='fornecedores')return isAdmin||profileRole==='estoque'
+    if(k==='vendas'||k==='clientes')return isAdmin||isSeller||isViewer
+    return true
+  })
 
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
@@ -537,8 +549,9 @@ function App(){
 
   // VENDAS
   function resetSaleForm(){setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
-  function startNewSale(){resetSaleForm();setShowForm(true);setMsg('')}
+  function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}resetSaleForm();setShowForm(true);setMsg('')}
   async function startEditSale(v:Venda){
+    if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
     if(v.status==='cancelado'){setMsg('Venda cancelada não pode ser editada.');return}
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
     if(error){setMsg(error.message);return}
@@ -555,6 +568,7 @@ function App(){
   function invoiceItems(items:SaleItemDraft[]){return items.map(i=>{const p=produtos.find(x=>x.id===i.produto_id);const d=Math.min(i.desconto,i.quantidade*i.valor_unitario);return{codigo:p?.codigo,descricao:p?.descricao||'Produto',unidade:p?.unidade||'UN',quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:d,total:Math.max(0,i.quantidade*i.valor_unitario-d)}})}
   async function saveSale(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(!session)return
+    if(!canManageSales){setMsg('Seu perfil não tem permissão para criar ou editar vendas.');return}
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
     if(!saleRoute){setMsg('Selecione a rota de entrega.');return}
@@ -566,10 +580,11 @@ function App(){
 
     if(saleClient&&saleStatus!=='orcamento'){
       const cliente=clientes.find(c=>c.id===saleClient)
-      const vendaIds=new Set(vendas.filter(v=>v.cliente_id===saleClient&&v.id!==editingSale?.id&&v.status!=='cancelado').map(v=>v.id))
-      const recebiveisCliente=titulos.filter(t=>t.tipo==='receber'&&!!t.venda_id&&vendaIds.has(t.venda_id)&&t.status!=='pago'&&t.status!=='cancelado')
-      const aberto=recebiveisCliente.reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
-      const vencido=recebiveisCliente.filter(t=>t.vencimento<today()).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+      const credit=await supabase.rpc('situacao_credito_cliente',{p_cliente_id:saleClient,p_excluir_venda_id:editingSale?.id||null})
+      if(credit.error){setMsg('Não foi possível validar crédito do cliente: '+credit.error.message);return}
+      const creditRow=Array.isArray(credit.data)?credit.data[0]:credit.data
+      const aberto=Number(creditRow?.em_aberto||0)
+      const vencido=Number(creditRow?.vencido||0)
 
       if((empresa?.bloquear_cliente_inadimplente??true)&&vencido>0){
         if(!isAdmin){setMsg(`Venda bloqueada: o cliente possui ${money(vencido)} em títulos vencidos. É necessária autorização administrativa.`);return}
@@ -1220,7 +1235,7 @@ function App(){
     <aside className="sidebar">
       <button className="sidebarToggle" onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed?'Expandir menu':'Recolher menu'} aria-label={sidebarCollapsed?'Expandir menu lateral':'Recolher menu lateral'}>{sidebarCollapsed?<ChevronRight size={17}/>:<ChevronLeft size={17}/>}</button>
       <div className="brand"><div className="brandMark">SG</div><div className="brandText"><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div></div>
-      <nav>{menu.map(([k,l,I])=><button key={k} title={l} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>)}</nav>
+      <nav>{visibleMenu.map(([k,l,I])=><button key={k} title={l} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>)}</nav>
       <div className="sidebarFooter"><span>{session.user.email}</span><small>{profileRole}</small><button className="navItem" title="Sair" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
     </aside>
 
@@ -1230,7 +1245,7 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','compras','vendas'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':'Novo'}</button>}
+          {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':'Novo'}</button>}
           {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
@@ -1784,9 +1799,9 @@ function App(){
             <select value={newUserRole} onChange={e=>setNewUserRole(e.target.value as PerfilRole)}>
               <option value="administrador">Administrador</option>
               <option value="financeiro">Financeiro</option>
-              <option value="vendas">Vendas</option>
+              <option value="vendas">Vendedor</option>
               <option value="estoque">Estoque</option>
-              <option value="visualizador">Visualizador</option>
+              <option value="visualizador">Usuário normal</option>
             </select>
           </label>
           <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar usuário'}</button>
@@ -1809,9 +1824,9 @@ function App(){
                 <td><select className="userInlineSelect" value={draft.perfil} onChange={e=>editManagedUser(u.user_id,'perfil',e.target.value as PerfilRole)} disabled={u.usuario_atual}>
                   <option value="administrador">Administrador</option>
                   <option value="financeiro">Financeiro</option>
-                  <option value="vendas">Vendas</option>
+                  <option value="vendas">Vendedor</option>
                   <option value="estoque">Estoque</option>
-                  <option value="visualizador">Visualizador</option>
+                  <option value="visualizador">Usuário normal</option>
                 </select></td>
                 <td><select className="userInlineSelect" value={draft.ativo?'ativo':'inativo'} onChange={e=>editManagedUser(u.user_id,'ativo',e.target.value==='ativo')} disabled={u.usuario_atual}>
                   <option value="ativo">Ativo</option>
