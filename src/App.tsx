@@ -1673,10 +1673,6 @@ function App(){
             <article className={'card semanticCard '+(openReceivables-openPayables>=0?'semanticBlue':'semanticNegative')}><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong><small>receber - pagar</small></article>
           </div>
 
-          <div className="financeGroups">
-            {financeTable('receber')}
-            {financeTable('pagar')}
-          </div>
         </>}
 
         {financeSubtab==='vencidos'&&<>
