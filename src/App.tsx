@@ -5,7 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
-  Pencil, Ban, SlidersHorizontal, ChevronDown, ChevronUp, RefreshCw, CheckCircle2,
+  Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2,
   Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
@@ -97,6 +97,7 @@ function App(){
   const [stockNew,setStockNew]=useState('')
   const [stockReason,setStockReason]=useState('Ajuste manual')
   const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'>('cadastro')
+  const [excelToolsOpen,setExcelToolsOpen]=useState(false)
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
@@ -937,7 +938,7 @@ function App(){
                 <td>{money(Number(t.valor_pago))}</td>
                 <td><strong>{money(balance)}</strong></td>
                 <td><span className={'statusBadge status-'+(t.status==='pago'?'faturado':t.status==='cancelado'?'cancelado':'pedido')}>{t.status}</span></td>
-                <td>{!canManageFinance?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>openFinancePanel(t)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td>
+                <td>{!canManageFinance?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={()=>openFinancePanel(t)} title="Opções" aria-label="Abrir opções" aria-expanded={opened}><MoreVertical size={18}/></button>}</td>
               </tr>
               {canManageFinance&&opened&&<tr className="manageRow"><td colSpan={8}>
                 <div className="financeManagePanel">
@@ -1030,10 +1031,16 @@ function App(){
         </div>
 
         {productSubtab==='cadastro'&&<>
-          <div className="panel excelPanel">
+          <div className="inventoryTopActions">
+            <button type="button" className="ghost excelSecondaryBtn" onClick={()=>setExcelToolsOpen(v=>!v)} aria-expanded={excelToolsOpen}>
+              <FileSpreadsheet size={16}/>Excel
+            </button>
+          </div>
+
+          {excelToolsOpen&&<div className="panel excelToolsPanel">
             <div className="excelPanelText">
-              <div className="excelIcon"><FileSpreadsheet size={22}/></div>
-              <div><strong>Importação e exportação Excel</strong><span>Exporte o cadastro atual ou importe uma planilha para cadastrar itens e ajustar o estoque pelo código do produto.</span></div>
+              <div className="excelIcon"><FileSpreadsheet size={20}/></div>
+              <div><strong>Importação e exportação Excel</strong><span>Use o modelo para cadastrar produtos ou ajustar o estoque pelo código do item.</span></div>
             </div>
             <div className="excelActions">
               <button type="button" className="ghost" onClick={downloadProductModel}><FileSpreadsheet size={16}/>Baixar modelo</button>
@@ -1044,7 +1051,7 @@ function App(){
               </label>
             </div>
             <small className="excelWarning">Na importação, o <strong>Estoque Atual</strong> da planilha substitui o saldo existente. Toda diferença é registrada como ajuste de estoque.</small>
-          </div>
+          </div>}
 
           {showForm&&<form className="panel dataForm" onSubmit={saveProduct}>
             <input name="codigo" placeholder="Código" required defaultValue={editingProduct?.codigo||''}/>
@@ -1210,7 +1217,7 @@ function App(){
                   <td><span className={`statusBadge status-${c.status==='recebida'?'faturado':c.status==='cancelada'?'cancelado':'pedido'}`}>{c.status}</span></td>
                   <td>{paymentLabel(c.forma_pagamento)} {Number(c.parcelas)>1?`• ${c.parcelas}x`:''}</td>
                   <td><strong>{money(Number(c.total))}</strong></td>
-                  <td><button className="ghost" onClick={()=>setPurchasePanel(opened?null:c.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button></td>
+                  <td><button className="rowMenuBtn" onClick={()=>setPurchasePanel(opened?null:c.id)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></td>
                 </tr>
                 {opened&&<tr className="manageRow"><td colSpan={7}>
                   <div className="invoiceManagePanel">
@@ -1340,7 +1347,7 @@ function App(){
                   <td>{paymentLabel(v.forma_pagamento)} {Number(v.parcelas)>1?'• '+v.parcelas+'x':''}</td>
                   <td><span className={'statusBadge payment-'+paymentStatus.key}>{paymentStatus.label}</span></td>
                   <td><strong>{money(Number(v.total))}</strong></td>
-                  <td><button className="ghost" onClick={()=>setSalePanel(opened?null:v.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button></td>
+                  <td><button className="rowMenuBtn" onClick={()=>setSalePanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções da venda" aria-expanded={opened}><MoreVertical size={18}/></button></td>
                 </tr>
                 {opened&&<tr className="manageRow"><td colSpan={9}>
                   <div className="invoiceManagePanel">
@@ -1424,7 +1431,7 @@ function App(){
                   <td>{summary?.pagamentos||0}</td>
                   <td>{summary?.vendas||0}</td>
                   <td><span className={v.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{v.ativo?'ativo':'inativo'}</span></td>
-                  <td>{isAdmin?<button className="ghost" onClick={()=>setSellerPanel(opened?null:v.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>:<span className="readOnlyTag">Somente leitura</span>}</td>
+                  <td>{isAdmin?<button className="rowMenuBtn" onClick={()=>setSellerPanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções do vendedor" aria-expanded={opened}><MoreVertical size={18}/></button>:<span className="readOnlyTag">Somente leitura</span>}</td>
                 </tr>
                 {isAdmin&&opened&&<tr className="manageRow"><td colSpan={8}>
                   <div className="actionPanel">
@@ -1474,33 +1481,33 @@ function App(){
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
         <div className="cards compactCards semanticCards"><article className="card semanticCard semanticBlue"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card semanticCard semanticNegative"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className={'card semanticCard '+(reportSalesTotal-reportPurchaseTotal>=0?'semanticPositive':'semanticNegative')}><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
-        <div className="grid2"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Fatura</th><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.fatura_numero),dateBr(v.created_at),v.status,money(Number(v.total))])).map(v=><tr key={v.id}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])).map(c=><tr key={c.id}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
+        <div className="reportsStack"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Fatura</th><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.fatura_numero),dateBr(v.created_at),v.status,money(Number(v.total))])).map(v=><tr key={v.id}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th>Data</th><th>Status</th><th>Total</th></tr></thead><tbody>{filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])).map(c=><tr key={c.id}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
       </section>}
 
       {active==='config'&&<section>
         {isAdmin&&<form className="panel viewerUserForm" onSubmit={createViewerAccount}>
           <div className="formTitle"><div><h3>Criar usuário visualizador</h3><p>Acesso somente leitura. Pode consultar telas, relatórios e PDFs, mas não altera dados.</p></div><span className="readOnlyTag">Somente leitura</span></div>
-          <input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Nome do usuário" required/>
-          <input type="email" value={viewerEmail} onChange={e=>setViewerEmail(e.target.value)} placeholder="E-mail" required/>
-          <input type="password" value={viewerPassword} onChange={e=>setViewerPassword(e.target.value)} placeholder="Senha inicial" minLength={8} required/>
+          <label className="fieldLabel">Nome do usuário<input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Digite o nome" required/></label>
+          <label className="fieldLabel">E-mail<input type="email" value={viewerEmail} onChange={e=>setViewerEmail(e.target.value)} placeholder="usuario@empresa.com" required/></label>
+          <label className="fieldLabel">Senha inicial<input type="password" value={viewerPassword} onChange={e=>setViewerPassword(e.target.value)} placeholder="Mínimo de 8 caracteres" minLength={8} required/></label>
           <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar visualizador'}</button>
         </form>}
         <form className="panel configForm" onSubmit={saveCompany}>
           <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!isAdmin&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!isAdmin}>
-          <input name="razao_social" placeholder="Razão social" defaultValue={empresa?.razao_social||''} required/>
-          <input name="nome_fantasia" placeholder="Nome fantasia" defaultValue={empresa?.nome_fantasia||''} required/>
-          <input name="cnpj" placeholder="CNPJ" defaultValue={empresa?.cnpj||''}/>
-          <input name="email" type="email" placeholder="E-mail" defaultValue={empresa?.email||''}/>
-          <input name="telefone" placeholder="Telefone" defaultValue={empresa?.telefone||''}/>
-          <input name="endereco" placeholder="Endereço" defaultValue={empresa?.endereco||''}/>
-          <input name="cidade" placeholder="Cidade" defaultValue={empresa?.cidade||''}/>
-          <input name="uf" placeholder="UF" maxLength={2} defaultValue={empresa?.uf||''}/>
-          <input name="cep" placeholder="CEP" defaultValue={empresa?.cep||''}/>
-          <input name="pix_chave" placeholder="Chave PIX" defaultValue={empresa?.pix_chave||''}/>
-          <input name="banco" placeholder="Banco" defaultValue={empresa?.banco||''}/>
-          <input name="agencia" placeholder="Agência" defaultValue={empresa?.agencia||''}/>
-          <input name="conta" placeholder="Conta" defaultValue={empresa?.conta||''}/>
-          <textarea name="condicoes_gerais" placeholder="Condições gerais da fatura" defaultValue={empresa?.condicoes_gerais||''}/>
+          <label className="fieldLabel">Razão social<input name="razao_social" placeholder="Razão social da empresa" defaultValue={empresa?.razao_social||''} required/></label>
+          <label className="fieldLabel">Nome fantasia<input name="nome_fantasia" placeholder="Nome fantasia" defaultValue={empresa?.nome_fantasia||''} required/></label>
+          <label className="fieldLabel">CNPJ<input name="cnpj" placeholder="00.000.000/0000-00" defaultValue={empresa?.cnpj||''}/></label>
+          <label className="fieldLabel">E-mail<input name="email" type="email" placeholder="contato@empresa.com" defaultValue={empresa?.email||''}/></label>
+          <label className="fieldLabel">Telefone<input name="telefone" placeholder="(00) 00000-0000" defaultValue={empresa?.telefone||''}/></label>
+          <label className="fieldLabel">Endereço<input name="endereco" placeholder="Rua, número e complemento" defaultValue={empresa?.endereco||''}/></label>
+          <label className="fieldLabel">Cidade<input name="cidade" placeholder="Cidade" defaultValue={empresa?.cidade||''}/></label>
+          <label className="fieldLabel">UF<input name="uf" placeholder="UF" maxLength={2} defaultValue={empresa?.uf||''}/></label>
+          <label className="fieldLabel">CEP<input name="cep" placeholder="00000-000" defaultValue={empresa?.cep||''}/></label>
+          <label className="fieldLabel">Chave PIX<input name="pix_chave" placeholder="Chave PIX" defaultValue={empresa?.pix_chave||''}/></label>
+          <label className="fieldLabel">Banco<input name="banco" placeholder="Banco" defaultValue={empresa?.banco||''}/></label>
+          <label className="fieldLabel">Agência<input name="agencia" placeholder="Agência" defaultValue={empresa?.agencia||''}/></label>
+          <label className="fieldLabel">Conta<input name="conta" placeholder="Conta" defaultValue={empresa?.conta||''}/></label>
+          <label className="fieldLabel fieldLabelWide">Condições gerais da fatura<textarea name="condicoes_gerais" placeholder="Condições gerais da fatura" defaultValue={empresa?.condicoes_gerais||''}/></label>
           <div className="formActions"><button className="primary">Salvar configurações</button></div></fieldset>
         </form>
       </section>}
@@ -1522,14 +1529,14 @@ function EditableEntityTable({title,headers,rows,readOnly=false}:{title:string;h
   const [query,setQuery]=useState('')
   const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
   const filtered=normalized?rows.filter(r=>r.cells.join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)):rows
-  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=><Fragment key={r.id}><tr>{r.cells.map((c,i)=><td key={i}>{c}</td>)}<td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={r.onToggle}><SlidersHorizontal size={15}/>Painel {r.opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!readOnly&&r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=><Fragment key={r.id}><tr>{r.cells.map((c,i)=><td key={i}>{c}</td>)}<td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
 function ProductTable({produtos,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
   const [query,setQuery]=useState('')
   const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
   const filtered=normalized?produtos.filter(p=>[p.codigo,p.descricao,p.ativo?'ativo':'inativo',p.unidade,p.estoque_atual,p.estoque_minimo,money(Number(p.custo)),money(Number(p.preco_venda))].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)):produtos
-  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{filtered.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="ghost" onClick={()=>onToggle(p.id)}><SlidersHorizontal size={15}/>Painel {opened?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th>Código</th><th>Produto</th><th>Status</th><th>Un.</th><th>Estoque</th><th>Mínimo</th><th>Custo</th><th>Venda</th><th>Gerenciar</th></tr></thead><tbody>{filtered.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
 }
 
 export default App
