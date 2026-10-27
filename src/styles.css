@@ -1285,3 +1285,12 @@
 
 .paymentProofUpload{height:40px;align-self:end;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
 .financeProofSummary{display:flex;align-items:center;gap:7px;color:#64748b;font-size:12px;font-weight:700;padding:0 2px}
+
+.financePanelHead{align-items:flex-end}
+.financeDueToolbar{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.financeDueToolbar label{display:grid;gap:5px;font-size:11px;font-weight:800;color:#5f6b7d}
+.financeDueToolbar input{height:40px;border:1px solid #dbe2ec;border-radius:10px;padding:0 10px;background:#fff;color:#172033}
+.financeClearFilter{height:40px}
+.dark .financeDueToolbar label{color:#9aa8bb}
+.dark .financeDueToolbar input{background:#101725;border-color:#2a3648;color:#eef3ff}
+@media(max-width:900px){.financePanelHead{align-items:stretch}.financeDueToolbar{justify-content:flex-start}.financeDueToolbar .tableSearch{width:100%}}
