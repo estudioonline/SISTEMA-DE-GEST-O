@@ -1083,6 +1083,14 @@ function App(){
   }
   const purchaseTotal=purchaseItems.reduce((s,i)=>s+i.quantidade*i.custo_unitario,0)
 
+  const normalizeSearch=(value:unknown)=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+  const searchMatches=(key:string,values:unknown[])=>{
+    const query=normalizeSearch(tableSearch[key]||'').trim()
+    if(!query)return true
+    return normalizeSearch(values.join(' ')).includes(query)
+  }
+  const setSearch=(key:string,value:string)=>setTableSearch(prev=>({...prev,[key]:value}))
+
   const filteredSales=vendas.filter(v=>{const d=v.created_at.slice(0,10);return d>=reportStart&&d<=reportEnd&&(reportStatus==='todos'||v.status===reportStatus)})
   const filteredPurchases=compras.filter(c=>{const d=c.created_at.slice(0,10);return d>=reportStart&&d<=reportEnd})
   const reportSalesTotal=filteredSales.filter(v=>v.status!=='cancelado').reduce((s,v)=>s+Number(v.total),0)
@@ -1098,13 +1106,6 @@ function App(){
   const movementEntriesTotal=filteredMovements.filter(m=>m.tipo==='entrada'||(m.tipo==='ajuste'&&Number(m.quantidade)>=0)).reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0)
   const movementExitsTotal=filteredMovements.filter(m=>m.tipo==='saida'||(m.tipo==='ajuste'&&Number(m.quantidade)<0)).reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0)
 
-  const normalizeSearch=(value:unknown)=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
-  const searchMatches=(key:string,values:unknown[])=>{
-    const query=normalizeSearch(tableSearch[key]||'').trim()
-    if(!query)return true
-    return normalizeSearch(values.join(' ')).includes(query)
-  }
-  const setSearch=(key:string,value:string)=>setTableSearch(prev=>({...prev,[key]:value}))
   const toggleSort=(table:string,key:string)=>setTableSort(prev=>{
     const current=prev[table]
     return {...prev,[table]:{key,dir:current?.key===key&&current.dir==='asc'?'desc':'asc'}}
