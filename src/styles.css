@@ -1113,3 +1113,57 @@
   box-shadow:0 3px 10px rgba(0,0,0,.2);
 }
 
+
+
+/* Financeiro - subaba de vencidos */
+.financeSubTabs{
+  margin-bottom:14px;
+}
+.subTabCount{
+  min-width:22px;
+  height:22px;
+  padding:0 7px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#FEE2E2;
+  color:#991B1B;
+  font-size:11px;
+  font-weight:800;
+}
+.overdueTab.active{
+  color:#B91C1C!important;
+}
+.overdueTab.active .subTabCount{
+  background:#EF4444;
+  color:#FFFFFF;
+}
+.overdueCards .semanticCard strong{
+  font-variant-numeric:tabular-nums;
+}
+.overdueDate{
+  color:#B91C1C;
+  font-weight:800;
+}
+.app:not(.dark) .overdueRow td{
+  border-color:#FECACA!important;
+}
+.dark .subTabCount{
+  background:#3B1D22;
+  color:#FCA5A5;
+}
+.dark .overdueTab.active{
+  color:#F87171!important;
+}
+.dark .overdueTab.active .subTabCount{
+  background:#B91C1C;
+  color:#FFFFFF;
+}
+.dark .overdueDate{
+  color:#FCA5A5;
+}
+.dark .overdueRow td{
+  border-color:#63313A!important;
+}
+
