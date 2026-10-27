@@ -1239,3 +1239,46 @@
   .stockAuthorizationWarning{align-items:flex-start;flex-direction:column}
 }
 
+
+
+/* Vendas: formulário em painel dedicado sobre a listagem */
+.saleModalOverlay{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:32px;
+  background:rgba(15,23,42,.58);
+  backdrop-filter:blur(3px);
+  overflow:auto;
+}
+.saleModalShell{
+  width:min(1180px,100%);
+  margin:auto;
+}
+.saleModalForm{
+  margin:0!important;
+  max-height:calc(100vh - 64px);
+  overflow:auto;
+  box-shadow:0 28px 80px rgba(15,23,42,.28);
+}
+.saleModalTitle{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:inherit;
+  padding-bottom:12px;
+}
+.saleModalClose{
+  flex:0 0 auto;
+}
+.salesTable:focus{
+  outline:2px solid #3B82F6;
+  outline-offset:3px;
+}
+@media(max-width:760px){
+  .saleModalOverlay{padding:12px}
+  .saleModalForm{max-height:calc(100vh - 24px)}
+}
