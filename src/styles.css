@@ -401,3 +401,194 @@
 .dark .dashboardCardPayable strong{color:#F87171!important}
 .dark .dashboardCardLowStock strong{color:#FBBF24!important}
 
+
+
+/* Tema global claro: aplicado a todas as abas */
+.app:not(.dark){
+  background:#F3F4F6;
+  color:#1E293B;
+}
+.app:not(.dark) .main{
+  background:#F3F4F6;
+}
+.app:not(.dark) .topbar h1,
+.app:not(.dark) .panelHead h3,
+.app:not(.dark) .formTitle h3,
+.app:not(.dark) .saleItemsHead h3,
+.app:not(.dark) h2,
+.app:not(.dark) h3{
+  color:#1E293B;
+}
+.app:not(.dark) .topbar p,
+.app:not(.dark) .panelHead p,
+.app:not(.dark) .formTitle p,
+.app:not(.dark) label,
+.app:not(.dark) .actionMeta span{
+  color:#64748B;
+}
+
+.app:not(.dark) .panel,
+.app:not(.dark) .card,
+.app:not(.dark) .modulePlaceholder,
+.app:not(.dark) .actionPanel{
+  background:#FFFFFF;
+  border-color:#E5E7EB;
+  box-shadow:0 8px 24px rgba(15,23,42,.07);
+}
+.app:not(.dark) .card span,
+.app:not(.dark) .card small{
+  color:#64748B;
+}
+.app:not(.dark) .card strong{
+  color:#1E293B;
+  font-weight:800;
+}
+
+.app:not(.dark) input,
+.app:not(.dark) select,
+.app:not(.dark) textarea,
+.app:not(.dark) .search,
+.app:not(.dark) .tableSearch{
+  background:#FFFFFF;
+  border-color:#D7DEE8;
+  color:#1E293B;
+}
+.app:not(.dark) input:focus,
+.app:not(.dark) select:focus,
+.app:not(.dark) textarea:focus,
+.app:not(.dark) .search:focus-within,
+.app:not(.dark) .tableSearch:focus-within{
+  border-color:#3B82F6;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12);
+  outline:none;
+}
+.app:not(.dark) input::placeholder,
+.app:not(.dark) textarea::placeholder{
+  color:#94A3B8;
+}
+
+.app:not(.dark) .primary{
+  background:#3B82F6;
+  border-color:#3B82F6;
+  color:#FFFFFF;
+  box-shadow:0 4px 12px rgba(59,130,246,.18);
+}
+.app:not(.dark) .primary:hover{
+  background:#2563EB;
+  border-color:#2563EB;
+}
+.app:not(.dark) .ghost,
+.app:not(.dark) .iconBtn{
+  background:#FFFFFF;
+  border-color:#D7DEE8;
+  color:#334155;
+}
+.app:not(.dark) .ghost:hover,
+.app:not(.dark) .iconBtn:hover{
+  background:#F8FAFC;
+  border-color:#CBD5E1;
+}
+
+.app:not(.dark) .tablePanel thead th{
+  color:#64748B;
+}
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow) td{
+  background:#FFFFFF;
+  border-top-color:#E5E7EB;
+  border-bottom-color:#E5E7EB;
+  color:#1E293B;
+}
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow) td:first-child{
+  border-left-color:#E5E7EB;
+}
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow) td:last-child{
+  border-right-color:#E5E7EB;
+}
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow):hover td{
+  background:#F8FAFC;
+  border-color:#CBD5E1;
+}
+.app:not(.dark) .manageRow td{
+  background:transparent!important;
+}
+
+.app:not(.dark) .subTabs{
+  background:#E9EEF5;
+  border-color:#D8E0EA;
+}
+.app:not(.dark) .subTab{
+  color:#64748B;
+}
+.app:not(.dark) .subTab.active{
+  background:#FFFFFF;
+  color:#3B82F6;
+  box-shadow:0 4px 12px rgba(15,23,42,.08);
+}
+
+.app:not(.dark) .paymentNotice{
+  background:#EFF6FF;
+  border-color:#BFDBFE;
+  color:#1D4ED8;
+}
+.app:not(.dark) .excelWarning{
+  background:#FFF7ED;
+  border-color:#FED7AA;
+  color:#9A3412;
+}
+.app:not(.dark) .commissionWarning{
+  background:#FFFBEB;
+  border-color:#FDE68A;
+  color:#92400E;
+}
+
+.app:not(.dark) .warningBtn{
+  background:#FFFBEB;
+  border-color:#F59E0B;
+  color:#92400E;
+}
+.app:not(.dark) .dangerAction,
+.app:not(.dark) .dangerBtn{
+  background:#FEF2F2;
+  border-color:#FCA5A5;
+  color:#EF4444;
+}
+
+.app:not(.dark) .status-orcamento,
+.app:not(.dark) .payment-parcial{
+  background:#EFF6FF;
+  color:#3B82F6;
+}
+.app:not(.dark) .status-faturado,
+.app:not(.dark) .payment-pago,
+.app:not(.dark) .movement-in{
+  background:#ECFDF5;
+  color:#10B981;
+}
+.app:not(.dark) .status-pedido,
+.app:not(.dark) .payment-pendente{
+  background:#FFFBEB;
+  color:#F59E0B;
+}
+.app:not(.dark) .status-cancelado,
+.app:not(.dark) .payment-cancelado,
+.app:not(.dark) .movement-out{
+  background:#FEF2F2;
+  color:#EF4444;
+}
+.app:not(.dark) .payment-sem-cobranca,
+.app:not(.dark) .readOnlyTag{
+  background:#F1F5F9;
+  color:#64748B;
+}
+
+.app:not(.dark) .stockLow{
+  color:#EF4444;
+}
+.app:not(.dark) .bar{
+  background:linear-gradient(180deg,#60A5FA,#3B82F6);
+}
+.app:not(.dark) .pill{
+  background:#ECFDF5;
+  color:#10B981;
+}
+
