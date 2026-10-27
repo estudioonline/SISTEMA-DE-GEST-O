@@ -1299,9 +1299,6 @@
 .financeSubTabs{flex-wrap:wrap}
 @media(max-width:760px){.financeSubTabs{width:100%;grid-template-columns:1fr 1fr}}
 
-  .dashboardHeroMedia,.dashboardHeroMedia video{min-height:150px;max-height:210px}
-}
-
 .tableSortBtn{
   appearance:none;
   -webkit-appearance:none;
