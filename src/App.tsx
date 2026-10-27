@@ -90,6 +90,7 @@ function App(){
   const [profileRole,setProfileRole]=useState<PerfilRole>('vendas')
   const [msg,setMsg]=useState('')
   const [tableSearch,setTableSearch]=useState<Record<string,string>>({})
+  const [tableSort,setTableSort]=useState<Record<string,{key:string;dir:'asc'|'desc'}>>({})
 
   const [clientes,setClientes]=useState<Cliente[]>([])
   const [fornecedores,setFornecedores]=useState<Fornecedor[]>([])
@@ -1005,13 +1006,37 @@ function App(){
     return normalizeSearch(values.join(' ')).includes(query)
   }
   const setSearch=(key:string,value:string)=>setTableSearch(prev=>({...prev,[key]:value}))
+  const toggleSort=(table:string,key:string)=>setTableSort(prev=>{
+    const current=prev[table]
+    return {...prev,[table]:{key,dir:current?.key===key&&current.dir==='asc'?'desc':'asc'}}
+  })
+  const sortMark=(table:string,key:string)=>tableSort[table]?.key===key?(tableSort[table].dir==='asc'?' ▲':' ▼'):''
+  const sortList=<T,>(table:string,rows:T[],getters:Record<string,(row:T)=>string|number|null|undefined>)=>{
+    const sort=tableSort[table]
+    if(!sort||!getters[sort.key])return rows
+    const getter=getters[sort.key]
+    const compare=(a:T,b:T)=>{
+      const av=getter(a),bv=getter(b)
+      let cmp=0
+      if(typeof av==='number'&&typeof bv==='number')cmp=av-bv
+      else cmp=String(av??'').localeCompare(String(bv??''),'pt-BR',{numeric:true,sensitivity:'base'})
+      return sort.dir==='asc'?cmp:-cmp
+    }
+    return [...rows].sort(compare)
+  }
 
   const commissionReceived=comissoes.reduce((s,c)=>s+Number(c.total_recebido),0)
   const commissionTotal=comissoes.reduce((s,c)=>s+Number(c.comissao_apurada),0)
   const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
-  const visiblePurchases=compras.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])})
-  const visibleSales=vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',v.status,deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])})
-  const visibleSellers=vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])})
+  const visiblePurchases=sortList('compras',compras.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])}),{
+    fatura:c=>Number(c.fatura_numero||0),data:c=>c.created_at,fornecedor:c=>fornecedores.find(x=>x.id===c.fornecedor_id)?.nome||'',status:c=>c.status,pagamento:c=>paymentLabel(c.forma_pagamento),total:c=>Number(c.total)
+  })
+  const visibleSales=sortList('vendas',vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',v.status,deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])}),{
+    fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,cliente:v=>clientes.find(x=>x.id===v.cliente_id)?.nome||'Consumidor',rota:v=>deliveryRouteLabel(v.rota_entrega),vendedor:v=>vendedores.find(x=>x.id===v.vendedor_cadastro_id)?.nome||'',status:v=>v.status,pagamento:v=>paymentLabel(v.forma_pagamento),statuspag:v=>salePaymentStatus(v).label,total:v=>Number(v.total)
+  })
+  const visibleSellers=sortList('comissoes',vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])}),{
+    vendedor:v=>v.nome,percentual:v=>Number(v.percentual_comissao),recebido:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.total_recebido||0),comissao:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.comissao_apurada||0),recebimentos:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.pagamentos||0),vendas:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.vendas||0),status:v=>v.ativo?'ativo':'inativo'
+  })
 
   function salePaymentStatus(venda:Venda){
     const related=titulos.filter(t=>t.venda_id===venda.id)
@@ -1051,13 +1076,15 @@ function App(){
   function financeTable(type:'receber'|'pagar',overdueOnly=false){
     const searchKey=(overdueOnly?'financeiro-vencidos-':'financeiro-')+(type==='receber'?'receber':'pagar')
     const baseRows=titulos.filter(t=>t.tipo===type).filter(t=>!overdueOnly||(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0))
-    const rows=baseRows.filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||'']))
+    const rows=sortList(searchKey,baseRows.filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||''])),{
+      descricao:t=>t.descricao,entidade:t=>t.entidade_nome||'',vencimento:t=>t.vencimento,valor:t=>Number(t.valor),pago:t=>Number(t.valor_pago),saldo:t=>Math.max(0,Number(t.valor)-Number(t.valor_pago)),status:t=>t.status
+    })
     const groupTitle=overdueOnly?(type==='receber'?'Vencidos a receber':'Vencidos a pagar'):(type==='receber'?'Contas a receber':'Contas a pagar')
     const empty=overdueOnly?(type==='receber'?'Nenhuma conta a receber vencida.':'Nenhuma conta a pagar vencida.'):(type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.')
     return <article className={'panel tablePanel financeGroup '+(type==='receber'?'financeReceivableGroup':'financePayableGroup')}>
       <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
       <div className="tableWrap"><table>
-        <thead><tr><th>Descrição</th><th>Cliente / Fornecedor</th><th>Vencimento</th><th>Valor</th><th>{type==='receber'?'Recebido':'Pago'}</th><th>Saldo</th><th>Status</th><th>Gerenciar</th></tr></thead>
+        <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'descricao')}>Descrição{sortMark(searchKey,'descricao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'entidade')}>Cliente / Fornecedor{sortMark(searchKey,'entidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'vencimento')}>Vencimento{sortMark(searchKey,'vencimento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'valor')}>Valor{sortMark(searchKey,'valor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'pago')}>{type==='receber'?'Recebido':'Pago'}{sortMark(searchKey,'pago')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'saldo')}>Saldo{sortMark(searchKey,'saldo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'status')}>Status{sortMark(searchKey,'status')}</button></th><th>Gerenciar</th></tr></thead>
         <tbody>
           {rows.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={empty} actionLabel={canManageFinance?'+ Adicionar Lançamento':undefined} onAction={startNewTitle}/></td></tr>}
           {rows.map(t=>{
@@ -1349,7 +1376,7 @@ function App(){
         <article className="panel tablePanel purchasesTable">
           <div className="panelHead"><h3>Compras e contas a pagar</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
-            <thead><tr><th>Fatura</th><th>Data</th><th>Fornecedor</th><th>Status</th><th>Pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
+            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fatura')}>Fatura{sortMark('compras','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','data')}>Data{sortMark('compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fornecedor')}>Fornecedor{sortMark('compras','fornecedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','status')}>Status{sortMark('compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','pagamento')}>Pagamento{sortMark('compras','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','total')}>Total{sortMark('compras','total')}</button></th><th>Gerenciar</th></tr></thead>
             <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={compras.length===0&&!isViewer?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
@@ -1487,7 +1514,7 @@ function App(){
         <article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
           <div className="panelHead"><h3>Vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
-            <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Rota</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
+            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','fatura')}>Fatura{sortMark('vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagamento{sortMark('vendas','statuspag')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th><th>Gerenciar</th></tr></thead>
             <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&!isViewer?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
@@ -1575,7 +1602,7 @@ function App(){
         <article className="panel tablePanel commissionsTable">
           <div className="panelHead"><h3>Vendedores e comissões</h3><SearchField value={tableSearch.comissoes||''} onChange={v=>setSearch('comissoes',v)} placeholder="Pesquisar vendedores e valores"/></div>
           <div className="tableWrap"><table>
-            <thead><tr><th>Vendedor</th><th>% atual</th><th>Recebido no período</th><th>Comissão apurada</th><th>Recebimentos</th><th>Vendas</th><th>Status</th><th>Gerenciar</th></tr></thead>
+            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendedor')}>Vendedor{sortMark('comissoes','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','percentual')}>% atual{sortMark('comissoes','percentual')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebido')}>Recebido no período{sortMark('comissoes','recebido')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','comissao')}>Comissão apurada{sortMark('comissoes','comissao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebimentos')}>Recebimentos{sortMark('comissoes','recebimentos')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendas')}>Vendas{sortMark('comissoes','vendas')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','status')}>Status{sortMark('comissoes','status')}</button></th><th>Gerenciar</th></tr></thead>
             <tbody>{visibleSellers.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={vendedores.length===0?'Nenhum vendedor cadastrado.':'Nenhum vendedor encontrado para esta pesquisa.'} actionLabel={vendedores.length===0&&isAdmin?'+ Adicionar Vendedor':undefined} onAction={startNewSeller}/></td></tr>}{visibleSellers.map(v=>{
               const summary=comissoes.find(c=>c.vendedor_id===v.id)
               const opened=sellerPanel===v.id
