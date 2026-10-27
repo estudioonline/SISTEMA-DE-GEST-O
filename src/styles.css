@@ -592,3 +592,93 @@
   color:#10B981;
 }
 
+
+
+/* Semântica reforçada: Comissões, Financeiro e Relatórios */
+.semanticCards .semanticCard{
+  position:relative;
+  overflow:hidden;
+  background:#FFFFFF;
+  border-color:#E5E7EB;
+  box-shadow:0 8px 24px rgba(15,23,42,.08);
+}
+.semanticCards .semanticCard::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  border-radius:16px 0 0 16px;
+}
+.semanticCards .semanticCard span,
+.semanticCards .semanticCard small{
+  color:#64748B;
+}
+.semanticCards .semanticCard strong{
+  font-weight:800;
+}
+.semanticPositive::before{background:#10B981}
+.semanticPositive strong{color:#10B981!important}
+.semanticNegative::before{background:#EF4444}
+.semanticNegative strong{color:#EF4444!important}
+.semanticBlue::before{background:#3B82F6}
+.semanticBlue strong{color:#3B82F6!important}
+.semanticNeutral::before{background:#94A3B8}
+.semanticNeutral strong{color:#1E293B!important}
+
+.commissionsPage .commissionFilters,
+.reportsPage .reportFilters{
+  border-left:4px solid #3B82F6;
+}
+.commissionsPage .commissionFilters>div>strong{
+  color:#1E293B;
+}
+.commissionsPage .commissionFilters>div>span{
+  color:#64748B;
+}
+
+.financeReceivableGroup{
+  border-top:4px solid #10B981!important;
+}
+.financePayableGroup{
+  border-top:4px solid #EF4444!important;
+}
+.financeReceivableGroup .panelHead h3{
+  color:#10B981!important;
+}
+.financePayableGroup .panelHead h3{
+  color:#EF4444!important;
+}
+
+.reportsPage .grid2 .tablePanel:first-child{
+  border-top:4px solid #3B82F6;
+}
+.reportsPage .grid2 .tablePanel:last-child{
+  border-top:4px solid #EF4444;
+}
+.reportsPage .grid2 .tablePanel:first-child .panelHead h3{
+  color:#3B82F6!important;
+}
+.reportsPage .grid2 .tablePanel:last-child .panelHead h3{
+  color:#EF4444!important;
+}
+
+.dark .semanticCards .semanticCard{
+  background:#151C2B;
+  border-color:#253047;
+  box-shadow:0 8px 24px rgba(0,0,0,.22);
+}
+.dark .semanticCards .semanticCard span,
+.dark .semanticCards .semanticCard small{
+  color:#94A3B8;
+}
+.dark .semanticPositive strong{color:#34D399!important}
+.dark .semanticNegative strong{color:#F87171!important}
+.dark .semanticBlue strong{color:#60A5FA!important}
+.dark .semanticNeutral strong{color:#E2E8F0!important}
+.dark .financeReceivableGroup .panelHead h3{color:#34D399!important}
+.dark .financePayableGroup .panelHead h3{color:#F87171!important}
+.dark .reportsPage .grid2 .tablePanel:first-child .panelHead h3{color:#60A5FA!important}
+.dark .reportsPage .grid2 .tablePanel:last-child .panelHead h3{color:#F87171!important}
+
