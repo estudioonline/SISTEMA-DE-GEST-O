@@ -684,6 +684,38 @@ function App(){
   // COMPRAS
   function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('aberta');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
   function startNewPurchase(){resetPurchaseForm();setShowForm(true);setMsg('')}
+  function addPurchaseSuggestion(produto:Produto,quantidade:number){
+    const qty=Math.max(0.001,Number(quantidade)||0)
+    if(!showForm){resetPurchaseForm();setShowForm(true)}
+    setPurchaseItems(items=>{
+      const existing=items.find(i=>i.produto_id===produto.id)
+      if(existing){
+        return items.map(i=>i.produto_id===produto.id?{...i,quantidade:Number((i.quantidade+qty).toFixed(3)),custo_unitario:Number(produto.custo||i.custo_unitario)}:i)
+      }
+      const blank=items.findIndex(i=>!i.produto_id)
+      const item:PurchaseItemDraft={key:`${Date.now()}-${Math.random()}`,produto_id:produto.id,quantidade:Number(qty.toFixed(3)),custo_unitario:Number(produto.custo||0)}
+      if(blank>=0)return items.map((i,index)=>index===blank?item:i)
+      return [...items,item]
+    })
+    setMsg(`${produto.descricao} adicionado à compra sugerida.`)
+  }
+  function addAllPurchaseSuggestions(){
+    if(!purchaseSuggestions.length)return
+    if(!showForm){resetPurchaseForm();setShowForm(true)}
+    setPurchaseItems(items=>{
+      let next=items.filter(i=>i.produto_id)
+      for(const suggestion of purchaseSuggestions){
+        const idx=next.findIndex(i=>i.produto_id===suggestion.produto.id)
+        if(idx>=0){
+          next=next.map((i,index)=>index===idx?{...i,quantidade:Number((i.quantidade+suggestion.suggested).toFixed(3)),custo_unitario:Number(suggestion.produto.custo||i.custo_unitario)}:i)
+        }else{
+          next.push({key:`${Date.now()}-${Math.random()}`,produto_id:suggestion.produto.id,quantidade:Number(suggestion.suggested.toFixed(3)),custo_unitario:Number(suggestion.produto.custo||0)})
+        }
+      }
+      return next.length?next:[newPurchaseItem()]
+    })
+    setMsg(`${purchaseSuggestions.length} item(ns) de estoque baixo adicionados à compra.`)
+  }
   async function startEditPurchase(c:Compra){
     if(c.status==='cancelada'){setMsg('Compra cancelada não pode ser editada.');return}
     const {data,error}=await supabase.from('compra_itens').select('produto_id,quantidade,custo_unitario,total').eq('compra_id',c.id)
@@ -1139,6 +1171,19 @@ function App(){
     if(demand>available)return {kind:'low',label:'Estoque insuficiente',detail:`Disponível: ${available.toLocaleString('pt-BR')} ${produto.unidade} • solicitado: ${demand.toLocaleString('pt-BR')}`}
     return {kind:'ok',label:'Em estoque',detail:`Disponível: ${available.toLocaleString('pt-BR')} ${produto.unidade}`}
   }
+  const purchaseSuggestions=produtos
+    .filter(p=>p.ativo&&Number(p.estoque_atual)<=Number(p.estoque_minimo))
+    .map(p=>{
+      const current=Number(p.estoque_atual)||0
+      const minimum=Math.max(0,Number(p.estoque_minimo)||0)
+      const configuredTarget=Math.max(0,Number(p.estoque_reposicao)||0)
+      const target=configuredTarget>minimum?configuredTarget:minimum*2
+      const suggested=Math.max(0,target-current)
+      return {produto:p,current,minimum,target,suggested}
+    })
+    .filter(s=>s.suggested>0)
+    .sort((a,b)=>(a.current-a.minimum)-(b.current-b.minimum))
+  const purchaseSuggestionTotal=purchaseSuggestions.reduce((sum,s)=>sum+s.suggested*Number(s.produto.custo||0),0)
   const purchaseTotal=purchaseItems.reduce((s,i)=>s+i.quantidade*i.custo_unitario,0)
 
   const filteredSales=vendas.filter(v=>{const d=v.created_at.slice(0,10);return d>=reportStart&&d<=reportEnd&&(reportStatus==='todos'||v.status===reportStatus)})
@@ -1482,6 +1527,32 @@ function App(){
       </section>}
 
       {active==='compras'&&<section className="semanticPage purchasesPage">
+        <article className="panel purchaseSuggestionPanel">
+          <div className="purchaseSuggestionHead">
+            <div>
+              <span className="purchaseSuggestionEyebrow">Reposição de estoque</span>
+              <h3>Sugestão de compra</h3>
+              <p>{purchaseSuggestions.length? `${purchaseSuggestions.length} produto(s) estão no estoque mínimo ou abaixo.`:'Nenhum produto precisa de reposição neste momento.'}</p>
+            </div>
+            {purchaseSuggestions.length>0&&<div className="purchaseSuggestionActions">
+              <div><span>Custo estimado</span><strong>{money(purchaseSuggestionTotal)}</strong></div>
+              <button type="button" className="primary" onClick={addAllPurchaseSuggestions}><ShoppingCart size={16}/>Adicionar todos</button>
+            </div>}
+          </div>
+          {purchaseSuggestions.length>0&&<div className="tableWrap purchaseSuggestionTable"><table>
+            <thead><tr><th>Produto</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Alvo</th><th>Comprar</th><th>Custo estimado</th><th></th></tr></thead>
+            <tbody>{purchaseSuggestions.map(s=><tr key={s.produto.id}>
+              <td><strong>{s.produto.codigo}</strong><span className="purchaseSuggestionDescription">{s.produto.descricao}</span></td>
+              <td><span className="stockLevel stockLevelLow">{s.current.toLocaleString('pt-BR')} {s.produto.unidade}</span></td>
+              <td>{s.minimum.toLocaleString('pt-BR')} {s.produto.unidade}</td>
+              <td>{s.target.toLocaleString('pt-BR')} {s.produto.unidade}</td>
+              <td><strong className="purchaseSuggestionQty">+{s.suggested.toLocaleString('pt-BR')} {s.produto.unidade}</strong></td>
+              <td><strong>{money(s.suggested*Number(s.produto.custo||0))}</strong></td>
+              <td><button type="button" className="ghost purchaseSuggestionAdd" onClick={()=>addPurchaseSuggestion(s.produto,s.suggested)}><Plus size={15}/>Adicionar</button></td>
+            </tr>)}</tbody>
+          </table></div>}
+        </article>
+
         {showForm&&<form className="panel saleForm purchaseForm" onSubmit={savePurchase}>
           <div className="formTitle">
             <div>
