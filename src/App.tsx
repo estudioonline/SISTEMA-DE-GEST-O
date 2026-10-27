@@ -884,6 +884,25 @@ function App(){
       setMsg('Não foi possível gerar o PDF desta compra.')
     }
   }
+  async function receivePurchase(c:Compra){
+    if(c.status!=='pedido_aprovado')return
+    if(!window.confirm(`Confirmar o recebimento da compra #${invoiceNo(c.fatura_numero)}? Os itens serão adicionados ao estoque.`))return
+
+    const r=await supabase.from('compras')
+      .update({status:'pedido_recebido'})
+      .eq('id',c.id)
+      .eq('status','pedido_aprovado')
+
+    if(r.error){
+      setMsg(r.error.message)
+      return
+    }
+
+    setMsg(`Compra #${invoiceNo(c.fatura_numero)} recebida. Estoque atualizado com sucesso.`)
+    setPurchasePanel(null)
+    await loadData()
+  }
+
   async function cancelPurchase(c:Compra){
     const detail=c.status==='pedido_recebido'
       ? 'O estoque será estornado e as contas a pagar em aberto serão canceladas.'
@@ -1708,6 +1727,7 @@ function App(){
                       </div>
                       <div className="rowActions">
                         <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
+                        {c.status==='pedido_aprovado'&&!isViewer&&<button className="primary receivePurchaseBtn" onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}
                         {!isViewer&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
                         {!isViewer&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
                         {isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
