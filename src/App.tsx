@@ -1180,9 +1180,6 @@ function App(){
           <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('fornecedores');if(fornecedores.length===0&&!isViewer)startNewSupplier()}}>{fornecedores.length===0&&!isViewer?'+ Adicionar Fornecedor':'Gerenciar'}</button></article>
           <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>{setActive('produtos');if(produtos.length===0&&!isViewer)startNewProduct()}}>{produtos.length===0&&!isViewer?'+ Adicionar Produto':'Gerenciar'}</button></article>
         </div>
-        <div className="dashboardHeroMedia" aria-label="Apresentação visual do sistema">
-          <video src="/SISTEMA-DE-GEST-O/dashboard_banner_5s.mp4" autoPlay muted loop playsInline preload="metadata"/>
-        </div>
       </section>}
 
       {active==='clientes'&&<section className="semanticPage clientsPage">
