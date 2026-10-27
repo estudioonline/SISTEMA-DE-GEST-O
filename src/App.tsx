@@ -12,6 +12,7 @@ import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } fro
 import { generateInvoicePdf } from './lib/invoicePdf'
 import { generatePurchaseInvoicePdf } from './lib/purchaseInvoicePdf'
 import { generateCommissionReportPdf } from './lib/commissionReportPdf'
+import { loginBackground } from './login-background'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
 import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
 
@@ -1042,7 +1043,7 @@ function App(){
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
   if(!supabaseConfigured)return <div className="modulePlaceholder"><div className="panel" style={{maxWidth:620}}><h2>Sistema de Gestão publicado</h2><p>Configuração do Supabase ausente.</p></div></div>
-  if(!session)return <div className="modulePlaceholder loginPage"><form onSubmit={login} className="panel dataForm loginCard" style={{maxWidth:420,width:'100%'}}><h2>Sistema de Gestão</h2><p>Acesse o ERP</p><input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/><button className="primary">Entrar</button>{msg&&<p>{msg}</p>}</form></div>
+  if(!session)return <div className="modulePlaceholder loginPage" style={{backgroundImage:`url("${loginBackground}")`}}><form onSubmit={login} className="panel dataForm loginCard" style={{maxWidth:420,width:'100%'}}><h2>Sistema de Gestão</h2><p>Acesse o ERP</p><input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/><button className="primary">Entrar</button>{msg&&<p>{msg}</p>}</form></div>
 
   const low=produtos.filter(p=>p.ativo&&Number(p.estoque_atual)<=Number(p.estoque_minimo)).length
   const stockValue=produtos.reduce((s,p)=>s+Number(p.estoque_atual)*Number(p.custo),0)
