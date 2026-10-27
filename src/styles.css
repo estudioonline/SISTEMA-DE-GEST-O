@@ -1294,3 +1294,7 @@
 .dark .financeDueToolbar label{color:#9aa8bb}
 .dark .financeDueToolbar input{background:#101725;border-color:#2a3648;color:#eef3ff}
 @media(max-width:900px){.financePanelHead{align-items:stretch}.financeDueToolbar{justify-content:flex-start}.financeDueToolbar .tableSearch{width:100%}}
+
+.financeSingleList{margin-top:14px}
+.financeSubTabs{flex-wrap:wrap}
+@media(max-width:760px){.financeSubTabs{width:100%;grid-template-columns:1fr 1fr}}
