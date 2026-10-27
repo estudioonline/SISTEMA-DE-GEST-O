@@ -84,6 +84,7 @@ function App(){
   const [viewerEmail,setViewerEmail]=useState('')
   const [viewerPassword,setViewerPassword]=useState('')
   const [creatingViewer,setCreatingViewer]=useState(false)
+  const [newUserRole,setNewUserRole]=useState<PerfilRole>('visualizador')
   const [managedUsers,setManagedUsers]=useState<ManagedUser[]>([])
   const [userEdits,setUserEdits]=useState<Record<string,{nome:string;perfil:PerfilRole;ativo:boolean}>>({})
   const [savingUserId,setSavingUserId]=useState<string|null>(null)
@@ -340,12 +341,6 @@ function App(){
     e.preventDefault();setMsg('')
     const {error}=await supabase.auth.signInWithPassword({email,password})
     if(error)setMsg(error.message)
-  }
-
-  async function signup(){
-    setMsg('')
-    const {error}=await supabase.auth.signUp({email,password,options:{data:{full_name:email.split('@')[0]}}})
-    setMsg(error?error.message:'Conta criada. Verifique seu e-mail se a confirmação estiver habilitada.')
   }
 
   function closeForms(){
@@ -844,10 +839,10 @@ function App(){
     await loadManagedUsers()
   }
 
-  async function createViewerAccount(e:FormEvent<HTMLFormElement>){
+  async function createManagedUserAccount(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!isAdmin){
-      setMsg('Somente administrador pode criar usuário visualizador.')
+      setMsg('Somente administrador pode criar usuários.')
       return
     }
     if(!supabaseUrl||!supabasePublishableKey){
@@ -870,14 +865,14 @@ function App(){
 
     if(error||!data.user){
       setCreatingViewer(false)
-      setMsg(error?.message||'Não foi possível criar o usuário visualizador.')
+      setMsg(error?.message||'Não foi possível criar o usuário.')
       return
     }
 
-    const {error:roleError}=await supabase.rpc('definir_perfil_visualizador',{p_user_id:data.user.id})
+    const {error:roleError}=await supabase.rpc('atualizar_usuario_erp',{p_user_id:data.user.id,p_nome:viewerName.trim()||'Usuário',p_perfil:newUserRole,p_ativo:true})
     if(roleError){
       setCreatingViewer(false)
-      setMsg('Usuário criado, mas não foi possível aplicar o perfil visualizador: '+roleError.message)
+      setMsg('Usuário criado, mas não foi possível aplicar o perfil selecionado: '+roleError.message)
       return
     }
 
@@ -885,10 +880,11 @@ function App(){
 
     setViewerEmail('')
     setViewerPassword('')
+    setNewUserRole('visualizador')
     setCreatingViewer(false)
     setMsg(data.session
-      ? 'Usuário visualizador criado e liberado para acesso.'
-      : 'Usuário visualizador criado. Confirme o e-mail enviado para liberar o acesso.')
+      ? 'Usuário criado e liberado para acesso.'
+      : 'Usuário criado. Confirme o e-mail enviado para liberar o acesso.')
     await loadManagedUsers()
   }
 
@@ -904,7 +900,7 @@ function App(){
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
   if(!supabaseConfigured)return <div className="modulePlaceholder"><div className="panel" style={{maxWidth:620}}><h2>Sistema de Gestão publicado</h2><p>Configuração do Supabase ausente.</p></div></div>
-  if(!session)return <div className="modulePlaceholder"><form onSubmit={login} className="panel dataForm" style={{maxWidth:420,width:'100%'}}><h2>Sistema de Gestão</h2><p>Acesse o ERP</p><input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/><button className="primary">Entrar</button><button type="button" className="ghost" onClick={signup}>Criar conta</button>{msg&&<p>{msg}</p>}</form></div>
+  if(!session)return <div className="modulePlaceholder"><form onSubmit={login} className="panel dataForm" style={{maxWidth:420,width:'100%'}}><h2>Sistema de Gestão</h2><p>Acesse o ERP</p><input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/><button className="primary">Entrar</button>{msg&&<p>{msg}</p>}</form></div>
 
   const low=produtos.filter(p=>p.ativo&&Number(p.estoque_atual)<=Number(p.estoque_minimo)).length
   const stockValue=produtos.reduce((s,p)=>s+Number(p.estoque_atual)*Number(p.custo),0)
@@ -1538,12 +1534,21 @@ function App(){
       </section>}
 
       {active==='config'&&<section>
-        {isAdmin&&<form className="panel viewerUserForm" onSubmit={createViewerAccount}>
-          <div className="formTitle"><div><h3>Criar usuário visualizador</h3><p>Acesso somente leitura. Pode consultar telas, relatórios e PDFs, mas não altera dados.</p></div><span className="readOnlyTag">Somente leitura</span></div>
+        {isAdmin&&<form className="panel viewerUserForm" onSubmit={createManagedUserAccount}>
+          <div className="formTitle"><div><h3>Criar novo usuário</h3><p>O acesso ao ERP passa a ser controlado pelo administrador. Escolha o perfil inicial do usuário.</p></div></div>
           <label className="fieldLabel">Nome do usuário<input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Digite o nome" required/></label>
           <label className="fieldLabel">E-mail<input type="email" value={viewerEmail} onChange={e=>setViewerEmail(e.target.value)} placeholder="usuario@empresa.com" required/></label>
           <label className="fieldLabel">Senha inicial<input type="password" value={viewerPassword} onChange={e=>setViewerPassword(e.target.value)} placeholder="Mínimo de 8 caracteres" minLength={8} required/></label>
-          <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar visualizador'}</button>
+          <label className="fieldLabel">Perfil
+            <select value={newUserRole} onChange={e=>setNewUserRole(e.target.value as PerfilRole)}>
+              <option value="administrador">Administrador</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="vendas">Vendas</option>
+              <option value="estoque">Estoque</option>
+              <option value="visualizador">Visualizador</option>
+            </select>
+          </label>
+          <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar usuário'}</button>
         </form>}
 
         {isAdmin&&<article className="panel userManagementPanel">
