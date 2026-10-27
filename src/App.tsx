@@ -19,11 +19,12 @@ type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'venda
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
 type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 type PurchasePaymentMethod='pix'|'cartao'|'boleto'
+type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;preco_venda:number;estoque_atual:number;estoque_minimo:number;ativo:boolean}
-type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
+type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null}
@@ -47,6 +48,7 @@ const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency
 const today=()=>new Date().toISOString().slice(0,10)
 const dateBr=(v:string)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v.length===10?v+'T12:00:00':v)):'—'
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
+const deliveryRouteLabel=(v:string|null|undefined)=>v==='norte'?'Norte':v==='sul'?'Sul':v==='leste'?'Leste':v==='interestadual'?'Interestadual':v==='retirada'?'Retirada':'—'
 const onlyDigits=(value:string,max:number)=>value.replace(/\D/g,'').slice(0,max)
 const maskDocument=(value:string)=>{
   const d=onlyDigits(value,14)
@@ -132,6 +134,7 @@ function App(){
   const [saleSeller,setSaleSeller]=useState('')
   const [saleStatus,setSaleStatus]=useState('pedido')
   const [saleNotes,setSaleNotes]=useState('')
+  const [saleRoute,setSaleRoute]=useState<DeliveryRoute|''>('')
   const [salePayment,setSalePayment]=useState<PaymentMethod>('pix')
   const [saleInstallments,setSaleInstallments]=useState(1)
   const [saleDueDate,setSaleDueDate]=useState(today())
@@ -519,7 +522,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
   function startNewSale(){resetSaleForm();setShowForm(true);setMsg('')}
   async function startEditSale(v:Venda){
     if(v.status==='cancelado'){setMsg('Venda cancelada não pode ser editada.');return}
@@ -527,7 +530,7 @@ function App(){
     if(error){setMsg(error.message);return}
     const items=(data||[]) as VendaItem[]
     setOriginalSaleItems(items)
-    setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(Number(v.parcelas)||1);setSaleDueDate(v.primeiro_vencimento||today())
+    setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(Number(v.parcelas)||1);setSaleDueDate(v.primeiro_vencimento||today())
     setSaleItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)})))
     setShowForm(true);setMsg('')
   }
@@ -540,6 +543,7 @@ function App(){
     e.preventDefault();if(!session)return
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
+    if(!saleRoute){setMsg('Selecione a rota de entrega.');return}
 
     const precisaAutorizar=saleConsumesStock&&saleStockShortages.length>0
     let autorizarSemEstoque=false
@@ -567,11 +571,13 @@ function App(){
       : await supabase.rpc(rpcName,args)
     if(r.error||!r.data){setSavingSale(false);setMsg('Não foi possível salvar a venda: '+(r.error?.message||'erro desconhecido'));return}
     const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Venda
+    const routeUpdate=await supabase.from('vendas').update({rota_entrega:saleRoute}).eq('id',saved.id)
+    if(routeUpdate.error){setSavingSale(false);setMsg('Venda salva, mas não foi possível registrar a rota de entrega: '+routeUpdate.error.message);return}
     const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
     const desconto=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
     const total=Math.max(0,subtotal-desconto)
     try{
-      generateInvoicePdf({id:saved.id,fatura_numero:saved.fatura_numero,created_at:saved.created_at||new Date().toISOString(),status:saved.status,subtotal,desconto,total,observacoes:saleNotes||null,forma_pagamento:salePayment,parcelas:saleInstallments,primeiro_vencimento:saleDueDate,vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,cliente:clientes.find(c=>c.id===saleClient)||null,company:empresa||undefined,items:invoiceItems(items)})
+      generateInvoicePdf({id:saved.id,fatura_numero:saved.fatura_numero,created_at:saved.created_at||new Date().toISOString(),status:saved.status,subtotal,desconto,total,observacoes:saleNotes||null,forma_pagamento:salePayment,parcelas:saleInstallments,primeiro_vencimento:saleDueDate,rota_entrega:saleRoute,vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,cliente:clientes.find(c=>c.id===saleClient)||null,company:empresa||undefined,items:invoiceItems(items)})
       await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
       setMsg(autorizarSemEstoque?(editingSale?'Venda atualizada com autorização administrativa de estoque e fatura reemitida.':'Venda criada com autorização administrativa de estoque e fatura emitida.'):(editingSale?'Venda atualizada e fatura reemitida.':'Venda criada e fatura emitida.'))
     }catch{setMsg('Venda salva. A fatura pode ser reemitida pelo painel.')}
@@ -582,7 +588,7 @@ function App(){
     if(error){setMsg(error.message);return}
     const items=(data||[]) as VendaItem[]
     const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
-    try{generateInvoicePdf({id:v.id,fatura_numero:v.fatura_numero,created_at:v.created_at,status:v.status,subtotal:Number(v.subtotal),desconto:Number(v.desconto),total:Number(v.total),observacoes:v.observacoes,forma_pagamento:v.forma_pagamento,parcelas:Number(v.parcelas),primeiro_vencimento:v.primeiro_vencimento,vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,cliente:clientes.find(c=>c.id===v.cliente_id)||null,company:empresa||undefined,items:invoiceItems(drafts)});await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)}catch{setMsg('Não foi possível gerar o PDF.')}
+    try{generateInvoicePdf({id:v.id,fatura_numero:v.fatura_numero,created_at:v.created_at,status:v.status,subtotal:Number(v.subtotal),desconto:Number(v.desconto),total:Number(v.total),observacoes:v.observacoes,forma_pagamento:v.forma_pagamento,parcelas:Number(v.parcelas),primeiro_vencimento:v.primeiro_vencimento,rota_entrega:v.rota_entrega,vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,cliente:clientes.find(c=>c.id===v.cliente_id)||null,company:empresa||undefined,items:invoiceItems(drafts)});await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)}catch{setMsg('Não foi possível gerar o PDF.')}
   }
   async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar fatura ${invoiceNo(v.fatura_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
   async function deleteSale(v:Venda){if(!isAdmin){setMsg('Somente administrador pode excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
@@ -1004,7 +1010,7 @@ function App(){
   const commissionTotal=comissoes.reduce((s,c)=>s+Number(c.comissao_apurada),0)
   const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
   const visiblePurchases=compras.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])})
-  const visibleSales=vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',v.status,paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])})
+  const visibleSales=vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',v.status,deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])})
   const visibleSellers=vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])})
 
   function salePaymentStatus(venda:Venda){
@@ -1406,6 +1412,16 @@ function App(){
                 <option value="faturado">Faturado</option>
               </select>
             </label>
+            <label>Rota de entrega
+              <select value={saleRoute} onChange={e=>setSaleRoute(e.target.value as DeliveryRoute)} required>
+                <option value="">Selecione a rota</option>
+                <option value="norte">Norte</option>
+                <option value="sul">Sul</option>
+                <option value="leste">Leste</option>
+                <option value="interestadual">Interestadual</option>
+                <option value="retirada">Retirada</option>
+              </select>
+            </label>
             <label>Pagamento
               <select value={salePayment} onChange={e=>changePayment(e.target.value as PaymentMethod)}>
                 <option value="dinheiro">Dinheiro</option>
@@ -1467,8 +1483,8 @@ function App(){
         <article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
           <div className="panelHead"><h3>Vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
-            <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
-            <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&!isViewer?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
+            <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Rota</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
+            <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&!isViewer?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
               const opened=salePanel===v.id
@@ -1478,6 +1494,7 @@ function App(){
                   <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
                   <td>{new Date(v.created_at).toLocaleString('pt-BR')}</td>
                   <td>{client?.nome||'Consumidor'}</td>
+                  <td><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></td>
                   <td>{seller?.nome||'—'}</td>
                   <td><span className={'statusBadge status-'+v.status}>{v.status}</span></td>
                   <td>{paymentLabel(v.forma_pagamento)} {Number(v.parcelas)>1?'• '+v.parcelas+'x':''}</td>
@@ -1485,12 +1502,12 @@ function App(){
                   <td><strong>{money(Number(v.total))}</strong></td>
                   <td><button className="rowMenuBtn" onClick={()=>setSalePanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções da venda" aria-expanded={opened}><MoreVertical size={18}/></button></td>
                 </tr>
-                {opened&&<tr className="manageRow"><td colSpan={9}>
+                {opened&&<tr className="manageRow"><td colSpan={10}>
                   <div className="invoiceManagePanel">
                     <div className="actionPanel">
                       <div className="actionMeta">
                         <strong>Fatura #{invoiceNo(v.fatura_numero)}</strong>
-                        <span>{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}{paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)} • pagamento: {paymentStatus.label}</span>
+                        <span>{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}Rota: {deliveryRouteLabel(v.rota_entrega)} • {paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)} • pagamento: {paymentStatus.label}</span>
                       </div>
                       <div className="rowActions">
                         <button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
