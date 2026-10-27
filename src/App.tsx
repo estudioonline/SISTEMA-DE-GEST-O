@@ -1031,6 +1031,12 @@ function App(){
         </div>
 
         {productSubtab==='cadastro'&&<>
+          <div className="cards compactCards semanticCards">
+            <article className="card semanticCard semanticBlue"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article>
+            <article className="card semanticCard semanticWarning"><span>Estoque baixo</span><strong>{low}</strong></article>
+            <article className="card semanticCard semanticBlue"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article>
+          </div>
+
           <div className="inventoryTopActions">
             <button type="button" className="ghost excelSecondaryBtn" onClick={()=>setExcelToolsOpen(v=>!v)} aria-expanded={excelToolsOpen}>
               <FileSpreadsheet size={16}/>Excel
@@ -1071,12 +1077,6 @@ function App(){
             <label>Motivo<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required/></label>
             <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div>
           </form>}
-
-          <div className="cards compactCards semanticCards">
-            <article className="card semanticCard semanticBlue"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article>
-            <article className="card semanticCard semanticWarning"><span>Estoque baixo</span><strong>{low}</strong></article>
-            <article className="card semanticCard semanticBlue"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article>
-          </div>
 
           <ProductTable produtos={produtos} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={isViewer}/>
         </>}
