@@ -1372,7 +1372,7 @@ function App(){
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':active==='compras'?'Nova compra':'Novo'}</button>}
           {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
-          {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
@@ -1436,12 +1436,29 @@ function App(){
       </section>}
 
       {active==='clientes'&&<section className="semanticPage clientsPage">
-        {showForm&&<form className="panel dataForm" onSubmit={saveClient}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/><input name="documento" inputMode="numeric" placeholder="CPF / CNPJ" defaultValue={maskDocument(editingClient?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/><input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingClient?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/><input name="limite_credito" type="number" step="0.01" placeholder="Limite de crédito" defaultValue={editingClient?.limite_credito||0}/><select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
+        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingClient?'Editar cliente':'Novo cliente'}><div className="saleModalShell entityModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveClient}>
+          <div className="formTitle saleModalTitle"><div><h3>{editingClient?'Editar cliente':'Novo cliente'}</h3><p>Cadastre ou atualize os dados do cliente.</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de cliente" onClick={()=>{setShowForm(false);setEditingClient(null)}}><X size={18}/></button></div>
+          <input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/>
+          <input name="documento" inputMode="numeric" placeholder="CPF / CNPJ" defaultValue={maskDocument(editingClient?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
+          <input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/>
+          <input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingClient?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/>
+          <input name="limite_credito" type="number" step="0.01" placeholder="Limite de crédito" defaultValue={editingClient?.limite_credito||0}/>
+          <select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+          <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">{editingClient?'Salvar alterações':'Cadastrar cliente'}</button></div>
+        </form></div></div>}
         <EditableEntityTable readOnly={isViewer} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
       </section>}
 
       {active==='fornecedores'&&<section className="semanticPage suppliersPage">
-        {showForm&&<form className="panel dataForm" onSubmit={saveSupplier}><input name="nome" placeholder="Nome / Razão social" required defaultValue={editingSupplier?.nome||''}/><input name="documento" inputMode="numeric" placeholder="CNPJ / CPF" defaultValue={maskDocument(editingSupplier?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/><input name="email" type="email" placeholder="E-mail" defaultValue={editingSupplier?.email||''}/><input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingSupplier?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/><select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
+        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingSupplier?'Editar fornecedor':'Novo fornecedor'}><div className="saleModalShell entityModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveSupplier}>
+          <div className="formTitle saleModalTitle"><div><h3>{editingSupplier?'Editar fornecedor':'Novo fornecedor'}</h3><p>Cadastre ou atualize os dados do fornecedor.</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fornecedor" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}><X size={18}/></button></div>
+          <input name="nome" placeholder="Nome / Razão social" required defaultValue={editingSupplier?.nome||''}/>
+          <input name="documento" inputMode="numeric" placeholder="CNPJ / CPF" defaultValue={maskDocument(editingSupplier?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
+          <input name="email" type="email" placeholder="E-mail" defaultValue={editingSupplier?.email||''}/>
+          <input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingSupplier?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/>
+          <select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+          <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">{editingSupplier?'Salvar alterações':'Cadastrar fornecedor'}</button></div>
+        </form></div></div>}
         <EditableEntityTable readOnly={isViewer} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
       </section>}
 
@@ -1932,24 +1949,22 @@ function App(){
           <button className={financeSubtab==='pagar'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('pagar');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Contas a pagar <span className="subTabCount">{titulos.filter(t=>t.tipo==='pagar').length}</span></button>
         </div>
 
-        {financeSubtab==='geral'&&<>
-          {showForm&&<form className="panel dataForm" onSubmit={saveTitle}>
-            <select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
-              <option value="receber">Conta a receber</option>
-              <option value="pagar">Conta a pagar</option>
-            </select>
-            <input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/>
-            <input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/>
-            <input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/>
-            <input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/>
-            <input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/>
-            <input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/>
-            <div className="formActions">
-              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button>
-              <button className="primary">Salvar</button>
-            </div>
-          </form>}
+        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingTitle?'Editar fatura':'Nova fatura'}><div className="saleModalShell financeModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveTitle}>
+          <div className="formTitle saleModalTitle"><div><h3>{editingTitle?'Editar fatura':'Nova fatura'}</h3><p>Cadastre uma conta a receber ou uma conta a pagar.</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fatura" onClick={()=>{setShowForm(false);setEditingTitle(null)}}><X size={18}/></button></div>
+          <select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
+            <option value="receber">Conta a receber</option>
+            <option value="pagar">Conta a pagar</option>
+          </select>
+          <input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/>
+          <input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/>
+          <input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/>
+          <input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/>
+          <input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/>
+          <input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/>
+          <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">{editingTitle?'Salvar alterações':'Criar fatura'}</button></div>
+        </form></div></div>}
 
+        {financeSubtab==='geral'&&<>
           <div className="cards compactCards semanticCards">
             <article className="card semanticCard semanticPositive"><span>Contas a receber</span><strong>{money(openReceivables)}</strong><small>saldo em aberto</small></article>
             <article className="card semanticCard semanticNegative"><span>Contas a pagar</span><strong>{money(openPayables)}</strong><small>saldo em aberto</small></article>
