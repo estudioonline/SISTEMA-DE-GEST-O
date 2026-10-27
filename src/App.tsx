@@ -129,6 +129,8 @@ function App(){
   const [stockReason,setStockReason]=useState('Ajuste manual')
   const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'>('cadastro')
   const [excelToolsOpen,setExcelToolsOpen]=useState(false)
+  const [movementStart,setMovementStart]=useState(()=>new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10))
+  const [movementEnd,setMovementEnd]=useState(today())
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
@@ -1085,6 +1087,16 @@ function App(){
   const filteredPurchases=compras.filter(c=>{const d=c.created_at.slice(0,10);return d>=reportStart&&d<=reportEnd})
   const reportSalesTotal=filteredSales.filter(v=>v.status!=='cancelado').reduce((s,v)=>s+Number(v.total),0)
   const reportPurchaseTotal=filteredPurchases.filter(c=>c.status!=='cancelada').reduce((s,c)=>s+Number(c.total),0)
+  const filteredMovements=movimentosEstoque.filter(m=>{
+    const date=m.created_at.slice(0,10)
+    if(movementStart&&date<movementStart)return false
+    if(movementEnd&&date>movementEnd)return false
+    const p=produtos.find(x=>x.id===m.produto_id)
+    const tipo=m.tipo==='entrada'?'Entrada':m.tipo==='saida'?'Saída':Number(m.quantidade)>=0?'Ajuste entrada':'Ajuste saída'
+    return searchMatches('movimentos-estoque',[new Date(m.created_at).toLocaleString('pt-BR'),tipo,p?.codigo||'',p?.descricao||'',Number(m.quantidade).toLocaleString('pt-BR'),m.referencia||''])
+  })
+  const movementEntriesTotal=filteredMovements.filter(m=>m.tipo==='entrada'||(m.tipo==='ajuste'&&Number(m.quantidade)>=0)).reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0)
+  const movementExitsTotal=filteredMovements.filter(m=>m.tipo==='saida'||(m.tipo==='ajuste'&&Number(m.quantidade)<0)).reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0)
 
   const normalizeSearch=(value:unknown)=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
   const searchMatches=(key:string,values:unknown[])=>{
@@ -1344,17 +1356,17 @@ function App(){
           </div>
 
           <article className="panel tablePanel">
-            <div className="panelHead">
-              <div><h3>Relatório de entradas e saídas</h3><p>{movimentosEstoque.length} movimentação(ões) carregada(s)</p></div>
-              <SearchField value={tableSearch['movimentos-estoque']||''} onChange={v=>setSearch('movimentos-estoque',v)} placeholder="Pesquisar data, produto, tipo, quantidade ou referência"/>
+            <div className="panelHead movementReportHead">
+              <div><h3>Relatório de entradas e saídas</h3><p>{filteredMovements.length} movimentação(ões) no período</p></div>
+              <div className="movementReportFilters">
+                <SearchField value={tableSearch['movimentos-estoque']||''} onChange={v=>setSearch('movimentos-estoque',v)} placeholder="Pesquisar data, produto, tipo, quantidade ou referência"/>
+                <label><span>De</span><input type="date" value={movementStart} onChange={e=>setMovementStart(e.target.value)}/></label>
+                <label><span>Até</span><input type="date" value={movementEnd} onChange={e=>setMovementEnd(e.target.value)}/></label>
+              </div>
             </div>
             <div className="tableWrap"><table>
               <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('movimentos-estoque','data')}>Data{sortMark('movimentos-estoque','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('movimentos-estoque','tipo')}>Tipo{sortMark('movimentos-estoque','tipo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('movimentos-estoque','codigo')}>Código{sortMark('movimentos-estoque','codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('movimentos-estoque','produto')}>Produto{sortMark('movimentos-estoque','produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('movimentos-estoque','quantidade')}>Quantidade{sortMark('movimentos-estoque','quantidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('movimentos-estoque','referencia')}>Referência / Motivo{sortMark('movimentos-estoque','referencia')}</button></th></tr></thead>
-              <tbody>{sortList('movimentos-estoque',movimentosEstoque.filter(m=>{
-                const p=produtos.find(x=>x.id===m.produto_id)
-                const tipo=m.tipo==='entrada'?'Entrada':m.tipo==='saida'?'Saída':Number(m.quantidade)>=0?'Ajuste entrada':'Ajuste saída'
-                return searchMatches('movimentos-estoque',[new Date(m.created_at).toLocaleString('pt-BR'),tipo,p?.codigo||'',p?.descricao||'',Number(m.quantidade).toLocaleString('pt-BR'),m.referencia||''])
-              }),{
+              <tbody>{sortList('movimentos-estoque',filteredMovements,{
                 data:m=>m.created_at,
                 tipo:m=>m.tipo,
                 codigo:m=>produtos.find(x=>x.id===m.produto_id)?.codigo||'',
@@ -1375,6 +1387,10 @@ function App(){
                 </tr>
               })}</tbody>
             </table></div>
+            <div className="movementTotals">
+              <div className="movementTotal movementTotalIn"><span>Total de entradas</span><strong>{movementEntriesTotal.toLocaleString('pt-BR')} unidades</strong></div>
+              <div className="movementTotal movementTotalOut"><span>Total de saídas</span><strong>{movementExitsTotal.toLocaleString('pt-BR')} unidades</strong></div>
+            </div>
           </article>
         </>}
       </section>}
