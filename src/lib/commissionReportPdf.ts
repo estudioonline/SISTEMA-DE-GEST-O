@@ -4,6 +4,7 @@ import type { InvoiceCompany } from './invoicePdf'
 export type CommissionReportRow = {
   pagamento_id: string
   venda_id: string
+  vendedor_id: string | null
   fatura_numero: number
   parcela_numero: number | null
   data_pagamento: string
@@ -20,6 +21,7 @@ type CommissionReportData = {
   inicio: string
   fim: string
   company?: InvoiceCompany | null
+  vendedorFiltro?: string | null
   rows: CommissionReportRow[]
 }
 
@@ -59,8 +61,9 @@ function header(doc:jsPDF,data:CommissionReportData,continued=false){
   doc.setTextColor(...muted)
   doc.setFont('helvetica','normal')
   doc.setFontSize(8)
-  doc.text(`Período de recebimento: ${dateBr(data.inicio)} a ${dateBr(data.fim)}`,285,12,{align:'right'})
-  doc.text(`Emitido em: ${new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date())}`,285,20,{align:'right'})
+  doc.text(`Período: ${dateBr(data.inicio)} a ${dateBr(data.fim)}`,285,10,{align:'right'})
+  doc.text(`Vendedor: ${data.vendedorFiltro||'Todos'}`,285,16,{align:'right'})
+  doc.text(`Emitido em: ${new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date())}`,285,22,{align:'right'})
 }
 
 function tableHeader(doc:jsPDF,y:number){
@@ -154,7 +157,7 @@ export function generateCommissionReportPdf(data:CommissionReportData){
     doc.setFontSize(10)
     doc.text('Nenhum recebimento de venda encontrado no período selecionado.',12,y+10)
     addFooter(doc,data)
-    doc.save(`relatorio-comissoes-${safe(data.inicio)}-a-${safe(data.fim)}.pdf`)
+    doc.save(`relatorio-comissoes-${data.vendedorFiltro?safe(data.vendedorFiltro)+'-':''}${safe(data.inicio)}-a-${safe(data.fim)}.pdf`)
     return
   }
 
@@ -212,5 +215,5 @@ export function generateCommissionReportPdf(data:CommissionReportData){
   doc.text(money(totalCommission),281,y+10,{align:'right'})
 
   addFooter(doc,data)
-  doc.save(`relatorio-comissoes-${safe(data.inicio)}-a-${safe(data.fim)}.pdf`)
+  doc.save(`relatorio-comissoes-${data.vendedorFiltro?safe(data.vendedorFiltro)+'-':''}${safe(data.inicio)}-a-${safe(data.fim)}.pdf`)
 }
