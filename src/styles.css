@@ -1920,3 +1920,36 @@
   .dashboardBarValue{display:none}
   .dashboardChart{padding:16px}
 }
+
+
+/* Alternância visual definitiva nas listas.
+   Conta apenas linhas reais de dados, ignorando "Gerenciar" e estados vazios. */
+.app:not(.dark) .tableWrap tbody > tr:nth-child(odd of :not(.manageRow):not(.emptyTableRow)) > td{
+  background:#ffffff!important;
+}
+.app:not(.dark) .tableWrap tbody > tr:nth-child(even of :not(.manageRow):not(.emptyTableRow)) > td{
+  background:#eef4fb!important;
+}
+.app:not(.dark) .tableWrap tbody > tr:nth-child(even of :not(.manageRow):not(.emptyTableRow)) > td:first-child{
+  border-left-color:#cbd8e8!important;
+}
+.app:not(.dark) .tableWrap tbody > tr:nth-child(even of :not(.manageRow):not(.emptyTableRow)) > td:last-child{
+  border-right-color:#cbd8e8!important;
+}
+
+.dark .tableWrap tbody > tr:nth-child(odd of :not(.manageRow):not(.emptyTableRow)) > td{
+  background:#1b2230!important;
+}
+.dark .tableWrap tbody > tr:nth-child(even of :not(.manageRow):not(.emptyTableRow)) > td{
+  background:#131c2a!important;
+}
+
+/* O hover continua acima das cores alternadas. */
+.app:not(.dark) .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow):hover > td{
+  background:#dfeaff!important;
+  border-color:#b8c9df!important;
+}
+.dark .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow):hover > td{
+  background:#24344d!important;
+  border-color:#4a5c76!important;
+}
