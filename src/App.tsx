@@ -1133,7 +1133,6 @@ function App(){
             </label>
             <label>Pagamento
               <select value={purchasePayment} onChange={e=>changePurchasePayment(e.target.value as PaymentMethod)} required>
-                <option value="dinheiro">Dinheiro</option>
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
                 <option value="boleto">Boleto</option>
@@ -1266,6 +1265,7 @@ function App(){
             </label>
             <label>Pagamento
               <select value={salePayment} onChange={e=>changePayment(e.target.value as PaymentMethod)}>
+                <option value="dinheiro">Dinheiro</option>
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
                 <option value="boleto">Boleto</option>
