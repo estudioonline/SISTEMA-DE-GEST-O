@@ -1452,3 +1452,11 @@
 .iconOnlyProof svg{
   margin:0;
 }
+
+.loginPage{
+  min-height:100vh;
+  background:linear-gradient(180deg,#eaf2ff 0%,#dbeafe 100%);
+}
+.loginCard{
+  background:#fff!important;
+}
