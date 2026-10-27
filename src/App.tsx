@@ -989,7 +989,8 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','produtos','compras','vendas'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','compras','vendas'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
@@ -1022,25 +1023,90 @@ function App(){
       </section>}
 
       {active==='produtos'&&<section>
-        <div className="panel excelPanel">
-          <div className="excelPanelText">
-            <div className="excelIcon"><FileSpreadsheet size={22}/></div>
-            <div><strong>Importação e exportação Excel</strong><span>Exporte o cadastro atual ou importe uma planilha para cadastrar itens e ajustar o estoque pelo código do produto.</span></div>
-          </div>
-          <div className="excelActions">
-            <button type="button" className="ghost" onClick={downloadProductModel}><FileSpreadsheet size={16}/>Baixar modelo</button>
-            <button type="button" className="ghost" onClick={exportProducts}><Download size={16}/>Exportar Excel</button>
-            <label className={canManageStock?'primary excelUpload':'ghost excelUpload disabledUpload'}>
-              <Upload size={16}/>Importar Excel
-              <input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv" onChange={e=>void importProducts(e)} disabled={!canManageStock}/>
-            </label>
-          </div>
-          <small className="excelWarning">Na importação, o <strong>Estoque Atual</strong> da planilha substitui o saldo existente. Toda diferença é registrada como ajuste de estoque.</small>
+        <div className="subTabs">
+          <button className={productSubtab==='cadastro'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('cadastro');setMsg('')}}><Package size={16}/>Cadastro / Estoque</button>
+          <button className={productSubtab==='movimentos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('movimentos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Entradas e saídas</button>
         </div>
-        {showForm&&<form className="panel dataForm" onSubmit={saveProduct}><input name="codigo" placeholder="Código" required defaultValue={editingProduct?.codigo||''}/><input name="descricao" placeholder="Descrição" required defaultValue={editingProduct?.descricao||''}/><input name="unidade" defaultValue={editingProduct?.unidade||'UN'}/><input name="custo" type="number" step="0.01" placeholder="Custo" defaultValue={editingProduct?.custo||0}/><input name="preco_venda" type="number" step="0.01" placeholder="Preço de venda" defaultValue={editingProduct?.preco_venda||0}/>{!editingProduct&&<input name="estoque_atual" type="number" step="0.001" placeholder="Estoque inicial" defaultValue={0}/>}<input name="estoque_minimo" type="number" step="0.001" placeholder="Estoque mínimo" defaultValue={editingProduct?.estoque_minimo||0}/><select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select><div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button><button className="primary">Salvar</button></div></form>}
-        {adjustingProduct&&<form className="panel stockForm" onSubmit={adjustStock}><div><strong>Ajustar estoque</strong><span>{adjustingProduct.codigo} - {adjustingProduct.descricao}</span></div><label>Novo estoque<input type="number" min="0" step="0.001" value={stockNew} onChange={e=>setStockNew(e.target.value)} required/></label><label>Motivo<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required/></label><div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div></form>}
-        {<div className="cards compactCards"><article className="card"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article><article className="card"><span>Estoque baixo</span><strong>{low}</strong></article><article className="card"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article></div>}
-        <ProductTable produtos={produtos} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={isViewer}/>
+
+        {productSubtab==='cadastro'&&<>
+          <div className="panel excelPanel">
+            <div className="excelPanelText">
+              <div className="excelIcon"><FileSpreadsheet size={22}/></div>
+              <div><strong>Importação e exportação Excel</strong><span>Exporte o cadastro atual ou importe uma planilha para cadastrar itens e ajustar o estoque pelo código do produto.</span></div>
+            </div>
+            <div className="excelActions">
+              <button type="button" className="ghost" onClick={downloadProductModel}><FileSpreadsheet size={16}/>Baixar modelo</button>
+              <button type="button" className="ghost" onClick={exportProducts}><Download size={16}/>Exportar Excel</button>
+              <label className={canManageStock?'primary excelUpload':'ghost excelUpload disabledUpload'}>
+                <Upload size={16}/>Importar Excel
+                <input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv" onChange={e=>void importProducts(e)} disabled={!canManageStock}/>
+              </label>
+            </div>
+            <small className="excelWarning">Na importação, o <strong>Estoque Atual</strong> da planilha substitui o saldo existente. Toda diferença é registrada como ajuste de estoque.</small>
+          </div>
+
+          {showForm&&<form className="panel dataForm" onSubmit={saveProduct}>
+            <input name="codigo" placeholder="Código" required defaultValue={editingProduct?.codigo||''}/>
+            <input name="descricao" placeholder="Descrição" required defaultValue={editingProduct?.descricao||''}/>
+            <input name="unidade" defaultValue={editingProduct?.unidade||'UN'}/>
+            <input name="custo" type="number" step="0.01" placeholder="Custo" defaultValue={editingProduct?.custo||0}/>
+            <input name="preco_venda" type="number" step="0.01" placeholder="Preço de venda" defaultValue={editingProduct?.preco_venda||0}/>
+            {!editingProduct&&<input name="estoque_atual" type="number" step="0.001" placeholder="Estoque inicial" defaultValue={0}/>}
+            <input name="estoque_minimo" type="number" step="0.001" placeholder="Estoque mínimo" defaultValue={editingProduct?.estoque_minimo||0}/>
+            <select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+            <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button><button className="primary">Salvar</button></div>
+          </form>}
+
+          {adjustingProduct&&<form className="panel stockForm" onSubmit={adjustStock}>
+            <div><strong>Ajustar estoque</strong><span>{adjustingProduct.codigo} - {adjustingProduct.descricao}</span></div>
+            <label>Novo estoque<input type="number" min="0" step="0.001" value={stockNew} onChange={e=>setStockNew(e.target.value)} required/></label>
+            <label>Motivo<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required/></label>
+            <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div>
+          </form>}
+
+          <div className="cards compactCards">
+            <article className="card"><span>Produtos ativos</span><strong>{produtos.filter(p=>p.ativo).length}</strong></article>
+            <article className="card"><span>Estoque baixo</span><strong>{low}</strong></article>
+            <article className="card"><span>Valor de custo</span><strong>{money(stockValue)}</strong></article>
+          </div>
+
+          <ProductTable produtos={produtos} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={isViewer}/>
+        </>}
+
+        {productSubtab==='movimentos'&&<>
+          <div className="cards compactCards">
+            <article className="card"><span>Entradas registradas</span><strong>{movimentosEstoque.filter(m=>m.tipo==='entrada').length}</strong><small>{movimentosEstoque.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0).toLocaleString('pt-BR')} unidades</small></article>
+            <article className="card"><span>Saídas registradas</span><strong>{movimentosEstoque.filter(m=>m.tipo==='saida').length}</strong><small>{movimentosEstoque.filter(m=>m.tipo==='saida').reduce((s,m)=>s+Math.abs(Number(m.quantidade)),0).toLocaleString('pt-BR')} unidades</small></article>
+            <article className="card"><span>Ajustes</span><strong>{movimentosEstoque.filter(m=>m.tipo==='ajuste').length}</strong><small>alterações manuais/importação</small></article>
+          </div>
+
+          <article className="panel tablePanel">
+            <div className="panelHead">
+              <div><h3>Relatório de entradas e saídas</h3><p>{movimentosEstoque.length} movimentação(ões) carregada(s)</p></div>
+              <SearchField value={tableSearch['movimentos-estoque']||''} onChange={v=>setSearch('movimentos-estoque',v)} placeholder="Pesquisar data, produto, tipo, quantidade ou referência"/>
+            </div>
+            <div className="tableWrap"><table>
+              <thead><tr><th>Data</th><th>Tipo</th><th>Código</th><th>Produto</th><th>Quantidade</th><th>Referência / Motivo</th></tr></thead>
+              <tbody>{movimentosEstoque.filter(m=>{
+                const p=produtos.find(x=>x.id===m.produto_id)
+                const tipo=m.tipo==='entrada'?'Entrada':m.tipo==='saida'?'Saída':Number(m.quantidade)>=0?'Ajuste entrada':'Ajuste saída'
+                return searchMatches('movimentos-estoque',[new Date(m.created_at).toLocaleString('pt-BR'),tipo,p?.codigo||'',p?.descricao||'',Number(m.quantidade).toLocaleString('pt-BR'),m.referencia||''])
+              }).map(m=>{
+                const p=produtos.find(x=>x.id===m.produto_id)
+                const isEntry=m.tipo==='entrada'||(m.tipo==='ajuste'&&Number(m.quantidade)>=0)
+                const label=m.tipo==='entrada'?'Entrada':m.tipo==='saida'?'Saída':isEntry?'Ajuste entrada':'Ajuste saída'
+                return <tr key={m.id}>
+                  <td>{new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                  <td><span className={isEntry?'movementBadge movement-in':'movementBadge movement-out'}>{label}</span></td>
+                  <td><strong>{p?.codigo||'—'}</strong></td>
+                  <td>{p?.descricao||'Produto não encontrado'}</td>
+                  <td><strong>{Math.abs(Number(m.quantidade)).toLocaleString('pt-BR')} {p?.unidade||''}</strong></td>
+                  <td>{m.referencia||'—'}</td>
+                </tr>
+              })}</tbody>
+            </table></div>
+          </article>
+        </>}
       </section>}
 
       {active==='compras'&&<section>
