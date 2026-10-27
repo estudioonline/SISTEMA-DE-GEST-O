@@ -575,7 +575,7 @@ function App(){
       await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
       setMsg(autorizarSemEstoque?(editingSale?'Venda atualizada com autorização administrativa de estoque e fatura reemitida.':'Venda criada com autorização administrativa de estoque e fatura emitida.'):(editingSale?'Venda atualizada e fatura reemitida.':'Venda criada e fatura emitida.'))
     }catch{setMsg('Venda salva. A fatura pode ser reemitida pelo painel.')}
-    setSavingSale(false);setShowForm(false);resetSaleForm();await loadData()
+    setSavingSale(false);setShowForm(false);resetSaleForm();await loadData();requestAnimationFrame(()=>{const table=document.getElementById('sales-table');table?.scrollIntoView({behavior:'smooth',block:'start'});table?.focus()})
   }
   async function downloadSalePdf(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
@@ -1120,7 +1120,7 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','compras','vendas'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {!isViewer&&active!=='comissoes'&&['clientes','fornecedores','compras','vendas'].includes(active)&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':'Novo'}</button>}
           {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
@@ -1377,12 +1377,13 @@ function App(){
       </section>}
 
       {active==='vendas'&&<section className="semanticPage salesPage">
-        {showForm&&<form className="panel saleForm salesForm" onSubmit={saveSale}>
-          <div className="formTitle">
+        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingSale?'Editar venda':'Nova venda'}><div className="saleModalShell"><form className="panel saleForm salesForm saleModalForm" onSubmit={saveSale}>
+          <div className="formTitle saleModalTitle">
             <div>
               <h3>{editingSale?'Editar fatura '+invoiceNo(editingSale.fatura_numero):'Nova venda / fatura'}</h3>
               <p>Pagamento e fatura são obrigatórios. O vendedor define quem recebe a comissão quando houver recebimento.</p>
             </div>
+            <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de venda" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}><X size={18}/></button>
           </div>
 
           <div className="saleHeader saleHeaderExpanded">
@@ -1458,12 +1459,12 @@ function App(){
           </div>
 
           <div className="saleActions">
-            <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm()}}>Cancelar</button>
+            <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}>Cancelar</button>
             <button className="primary" disabled={savingSale}>{savingSale?'Salvando...':editingSale?'Salvar e reemitir':'Salvar e emitir fatura'}</button>
           </div>
-        </form>}
+        </form></div></div>}
 
-        <article className="panel tablePanel salesTable">
+        <article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
           <div className="panelHead"><h3>Vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Pagamento</th><th>Status pagamento</th><th>Total</th><th>Gerenciar</th></tr></thead>
