@@ -989,3 +989,127 @@
   color:#60A5FA;
 }
 
+
+
+/* Usabilidade: menu recolhível, estados vazios, valores e foco de linha */
+.sidebar,
+.main{
+  transition:width .2s ease,margin-left .2s ease,padding .2s ease;
+}
+.sidebarToggle{
+  position:absolute;
+  top:18px;
+  right:-14px;
+  width:30px;
+  height:30px;
+  border:1px solid #334155;
+  border-radius:9px;
+  background:#111827;
+  color:#E2E8F0;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  z-index:5;
+  box-shadow:0 5px 14px rgba(15,23,42,.2);
+}
+.sidebarToggle:hover{
+  background:#1F2937;
+  color:#FFFFFF;
+}
+.sidebarCollapsed .sidebar{
+  width:78px;
+  padding-left:10px;
+  padding-right:10px;
+}
+.sidebarCollapsed .main{
+  margin-left:78px;
+  width:calc(100% - 78px);
+}
+.sidebarCollapsed .brand{
+  justify-content:center;
+  padding-left:0;
+  padding-right:0;
+}
+.sidebarCollapsed .brandText,
+.sidebarCollapsed .sidebarFooter>span,
+.sidebarCollapsed .sidebarFooter>small,
+.sidebarCollapsed .navItem span{
+  display:none;
+}
+.sidebarCollapsed .navItem{
+  justify-content:center;
+  padding-left:10px;
+  padding-right:10px;
+}
+.sidebarCollapsed .sidebarFooter{
+  padding-left:0;
+  padding-right:0;
+}
+.sidebarCollapsed .sidebarFooter .navItem{
+  width:100%;
+}
+@media(max-width:760px){
+  .sidebarToggle{display:none}
+  .sidebarCollapsed .sidebar{width:76px}
+  .sidebarCollapsed .main{margin-left:76px;width:calc(100% - 76px)}
+}
+
+.emptyTableRow td{
+  background:transparent!important;
+  border:0!important;
+  padding:18px 8px!important;
+  text-align:center!important;
+}
+.emptyState{
+  min-height:110px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:12px;
+  color:#64748B;
+}
+.emptyStateAction{
+  min-width:160px;
+  justify-content:center;
+}
+
+/* Valores monetários alinhados para comparação rápida */
+.financeGroup th:nth-child(4),
+.financeGroup th:nth-child(5),
+.financeGroup th:nth-child(6),
+.financeGroup td:nth-child(4),
+.financeGroup td:nth-child(5),
+.financeGroup td:nth-child(6),
+.salesTable th:nth-child(8),
+.salesTable td:nth-child(8),
+.purchasesTable th:nth-child(6),
+.purchasesTable td:nth-child(6),
+.commissionsTable th:nth-child(3),
+.commissionsTable th:nth-child(4),
+.commissionsTable td:nth-child(3),
+.commissionsTable td:nth-child(4),
+.clientsPage .tablePanel th:nth-child(5),
+.clientsPage .tablePanel td:nth-child(5),
+.productsPage .tablePanel th:nth-child(7),
+.productsPage .tablePanel th:nth-child(8),
+.productsPage .tablePanel td:nth-child(7),
+.productsPage .tablePanel td:nth-child(8),
+.reportsPage .tablePanel th:last-child,
+.reportsPage .tablePanel td:last-child{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Hover mais visível na linha inteira */
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow):not(.emptyTableRow):hover td{
+  background:#EEF2F7!important;
+  border-color:#CBD5E1!important;
+  box-shadow:0 3px 10px rgba(15,23,42,.06);
+}
+.dark .tableWrap tbody tr:not(.manageRow):not(.emptyTableRow):hover td{
+  background:#263244!important;
+  border-color:#475569!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.2);
+}
+
