@@ -23,7 +23,7 @@ type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;ativo:boolean}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
@@ -469,7 +469,7 @@ function App(){
   async function saveProduct(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const f=new FormData(e.currentTarget)
-    const base={codigo:String(f.get('codigo')||''),descricao:String(f.get('descricao')||''),unidade:String(f.get('unidade')||'UN'),custo:Number(f.get('custo')||0),preco_venda:Number(f.get('preco_venda')||0),estoque_minimo:Number(f.get('estoque_minimo')||0),ativo:String(f.get('ativo')||'true')==='true'}
+    const base={codigo:String(f.get('codigo')||''),descricao:String(f.get('descricao')||''),unidade:String(f.get('unidade')||'UN'),custo:Number(f.get('custo')||0),preco_venda:Number(f.get('preco_venda')||0),percentual_minimo_custo_venda:Number(f.get('percentual_minimo_custo_venda')??100),estoque_minimo:Number(f.get('estoque_minimo')||0),ativo:String(f.get('ativo')||'true')==='true'}
     const r=editingProduct?await supabase.from('produtos').update(base).eq('id',editingProduct.id):await supabase.from('produtos').insert({...base,estoque_atual:Number(f.get('estoque_atual')||0)})
     setMsg(r.error?r.error.message:editingProduct?'Produto atualizado.':'Produto cadastrado.')
     if(!r.error){setEditingProduct(null);setShowForm(false);await loadData()}
@@ -574,6 +574,18 @@ function App(){
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
     if(!saleRoute){setMsg('Selecione a rota de entrega.');return}
+    for(const item of items){
+      const produto=produtos.find(p=>p.id===item.produto_id)
+      if(!produto)continue
+      const custo=Number(produto.custo_medio??produto.custo??0)
+      const percentual=Number(produto.percentual_minimo_custo_venda??100)
+      const minimo=custo*percentual/100
+      const precoEfetivo=item.valor_unitario-Math.min(item.desconto,item.valor_unitario*item.quantidade)/item.quantidade
+      if(precoEfetivo+0.000001<minimo){
+        setMsg(`Venda bloqueada: ${produto.descricao} está com preço líquido de ${money(precoEfetivo)}, abaixo do mínimo de ${money(minimo)} (${percentual.toLocaleString('pt-BR')}% do custo). Ajuste o preço/desconto ou a configuração do produto.`)
+        return
+      }
+    }
 
     const subtotalAtual=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
     const descontoAtual=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
@@ -1539,6 +1551,10 @@ function App(){
             </label>
             <label className="fieldLabel">Preço de venda
               <input name="preco_venda" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={editingProduct?.preco_venda??''}/>
+            </label>
+            <label className="fieldLabel">Preço mínimo de venda (% do custo)
+              <input name="percentual_minimo_custo_venda" type="number" min="0" max="100" step="0.01" defaultValue={editingProduct?.percentual_minimo_custo_venda??100} required/>
+              <small>100% = não vender abaixo do custo; 90% = permite até 10% abaixo do custo. Considera também o desconto da venda.</small>
             </label>
             {!editingProduct&&<label className="fieldLabel">Estoque inicial
               <input name="estoque_atual" type="number" min="0" step="0.001" placeholder="0" defaultValue="0"/>
