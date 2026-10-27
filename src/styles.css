@@ -682,3 +682,121 @@
 .dark .reportsPage .grid2 .tablePanel:first-child .panelHead h3{color:#60A5FA!important}
 .dark .reportsPage .grid2 .tablePanel:last-child .panelHead h3{color:#F87171!important}
 
+
+
+/* Identidade semântica das abas operacionais */
+.semanticWarning::before{background:#F59E0B}
+.semanticWarning strong{color:#F59E0B!important}
+
+.clientsPage .dataForm,
+.suppliersPage .dataForm{
+  border-left:4px solid #3B82F6;
+}
+.clientsPage .tablePanel,
+.suppliersPage .tablePanel{
+  border-top:4px solid #3B82F6;
+}
+.clientsPage .tablePanel .panelHead h3,
+.suppliersPage .tablePanel .panelHead h3{
+  color:#3B82F6!important;
+}
+
+.productsPage .excelPanel{
+  border-left:4px solid #3B82F6;
+}
+.productsPage .stockForm{
+  border-left:4px solid #F59E0B;
+}
+.productsPage .tablePanel{
+  border-top:4px solid #3B82F6;
+}
+.productsPage .tablePanel .panelHead h3{
+  color:#3B82F6!important;
+}
+.productsPage .subTabs{
+  box-shadow:0 4px 12px rgba(15,23,42,.05);
+}
+
+.purchasesPage .purchaseForm{
+  border-left:4px solid #EF4444;
+}
+.purchasesPage .purchasePaymentNotice{
+  background:#FEF2F2!important;
+  border-color:#FECACA!important;
+  color:#B91C1C!important;
+}
+.purchasesPage .purchasesTable{
+  border-top:4px solid #EF4444;
+}
+.purchasesPage .purchasesTable .panelHead h3{
+  color:#EF4444!important;
+}
+.purchasesPage .saleTotals .grandTotal strong{
+  color:#EF4444!important;
+}
+.purchasesPage .installmentDatesPanel{
+  border-left:4px solid #F59E0B;
+}
+
+.salesPage .salesForm{
+  border-left:4px solid #3B82F6;
+}
+.salesPage .paymentNotice{
+  background:#EFF6FF!important;
+  border-color:#BFDBFE!important;
+  color:#1D4ED8!important;
+}
+.salesPage .salesTable{
+  border-top:4px solid #3B82F6;
+}
+.salesPage .salesTable .panelHead h3{
+  color:#3B82F6!important;
+}
+.salesPage .saleTotals .grandTotal strong{
+  color:#3B82F6!important;
+}
+.salesPage .saleItemRow>strong{
+  color:#1E293B;
+}
+
+.commissionsPage .sellerForm{
+  border-left:4px solid #3B82F6;
+}
+.commissionsPage .commissionsTable{
+  border-top:4px solid #10B981;
+}
+.commissionsPage .commissionsTable .panelHead h3{
+  color:#10B981!important;
+}
+.commissionsPage .commissionFilters{
+  box-shadow:0 8px 24px rgba(15,23,42,.07);
+}
+
+.dark .semanticWarning strong{color:#FBBF24!important}
+.dark .clientsPage .tablePanel .panelHead h3,
+.dark .suppliersPage .tablePanel .panelHead h3,
+.dark .productsPage .tablePanel .panelHead h3,
+.dark .salesPage .salesTable .panelHead h3{
+  color:#60A5FA!important;
+}
+.dark .purchasesPage .purchasesTable .panelHead h3,
+.dark .purchasesPage .saleTotals .grandTotal strong{
+  color:#F87171!important;
+}
+.dark .purchasesPage .purchasePaymentNotice{
+  background:#3B1D22!important;
+  border-color:#63313A!important;
+  color:#FCA5A5!important;
+}
+.dark .salesPage .paymentNotice{
+  background:#172554!important;
+  border-color:#27427C!important;
+  color:#93C5FD!important;
+}
+.dark .salesPage .saleTotals .grandTotal strong{
+  color:#60A5FA!important;
+}
+.dark .commissionsPage .commissionsTable .panelHead h3{
+  color:#34D399!important;
+}
+
