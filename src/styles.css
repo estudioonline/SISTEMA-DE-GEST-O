@@ -800,3 +800,136 @@
   color:#34D399!important;
 }
 
+
+
+/* Melhorias de usabilidade e acessibilidade */
+.fieldLabel{
+  display:grid;
+  gap:6px;
+  font-size:12px;
+  font-weight:700;
+  color:#475569;
+}
+.fieldLabel input,
+.fieldLabel textarea{
+  width:100%;
+}
+.fieldLabelWide{
+  grid-column:1/-1;
+}
+.viewerUserForm .fieldLabel{
+  min-width:0;
+}
+
+/* Badges com contraste reforçado */
+.app:not(.dark) .status-pedido,
+.app:not(.dark) .payment-pendente{
+  background:#FEF3C7!important;
+  color:#78350F!important;
+  border-color:#F59E0B!important;
+}
+.app:not(.dark) .status-orcamento{
+  background:#DBEAFE!important;
+  color:#1E3A8A!important;
+}
+.app:not(.dark) .status-faturado,
+.app:not(.dark) .payment-pago{
+  background:#D1FAE5!important;
+  color:#065F46!important;
+}
+.app:not(.dark) .payment-parcial{
+  background:#DBEAFE!important;
+  color:#1E40AF!important;
+}
+.app:not(.dark) .status-cancelado,
+.app:not(.dark) .payment-cancelado{
+  background:#FEE2E2!important;
+  color:#991B1B!important;
+}
+
+/* Excel como ação secundária compacta */
+.inventoryTopActions{
+  display:flex;
+  justify-content:flex-end;
+  margin-bottom:12px;
+}
+.excelSecondaryBtn{
+  min-width:96px;
+  justify-content:center;
+}
+.excelToolsPanel{
+  margin-bottom:14px;
+  display:grid;
+  gap:12px;
+}
+.excelToolsPanel .excelPanelText{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+
+/* Relatórios empilhados em largura total */
+.reportsStack{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:18px;
+}
+.reportsStack .tablePanel{
+  width:100%;
+}
+
+/* Ações de tabela minimalistas */
+.rowMenuBtn{
+  width:36px;
+  height:36px;
+  display:inline-grid;
+  place-items:center;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:#64748B;
+  cursor:pointer;
+  padding:0;
+  transition:background .16s ease,border-color .16s ease,color .16s ease;
+}
+.rowMenuBtn:hover,
+.rowMenuBtn[aria-expanded="true"]{
+  background:#F1F5F9;
+  border-color:#CBD5E1;
+  color:#1E293B;
+}
+.dark .rowMenuBtn{
+  color:#94A3B8;
+}
+.dark .rowMenuBtn:hover,
+.dark .rowMenuBtn[aria-expanded="true"]{
+  background:#202B3D;
+  border-color:#334155;
+  color:#F8FAFC;
+}
+.tableWrap th:last-child,
+.tableWrap td:last-child{
+  text-align:right;
+}
+
+/* Configurações com labels legíveis */
+.configFieldset{
+  align-items:start;
+}
+.configForm .fieldLabel textarea{
+  min-height:110px;
+  resize:vertical;
+}
+.dark .fieldLabel{
+  color:#CBD5E1;
+}
+
+@media(max-width:760px){
+  .inventoryTopActions{
+    justify-content:stretch;
+  }
+  .excelSecondaryBtn{
+    width:100%;
+  }
+}
+
