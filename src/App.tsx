@@ -1148,7 +1148,7 @@ function App(){
     return <div className="proofPanel">
       <div className="proofHead">
         <div><strong>Comprovantes de pagamento</strong><span>{list.length?String(list.length)+' arquivo(s) anexado(s)':'Nenhum comprovante anexado'}</span></div>
-        {!isViewer&&<label className="ghost proofUpload"><Paperclip size={15}/>Anexar comprovante<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(kind,id,e)}/></label>}
+        {!isViewer&&<label className="ghost proofUpload iconOnlyProof" title="Anexar comprovante" aria-label="Anexar comprovante"><Paperclip size={15}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(kind,id,e)}/></label>}
       </div>
       {list.length>0&&<div className="proofList">{list.map(p=><div className="proofItem" key={p.id}>
         <div><strong>{p.nome_arquivo}</strong><span>{dateBr(p.created_at)}{p.tamanho?' • '+(Number(p.tamanho)/1024).toFixed(0)+' KB':''}</span></div>
@@ -1207,7 +1207,7 @@ function App(){
                     <div><strong>{type==='receber'?'Registrar recebimento':'Registrar pagamento'}</strong><span>A data informada será usada no histórico{type==='receber'?' e no período da comissão':''}.</span></div>
                     <label>Data<input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)}/></label>
                     <label>Valor<input type="number" min="0.01" step="0.01" max={balance} value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)}/></label>
-                    {(t.venda_id||t.compra_id)&&<label className="ghost proofUpload paymentProofUpload"><Paperclip size={15}/>Anexar comprovante<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id),e)}/></label>}
+                    {(t.venda_id||t.compra_id)&&<label className="ghost proofUpload paymentProofUpload iconOnlyProof" title="Anexar comprovante" aria-label="Anexar comprovante"><Paperclip size={15}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id),e)}/></label>}
                     <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
                   </div>}
                   {(t.venda_id||t.compra_id)&&proofsFor(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id)).length>0&&<div className="financeProofSummary">
