@@ -84,6 +84,9 @@ function App(){
   const [viewerEmail,setViewerEmail]=useState('')
   const [viewerPassword,setViewerPassword]=useState('')
   const [creatingViewer,setCreatingViewer]=useState(false)
+  const [managedUsers,setManagedUsers]=useState<ManagedUser[]>([])
+  const [userEdits,setUserEdits]=useState<Record<string,{nome:string;perfil:PerfilRole;ativo:boolean}>>({})
+  const [savingUserId,setSavingUserId]=useState<string|null>(null)
 
   const [showForm,setShowForm]=useState(false)
   const [editingClient,setEditingClient]=useState<Cliente|null>(null)
@@ -155,6 +158,9 @@ function App(){
   useEffect(()=>{
     if(session&&active==='comissoes')void loadCommissions()
   },[session,active,commissionStart,commissionEnd])
+  useEffect(()=>{
+    if(session&&active==='config'&&profileRole==='administrador')void loadManagedUsers()
+  },[session,active,profileRole])
 
   async function loadData(){
     if(!session)return
@@ -166,7 +172,7 @@ function App(){
       supabase.from('compras').select('*').order('created_at',{ascending:false}).limit(300),
       supabase.from('titulos_financeiros').select('*').order('vencimento',{ascending:true}).limit(500),
       supabase.from('empresa_config').select('*').eq('id',1).maybeSingle(),
-      supabase.from('profiles').select('perfil').eq('id',session.user.id).maybeSingle(),
+      supabase.from('profiles').select('perfil,ativo').eq('id',session.user.id).maybeSingle(),
       supabase.from('vendedores').select('*').order('nome'),
       supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).limit(500),
       supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).limit(1000)
@@ -178,7 +184,14 @@ function App(){
     if(!cp.error)setCompras((cp.data||[]) as Compra[])
     if(!t.error)setTitulos((t.data||[]) as Titulo[])
     if(!ec.error&&ec.data)setEmpresa(ec.data as EmpresaConfig)
-    if(!pr.error&&pr.data?.perfil)setProfileRole(pr.data.perfil as PerfilRole)
+    if(!pr.error&&pr.data?.perfil){
+      setProfileRole(pr.data.perfil as PerfilRole)
+      if(pr.data.ativo===false){
+        setMsg('Seu usuário está desativado. Procure um administrador do sistema.')
+        await supabase.auth.signOut()
+        return
+      }
+    }
     if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
     if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
@@ -792,6 +805,45 @@ function App(){
   }
 
   // CONFIG
+  async function loadManagedUsers(){
+    if(!isAdmin)return
+    const {data,error}=await supabase.rpc('listar_usuarios_erp')
+    if(error){setMsg('Não foi possível carregar os usuários: '+error.message);return}
+    const rows=(data||[]) as ManagedUser[]
+    setManagedUsers(rows)
+    setUserEdits(Object.fromEntries(rows.map(u=>[u.user_id,{nome:u.nome,perfil:u.perfil,ativo:u.ativo}])))
+  }
+
+  function editManagedUser(id:string,field:'nome'|'perfil'|'ativo',value:string|boolean){
+    setUserEdits(prev=>({
+      ...prev,
+      [id]:{
+        ...(prev[id]||{nome:'',perfil:'visualizador' as PerfilRole,ativo:true}),
+        [field]:value
+      }
+    }))
+  }
+
+  async function saveManagedUser(u:ManagedUser){
+    if(!isAdmin){setMsg('Somente administrador pode gerenciar usuários.');return}
+    const draft=userEdits[u.user_id]||{nome:u.nome,perfil:u.perfil,ativo:u.ativo}
+    if(!draft.ativo&&u.ativo&&!window.confirm(`Desativar o acesso de "${u.nome}" ao sistema?`))return
+
+    setSavingUserId(u.user_id)
+    setMsg('')
+    const {error}=await supabase.rpc('atualizar_usuario_erp',{
+      p_user_id:u.user_id,
+      p_nome:draft.nome.trim(),
+      p_perfil:draft.perfil,
+      p_ativo:draft.ativo
+    })
+    setSavingUserId(null)
+
+    if(error){setMsg(error.message);return}
+    setMsg('Usuário atualizado com sucesso.')
+    await loadManagedUsers()
+  }
+
   async function createViewerAccount(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!isAdmin){
@@ -837,6 +889,7 @@ function App(){
     setMsg(data.session
       ? 'Usuário visualizador criado e liberado para acesso.'
       : 'Usuário visualizador criado. Confirme o e-mail enviado para liberar o acesso.')
+    await loadManagedUsers()
   }
 
   async function saveCompany(e:FormEvent<HTMLFormElement>){
@@ -1492,6 +1545,39 @@ function App(){
           <label className="fieldLabel">Senha inicial<input type="password" value={viewerPassword} onChange={e=>setViewerPassword(e.target.value)} placeholder="Mínimo de 8 caracteres" minLength={8} required/></label>
           <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar visualizador'}</button>
         </form>}
+
+        {isAdmin&&<article className="panel userManagementPanel">
+          <div className="panelHead">
+            <div><h3>Gerenciar usuários</h3><p>Altere nome, perfil de acesso e status. Usuários desativados deixam de acessar os dados do ERP.</p></div>
+            <button type="button" className="ghost" onClick={()=>void loadManagedUsers()}><RefreshCw size={15}/>Atualizar</button>
+          </div>
+          <SearchField value={tableSearch.usuarios||''} onChange={v=>setSearch('usuarios',v)} placeholder="Pesquisar nome, e-mail, perfil ou status"/>
+          <div className="tableWrap userManagementTable"><table>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Último acesso</th><th>Ação</th></tr></thead>
+            <tbody>{managedUsers.filter(u=>searchMatches('usuarios',[u.nome,u.email,u.perfil,u.ativo?'ativo':'inativo'])).map(u=>{
+              const draft=userEdits[u.user_id]||{nome:u.nome,perfil:u.perfil,ativo:u.ativo}
+              const changed=draft.nome!==u.nome||draft.perfil!==u.perfil||draft.ativo!==u.ativo
+              return <tr key={u.user_id}>
+                <td><input className="userInlineInput" value={draft.nome} onChange={e=>editManagedUser(u.user_id,'nome',e.target.value)} disabled={u.usuario_atual&&savingUserId===u.user_id}/>{u.usuario_atual&&<small className="currentUserMark">Você</small>}</td>
+                <td>{u.email}</td>
+                <td><select className="userInlineSelect" value={draft.perfil} onChange={e=>editManagedUser(u.user_id,'perfil',e.target.value as PerfilRole)} disabled={u.usuario_atual}>
+                  <option value="administrador">Administrador</option>
+                  <option value="financeiro">Financeiro</option>
+                  <option value="vendas">Vendas</option>
+                  <option value="estoque">Estoque</option>
+                  <option value="visualizador">Visualizador</option>
+                </select></td>
+                <td><select className="userInlineSelect" value={draft.ativo?'ativo':'inativo'} onChange={e=>editManagedUser(u.user_id,'ativo',e.target.value==='ativo')} disabled={u.usuario_atual}>
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                </select></td>
+                <td>{u.ultimo_acesso?new Date(u.ultimo_acesso).toLocaleString('pt-BR'):'Nunca acessou'}</td>
+                <td><button type="button" className="primary userSaveBtn" disabled={!changed||savingUserId===u.user_id} onClick={()=>void saveManagedUser(u)}>{savingUserId===u.user_id?'Salvando...':'Salvar'}</button></td>
+              </tr>
+            })}</tbody>
+          </table></div>
+        </article>}
+
         <form className="panel configForm" onSubmit={saveCompany}>
           <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!isAdmin&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!isAdmin}>
           <label className="fieldLabel">Razão social<input name="razao_social" placeholder="Razão social da empresa" defaultValue={empresa?.razao_social||''} required/></label>
