@@ -1000,16 +1000,16 @@ function App(){
       {msg&&<div className="panel noticePanel">{msg}</div>}
 
       {active==='dashboard'&&<section>
-        <div className="cards">
-          <article className="card"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
-          <article className="card"><span>A receber</span><strong>{money(openReceivables)}</strong><small>em aberto</small></article>
-          <article className="card"><span>A pagar</span><strong>{money(openPayables)}</strong><small>em aberto</small></article>
-          <article className="card"><span>Estoque baixo</span><strong>{low}</strong><small>de {produtos.filter(p=>p.ativo).length} produtos ativos</small></article>
+        <div className="cards dashboardCards">
+          <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
+          <article className="card dashboardCard dashboardCardReceivable"><span>A receber</span><strong>{money(openReceivables)}</strong><small>em aberto</small></article>
+          <article className="card dashboardCard dashboardCardPayable"><span>A pagar</span><strong>{money(openPayables)}</strong><small>em aberto</small></article>
+          <article className="card dashboardCard dashboardCardLowStock"><span>Estoque baixo</span><strong>{low}</strong><small>de {produtos.filter(p=>p.ativo).length} produtos ativos</small></article>
         </div>
-        <div className="cards compactCards">
-          <article className="card"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>setActive('clientes')}>Gerenciar</button></article>
-          <article className="card"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>setActive('fornecedores')}>Gerenciar</button></article>
-          <article className="card"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>setActive('produtos')}>Gerenciar</button></article>
+        <div className="cards compactCards dashboardCards">
+          <article className="card dashboardCard"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>setActive('clientes')}>Gerenciar</button></article>
+          <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>setActive('fornecedores')}>Gerenciar</button></article>
+          <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>setActive('produtos')}>Gerenciar</button></article>
         </div>
       </section>}
 
