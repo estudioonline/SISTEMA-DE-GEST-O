@@ -23,7 +23,7 @@ type PurchasePaymentMethod='pix'|'cartao'|'boleto'
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;preco_venda:number;estoque_atual:number;estoque_minimo:number;ativo:boolean}
-type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null}
+type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null}
@@ -136,6 +136,7 @@ function App(){
   const [saleInstallments,setSaleInstallments]=useState(1)
   const [saleDueDate,setSaleDueDate]=useState(today())
   const [saleItems,setSaleItems]=useState<SaleItemDraft[]>([newSaleItem()])
+  const [originalSaleItems,setOriginalSaleItems]=useState<VendaItem[]>([])
   const [savingSale,setSavingSale]=useState(false)
 
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
@@ -518,13 +519,14 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setEditingSale(null);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
   function startNewSale(){resetSaleForm();setShowForm(true);setMsg('')}
   async function startEditSale(v:Venda){
     if(v.status==='cancelado'){setMsg('Venda cancelada não pode ser editada.');return}
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
     if(error){setMsg(error.message);return}
     const items=(data||[]) as VendaItem[]
+    setOriginalSaleItems(items)
     setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(Number(v.parcelas)||1);setSaleDueDate(v.primeiro_vencimento||today())
     setSaleItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)})))
     setShowForm(true);setMsg('')
@@ -538,9 +540,31 @@ function App(){
     e.preventDefault();if(!session)return
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
+
+    const precisaAutorizar=saleConsumesStock&&saleStockShortages.length>0
+    let autorizarSemEstoque=false
+    if(precisaAutorizar){
+      const resumo=saleStockShortages.map(s=>`${s.produto.codigo} - ${s.produto.descricao}: faltam ${s.missing.toLocaleString('pt-BR')} ${s.produto.unidade}`).join('\n')
+      if(!isAdmin){
+        setMsg('Venda bloqueada por estoque insuficiente. É necessária autorização de um administrador. '+saleStockShortages.map(s=>s.produto.descricao).join(', '))
+        return
+      }
+      const confirmacao=window.prompt(`ATENÇÃO: a venda deixará o estoque negativo.\n\n${resumo}\n\nPara autorizar como administrador, digite AUTORIZAR.`)
+      if((confirmacao||'').trim().toUpperCase()!=='AUTORIZAR'){
+        setMsg('Venda não concluída: autorização de estoque não confirmada.')
+        return
+      }
+      autorizarSemEstoque=true
+    }
+
     setSavingSale(true);setMsg('')
     const args={p_cliente_id:saleClient||null,p_vendedor_cadastro_id:saleSeller||null,p_status:saleStatus,p_forma_pagamento:salePayment,p_parcelas:saleInstallments,p_primeiro_vencimento:saleDueDate,p_observacoes:saleNotes,p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto}))}
-    const r=editingSale?await supabase.rpc('atualizar_venda_completa',{p_venda_id:editingSale.id,...args}):await supabase.rpc('criar_venda_completa',args)
+    const rpcName=editingSale
+      ? (autorizarSemEstoque?'atualizar_venda_completa_admin_sem_estoque':'atualizar_venda_completa')
+      : (autorizarSemEstoque?'criar_venda_completa_admin_sem_estoque':'criar_venda_completa')
+    const r=editingSale
+      ? await supabase.rpc(rpcName,{p_venda_id:editingSale.id,...args})
+      : await supabase.rpc(rpcName,args)
     if(r.error||!r.data){setSavingSale(false);setMsg('Não foi possível salvar a venda: '+(r.error?.message||'erro desconhecido'));return}
     const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Venda
     const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
@@ -549,7 +573,7 @@ function App(){
     try{
       generateInvoicePdf({id:saved.id,fatura_numero:saved.fatura_numero,created_at:saved.created_at||new Date().toISOString(),status:saved.status,subtotal,desconto,total,observacoes:saleNotes||null,forma_pagamento:salePayment,parcelas:saleInstallments,primeiro_vencimento:saleDueDate,vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,cliente:clientes.find(c=>c.id===saleClient)||null,company:empresa||undefined,items:invoiceItems(items)})
       await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
-      setMsg(editingSale?'Venda atualizada e fatura reemitida.':'Venda criada e fatura emitida.')
+      setMsg(autorizarSemEstoque?(editingSale?'Venda atualizada com autorização administrativa de estoque e fatura reemitida.':'Venda criada com autorização administrativa de estoque e fatura emitida.'):(editingSale?'Venda atualizada e fatura reemitida.':'Venda criada e fatura emitida.'))
     }catch{setMsg('Venda salva. A fatura pode ser reemitida pelo painel.')}
     setSavingSale(false);setShowForm(false);resetSaleForm();await loadData()
   }
@@ -937,6 +961,30 @@ function App(){
   const saleSubtotal=saleItems.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
   const saleDiscount=saleItems.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
   const saleTotal=Math.max(0,saleSubtotal-saleDiscount)
+  const saleConsumesStock=saleStatus==='pedido'||saleStatus==='faturado'
+  const saleDemandByProduct=saleItems.reduce<Record<string,number>>((acc,item)=>{
+    if(item.produto_id)acc[item.produto_id]=(acc[item.produto_id]||0)+Number(item.quantidade||0)
+    return acc
+  },{})
+  const originalSaleQtyByProduct=originalSaleItems.reduce<Record<string,number>>((acc,item)=>{
+    acc[item.produto_id]=(acc[item.produto_id]||0)+Number(item.quantidade||0)
+    return acc
+  },{})
+  const saleStockShortages=Object.entries(saleDemandByProduct).flatMap(([produtoId,demand])=>{
+    const produto=produtos.find(p=>p.id===produtoId)
+    if(!produto)return []
+    const available=Number(produto.estoque_atual)+(editingSale?Number(originalSaleQtyByProduct[produtoId]||0):0)
+    return demand>available?[{produto,available,demand,missing:demand-available}]:[]
+  })
+  function saleItemStockInfo(item:SaleItemDraft){
+    const produto=produtos.find(p=>p.id===item.produto_id)
+    if(!produto)return null
+    const available=Number(produto.estoque_atual)+(editingSale?Number(originalSaleQtyByProduct[item.produto_id]||0):0)
+    const demand=Number(saleDemandByProduct[item.produto_id]||0)
+    if(available<=0)return {kind:'none',label:'Sem estoque',detail:`Disponível: ${available.toLocaleString('pt-BR')} ${produto.unidade}`}
+    if(demand>available)return {kind:'low',label:'Estoque insuficiente',detail:`Disponível: ${available.toLocaleString('pt-BR')} ${produto.unidade} • solicitado: ${demand.toLocaleString('pt-BR')}`}
+    return {kind:'ok',label:'Em estoque',detail:`Disponível: ${available.toLocaleString('pt-BR')} ${produto.unidade}`}
+  }
   const purchaseTotal=purchaseItems.reduce((s,i)=>s+i.quantidade*i.custo_unitario,0)
 
   const filteredSales=vendas.filter(v=>{const d=v.created_at.slice(0,10);return d>=reportStart&&d<=reportEnd&&(reportStatus==='todos'||v.status===reportStatus)})
@@ -1273,6 +1321,11 @@ function App(){
             </div>)}
           </div>
 
+          {saleConsumesStock&&saleStockShortages.length>0&&<div className="stockAuthorizationWarning">
+            <strong>Estoque insuficiente em {saleStockShortages.length} produto(s)</strong>
+            <span>{isAdmin?'Você é administrador. Ao salvar, será solicitada uma confirmação extra para autorizar estoque negativo.':'A venda não pode ser concluída por este usuário. Solicite autorização de um administrador.'}</span>
+          </div>}
+
           <div className="saleTotals">
             <div className="grandTotal"><span>Total a pagar</span><strong>{money(purchaseTotal)}</strong></div>
           </div>
@@ -1384,7 +1437,7 @@ function App(){
           </div>
 
           <div className="saleItems">
-            {saleItems.map(i=><div className="saleItemRow" key={i.key}>
+            {saleItems.map(i=>{const stock=saleItemStockInfo(i);return <div className="saleItemRow" key={i.key}>
               <select value={i.produto_id} onChange={e=>chooseProduct(i.key,e.target.value)} required>
                 <option value="">Produto</option>
                 {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — estoque {Number(p.estoque_atual).toLocaleString('pt-BR')}</option>)}
@@ -1394,7 +1447,8 @@ function App(){
               <input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/>
               <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
               <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
-            </div>)}
+              {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{isAdmin?'Exige autorização administrativa para concluir.':'Venda bloqueada: solicite autorização de um administrador.'}</b>}</div>}
+            </div>})}
           </div>
 
           <div className="saleTotals">
