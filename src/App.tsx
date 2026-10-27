@@ -1390,7 +1390,7 @@ function App(){
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':active==='compras'?'Nova compra':'Novo'}</button>}
-          {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo</button>}
+          {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
@@ -1516,17 +1516,48 @@ function App(){
             <small className="excelWarning">Na importação, o <strong>Estoque Atual</strong> da planilha substitui o saldo existente. Toda diferença é registrada como ajuste de estoque.</small>
           </div>}
 
-          {showForm&&<form className="panel dataForm" onSubmit={saveProduct}>
-            <input name="codigo" placeholder="Código" required defaultValue={editingProduct?.codigo||''}/>
-            <input name="descricao" placeholder="Descrição" required defaultValue={editingProduct?.descricao||''}/>
-            <input name="unidade" defaultValue={editingProduct?.unidade||'UN'}/>
-            <input name="custo" type="number" step="0.01" placeholder="Custo" defaultValue={editingProduct?.custo||0}/>
-            <input name="preco_venda" type="number" step="0.01" placeholder="Preço de venda" defaultValue={editingProduct?.preco_venda||0}/>
-            {!editingProduct&&<input name="estoque_atual" type="number" step="0.001" placeholder="Estoque inicial" defaultValue={0}/>}
-            <input name="estoque_minimo" type="number" step="0.001" placeholder="Estoque mínimo" defaultValue={editingProduct?.estoque_minimo||0}/>
-            <select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
-            <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button><button className="primary">Salvar</button></div>
-          </form>}
+          {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingProduct?'Editar produto':'Novo produto'}><div className="saleModalShell productModalShell"><form className="panel dataForm saleModalForm productModalForm" onSubmit={saveProduct}>
+            <div className="formTitle saleModalTitle">
+              <div>
+                <h3>{editingProduct?'Editar produto':'Novo produto'}</h3>
+                <p>Preencha os dados do produto. O estoque de produtos já cadastrados é alterado pela opção “Ajustar estoque”.</p>
+              </div>
+              <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de produto" onClick={()=>{setShowForm(false);setEditingProduct(null)}}><X size={18}/></button>
+            </div>
+
+            <label className="fieldLabel">Código
+              <input name="codigo" placeholder="Ex.: PRD-001" required defaultValue={editingProduct?.codigo||''}/>
+            </label>
+            <label className="fieldLabel">Produto / Descrição
+              <input name="descricao" placeholder="Nome do produto" required defaultValue={editingProduct?.descricao||''}/>
+            </label>
+            <label className="fieldLabel">Unidade
+              <input name="unidade" placeholder="Ex.: UN" defaultValue={editingProduct?.unidade||'UN'}/>
+            </label>
+            <label className="fieldLabel">Custo
+              <input name="custo" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={editingProduct?.custo??''}/>
+            </label>
+            <label className="fieldLabel">Preço de venda
+              <input name="preco_venda" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={editingProduct?.preco_venda??''}/>
+            </label>
+            {!editingProduct&&<label className="fieldLabel">Estoque inicial
+              <input name="estoque_atual" type="number" min="0" step="0.001" placeholder="0" defaultValue="0"/>
+            </label>}
+            <label className="fieldLabel">Estoque mínimo
+              <input name="estoque_minimo" type="number" min="0" step="0.001" placeholder="0" defaultValue={editingProduct?.estoque_minimo??''}/>
+            </label>
+            <label className="fieldLabel">Status
+              <select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}>
+                <option value="true">Ativo</option>
+                <option value="false">Inativo</option>
+              </select>
+            </label>
+
+            <div className="formActions">
+              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button>
+              <button className="primary">{editingProduct?'Salvar alterações':'Cadastrar produto'}</button>
+            </div>
+          </form></div></div>}
 
           {adjustingProduct&&<form className="panel stockForm" onSubmit={adjustStock}>
             <div><strong>Ajustar estoque</strong><span>{adjustingProduct.codigo} - {adjustingProduct.descricao}</span></div>
