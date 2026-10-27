@@ -1301,3 +1301,38 @@
 
   .dashboardHeroMedia,.dashboardHeroMedia video{min-height:150px;max-height:210px}
 }
+
+.tableSortBtn{
+  appearance:none;
+  -webkit-appearance:none;
+  border:1px solid #d6deea;
+  background:#fff;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  line-height:1.2;
+  padding:7px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  box-shadow:none;
+}
+.tableSortBtn:hover{
+  border-color:#b9c7da;
+  background:#f8fafc;
+}
+.tableSortBtn:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12);
+}
+.dark .tableSortBtn{
+  background:#111827;
+  border-color:#334155;
+  color:#e5e7eb;
+}
+.dark .tableSortBtn:hover{
+  background:#182235;
+  border-color:#475569;
+}
