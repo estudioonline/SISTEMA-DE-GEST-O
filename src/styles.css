@@ -1299,30 +1299,5 @@
 .financeSubTabs{flex-wrap:wrap}
 @media(max-width:760px){.financeSubTabs{width:100%;grid-template-columns:1fr 1fr}}
 
-.dashboardHeroMedia{
-  margin-top:18px;
-  width:100%;
-  min-height:230px;
-  max-height:340px;
-  border-radius:24px;
-  overflow:hidden;
-  background:#0d1420;
-  box-shadow:0 12px 35px rgba(15,23,42,.10);
-}
-.dashboardHeroMedia video{
-  display:block;
-  width:100%;
-  height:100%;
-  min-height:230px;
-  max-height:340px;
-  object-fit:cover;
-  object-position:center;
-}
-.dark .dashboardHeroMedia{background:#08101b;box-shadow:none}
-@media(max-width:900px){
-  .dashboardHeroMedia,.dashboardHeroMedia video{min-height:180px;max-height:260px}
-}
-@media(max-width:600px){
-  .dashboardHeroMedia{border-radius:16px}
   .dashboardHeroMedia,.dashboardHeroMedia video{min-height:150px;max-height:210px}
 }
