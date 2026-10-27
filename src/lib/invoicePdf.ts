@@ -47,6 +47,7 @@ export type InvoiceData = {
   forma_pagamento: 'dinheiro' | 'pix' | 'cartao' | 'boleto'
   parcelas: number
   primeiro_vencimento: string
+  rota_entrega?: string | null
   vendedor_nome?: string | null
   cliente?: InvoiceCustomer | null
   company?: InvoiceCompany
@@ -87,6 +88,7 @@ const num=(value:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2
 const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
 const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='dinheiro'?'DINHEIRO':value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
 const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
+const deliveryRouteLabel=(value:string|null|undefined)=>value==='norte'?'NORTE':value==='sul'?'SUL':value==='leste'?'LESTE':value==='interestadual'?'INTERESTADUAL':value==='retirada'?'RETIRADA':'-'
 const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'cliente'
 
 function asDate(value:string){
@@ -199,6 +201,7 @@ function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
 
   doc.setFont('helvetica','bold')
   doc.text(`Status: ${statusLabel(data.status)}`,leftX,y+13)
+  doc.text(`Rota de entrega: ${deliveryRouteLabel(data.rota_entrega)}`,sellerX,y+13)
   doc.text(`Método de pagamento combinado: ${paymentLabel(data.forma_pagamento)}${data.parcelas>1?` - ${data.parcelas}x`:''}`,leftX,y+19)
   doc.text(`Data de vencimento: ${date(data.primeiro_vencimento)}`,leftX,y+25)
 
