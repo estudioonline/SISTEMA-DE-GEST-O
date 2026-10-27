@@ -311,3 +311,14 @@
   .subTabs{width:100%;display:grid;grid-template-columns:1fr}
   .subTab{justify-content:center}
 }
+
+
+.commissionFilters .primary,
+.commissionFilters .ghost{
+  height:40px;
+  min-height:40px;
+  align-self:end;
+  justify-content:center;
+  margin:0;
+  white-space:nowrap;
+}
