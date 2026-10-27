@@ -23,7 +23,7 @@ type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;preco_venda:number;estoque_atual:number;estoque_minimo:number;ativo:boolean}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;ativo:boolean}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
@@ -31,7 +31,7 @@ type Compra={id:string;fornecedor_id:string|null;status:string;total:number;obse
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
 type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
-type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null}
+type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
 type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean}
 type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
@@ -191,6 +191,19 @@ function App(){
   useEffect(()=>{
     if(session&&active==='config'&&profileRole==='administrador')void loadManagedUsers()
   },[session,active,profileRole])
+
+  useEffect(()=>{
+    if(!session)return
+    const minutes=Math.max(5,Number(empresa?.sessao_inatividade_minutos||30))
+    let timer=window.setTimeout(async()=>{setMsg('Sessão encerrada por inatividade.');await supabase.auth.signOut()},minutes*60*1000)
+    const reset=()=>{
+      window.clearTimeout(timer)
+      timer=window.setTimeout(async()=>{setMsg('Sessão encerrada por inatividade.');await supabase.auth.signOut()},minutes*60*1000)
+    }
+    const events=['pointerdown','keydown','scroll','touchstart'] as const
+    events.forEach(ev=>window.addEventListener(ev,reset,{passive:true}))
+    return ()=>{window.clearTimeout(timer);events.forEach(ev=>window.removeEventListener(ev,reset))}
+  },[session,empresa?.sessao_inatividade_minutos])
 
   async function loadData(){
     if(!session)return
@@ -546,6 +559,57 @@ function App(){
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
     if(!saleRoute){setMsg('Selecione a rota de entrega.');return}
 
+    const subtotalAtual=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
+    const descontoAtual=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
+    const totalAtual=Math.max(0,subtotalAtual-descontoAtual)
+    const motivosAprovacao:{tipo:'limite_credito'|'inadimplencia'|'desconto'|'margem'|'estoque_negativo';motivo:string;detalhes:Record<string,unknown>}[]=[]
+
+    if(saleClient&&saleStatus!=='orcamento'){
+      const cliente=clientes.find(c=>c.id===saleClient)
+      const vendaIds=new Set(vendas.filter(v=>v.cliente_id===saleClient&&v.id!==editingSale?.id&&v.status!=='cancelado').map(v=>v.id))
+      const recebiveisCliente=titulos.filter(t=>t.tipo==='receber'&&!!t.venda_id&&vendaIds.has(t.venda_id)&&t.status!=='pago'&&t.status!=='cancelado')
+      const aberto=recebiveisCliente.reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+      const vencido=recebiveisCliente.filter(t=>t.vencimento<today()).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+
+      if((empresa?.bloquear_cliente_inadimplente??true)&&vencido>0){
+        if(!isAdmin){setMsg(`Venda bloqueada: o cliente possui ${money(vencido)} em títulos vencidos. É necessária autorização administrativa.`);return}
+        const ok=window.prompt(`Cliente inadimplente: existem ${money(vencido)} vencidos. Digite AUTORIZAR para continuar.`)
+        if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: inadimplência não autorizada.');return}
+        motivosAprovacao.push({tipo:'inadimplencia',motivo:'Venda para cliente com títulos vencidos',detalhes:{cliente_id:saleClient,valor_vencido:vencido}})
+      }
+
+      const limite=Number(cliente?.limite_credito||0)
+      if((empresa?.exigir_aprovacao_limite_credito??true)&&limite>0&&aberto+totalAtual>limite){
+        const excesso=aberto+totalAtual-limite
+        if(!isAdmin){setMsg(`Venda bloqueada: limite de crédito excedido em ${money(excesso)}. É necessária autorização administrativa.`);return}
+        const ok=window.prompt(`Limite de crédito excedido em ${money(excesso)}. Digite AUTORIZAR para continuar.`)
+        if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: limite de crédito não autorizado.');return}
+        motivosAprovacao.push({tipo:'limite_credito',motivo:'Venda acima do limite de crédito',detalhes:{cliente_id:saleClient,limite,em_aberto:aberto,total_venda:totalAtual,excesso}})
+      }
+    }
+
+    const descontoPct=subtotalAtual>0?(descontoAtual/subtotalAtual)*100:0
+    const descontoMax=Number(empresa?.desconto_max_vendedor??10)
+    if(!isAdmin&&descontoPct>descontoMax){
+      setMsg(`Venda bloqueada: desconto de ${descontoPct.toFixed(2)}% excede o limite de ${descontoMax.toFixed(2)}%.`)
+      return
+    }
+    if(isAdmin&&descontoPct>descontoMax){
+      const ok=window.prompt(`Desconto de ${descontoPct.toFixed(2)}% acima do limite de ${descontoMax.toFixed(2)}%. Digite AUTORIZAR.`)
+      if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: desconto não autorizado.');return}
+      motivosAprovacao.push({tipo:'desconto',motivo:'Desconto acima do limite configurado',detalhes:{desconto_percentual:descontoPct,limite_percentual:descontoMax}})
+    }
+
+    const custoTotal=items.reduce((s,i)=>s+(Number(produtos.find(p=>p.id===i.produto_id)?.custo_medio??produtos.find(p=>p.id===i.produto_id)?.custo??0)*i.quantidade),0)
+    const margemPct=totalAtual>0?((totalAtual-custoTotal)/totalAtual)*100:0
+    const margemMin=Number(empresa?.margem_minima_percentual??0)
+    if(margemPct<margemMin){
+      if(!isAdmin){setMsg(`Venda bloqueada: margem de ${margemPct.toFixed(2)}% abaixo da mínima de ${margemMin.toFixed(2)}%.`);return}
+      const ok=window.prompt(`Margem de ${margemPct.toFixed(2)}% abaixo da mínima de ${margemMin.toFixed(2)}%. Digite AUTORIZAR.`)
+      if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: margem não autorizada.');return}
+      motivosAprovacao.push({tipo:'margem',motivo:'Venda abaixo da margem mínima',detalhes:{margem_percentual:margemPct,margem_minima:margemMin}})
+    }
+
     const precisaAutorizar=saleConsumesStock&&saleStockShortages.length>0
     let autorizarSemEstoque=false
     if(precisaAutorizar){
@@ -560,6 +624,7 @@ function App(){
         return
       }
       autorizarSemEstoque=true
+      motivosAprovacao.push({tipo:'estoque_negativo',motivo:'Venda autorizada com estoque insuficiente',detalhes:{itens:saleStockShortages.map(s=>({produto_id:s.produto.id,faltante:s.missing}))}})
     }
 
     setSavingSale(true);setMsg('')
@@ -572,8 +637,14 @@ function App(){
       : await supabase.rpc(rpcName,args)
     if(r.error||!r.data){setSavingSale(false);setMsg('Não foi possível salvar a venda: '+(r.error?.message||'erro desconhecido'));return}
     const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Venda
-    const routeUpdate=await supabase.from('vendas').update({rota_entrega:saleRoute}).eq('id',saved.id)
+    const routeUpdate=await supabase.from('vendas').update({rota_entrega:saleRoute,validade_orcamento:saleStatus==='orcamento'?addMonthsIso(today(),0):null}).eq('id',saved.id)
     if(routeUpdate.error){setSavingSale(false);setMsg('Venda salva, mas não foi possível registrar a rota de entrega: '+routeUpdate.error.message);return}
+    if(motivosAprovacao.length){
+      await supabase.from('aprovacoes_operacoes').insert(motivosAprovacao.map(a=>({
+        tipo:a.tipo,entidade_tipo:'venda',entidade_id:saved.id,solicitado_por:session.user.id,
+        aprovado_por:session.user.id,aprovado_em:new Date().toISOString(),status:'aprovado',motivo:a.motivo,detalhes:a.detalhes
+      })))
+    }
     const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
     const desconto=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
     const total=Math.max(0,subtotal-desconto)
