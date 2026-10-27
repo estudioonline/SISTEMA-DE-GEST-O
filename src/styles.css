@@ -208,7 +208,7 @@
 .dark .commissionWarning{background:#2a2410;border-color:#6c5c21;color:#ffe37d}
 .financeGroups{display:grid;gap:18px}
 .financeManagePanel{display:grid;gap:12px}
-.paymentEntry{display:grid;grid-template-columns:minmax(260px,1fr) 170px 170px auto;gap:10px;align-items:end;padding:12px;border:1px solid #dfe6ef;border-radius:12px;background:#f9fbfd}
+.paymentEntry{display:grid;grid-template-columns:minmax(260px,1fr) 170px 170px auto auto;gap:10px;align-items:end;padding:12px;border:1px solid #dfe6ef;border-radius:12px;background:#f9fbfd}
 .paymentEntry>div strong,.paymentEntry>div span{display:block}
 .paymentEntry>div span{margin-top:4px;color:#7b8799;font-size:12px}
 .paymentEntry label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#5f6b7d}
@@ -1282,3 +1282,6 @@
   .saleModalOverlay{padding:12px}
   .saleModalForm{max-height:calc(100vh - 24px)}
 }
+
+.paymentProofUpload{height:40px;align-self:end;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.financeProofSummary{display:flex;align-items:center;gap:7px;color:#64748b;font-size:12px;font-weight:700;padding:0 2px}
