@@ -26,8 +26,8 @@ export function AppLauncher({ menu, company, ready, canEdit, onOpen }: {
   return <section className="appLauncher" aria-labelledby="apps-heading">
     <div className="launcherIntro">
       <span className="launcherEyebrow">SEU ESPAÇO DE TRABALHO</span>
-      <h1 id="apps-heading" ref={heading} tabIndex={-1}>Tudo começa por aqui.</h1>
-      <p>Escolha um aplicativo para gerenciar {company === 'Sistema de Gestão' ? 'sua empresa' : company}.</p>
+      <h1 id="apps-heading" ref={heading} tabIndex={-1}>Aplicativos</h1>
+      <p>Acesse os módulos de {company === 'Sistema de Gestão' ? 'sua empresa' : company}.</p>
     </div>
     <div className="launcherToolbar">
       <div><h2>Aplicativos</h2><span aria-live="polite">{ready ? `${apps.length} ${apps.length === 1 ? 'disponível' : 'disponíveis'} para você` : 'Carregando seus acessos…'}</span></div>
