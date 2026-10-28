@@ -1180,7 +1180,7 @@ function App(){
     if(!canManageConfig)return
     const {data,error}=await supabase.rpc('listar_usuarios_erp')
     if(error){setMsg('Não foi possível carregar os usuários: '+error.message);return}
-    const rows=(data||[]).map(raw=>{
+    const rows=((data||[]) as unknown[]).map((raw:unknown)=>{
       const u=raw as Omit<ManagedUser,'permissoes'>&{permissoes?:unknown}
       return {...u,permissoes:normalizePermissions(u.permissoes,u.perfil)}
     }) as ManagedUser[]
