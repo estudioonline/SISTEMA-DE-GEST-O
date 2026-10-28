@@ -704,123 +704,139 @@ function App(){
     if(savingSale)return
     if(!canManageSales){setMsg('Seu perfil não tem permissão para criar ou editar vendas.');return}
     setMsg('');setSaleNotice('')
+
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
-    if(!items.length){setMsg('Adicione pelo menos um produto.');return}
-    if(!saleRoute){setMsg('Selecione a rota de entrega.');return}
-    const belowMinimumItems=items.flatMap(item=>{
-      const produto=produtos.find(p=>p.id===item.produto_id)
-      if(!produto)return []
-      const custo=Math.round(Number(produto.custo_medio??produto.custo??0)*100)/100
-      const percentual=Number(produto.percentual_minimo_custo_venda??100)
-      const minimo=custo*(1+percentual/100)
-      const precoEfetivo=item.valor_unitario-Math.min(item.desconto,item.valor_unitario*item.quantidade)/item.quantidade
-      return precoEfetivo+0.000001<minimo?[{produto,precoEfetivo,minimo,percentual}]:[]
-    })
-    if(saleStatus!=='orcamento'&&belowMinimumItems.length){
-      const resumo=belowMinimumItems.map(x=>`${x.produto.descricao}: ${money(x.precoEfetivo)} (mínimo ${money(x.minimo)})`).join(' • ')
-      setMsg(`Venda abaixo do preço mínimo. Solicite autorização administrativa para concluir. ${resumo}`)
+    if(!items.length||saleHasStructuralError){
+      setMsg('Corrija os itens da venda antes de continuar: produto ativo, quantidade maior que zero e preço válido.')
       return
     }
 
-    const subtotalAtual=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
-    const descontoAtual=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
-    const totalAtual=Math.max(0,subtotalAtual-descontoAtual)
-    const motivosAprovacao:{tipo:'limite_credito'|'inadimplencia'|'desconto'|'margem'|'estoque_negativo';motivo:string;detalhes:Record<string,unknown>}[]=[]
-
-    if(saleClient&&saleStatus!=='orcamento'){
-      const cliente=clientes.find(c=>c.id===saleClient)
-      const credit=await supabase.rpc('situacao_credito_cliente',{p_cliente_id:saleClient,p_excluir_venda_id:editingSale?.id||null})
-      if(credit.error){setMsg('Não foi possível validar crédito do cliente: '+credit.error.message);return}
-      const creditRow=Array.isArray(credit.data)?credit.data[0]:credit.data
-      const aberto=Number(creditRow?.em_aberto||0)
-      const vencido=Number(creditRow?.vencido||0)
-
-      if((empresa?.bloquear_cliente_inadimplente??true)&&vencido>0){
-        if(!canManageAuthorizations){setMsg(`Venda bloqueada: o cliente possui ${money(vencido)} em títulos vencidos. É necessária autorização administrativa.`);return}
-        const ok=window.prompt(`Cliente inadimplente: existem ${money(vencido)} vencidos. Digite AUTORIZAR para continuar.`)
-        if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: inadimplência não autorizada.');return}
-        motivosAprovacao.push({tipo:'inadimplencia',motivo:'Venda para cliente com títulos vencidos',detalhes:{cliente_id:saleClient,valor_vencido:vencido}})
-      }
-
-      const limite=Number(cliente?.limite_credito||0)
-      if((empresa?.exigir_aprovacao_limite_credito??true)&&limite>0&&aberto+totalAtual>limite){
-        const excesso=aberto+totalAtual-limite
-        if(!canManageAuthorizations){setMsg(`Venda bloqueada: limite de crédito excedido em ${money(excesso)}. É necessária autorização administrativa.`);return}
-        const ok=window.prompt(`Limite de crédito excedido em ${money(excesso)}. Digite AUTORIZAR para continuar.`)
-        if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: limite de crédito não autorizado.');return}
-        motivosAprovacao.push({tipo:'limite_credito',motivo:'Venda acima do limite de crédito',detalhes:{cliente_id:saleClient,limite,em_aberto:aberto,total_venda:totalAtual,excesso}})
-      }
-    }
-
-    const descontoPct=subtotalAtual>0?(descontoAtual/subtotalAtual)*100:0
-    const descontoMax=Number(empresa?.desconto_max_vendedor??10)
-    if(!canManageAuthorizations&&descontoPct>descontoMax){
-      setMsg(`Venda bloqueada: desconto de ${descontoPct.toFixed(2)}% excede o limite de ${descontoMax.toFixed(2)}%.`)
+    if(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker){
+      setMsg('Esta venda possui bloqueios que exigem autorização: '+saleApprovalBlockers.map(b=>b.label).join(', ')+'. Use o botão destacado “Solicitar autorização”.')
       return
-    }
-    if(canManageAuthorizations&&descontoPct>descontoMax){
-      const ok=window.prompt(`Desconto de ${descontoPct.toFixed(2)}% acima do limite de ${descontoMax.toFixed(2)}%. Digite AUTORIZAR.`)
-      if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: desconto não autorizado.');return}
-      motivosAprovacao.push({tipo:'desconto',motivo:'Desconto acima do limite configurado',detalhes:{desconto_percentual:descontoPct,limite_percentual:descontoMax}})
-    }
-
-    const custoTotal=items.reduce((s,i)=>s+(Number(produtos.find(p=>p.id===i.produto_id)?.custo_medio??produtos.find(p=>p.id===i.produto_id)?.custo??0)*i.quantidade),0)
-    const margemPct=totalAtual>0?((totalAtual-custoTotal)/totalAtual)*100:0
-    const margemMin=Number(empresa?.margem_minima_percentual??0)
-    if(margemPct<margemMin){
-      if(!canManageAuthorizations){setMsg(`Venda bloqueada: margem de ${margemPct.toFixed(2)}% abaixo da mínima de ${margemMin.toFixed(2)}%.`);return}
-      const ok=window.prompt(`Margem de ${margemPct.toFixed(2)}% abaixo da mínima de ${margemMin.toFixed(2)}%. Digite AUTORIZAR.`)
-      if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: margem não autorizada.');return}
-      motivosAprovacao.push({tipo:'margem',motivo:'Venda abaixo da margem mínima',detalhes:{margem_percentual:margemPct,margem_minima:margemMin}})
-    }
-
-    const precisaAutorizar=saleConsumesStock&&saleStockShortages.length>0
-    let autorizarSemEstoque=false
-    if(precisaAutorizar){
-      const resumo=saleStockShortages.map(s=>`${s.produto.codigo} - ${s.produto.descricao}: faltam ${s.missing.toLocaleString('pt-BR')} ${s.produto.unidade}`).join('\n')
-      if(!canManageAuthorizations){
-        setMsg('Venda bloqueada por estoque insuficiente. É necessária autorização de um administrador. '+saleStockShortages.map(s=>s.produto.descricao).join(', '))
-        return
-      }
-      const confirmacao=window.prompt(`ATENÇÃO: a venda deixará o estoque negativo.\n\n${resumo}\n\nPara autorizar como administrador, digite AUTORIZAR.`)
-      if((confirmacao||'').trim().toUpperCase()!=='AUTORIZAR'){
-        setMsg('Venda não concluída: autorização de estoque não confirmada.')
-        return
-      }
-      autorizarSemEstoque=true
-      motivosAprovacao.push({tipo:'estoque_negativo',motivo:'Venda autorizada com estoque insuficiente',detalhes:{itens:saleStockShortages.map(s=>({produto_id:s.produto.id,faltante:s.missing}))}})
     }
 
     setSavingSale(true);setMsg('')
-    const args={p_cliente_id:saleClient||null,p_vendedor_cadastro_id:saleSeller||null,p_status:saleStatus,p_forma_pagamento:salePayment,p_parcelas:saleInstallments,p_primeiro_vencimento:saleDueDate,p_observacoes:saleNotes,p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto}))}
-    const r=await supabase.rpc('salvar_venda_erp',{p_requisicao:saleRequestId,p_payload:{...args,p_venda_id:editingSale?.id||null,p_rota_entrega:saleRoute},p_autorizar_sem_estoque:autorizarSemEstoque})
-    if(r.error||!r.data){setSavingSale(false);setMsg('Não foi possível salvar a venda: '+(r.error?.message||'erro desconhecido'));return}
+    const args={
+      p_cliente_id:saleClient||null,
+      p_vendedor_cadastro_id:saleSeller||null,
+      p_status:saleStatus,
+      p_forma_pagamento:salePayment,
+      p_parcelas:saleInstallments,
+      p_primeiro_vencimento:saleDueDate,
+      p_observacoes:saleNotes,
+      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto}))
+    }
+    const r=await supabase.rpc('salvar_venda_erp',{
+      p_requisicao:saleRequestId,
+      p_payload:{...args,p_venda_id:editingSale?.id||null,p_rota_entrega:saleRoute||null},
+      p_autorizar_sem_estoque:false
+    })
+    if(r.error||!r.data){
+      setSavingSale(false)
+      setMsg('Não foi possível salvar a venda: '+(r.error?.message||'erro desconhecido'))
+      return
+    }
+
     const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Venda
     const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
     const desconto=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
     const total=Math.max(0,subtotal-desconto)
+
     try{
-      (await import('./lib/invoicePdf')).generateInvoicePdf({id:saved.id,fatura_numero:saved.fatura_numero,created_at:saved.created_at||new Date().toISOString(),status:saved.status,subtotal,desconto,total,observacoes:saleNotes||null,forma_pagamento:salePayment,parcelas:saleInstallments,primeiro_vencimento:saleDueDate,rota_entrega:saleRoute,vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,cliente:clientes.find(c=>c.id===saleClient)||null,company:empresa||undefined,items:invoiceItems(items)})
+      (await import('./lib/invoicePdf')).generateInvoicePdf({
+        id:saved.id,
+        fatura_numero:saved.fatura_numero,
+        created_at:saved.created_at||new Date().toISOString(),
+        status:saved.status,
+        subtotal,
+        desconto,
+        total,
+        observacoes:saleNotes||null,
+        forma_pagamento:salePayment,
+        parcelas:saleInstallments,
+        primeiro_vencimento:saleDueDate,
+        rota_entrega:saleRoute||null,
+        vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,
+        cliente:clientes.find(c=>c.id===saleClient)||null,
+        company:empresa||undefined,
+        items:invoiceItems(items)
+      })
       await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
-      setMsg(autorizarSemEstoque?(editingSale?'Venda atualizada com autorização administrativa de estoque e fatura reemitida.':'Venda criada com autorização administrativa de estoque e fatura emitida.'):(editingSale?'Venda atualizada e fatura reemitida.':'Venda criada e fatura emitida.'))
-    }catch{setMsg('Venda salva. A fatura pode ser reemitida pelo painel.')}
-    setSavingSale(false);setShowForm(false);resetSaleForm();await loadData();requestAnimationFrame(()=>{const table=document.getElementById('sales-table');table?.scrollIntoView({behavior:'smooth',block:'start'});table?.focus()})
+      setMsg(editingSale?'Venda atualizada e documento reemitido.':saleStatus==='orcamento'?'Orçamento salvo.':'Venda salva e fatura emitida.')
+    }catch{
+      setMsg('Venda salva. O documento pode ser reemitido pelo painel.')
+    }
+
+    setSavingSale(false)
+    setShowForm(false)
+    resetSaleForm()
+    await loadData()
+    requestAnimationFrame(()=>{
+      const table=document.getElementById('sales-table')
+      table?.scrollIntoView({behavior:'smooth',block:'start'})
+      table?.focus()
+    })
   }
+
   async function requestSaleAuthorization(){
     if(savingSale||!canManageSales)return
-    if(!editingSale){setMsg('Salve primeiro como orçamento. Depois abra o orçamento e escolha Pedido ou Faturado para solicitar aprovação.');return}
-    if(saleStatus==='orcamento'){setMsg('Selecione Pedido ou Faturado para solicitar a conversão do orçamento.');return}
-    if(saleApprovals.some(a=>a.entidade_id===editingSale.id)){setMsg('Este orçamento já está aguardando aprovação.');return}
-    if(!saleRoute||!saleItems.length||saleItems.some(i=>!i.produto_id||i.quantidade<=0)){setMsg('Preencha a rota e todos os itens antes de solicitar autorização.');return}
-    const motivo=window.prompt('Justifique a solicitação para o administrador (mínimo de 5 caracteres):')
+    if(!editingSale){
+      setMsg('Salve primeiro como orçamento. Depois abra o orçamento e escolha Pedido ou Faturado.')
+      return
+    }
+    if(saleStatus==='orcamento'){
+      setMsg('Selecione Pedido ou Faturado para verificar se a venda precisa de autorização.')
+      return
+    }
+    if(saleApprovals.some(a=>a.entidade_id===editingSale.id)){
+      setMsg('Esta venda já está aguardando aprovação.')
+      return
+    }
+    if(saleHasStructuralError){
+      setMsg('Há item inválido. Corrija produto/quantidade antes de solicitar autorização.')
+      return
+    }
+    if(!saleHasAuthorizationBlocker){
+      setMsg('Esta venda não possui bloqueios. Ela pode ser salva normalmente, sem autorização.')
+      return
+    }
+
+    const motivo=window.prompt('Justifique a solicitação para o responsável pela autorização (mínimo de 5 caracteres):')
     if(!motivo)return
+
     setSavingSale(true)
     try{
-      const {error}=await supabase.rpc('solicitar_autorizacao_venda',{p_motivo:motivo,p_payload:{p_venda_id:editingSale?.id||null,p_cliente_id:saleClient||null,p_vendedor_cadastro_id:saleSeller||null,p_status:saleStatus,p_forma_pagamento:salePayment,p_parcelas:saleInstallments,p_primeiro_vencimento:saleDueDate,p_observacoes:saleNotes,p_rota_entrega:saleRoute,p_itens:saleItems.map(({produto_id,quantidade,valor_unitario,desconto})=>({produto_id,quantidade,valor_unitario,desconto}))}})
-      if(error){setMsg(error.message);return}
-      setShowForm(false);resetSaleForm();setActive('vendas');await loadData();setMsg('Orçamento salvo na lista e aguardando aprovação administrativa para virar venda.')
-    }finally{setSavingSale(false)}
+      const {error}=await supabase.rpc('solicitar_autorizacao_venda',{
+        p_motivo:motivo,
+        p_payload:{
+          p_venda_id:editingSale.id,
+          p_cliente_id:saleClient||null,
+          p_vendedor_cadastro_id:saleSeller||null,
+          p_status:saleStatus,
+          p_forma_pagamento:salePayment,
+          p_parcelas:saleInstallments,
+          p_primeiro_vencimento:saleDueDate,
+          p_observacoes:saleNotes,
+          p_rota_entrega:saleRoute||null,
+          p_bloqueios:saleApprovalBlockers,
+          p_itens:saleItems.map(({produto_id,quantidade,valor_unitario,desconto})=>({produto_id,quantidade,valor_unitario,desconto}))
+        }
+      })
+      if(error){
+        setMsg(error.message)
+        return
+      }
+      setShowForm(false)
+      resetSaleForm()
+      setActive('vendas')
+      await loadData()
+      setMsg('Venda enviada para autorização. O documento permanece na lista aguardando a decisão.')
+    }finally{
+      setSavingSale(false)
+    }
   }
+
   async function downloadSalePdf(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
     if(error){setMsg(error.message);return}
