@@ -149,6 +149,7 @@ function App(){
 
   const [showForm,setShowForm]=useState(false)
   const [editingClient,setEditingClient]=useState<Cliente|null>(null)
+  const [clientLookupBusy,setClientLookupBusy]=useState(false)
   const [clientPanel,setClientPanel]=useState<string|null>(null)
   const [editingSupplier,setEditingSupplier]=useState<Fornecedor|null>(null)
   const [supplierPanel,setSupplierPanel]=useState<string|null>(null)
@@ -541,6 +542,48 @@ function App(){
 
   function startNewClient(){if(!canManageClients){setMsg('Você possui apenas permissão de visualização em Clientes.');return}setEditingClient(null);setShowForm(true);setMsg('')}
   function startEditClient(c:Cliente){if(!canManageClients){setMsg('Você possui apenas permissão de visualização em Clientes.');return}setEditingClient(c);setShowForm(true);setMsg('')}
+  async function lookupClientCnpj(form:HTMLFormElement|null){
+    if(!form||clientLookupBusy)return
+    const documentInput=form.elements.namedItem('documento') as HTMLInputElement|null
+    const cnpj=onlyDigits(documentInput?.value||'',14)
+    if(cnpj.length!==14){setMsg('Informe um CNPJ com 14 dígitos antes de consultar.');return}
+    setClientLookupBusy(true);setMsg('')
+    try{
+      const {data,error}=await supabase.functions.invoke('cnpj-lookup',{body:{cnpj}})
+      if(error){
+        let message='Não foi possível consultar o CNPJ.'
+        try{const detail=await error.context?.json();if(detail?.error)message=detail.error}catch{/* mantém mensagem segura */}
+        throw new Error(message)
+      }
+      if(data?.error)throw new Error(data.error)
+      const set=(name:string,value:unknown,transform?:(v:string)=>string)=>{
+        const el=form.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|null
+        const raw=String(value??'').trim()
+        if(!el||!raw)return
+        el.value=transform?transform(raw):raw
+        el.dispatchEvent(new Event('input',{bubbles:true}))
+        el.dispatchEvent(new Event('change',{bubbles:true}))
+      }
+      set('documento',data.cnpj,maskDocument)
+      set('nome',data.razao_social||data.nome_fantasia)
+      set('email',data.email)
+      set('telefone',data.telefone,maskPhone)
+      set('logradouro',data.logradouro)
+      set('numero',data.numero)
+      set('bairro',data.bairro)
+      set('municipio',data.municipio)
+      set('codigo_municipio',data.codigo_ibge)
+      set('uf',data.uf)
+      set('cep',data.cep,maskCep)
+      const status=String(data.situacao_cadastral||'').trim()
+      setMsg(status?'CNPJ consultado com sucesso. Situação cadastral: '+status+'.':'CNPJ consultado com sucesso.')
+    }catch(error){
+      setMsg(error instanceof Error?error.message:'Não foi possível consultar o CNPJ.')
+    }finally{
+      setClientLookupBusy(false)
+    }
+  }
+
   async function saveClient(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!canManageClients){setMsg('Sem permissão para editar Clientes.');return}
@@ -1906,9 +1949,14 @@ function App(){
           <label className="fieldLabel">Nome / Razão social
             <input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/>
           </label>
-          <label className="fieldLabel">CPF / CNPJ
-            <input name="documento" inputMode="numeric" placeholder="CPF / CNPJ" defaultValue={maskDocument(editingClient?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
-          </label>
+          <div className="cnpjLookupField">
+            <label className="fieldLabel">CPF / CNPJ
+              <input name="documento" inputMode="numeric" placeholder="CPF / CNPJ" defaultValue={maskDocument(editingClient?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
+            </label>
+            <button type="button" className="ghost cnpjLookupButton" disabled={clientLookupBusy} onClick={e=>void lookupClientCnpj(e.currentTarget.form)}>
+              <Search size={16}/>{clientLookupBusy?'Consultando...':'Buscar CNPJ'}
+            </button>
+          </div>
           <label className="fieldLabel">E-mail
             <input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/>
           </label>
