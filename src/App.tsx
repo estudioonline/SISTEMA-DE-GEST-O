@@ -1597,7 +1597,7 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':active==='compras'?'Nova compra':'Novo'}</button>}
+          {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
           {canManageStock&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
@@ -2009,11 +2009,11 @@ function App(){
       </section>}
 
       {active==='vendas'&&<section className="semanticPage salesPage">
-        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingSale?'Editar venda':'Nova venda'}><div className="saleModalShell"><form className="panel saleForm salesForm saleModalForm" onSubmit={saveSale}>
+        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingSale?'Editar venda':'Novo orçamento'}><div className="saleModalShell"><form className="panel saleForm salesForm saleModalForm" onSubmit={saveSale}>
           <div className="formTitle saleModalTitle">
             <div>
-              <h3>{editingSale?'Editar fatura '+invoiceNo(editingSale.fatura_numero):'Nova venda / fatura'}</h3>
-              <p>Pagamento e fatura são obrigatórios. O vendedor define quem recebe a comissão quando houver recebimento.</p>
+              <h3>{editingSale?(editingSale.status==='orcamento'?'Editar orçamento ':'Editar venda ')+invoiceNo(editingSale.fatura_numero):'Novo orçamento'}</h3>
+              <p>Toda nova negociação começa como orçamento. Depois ela pode avançar para Pedido/Venda; somente nessa etapa gera cobrança e movimenta estoque.</p>
             </div>
             <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de venda" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}><X size={18}/></button>
           </div>
@@ -2112,9 +2112,9 @@ function App(){
         </form></div></div>}
 
         <article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
-          <div className="panelHead"><h3>Vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
+          <div className="panelHead"><h3>Orçamentos, vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
-            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','fatura')}>Fatura{sortMark('vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagamento{sortMark('vendas','statuspag')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th><th>Gerenciar</th></tr></thead>
+            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','fatura')}>Documento{sortMark('vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagamento{sortMark('vendas','statuspag')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th><th>Gerenciar</th></tr></thead>
             <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&!isViewer?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
