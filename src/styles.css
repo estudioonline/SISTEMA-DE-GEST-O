@@ -3214,3 +3214,155 @@
 .fiscalPanel textarea{min-height:100px}
 .fiscalItem{border-top:1px solid var(--border,#cbd5e1);padding:14px 0}
 .fiscalError{color:#b42318;background:#fff1f0;padding:12px;border-radius:8px}
+
+
+/* Fluxo de autorização de vendas */
+.saleAuthorizationBlockers{
+  display:grid;
+  gap:10px;
+  padding:13px 14px;
+  border:1px solid #f59e0b;
+  border-radius:12px;
+  background:#fff7ed;
+  color:#9a3412;
+}
+.saleAuthorizationBlockersHead{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+.saleAuthorizationBlockersHead>svg{
+  flex:0 0 auto;
+  margin-top:1px;
+}
+.saleAuthorizationBlockersHead strong,
+.saleAuthorizationBlockersHead span{
+  display:block;
+}
+.saleAuthorizationBlockersHead strong{
+  font-size:13px;
+}
+.saleAuthorizationBlockersHead span{
+  margin-top:2px;
+  font-size:11px;
+  line-height:1.4;
+}
+.saleAuthorizationBlockerList{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.saleAuthorizationBlockerList>div{
+  padding:8px 9px;
+  border:1px solid rgba(245,158,11,.35);
+  border-radius:9px;
+  background:rgba(255,255,255,.62);
+}
+.saleAuthorizationBlockerList strong,
+.saleAuthorizationBlockerList span{
+  display:block;
+}
+.saleAuthorizationBlockerList strong{
+  font-size:11px;
+}
+.saleAuthorizationBlockerList span{
+  margin-top:2px;
+  font-size:10px;
+  line-height:1.35;
+}
+.authorizationRequestBtn{
+  min-height:42px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:0 15px;
+  border:1px solid #d97706;
+  border-radius:10px;
+  background:#f59e0b;
+  color:#fff;
+  font-weight:900;
+  box-shadow:0 5px 14px rgba(217,119,6,.24);
+  cursor:pointer;
+}
+.authorizationRequestBtn:hover:not(:disabled){
+  background:#d97706;
+  transform:translateY(-1px);
+}
+.authorizationRequestBtn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+.authorizationBlockerSummary{
+  display:grid;
+  gap:9px;
+  margin:10px 0 12px;
+  padding:11px 12px;
+  border:1px solid #f59e0b;
+  border-radius:11px;
+  background:#fff7ed;
+  color:#9a3412;
+}
+.authorizationBlockerSummary>div:first-child{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.authorizationBlockerSummary>div:first-child strong,
+.authorizationBlockerSummary>div:first-child span{
+  display:block;
+}
+.authorizationBlockerSummary>div:first-child span{
+  font-size:11px;
+  font-weight:700;
+}
+.authorizationBlockerGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.authorizationBlockerGrid>div{
+  padding:8px 9px;
+  border-radius:8px;
+  background:#fff;
+  border:1px solid #fed7aa;
+}
+.authorizationBlockerGrid strong,
+.authorizationBlockerGrid span{
+  display:block;
+}
+.authorizationBlockerGrid strong{font-size:11px}
+.authorizationBlockerGrid span{
+  margin-top:2px;
+  font-size:10px;
+  line-height:1.35;
+}
+.authorizationBlockerSummary p{
+  margin:0;
+  font-size:11px;
+  line-height:1.4;
+}
+.authorizationApproveBtn{
+  box-shadow:0 4px 14px rgba(37,99,235,.22);
+}
+.dark .saleAuthorizationBlockers,
+.dark .authorizationBlockerSummary{
+  background:#3a2608;
+  border-color:#8a5b12;
+  color:#fed7aa;
+}
+.dark .saleAuthorizationBlockerList>div,
+.dark .authorizationBlockerGrid>div{
+  background:#271c0c;
+  border-color:#6b4e12;
+}
+@media(max-width:680px){
+  .saleAuthorizationBlockerList,
+  .authorizationBlockerGrid{
+    grid-template-columns:1fr;
+  }
+  .authorizationRequestBtn{
+    width:100%;
+  }
+}
