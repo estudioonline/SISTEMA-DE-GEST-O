@@ -4190,3 +4190,15 @@
   padding:0 9px;
   font-size:10px;
 }
+
+
+/* Respiro entre aviso de autorizacao e acoes da venda */
+.saleAuthorizationBlockers{
+  margin-bottom:14px;
+}
+.saleAuthorizationBlockers + .saleActions{
+  margin-top:4px;
+}
+.saleActions{
+  gap:14px;
+}
