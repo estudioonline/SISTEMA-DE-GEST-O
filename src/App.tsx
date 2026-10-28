@@ -35,6 +35,8 @@ type Compra={id:string;fornecedor_id:string|null;status:string;total:number;obse
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
 type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
+type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:number}
+type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
 type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
 type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean}
@@ -50,10 +52,15 @@ const menu=[
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+const addDaysIso=(base:string,days:number)=>{const [y,m,d]=base.split('-').map(Number);const x=new Date(y,m-1,d+days,12);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`}
+const monthStartIso=(base=today())=>base.slice(0,8)+'01'
+const monthEndIso=(base=today())=>addDaysIso(addMonthsIso(base.slice(0,8)+'01',1),-1)
 const dateBr=(v:string)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v.length===10?v+'T12:00:00':v)):'—'
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const deliveryRouteLabel=(v:string|null|undefined)=>v==='norte'?'Norte':v==='sul'?'Sul':v==='leste'?'Leste':v==='interestadual'?'Interestadual':v==='retirada'?'Retirada':'—'
 const purchaseStatusLabel=(v:string|null|undefined)=>v==='cotacao'?'Cotação':v==='pedido_aprovado'?'Pedido aprovado':v==='pedido_recebido'?'Pedido recebido':v==='cancelada'?'Cancelada':String(v||'—')
+const financeStatusLabel=(v:string)=>v==='aberto'?'Em aberto':v==='parcial'?'Parcial':v==='pago'?'Pago':v==='cancelado'?'Cancelado':v
+const financeStatusClass=(v:string)=>v==='pago'?'payment-pago':v==='parcial'?'payment-parcial':v==='cancelado'?'payment-cancelado':'payment-pendente'
 const profileLabel=(v:PerfilRole)=>v==='administrador'?'Administrador':v==='financeiro'?'Financeiro':v==='vendas'?'Vendedor':v==='visualizador'?'Usuário normal':'Estoque'
 const onlyDigits=(value:string,max:number)=>value.replace(/\D/g,'').slice(0,max)
 const maskDocument=(value:string)=>{
@@ -175,7 +182,17 @@ function App(){
 
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
+  const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
   const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'>('geral')
+  const [financeStatusFilter,setFinanceStatusFilter]=useState<'todos'|'aberto'|'parcial'|'pago'|'cancelado'>('todos')
+  const [financeStart,setFinanceStart]=useState('')
+  const [financeEnd,setFinanceEnd]=useState('')
+  const [financeCategory,setFinanceCategory]=useState('todos')
+  const [financeCenter,setFinanceCenter]=useState('todos')
+  const [financeTitleType,setFinanceTitleType]=useState<'receber'|'pagar'>('receber')
+  const [financeTitleEntity,setFinanceTitleEntity]=useState('')
+  const [financePayments,setFinancePayments]=useState<FinancePayment[]>([])
+  const [financeReversals,setFinanceReversals]=useState<FinanceReversal[]>([])
   const [paymentDate,setPaymentDate]=useState(today())
   const [paymentAmount,setPaymentAmount]=useState('')
 
@@ -221,7 +238,7 @@ function App(){
     setProfileRole('visualizador');setActive('dashboard');closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setComissoes([])
-    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setEmail('');setPassword('')
+    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setFinancePayments([]);setFinanceReversals([]);setEmail('');setPassword('')
   },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
   useEffect(()=>{
@@ -230,6 +247,10 @@ function App(){
   useEffect(()=>{
     if(session&&active==='config'&&profileRole==='administrador')void loadManagedUsers()
   },[session,active,profileRole])
+
+  useEffect(()=>{
+    if(session&&active==='financeiro'&&canViewFinance)void loadFinanceActivity()
+  },[session?.user.id,active,profileRole])
 
   useEffect(()=>{
     if(!session)return
@@ -285,6 +306,21 @@ function App(){
     if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
     if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
+  }
+
+  async function loadFinanceActivity(){
+    if(!session||!canViewFinance)return
+    const [p,e]=await Promise.all([
+      readAllRows((from,to)=>supabase.from('pagamentos_titulos').select('id,titulo_id,data_pagamento,valor').order('data_pagamento',{ascending:false}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('estornos_pagamentos').select('id,pagamento_id,valor,data_estorno').order('data_estorno',{ascending:false}).order('id').range(from,to))
+    ])
+    if(currentSessionUser.current!==session.user.id)return
+    if(!p.error)setFinancePayments((p.data||[]) as FinancePayment[])
+    if(!e.error)setFinanceReversals((e.data||[]) as FinanceReversal[])
+  }
+
+  async function refreshFinance(){
+    await Promise.all([loadData(),loadFinanceActivity()])
   }
 
   async function loadCommissions(){
