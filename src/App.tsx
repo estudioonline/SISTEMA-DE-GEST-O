@@ -5,7 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
-  Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight,
+  Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, Grid2X2,
   Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
@@ -20,6 +20,7 @@ import { PaymentHistory } from './PaymentHistory'
 import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
 import { NfeImportModal } from './NfeImportModal'
 import { FocusNfeSettings, FocusNfeSale } from './FocusNfe'
+import { AppLauncher } from './AppLauncher'
 import { EmployeeFinance } from './EmployeeFinance'
 import type { EmployeeTitle } from './EmployeeFinance'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
@@ -108,7 +109,9 @@ function App(){
   const [loading,setLoading]=useState(true)
   const [active,setActive]=useState<ModuleKey>('dashboard')
   const [dark,setDark]=useState(false)
-  const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
+  const [showApps,setShowApps]=useState(true)
+  const [permissionsReady,setPermissionsReady]=useState(false)
+  const moduleHeading=useRef<HTMLHeadingElement>(null)
   const [profileRole,setProfileRole]=useState<PerfilRole>('visualizador')
   const [userPermissions,setUserPermissions]=useState<PermissionMap>(()=>defaultPermissionsForRole('visualizador'))
   const [msg,setMsg]=useState('')
@@ -239,6 +242,8 @@ function App(){
   const canManageConfig=canEditModule('config')
   const visibleMenu=menu.filter(([k])=>canViewModule(k))
 
+  useEffect(()=>{if(!showApps)moduleHeading.current?.focus()},[showApps,active])
+
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
     supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false)})
@@ -247,7 +252,7 @@ function App(){
   },[])
 
   useEffect(()=>{
-    setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');closeForms()
+    setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');setShowApps(true);setPermissionsReady(false);closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setComissoes([])
     setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setEmail('');setPassword('')
@@ -261,10 +266,11 @@ function App(){
   },[session,active,userPermissions])
 
   useEffect(()=>{
-    if(!session||canViewModule(active))return
+    if(!session||!permissionsReady||canViewModule(active))return
+    setShowApps(true);closeForms()
     const first=visibleMenu[0]?.[0]
     if(first)setActive(first)
-  },[session,userPermissions,active])
+  },[session,userPermissions,active,permissionsReady])
 
   useEffect(()=>{
     if(session&&active==='financeiro'&&canViewFinance)void loadFinanceActivity()
@@ -345,6 +351,7 @@ function App(){
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
     if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
     if(!sa.error)setSaleApprovals((sa.data||[]) as SaleApproval[])
+    setPermissionsReady(true)
   }
 
   async function loadFinanceActivity(){
@@ -1864,20 +1871,34 @@ function App(){
     else if(active==='financeiro')startNewTitle()
   }
 
-  return <div className={`${dark?'app dark':'app'}${sidebarCollapsed?' sidebarCollapsed':''}`}>
-    <aside className="sidebar">
-      <button className="sidebarToggle" onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed?'Expandir menu':'Recolher menu'} aria-label={sidebarCollapsed?'Expandir menu lateral':'Recolher menu lateral'}>{sidebarCollapsed?<ChevronRight size={17}/>:<ChevronLeft size={17}/>}</button>
-      <div className="brand"><div className="brandMark">SG</div><div className="brandText"><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div></div>
-      <nav>{visibleMenu.map(([k,l,I])=><Fragment key={k}><button title={l} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);if(k==='financeiro')setFinanceSubtab('geral');closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>{k==='financeiro'&&<div className="financeSubmenu">{(['funcionarios','vales'] as const).map(sub=><button key={sub} title={sub==='funcionarios'?'Gastos com funcionários':'Vales de funcionários'} className={'navItem financeSubmenuItem'+(active==='financeiro'&&financeSubtab===sub?' active':'')} onClick={()=>{setActive('financeiro');setFinanceSubtab(sub);closeForms();setMsg('')}}>{sub==='funcionarios'?<Users size={15}/>:<WalletCards size={15}/>}<span>{sub==='funcionarios'?'Gastos com funcionários':'Vales de funcionários'}</span></button>)}</div>}</Fragment>)}</nav>
-      <div className="sidebarFooter"><span>{session.user.email}</span><small>{profileLabel(profileRole)}</small><button className="navItem" title="Sair" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
-    </aside>
+  function openApp(module:ModuleKey){
+    if(!permissionsReady||!canViewModule(module))return
+    setActive(module)
+    if(module==='financeiro')setFinanceSubtab('geral')
+    closeForms();setMsg('');setShowApps(false)
+  }
 
+  return <div className={`app appsWorkspace${dark?' dark':''}${showApps?' launcherWorkspace':''}`}>
+    <header className="workspaceBar">
+      <div className="workspaceIdentity">
+        <div className="workspaceBrand"><span className="workspaceBrandMark">SG</span><div className="workspaceBrandText"><strong>{empresa?.nome_fantasia||'Sistema de Gestão'}</strong><small>ERP EMPRESARIAL</small></div></div>
+        <button type="button" className="workspaceHome" onClick={()=>setShowApps(true)} aria-current={showApps?'page':undefined}><Grid2X2 size={18}/><span>Aplicativos</span></button>
+      </div>
+      <div className="workspaceControls">
+        <div className="workspaceAccount"><span title={session.user.email}>{session.user.email}</span><small>{profileLabel(profileRole)}</small></div>
+        <button type="button" className="workspaceIcon" onClick={()=>setDark(v=>!v)} title={dark?'Ativar modo claro':'Ativar modo escuro'} aria-label={dark?'Ativar modo claro':'Ativar modo escuro'}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
+        <button type="button" className="workspaceIcon" onClick={()=>void supabase.auth.signOut()} title="Sair" aria-label="Sair"><LogOut size={17}/></button>
+      </div>
+    </header>
     <main className="main">
+      {showApps?<>
+        {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
+        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp}/>
+      </>:permissionsReady&&canViewModule(active)&&<>
       <header className="topbar">
-        <div><h1>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'} • ORGJSS1</p></div>
+        <div><h1 ref={moduleHeading} tabIndex={-1}>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'}</p></div>
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
-          <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
           {active==='compras'&&canManagePurchases&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&canManageClients)||(active==='fornecedores'&&canManageSuppliers)||(active==='compras'&&canManagePurchases))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
           {canManageProducts&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
@@ -2922,6 +2943,7 @@ function App(){
           <div className="formActions"><button className="primary">Salvar configurações</button></div></fieldset>
         </form>
       </section>}
+      </>}
     </main>
   </div>
 }

@@ -1,0 +1,54 @@
+/* App navigation: scoped to the authenticated workspace. */
+.app.appsWorkspace{display:block;min-height:100dvh}
+.appsWorkspace .workspaceBar{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:76px;padding:14px 32px;background:#0f172a;color:#fff;border-bottom:1px solid #25334c}
+.workspaceIdentity,.workspaceControls,.workspaceBrand{display:flex;align-items:center;gap:14px;min-width:0}
+.workspaceBrand{gap:10px}
+.workspaceBrandMark{display:grid;place-items:center;flex-shrink:0;width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#5489ff,#2459d2);font-size:14px;font-weight:800;letter-spacing:-.5px}
+.workspaceBrandText{display:grid;gap:3px;min-width:0}
+.workspaceBrandText strong{font-size:14px;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.workspaceBrandText small{color:#a4b3ce;font-size:11px;letter-spacing:.03em}
+.appsWorkspace .workspaceHome,.appsWorkspace .workspaceIcon{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #3d4e69;border-radius:10px;background:#1c2940;color:#eaf0ff;min-height:40px;padding:0 13px;cursor:pointer;font-size:13px;font-weight:600}
+.appsWorkspace .workspaceHome:hover,.appsWorkspace .workspaceIcon:hover{background:#2c3d59;border-color:#91b3f2}
+.appsWorkspace .workspaceHome[aria-current="page"]{background:#27467b;border-color:#5679b7}
+.appsWorkspace .workspaceIcon{padding:0;width:40px;flex-shrink:0}
+.workspaceAccount{display:grid;gap:4px;text-align:right;min-width:0}
+.workspaceAccount span{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#e2e8f0}
+.workspaceAccount small{color:#a4b3ce;font-size:11px}
+.appsWorkspace .main{margin-left:0;width:100%;min-width:0;padding:26px 32px 48px}
+.appsWorkspace.launcherWorkspace .main{background:radial-gradient(ellipse at 75% 0%,rgba(96,165,250,.09),transparent 55%),var(--ds-bg);min-height:calc(100dvh - 76px)}
+.appsWorkspace .topbar{flex-wrap:wrap}
+.appsWorkspace .topActions{flex-wrap:wrap}
+.appLauncher{max-width:1160px;margin:0 auto}
+.launcherIntro{padding:30px 0 32px}
+.launcherEyebrow{font-size:11px;font-weight:750;letter-spacing:.15em;color:var(--ds-blue)}
+.launcherIntro h1{font-size:clamp(28px,3vw,38px);letter-spacing:-.04em;line-height:1.2;margin:12px 0;color:var(--ds-text);outline:none}
+.launcherIntro p{margin:0;color:var(--ds-muted);font-size:14px;line-height:1.7}
+.launcherToolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px}
+.launcherToolbar h2{font-size:17px;margin:0 0 6px;letter-spacing:-.02em;color:var(--ds-text)}
+.launcherToolbar>div>span{color:var(--ds-muted);font-size:12px}
+.appsWorkspace .launcherSearch{display:flex;align-items:center;gap:10px;background:var(--ds-surface);border:1px solid var(--ds-border);border-radius:12px;width:320px;max-width:100%;padding:0 14px;min-height:46px;color:var(--ds-muted);box-shadow:var(--ds-shadow-xs)}
+.appsWorkspace .launcherSearch:focus-within{outline:2px solid #60a5fa;outline-offset:2px}
+.appsWorkspace .launcherSearch input{border:0!important;outline:none;box-shadow:none!important;min-width:0;width:100%;height:44px;padding:0;background:transparent;color:var(--ds-text);font-size:13px}
+.launcherSearch input::-webkit-search-cancel-button{display:none}
+.launcherSearch button{display:grid;place-items:center;flex-shrink:0;width:28px;height:28px;padding:0;background:transparent;border:0;color:var(--ds-muted);border-radius:6px;cursor:pointer}
+.launcherGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.appsWorkspace .launcherApp{display:flex;flex-direction:column;align-items:stretch;gap:0;text-align:left;min-width:0;min-height:200px;padding:22px;border:1px solid var(--ds-border);border-radius:18px;background:var(--ds-surface);color:var(--ds-text);box-shadow:0 3px 12px rgba(15,23,42,.025);cursor:pointer;transition:transform 160ms ease,box-shadow 160ms ease,border-color 160ms ease}
+.appsWorkspace .launcherApp:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(15,23,42,.09);border-color:var(--app-color,#2563eb)}
+.launcherAppTop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.launcherIcon{display:grid;place-items:center;width:54px;height:54px;border-radius:15px;background:var(--app-color,#2563eb);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 5px 10px rgba(15,23,42,.10)}
+.launcherArrow{color:var(--ds-muted-2);margin-top:4px}
+.launcherApp strong{font-size:15px;line-height:1.35;margin-bottom:7px;letter-spacing:-.01em}
+.launcherDescription{color:var(--ds-muted);font-size:12px;line-height:1.6;flex:1}
+.launcherAccess{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:18px;font-size:11px;font-weight:600;color:var(--ds-muted)}
+.launcherAccess>span{color:var(--app-color,#2563eb);font-size:16px}
+.appColor-vendas{--app-color:#2563eb}.appColor-dashboard{--app-color:#6d5bd0}.appColor-clientes{--app-color:#167eaa}.appColor-fornecedores{--app-color:#b06934}.appColor-produtos{--app-color:#bd6d1e}.appColor-compras{--app-color:#159088}.appColor-comissoes{--app-color:#9f559b}.appColor-financeiro{--app-color:#21865b}.appColor-autorizacoes{--app-color:#596bb1}.appColor-relatorios{--app-color:#b55276}.appColor-config{--app-color:#607187}
+.launcherFootnote{display:flex;justify-content:center;align-items:center;gap:7px;color:var(--ds-muted);font-size:11px;margin:30px 0 0;line-height:1.6}
+.launcherEmpty{padding:48px 20px;text-align:center;border:1px dashed var(--ds-border-strong);border-radius:16px;color:var(--ds-muted);font-size:14px;line-height:1.6}
+.launcherEmpty strong{color:var(--ds-text)}
+.appsWorkspace button:focus-visible{outline:3px solid #60a5fa;outline-offset:3px}
+.appsWorkspace .topbar h1:focus{outline:none}
+@media(min-width:1500px){.appsWorkspace .main{padding-left:48px;padding-right:48px}}
+@media(max-width:1000px){.launcherGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.workspaceAccount{display:none}.workspaceControls{gap:8px}}
+@media(max-width:700px){.appsWorkspace .workspaceBar{padding:12px 16px;gap:10px;flex-wrap:wrap}.workspaceBrandText strong{max-width:170px}.workspaceIdentity{gap:12px;flex:1}.workspaceBrandText small{font-size:10px}.workspaceControls{margin-left:auto}.appsWorkspace .main{padding:18px 16px 32px}.launcherIntro{padding:20px 0 28px}.launcherToolbar{align-items:stretch;flex-direction:column;gap:16px}.appsWorkspace .launcherSearch{width:100%}.launcherGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.appsWorkspace .launcherApp{padding:17px;min-height:205px}.launcherApp strong{font-size:14px}.launcherIcon{width:48px;height:48px;border-radius:13px}.appsWorkspace .topbar{gap:16px}.appsWorkspace .topActions{width:100%}.launcherFootnote{align-items:flex-start;justify-content:flex-start}.launcherFootnote svg{flex-shrink:0}}
+@media(max-width:430px){.workspaceBrandText{display:none}.appsWorkspace .workspaceHome{padding:0 10px}.workspaceIdentity{flex:initial;gap:10px}.workspaceControls{gap:6px}.launcherAppTop{margin-bottom:14px}.launcherDescription{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.appsWorkspace .launcherApp{transition:none}.appsWorkspace .launcherApp:hover{transform:none}}
