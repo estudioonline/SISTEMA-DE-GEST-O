@@ -4261,3 +4261,15 @@
 }
 @media(max-width:900px){.entityDetailGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.entityDetailGrid{grid-template-columns:1fr}}
+
+
+/* Alinhamento horizontal a esquerda nos detalhes de cliente/fornecedor */
+.entityDetailGrid>div{
+  text-align:left;
+  justify-items:start;
+}
+.entityDetailGrid span,
+.entityDetailGrid strong{
+  width:100%;
+  text-align:left;
+}
