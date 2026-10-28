@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -837,12 +837,44 @@ function App(){
     }
   }
 
-  async function downloadSalePdf(v:Venda){
+  async function buildSaleInvoicePayload(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
-    if(error){setMsg(error.message);return}
+    if(error){setMsg(error.message);return null}
     const items=(data||[]) as VendaItem[]
     const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
-    try{(await import('./lib/invoicePdf')).generateInvoicePdf({id:v.id,fatura_numero:v.fatura_numero,created_at:v.created_at,status:v.status,subtotal:Number(v.subtotal),desconto:Number(v.desconto),total:Number(v.total),observacoes:v.observacoes,forma_pagamento:v.forma_pagamento,parcelas:Number(v.parcelas),primeiro_vencimento:v.primeiro_vencimento,rota_entrega:v.rota_entrega,vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,cliente:clientes.find(c=>c.id===v.cliente_id)||null,company:empresa||undefined,items:invoiceItems(drafts)});await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)}catch{setMsg('Não foi possível gerar o PDF.')}
+    return {
+      id:v.id,
+      fatura_numero:v.fatura_numero,
+      created_at:v.created_at,
+      status:v.status,
+      subtotal:Number(v.subtotal),
+      desconto:Number(v.desconto),
+      total:Number(v.total),
+      observacoes:v.observacoes,
+      forma_pagamento:v.forma_pagamento,
+      parcelas:Number(v.parcelas),
+      primeiro_vencimento:v.primeiro_vencimento,
+      rota_entrega:v.rota_entrega,
+      vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,
+      cliente:clientes.find(c=>c.id===v.cliente_id)||null,
+      company:empresa||undefined,
+      items:invoiceItems(drafts)
+    }
+  }
+  async function downloadSalePdf(v:Venda){
+    const payload=await buildSaleInvoicePayload(v)
+    if(!payload)return
+    try{
+      (await import('./lib/invoicePdf')).generateInvoicePdf(payload)
+      await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)
+    }catch{setMsg('Não foi possível gerar o PDF.')}
+  }
+  async function printSalePdf(v:Venda){
+    const payload=await buildSaleInvoicePayload(v)
+    if(!payload)return
+    try{
+      ;(await import('./lib/invoicePdf')).openInvoicePdfForPrint(payload)
+    }catch{setMsg('Não foi possível abrir o documento para impressão.')}
   }
   async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar fatura ${invoiceNo(v.fatura_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
   async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
@@ -2286,53 +2318,86 @@ function App(){
           </div>
         </form></div></div>}
 
-        <article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
-          <div className="panelHead"><h3>Orçamentos, vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
-          <div className="tableWrap"><table>
-            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','fatura')}>Documento{sortMark('vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagamento{sortMark('vendas','statuspag')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th><th>Gerenciar</th></tr></thead>
-            <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
+        <article id="sales-table" tabIndex={-1} className="panel salesCardsPanel salesTable">
+          <div className="panelHead">
+            <div><h3>Orçamentos, vendas e faturas</h3><p>Resumo no card. Dê dois cliques em uma venda para abrir edição, impressão, NF-e e comprovantes.</p></div>
+            <SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/>
+          </div>
+          <div className="salesCardToolbar" aria-label="Ordenação das vendas">
+            <span>Ordenar por:</span>
+            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','fatura')}>Documento{sortMark('vendas','fatura')}</button>
+            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button>
+            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button>
+            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button>
+          </div>
+          {visibleSales.length===0
+            ? <EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/>
+            : <div className="salesCardGrid">{visibleSales.map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
               const opened=salePanel===v.id
               const paymentStatus=salePaymentStatus(v)
               const approval=pendingSaleApproval(v.id)
               const waiting=Boolean(approval&&v.status==='orcamento')
-              return <Fragment key={v.id}>
-                <tr {...recordRow(()=>setSalePanel(v.id),'venda '+invoiceNo(v.fatura_numero))}>
-                  <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
-                  <td>{new Date(v.created_at).toLocaleString('pt-BR')}</td>
-                  <td>{client?.nome||'Consumidor'}</td>
-                  <td><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></td>
-                  <td>{seller?.nome||'—'}</td>
-                  <td>{waiting
-                    ? <span className="statusBadge approvalPendingBadge">Orçamento • aguardando aprovação</span>
-                    : <span className={'statusBadge status-'+v.status}>{saleStatusDisplay(v)}</span>}</td>
-                  <td>{paymentLabel(v.forma_pagamento)} {Number(v.parcelas)>1?'• '+v.parcelas+'x':''}</td>
-                  <td><span className={'statusBadge payment-'+paymentStatus.key}>{paymentStatus.label}</span></td>
-                  <td><strong>{money(Number(v.total))}</strong></td>
-                  <td><button className="rowMenuBtn" onClick={()=>setSalePanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções da venda" aria-expanded={opened}><MoreVertical size={18}/></button></td>
-                </tr>
-                {opened&&<tr className="manageRow"><td colSpan={10}>
-                  <div className="invoiceManagePanel">
-                    <div className="actionPanel">
-                      <div className="actionMeta">
-                        <strong>{v.status==='orcamento'?'Orçamento':'Fatura'} #{invoiceNo(v.fatura_numero)}</strong>
-                        <span>{waiting?'Aguardando decisão do administrador • ':''}{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}Rota: {deliveryRouteLabel(v.rota_entrega)} • {paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)} • pagamento: {paymentStatus.label}</span>
-                      </div>
-                      <div className="rowActions">
-                        <button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
-                        {canManageSales&&<button className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
-                        {canManageSales&&<button className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
-                        {isAdmin&&canManageSales&&<button className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
-                      </div>
-                    </div>
-                    {proofPanel('venda',v.id)}
-                    {isAdmin&&canManageConfig&&canManageSales&&<FocusNfeSale saleId={v.id}/>}
+              const openCard=()=>setSalePanel(v.id)
+              return <article
+                key={v.id}
+                className={'saleRecordCard '+(opened?'opened':'')}
+                tabIndex={0}
+                aria-label={'Abrir venda '+invoiceNo(v.fatura_numero)}
+                title="Dê dois cliques para abrir a venda. Pelo teclado, use Enter."
+                onDoubleClick={event=>{if(!(event.target as Element).closest('button,a,input,select,textarea,label,[role="button"],[contenteditable="true"]'))openCard()}}
+                onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openCard()}}}
+              >
+                <div className="saleCardHead">
+                  <div className="saleCardDocument">
+                    <span className="saleCardEyebrow">{v.status==='orcamento'?'Orçamento':'Venda / fatura'}</span>
+                    <strong>#{invoiceNo(v.fatura_numero)}</strong>
+                    <span>{new Date(v.created_at).toLocaleString('pt-BR')}</span>
                   </div>
-                </td></tr>}
-              </Fragment>
-            })}</tbody>
-          </table></div>
+                  <div className="saleCardAmount"><span>Total</span><strong>{money(Number(v.total))}</strong></div>
+                </div>
+
+                <div className="saleCardBadges">
+                  {waiting
+                    ? <span className="statusBadge approvalPendingBadge">Orçamento • aguardando aprovação</span>
+                    : <span className={'statusBadge status-'+v.status}>{saleStatusDisplay(v)}</span>}
+                  <span className={'statusBadge payment-'+paymentStatus.key}>{paymentStatus.label}</span>
+                </div>
+
+                <div className="saleCardData">
+                  <div><span>Cliente</span><strong>{client?.nome||'Consumidor'}</strong></div>
+                  <div><span>Vendedor / comissão</span><strong>{seller?seller.nome+' · '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'%':'—'}</strong></div>
+                  <div><span>Rota</span><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></div>
+                  <div><span>Pagamento</span><strong>{paymentLabel(v.forma_pagamento)} · {v.parcelas}x</strong></div>
+                  <div><span>1º vencimento</span><strong>{dateBr(v.primeiro_vencimento)}</strong></div>
+                  <div><span>Cobrança</span><strong>{paymentStatus.label}</strong></div>
+                </div>
+
+                <div className="saleCardFooter">
+                  <span>Duplo clique para abrir edição, impressão, NF-e e comprovantes.</span>
+                  <button type="button" className="rowMenuBtn saleCardOpenBtn" onClick={()=>setSalePanel(opened?null:v.id)} title={opened?'Recolher venda':'Abrir venda'} aria-label={opened?'Recolher venda':'Abrir venda'} aria-expanded={opened}><MoreVertical size={18}/></button>
+                </div>
+
+                {opened&&<div className="saleCardDetail">
+                  <div className="actionPanel saleCardActions">
+                    <div className="actionMeta">
+                      <strong>Ações da {v.status==='orcamento'?'proposta':'venda'} #{invoiceNo(v.fatura_numero)}</strong>
+                      <span>{waiting?'Aguardando decisão do administrador • ':''}PDF, impressão, edição, documentos fiscais e comprovantes ficam concentrados aqui.</span>
+                    </div>
+                    <div className="rowActions">
+                      <button type="button" className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
+                      <button type="button" className="ghost" onClick={()=>void printSalePdf(v)}><Printer size={15}/>Imprimir</button>
+                      {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
+                      {canManageSales&&<button type="button" className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
+                      {isAdmin&&canManageSales&&<button type="button" className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
+                    </div>
+                  </div>
+                  {proofPanel('venda',v.id)}
+                  {isAdmin&&canManageConfig&&canManageSales&&<FocusNfeSale saleId={v.id}/>}
+                </div>}
+              </article>
+            })}</div>}
         </article>
       </section>}
 
