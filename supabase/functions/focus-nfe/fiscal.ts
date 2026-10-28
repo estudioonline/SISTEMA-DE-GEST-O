@@ -1,6 +1,6 @@
 export const FOCUS_BASE='https://homologacao.focusnfe.com.br'
 export type Fields=Record<string,string>
-export type FiscalDraft={destinatario:Fields;itens:Record<string,Fields>;natureza_operacao:string;consumidor_final:string;presenca_comprador:string;forma_pagamento:string}
+export type FiscalDraft=Record<string,never>
 export type SaleSource={venda:Record<string,unknown>;cliente:Record<string,unknown>|null;empresa:Record<string,unknown>|null;itens:{id:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;produto:Record<string,unknown>}[];source_hash:string;nota?:Record<string,unknown>|null}
 const digits=(v:unknown)=>String(v??'').replace(/\D/g,'')
 const required=(v:unknown,label:string)=>{const s=String(v??'').trim();if(!s)throw Error('Preencha '+label+'.');return s}
@@ -18,58 +18,67 @@ export function validateConfig(input:unknown):Fields{
   codigo_municipio_emitente:code(c.codigo_municipio_emitente,/^\d{7}$/,'código IBGE do emitente'),
   uf_emitente:uf(c.uf_emitente,'UF do emitente'),cep_emitente:code(digits(c.cep_emitente),/^\d{8}$/,'CEP do emitente')}
 }
-export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft,now=new Date()):Record<string,unknown>{
+function fiscalExtra(value:unknown,label:string){
+ if(value==null)return {} as Record<string,unknown>
+ if(typeof value!=='object'||Array.isArray(value))throw Error('Complemento tributário inválido'+label+'.')
+ const extra=value as Record<string,unknown>
+ for(const [k,v] of Object.entries(extra)){
+  if(!/^(icms_|pis_|cofins_|ipi_|ibs_cbs_|cbs_|ibs_)/.test(k)||['icms_situacao_tributaria','icms_origem','pis_situacao_tributaria','cofins_situacao_tributaria'].includes(k))throw Error('Campo tributário não permitido: '+k+'.')
+  if(typeof v!=='string'&&(typeof v!=='number'||!Number.isFinite(v)))throw Error('Valor tributário inválido: '+k+'.')
+ }
+ return extra
+}
+export function buildPayload(source:SaleSource,config:Fields,_draft:FiscalDraft={},now=new Date()):Record<string,unknown>{
  const c=validateConfig(config),v=source.venda,client=source.cliente
  if(!['pedido','faturado'].includes(String(v.status)))throw Error('Confirme o pedido antes de emitir a NF-e de teste.')
  if(!client)throw Error('Vincule um cliente à venda.')
  if(!source.itens.length)throw Error('Venda sem itens.')
- const d=draft.destinatario??{},doc=digits(client.documento)
- if(![11,14].includes(doc.length))throw Error('Preencha CPF/CNPJ válido no cadastro do cliente.')
- const destUf=uf(d.uf,'UF do destinatário'),regime=c.regime_tributario_emitente
+
+ const doc=digits(client.documento)
+ if(![11,14].includes(doc.length))throw Error('Complete CPF/CNPJ válido no cadastro do cliente.')
+ const destUf=uf(client.uf,'UF no cadastro do cliente')
+ const regime=c.regime_tributario_emitente
+ const sameState=c.uf_emitente===destUf
+ const indicadorIe=code(client.indicador_ie,/^(1|2|9)$/,'indicador de inscrição estadual no cadastro do cliente')
+ if(client.consumidor_final===null||client.consumidor_final===undefined)throw Error('Complete o campo consumidor final no cadastro do cliente.')
+ const presenca=Number(code(client.presenca_comprador,/^[12359]$/,'presença do comprador no cadastro do cliente'))
+
  const items=source.itens.map((i,index)=>{
-  const f=draft.itens?.[i.id]??{},label=' do item '+(index+1)
+  const p=i.produto,label=' do produto '+required(p.descricao,'descrição do produto')
   const qty=Number(i.quantidade),price=Number(i.valor_unitario),discount=cash(Number(i.desconto||0)),gross=cash(qty*price)
   if(!Number.isFinite(qty)||!Number.isFinite(price)||qty<=0||price<0||discount<0||discount>gross)throw Error('Valores comerciais inválidos'+label+'.')
-  const ncm=code(f.ncm,/^\d{8}$/,'NCM'+label)
-  const cfop=code(f.cfop,/^[56]\d{3}$/,'CFOP de saída'+label)
-  if(cfop[0]!== (c.uf_emitente===destUf?'5':'6'))throw Error('CFOP incompatível com a UF do destinatário'+label+'.')
-  const icms=code(f.icms,/^\d{2,3}$/,'CST/CSOSN'+label)
-  if((['1','4'].includes(regime)?3:2)!==icms.length)throw Error('CST/CSOSN incompatível com o regime'+label+'.')
-  let extra:Record<string,unknown>={}
-  if(f.complemento?.trim()){
-   try{extra=JSON.parse(f.complemento)}catch{throw Error('Complemento tributário deve ser um objeto JSON'+label+'.')}
-   if(!extra||typeof extra!=='object'||Array.isArray(extra))throw Error('Complemento tributário inválido'+label+'.')
-   for(const [k,value] of Object.entries(extra)){
-    if(!/^(icms_|pis_|cofins_|ipi_|ibs_cbs_|cbs_|ibs_)/.test(k)||['icms_situacao_tributaria','icms_origem','pis_situacao_tributaria','cofins_situacao_tributaria'].includes(k))throw Error('Campo tributário não permitido: '+k+'.')
-    if(typeof value!=='string'&&(typeof value!=='number'||!Number.isFinite(value)))throw Error('Valor tributário inválido: '+k+'.')
-   }
-  }
-  return {...extra,numero_item:index+1,codigo_produto:required(i.produto.codigo,'código do produto'),descricao:required(i.produto.descricao,'descrição do produto'),
-   codigo_ncm:ncm,cfop,unidade_comercial:required(i.produto.unidade,'unidade do produto'),unidade_tributavel:i.produto.unidade,
+  const ncm=code(p.ncm,/^\d{8}$/,'NCM'+label)
+  const cfop=code(sameState?p.cfop_interno:p.cfop_interestadual,sameState?/^5\d{3}$/:/^6\d{3}$/,sameState?'CFOP interno'+label:'CFOP interestadual'+label)
+  const icms=code(p.cst_icms,/^\d{2,3}$/,'CST/CSOSN'+label)
+  if((['1','4'].includes(regime)?3:2)!==icms.length)throw Error('CST/CSOSN incompatível com o regime tributário'+label+'.')
+  const extra=fiscalExtra(p.complemento_tributario,label)
+  return {...extra,numero_item:index+1,codigo_produto:required(p.codigo,'código do produto'),descricao:required(p.descricao,'descrição do produto'),
+   codigo_ncm:ncm,cfop,unidade_comercial:required(p.unidade,'unidade do produto'),unidade_tributavel:p.unidade,
    quantidade_comercial:qty,quantidade_tributavel:qty,valor_unitario_comercial:price,valor_unitario_tributavel:price,valor_bruto:gross/100,valor_desconto:discount/100,
-   icms_origem:code(f.origem,/^[0-8]$/,'origem'+label),icms_situacao_tributaria:icms,
-   pis_situacao_tributaria:code(f.pis,/^\d{2}$/,'CST PIS'+label),cofins_situacao_tributaria:code(f.cofins,/^\d{2}$/,'CST COFINS'+label),inclui_no_total:1}
+   icms_origem:code(p.origem,/^[0-8]$/,'origem'+label),icms_situacao_tributaria:icms,
+   pis_situacao_tributaria:code(p.cst_pis,/^\d{2}$/,'CST PIS'+label),cofins_situacao_tributaria:code(p.cst_cofins,/^\d{2}$/,'CST COFINS'+label),inclui_no_total:1}
  })
  const gross=items.reduce((sum,i)=>sum+cash(i.valor_bruto),0),discount=items.reduce((sum,i)=>sum+cash(i.valor_desconto),0),total=cash(Number(v.total))
  if(total<=0||total!==gross-discount)throw Error('O total da venda diverge dos itens e descontos. Revise a venda antes de emitir.')
+
+ const paymentMap:Record<string,string>={dinheiro:'01',cartao:'03',boleto:'15',pix:'20'}
+ const fiscalPayment=paymentMap[String(v.forma_pagamento)]||'91'
  const payload:Record<string,unknown>={...c,
   nome_emitente:required(source.empresa?.razao_social,'razão social nas configurações da empresa'),
-  natureza_operacao:required(draft.natureza_operacao,'natureza da operação').slice(0,60),data_emissao:now.toISOString(),tipo_documento:1,
-  local_destino:c.uf_emitente===destUf?1:2,finalidade_emissao:1,
-  consumidor_final:Number(code(draft.consumidor_final,/^[01]$/,'indicador de consumidor final')),
-  presenca_comprador:Number(code(draft.presenca_comprador,/^[12359]$/,'presença do comprador')),
+  natureza_operacao:'Venda de mercadoria',data_emissao:now.toISOString(),tipo_documento:1,
+  local_destino:sameState?1:2,finalidade_emissao:1,
+  consumidor_final:client.consumidor_final?1:0,
+  presenca_comprador:presenca,
   nome_destinatario:'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
   [doc.length===14?'cnpj_destinatario':'cpf_destinatario']:doc,
-  logradouro_destinatario:required(d.logradouro,'logradouro do destinatário'),numero_destinatario:required(d.numero,'número do destinatário'),
-  bairro_destinatario:required(d.bairro,'bairro do destinatário'),municipio_destinatario:required(d.municipio,'município do destinatário'),
-  codigo_municipio_destinatario:code(d.codigo_municipio,/^\d{7}$/,'código IBGE do destinatário'),uf_destinatario:destUf,
-  cep_destinatario:code(digits(d.cep),/^\d{8}$/,'CEP do destinatário'),
-  indicador_inscricao_estadual_destinatario:code(d.indicador_ie,/^(1|2|9)$/,'indicador de inscrição estadual'),
+  logradouro_destinatario:required(client.logradouro,'logradouro no cadastro do cliente'),numero_destinatario:required(client.numero,'número no cadastro do cliente'),
+  bairro_destinatario:required(client.bairro,'bairro no cadastro do cliente'),municipio_destinatario:required(client.municipio,'município no cadastro do cliente'),
+  codigo_municipio_destinatario:code(client.codigo_municipio,/^\d{7}$/,'código IBGE no cadastro do cliente'),uf_destinatario:destUf,
+  cep_destinatario:code(digits(client.cep),/^\d{8}$/,'CEP no cadastro do cliente'),
+  indicador_inscricao_estadual_destinatario:indicadorIe,
   modalidade_frete:9,valor_produtos:gross/100,valor_desconto:discount/100,valor_total:total/100,itens:items,
-  formas_pagamento:[{forma_pagamento:code(draft.forma_pagamento,/^(01|03|04|15|17|20|91)$/,'forma de pagamento fiscal'),
-   indicador_pagamento:Number(v.parcelas)>1?1:0,valor_pagamento:total/100}]}
- if(d.indicador_ie==='1')payload.inscricao_estadual_destinatario=required(d.ie,'inscrição estadual do destinatário')
- // Supported flow keeps the commercial total intact. Additional taxes changing vNF require a separate fiscal flow.
+  formas_pagamento:[{forma_pagamento:fiscalPayment,indicador_pagamento:Number(v.parcelas)>1?1:0,valor_pagamento:total/100}]}
+ if(indicadorIe==='1')payload.inscricao_estadual_destinatario=required(client.inscricao_estadual,'inscrição estadual no cadastro do cliente')
  for(const item of items)for(const key of ['ipi_valor','icms_valor_st','ii_valor','icms_valor_desonerado'])if(Number((item as Record<string,unknown>)[key]||0)!==0)throw Error('Tributos que alteram o total da nota exigem revisão fiscal específica; este fluxo de teste mantém o total da venda.')
  return payload
 }
