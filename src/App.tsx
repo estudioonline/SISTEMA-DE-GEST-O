@@ -2221,34 +2221,83 @@ function App(){
 
       {active==='financeiro'&&<section className="semanticPage financePage">
         <div className="subTabs financeSubTabs">
-          <button className={financeSubtab==='geral'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('geral');setFinancePanel(null)}}><WalletCards size={16}/>Visão geral</button>
+          <button className={financeSubtab==='geral'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('geral');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Visão geral</button>
           <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
-          <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount">{titulos.filter(t=>t.tipo==='receber').length}</span></button>
-          <button className={financeSubtab==='pagar'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('pagar');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Contas a pagar <span className="subTabCount">{titulos.filter(t=>t.tipo==='pagar').length}</span></button>
+          <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount neutralCount">{openReceivableCount}</span></button>
+          <button className={financeSubtab==='pagar'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('pagar');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Contas a pagar <span className="subTabCount neutralCount">{openPayableCount}</span></button>
         </div>
 
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingTitle?'Editar fatura':'Nova fatura'}><div className="saleModalShell financeModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveTitle}>
-          <div className="formTitle saleModalTitle"><div><h3>{editingTitle?'Editar fatura':'Nova fatura'}</h3><p>Cadastre uma conta a receber ou uma conta a pagar.</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fatura" onClick={()=>{setShowForm(false);setEditingTitle(null)}}><X size={18}/></button></div>
-          <label className="fieldLabel">Tipo de fatura<select name="tipo" defaultValue={editingTitle?.tipo||'receber'}>
-            <option value="receber">Conta a receber</option>
-            <option value="pagar">Conta a pagar</option>
-          </select></label>
-          <label className="fieldLabel">Descrição<input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''}/></label>
-          <label className="fieldLabel">Cliente / Fornecedor<input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/></label>
-          <label className="fieldLabel">Data de vencimento<input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/></label>
-          <label className="fieldLabel">Valor (R$)<input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/></label>
+          <div className="formTitle saleModalTitle"><div><h3>{editingTitle?'Editar fatura':'Nova fatura'}</h3><p>{editingTitle&&(editingTitle.venda_id||editingTitle.compra_id)?'Fatura vinculada: apenas classificação financeira pode ser alterada aqui.':'Cadastre uma conta a receber ou uma conta a pagar.'}</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fatura" onClick={()=>{setShowForm(false);setEditingTitle(null)}}><X size={18}/></button></div>
+          {editingTitle&&(editingTitle.venda_id||editingTitle.compra_id)&&<div className="financeLinkedNotice"><ShieldCheck size={18}/><div><strong>Documento integrado</strong><span>Valor, vencimento, entidade e descrição acompanham a {editingTitle.venda_id?'venda':'compra'} de origem.</span></div></div>}
+          <label className="fieldLabel">Tipo de fatura
+            <select value={financeTitleType} onChange={e=>{setFinanceTitleType(e.target.value as 'receber'|'pagar');setFinanceTitleEntity('')}} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}>
+              <option value="receber">Conta a receber</option>
+              <option value="pagar">Conta a pagar</option>
+            </select>
+          </label>
+          <label className="fieldLabel">Descrição<input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
+          <label className="fieldLabel">Cliente / Fornecedor
+            <select value={financeTitleEntity} onChange={e=>setFinanceTitleEntity(e.target.value)} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}>
+              <option value="">Sem vínculo cadastral</option>
+              {financeTitleEntity&&!(financeTitleType==='receber'?clientes:fornecedores).some(x=>x.nome===financeTitleEntity)&&<option value={financeTitleEntity}>{financeTitleEntity} (registro anterior)</option>}
+              {(financeTitleType==='receber'?clientes:fornecedores).filter(x=>x.ativo||x.nome===financeTitleEntity).map(x=><option key={x.id} value={x.nome}>{x.nome}</option>)}
+            </select>
+          </label>
+          <label className="fieldLabel">Data de vencimento<input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
+          <label className="fieldLabel">Valor (R$)<input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
           <FinanceClassifications category={editingTitle?.categoria||null} center={editingTitle?.centro_custo||null}/>
-          <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">{editingTitle?'Salvar alterações':'Criar fatura'}</button></div>
+          <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">{editingTitle&&(editingTitle.venda_id||editingTitle.compra_id)?'Salvar classificação':editingTitle?'Salvar alterações':'Criar fatura'}</button></div>
         </form></div></div>}
 
         {financeSubtab==='geral'&&<>
-          <div className="cards compactCards semanticCards">
-            <article className="card semanticCard semanticPositive"><span>Contas a receber</span><strong>{money(openReceivables)}</strong><small>saldo em aberto</small></article>
-            <article className="card semanticCard semanticNegative"><span>Contas a pagar</span><strong>{money(openPayables)}</strong><small>saldo em aberto</small></article>
-            <article className={'card semanticCard '+(openReceivables-openPayables>=0?'semanticBlue':'semanticNegative')}><span>Saldo projetado</span><strong>{money(openReceivables-openPayables)}</strong><small>receber - pagar</small></article>
+          <div className="financeOverviewGrid">
+            <article className="card financeOverviewCard semanticPositive"><span>A receber em aberto</span><strong>{money(openReceivables)}</strong><small>{openReceivableCount} título(s)</small></article>
+            <article className="card financeOverviewCard semanticNegative"><span>A pagar em aberto</span><strong>{money(openPayables)}</strong><small>{openPayableCount} título(s)</small></article>
+            <article className="card financeOverviewCard semanticWarning"><span>Total vencido</span><strong>{money(overdueReceivables+overduePayables)}</strong><small>{overdueTitles.length} título(s) em atraso</small></article>
+            <article className={'card financeOverviewCard '+(openReceivables-openPayables>=0?'semanticBlue':'semanticNegative')}><span>Resultado líquido em aberto</span><strong>{money(openReceivables-openPayables)}</strong><small>a receber - a pagar</small></article>
+
+            <article className="card financeOverviewCard semanticPositive"><span>Recebido no mês</span><strong>{money(receivedThisMonth)}</strong><small>líquido de estornos</small></article>
+            <article className="card financeOverviewCard semanticNegative"><span>Pago no mês</span><strong>{money(paidThisMonth)}</strong><small>líquido de estornos</small></article>
+            <article className={'card financeOverviewCard '+(cashResultThisMonth>=0?'semanticPositive':'semanticNegative')}><span>Resultado de caixa no mês</span><strong>{money(cashResultThisMonth)}</strong><small>recebimentos - pagamentos</small></article>
+            <article className="card financeOverviewCard semanticBlue"><span>Próximos 7 dias</span><strong>{money(dueNext7Receivable-dueNext7Payable)}</strong><small>Receber {money(dueNext7Receivable)} • Pagar {money(dueNext7Payable)}</small></article>
           </div>
 
+          <article className="panel financeProjectionPanel">
+            <div className="financeProjectionHead">
+              <div><span>Projeção</span><h3>Fluxo financeiro dos próximos 30 dias</h3><p>Baseado nos vencimentos ainda em aberto.</p></div>
+              <div className="financeProjectionLegend"><span><i className="projectionIn"></i>A receber</span><span><i className="projectionOut"></i>A pagar</span></div>
+            </div>
+            <div className="financeProjectionRows">
+              {financeProjection.map(p=><div className="financeProjectionRow" key={p.label}>
+                <div className="financeProjectionLabel"><strong>{p.label}</strong><span>{dateBr(p.start)} a {dateBr(p.end)}</span></div>
+                <div className="financeProjectionBars">
+                  <div><span className="projectionIn" style={{width:`${(p.receber/financeProjectionMax)*100}%`}}></span></div>
+                  <div><span className="projectionOut" style={{width:`${(p.pagar/financeProjectionMax)*100}%`}}></span></div>
+                </div>
+                <div className="financeProjectionValues"><span>{money(p.receber)}</span><span>{money(p.pagar)}</span><strong className={p.liquido>=0?'positiveText':'negativeText'}>{money(p.liquido)}</strong></div>
+              </div>)}
+            </div>
+          </article>
         </>}
+
+        {financeSubtab!=='geral'&&<div className="panel financeFilterPanel">
+          <div className="financeQuickRanges">
+            <span>Período</span>
+            <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('hoje')}>Hoje</button>
+            <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('7d')}>7 dias</button>
+            <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('30d')}>30 dias</button>
+            <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('mes')}>Este mês</button>
+          </div>
+          <label>De<input type="date" value={financeStart} onChange={e=>setFinanceStart(e.target.value)}/></label>
+          <label>Até<input type="date" value={financeEnd} onChange={e=>setFinanceEnd(e.target.value)}/></label>
+          <label>Status<select value={financeStatusFilter} onChange={e=>setFinanceStatusFilter(e.target.value as typeof financeStatusFilter)}>
+            <option value="todos">Todos</option><option value="aberto">Em aberto</option><option value="parcial">Parcial</option><option value="pago">Pago</option><option value="cancelado">Cancelado</option>
+          </select></label>
+          <label>Categoria<select value={financeCategory} onChange={e=>setFinanceCategory(e.target.value)}><option value="todos">Todas</option>{financeCategories.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+          <label>Centro de custo<select value={financeCenter} onChange={e=>setFinanceCenter(e.target.value)}><option value="todos">Todos</option>{financeCenters.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+          <button type="button" className="ghost financeClearFilters" onClick={clearFinanceFilters}>Limpar filtros</button>
+        </div>}
 
         {financeSubtab==='vencidos'&&<>
           <div className="cards compactCards semanticCards overdueCards">
@@ -2256,22 +2305,15 @@ function App(){
             <article className="card semanticCard semanticNegative"><span>Vencidos a pagar</span><strong>{money(overduePayables)}</strong><small>{overdueTitles.filter(t=>t.tipo==='pagar').length} título(s)</small></article>
             <article className="card semanticCard semanticWarning"><span>Total vencido</span><strong>{money(overdueReceivables+overduePayables)}</strong><small>{overdueTitles.length} título(s) em atraso</small></article>
           </div>
-
           <div className="financeGroups">
             {financeTable('receber',true)}
             {financeTable('pagar',true)}
           </div>
         </>}
 
-        {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">
-          {financeTable('receber')}
-        </div>}
-
-        {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">
-          {financeTable('pagar')}
-        </div>}
+        {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
+        {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
       </section>}
-
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
         <div className="cards compactCards semanticCards"><article className="card semanticCard semanticBlue"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card semanticCard semanticNegative"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className={'card semanticCard '+(reportSalesTotal-reportPurchaseTotal>=0?'semanticPositive':'semanticNegative')}><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
