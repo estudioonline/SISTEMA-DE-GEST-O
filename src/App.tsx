@@ -19,8 +19,10 @@ import { AuthorizationCenter } from './AuthorizationCenter'
 import { PaymentHistory } from './PaymentHistory'
 import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
 import { NfeImportModal } from './NfeImportModal'
+import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
+import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
 
-type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'|'autorizacoes'
+type ModuleKey=PermissionModule
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
 type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 type PurchasePaymentMethod='pix'|'cartao'|'boleto'
@@ -41,7 +43,7 @@ type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:numb
 type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
 type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
-type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean}
+type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean;permissoes:PermissionMap}
 type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
 type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string}
 type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number;referencia:string|null;created_at:string}
@@ -105,6 +107,7 @@ function App(){
   const [dark,setDark]=useState(false)
   const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
   const [profileRole,setProfileRole]=useState<PerfilRole>('visualizador')
+  const [userPermissions,setUserPermissions]=useState<PermissionMap>(()=>defaultPermissionsForRole('visualizador'))
   const [msg,setMsg]=useState('')
   const [saleNotice,setSaleNotice]=useState('')
   useEffect(()=>{
@@ -139,7 +142,9 @@ function App(){
   const [managedUsers,setManagedUsers]=useState<ManagedUser[]>([])
   const [managedUserCard,setManagedUserCard]=useState<string|null>(null)
   const [userEdits,setUserEdits]=useState<Record<string,{nome:string;perfil:PerfilRole;ativo:boolean}>>({})
+  const [userPermissionEdits,setUserPermissionEdits]=useState<Record<string,PermissionMap>>({})
   const [savingUserId,setSavingUserId]=useState<string|null>(null)
+  const [savingPermissionUserId,setSavingPermissionUserId]=useState<string|null>(null)
 
   const [showForm,setShowForm]=useState(false)
   const [editingClient,setEditingClient]=useState<Cliente|null>(null)
@@ -212,24 +217,23 @@ function App(){
 
   const title=useMemo(()=>menu.find(m=>m[0]===active)?.[1]||'Dashboard',[active])
   const isAdmin=profileRole==='administrador'
-  const isViewer=profileRole==='visualizador'
-  const isSeller=profileRole==='vendas'
-  const isFinance=profileRole==='financeiro'
-  const canManageSales=isAdmin||isSeller
-  const canManageStock=isAdmin||profileRole==='estoque'
-  const canManageFinance=isAdmin||isFinance
-  const canViewFinance=isAdmin||isFinance
-  const visibleMenu=menu.filter(([k])=>{
-    if(k==='financeiro')return canViewFinance
-    if(k==='config')return isAdmin
-    if(k==='autorizacoes')return isAdmin||isSeller
-    if(k==='comissoes')return isAdmin||isSeller
-    if(k==='fornecedores')return isAdmin||isFinance||profileRole==='estoque'
-    if(k==='clientes')return isAdmin||isSeller||isViewer||isFinance
-    if(k==='compras'||k==='produtos')return isAdmin||profileRole==='estoque'
-    if(k==='vendas')return isAdmin||isSeller||isViewer
-    return true
-  })
+  const canViewModule=(module:PermissionModule)=>canViewPermission(userPermissions,module)
+  const canEditModule=(module:PermissionModule)=>canEditPermission(userPermissions,module)
+  const canManageSales=canEditModule('vendas')
+  const canManageClients=canEditModule('clientes')
+  const canManageSuppliers=canEditModule('fornecedores')
+  const canManageProducts=canEditModule('produtos')
+  const canManagePurchases=canEditModule('compras')
+  const canViewFinance=canViewModule('financeiro')
+  const canManageFinance=canEditModule('financeiro')
+  const canViewCommissions=canViewModule('comissoes')
+  const canManageCommissions=canEditModule('comissoes')
+  const canViewAuthorizations=canViewModule('autorizacoes')
+  const canManageAuthorizations=canEditModule('autorizacoes')
+  const canViewReports=canViewModule('relatorios')
+  const canViewConfig=canViewModule('config')
+  const canManageConfig=canEditModule('config')
+  const visibleMenu=menu.filter(([k])=>canViewModule(k))
 
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
@@ -239,10 +243,10 @@ function App(){
   },[])
 
   useEffect(()=>{
-    setProfileRole('visualizador');setActive('dashboard');closeForms()
+    setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setComissoes([])
-    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setFinancePayments([]);setFinanceReversals([]);setEmail('');setPassword('')
+    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setEmail('');setPassword('')
   },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
   useEffect(()=>{
@@ -271,7 +275,7 @@ function App(){
 
   async function loadData(){
     if(!session)return
-    const [c,f,p,v,cp,t,ec,pr,vd,cv,me,sa]=await Promise.all([
+    const [c,f,p,v,cp,t,ec,pr,vd,cv,me,sa,pm]=await Promise.all([
       readAllRows((from,to)=>supabase.from('clientes').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('fornecedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('produtos').select('*').order('descricao',{ascending:true}).order('id').range(from,to)),
@@ -283,7 +287,8 @@ function App(){
       readAllRows((from,to)=>supabase.from('vendedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
-      readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to))
+      readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to)),
+      supabase.rpc('minhas_permissoes_erp')
     ])
     if(currentSessionUser.current!==session.user.id)return
     if(!c.error)setClientes((c.data||[]) as Cliente[])
@@ -295,13 +300,17 @@ function App(){
     if(!ec.error&&ec.data)setEmpresa(ec.data as EmpresaConfig)
     if(pr.error||!pr.data?.perfil||!pr.data.ativo){
       setProfileRole('visualizador')
+      setUserPermissions(defaultPermissionsForRole('visualizador'))
       setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([])
       setMsg('Acesso não liberado. Procure um administrador do sistema.')
       await supabase.auth.signOut()
       return
     }
     if(!pr.error&&pr.data?.perfil){
-      setProfileRole(pr.data.perfil as PerfilRole)
+      const role=pr.data.perfil as PerfilRole
+      setProfileRole(role)
+      if(!pm.error)setUserPermissions(normalizePermissions(Object.fromEntries(((pm.data||[]) as {modulo:string;nivel:AccessLevel}[]).map(row=>[row.modulo,row.nivel])),role))
+      else setUserPermissions(defaultPermissionsForRole(role))
       if(pr.data.ativo===false){
         setMsg('Seu usuário está desativado. Procure um administrador do sistema.')
         await supabase.auth.signOut()
