@@ -4157,3 +4157,36 @@
   .recordDetailSheet .financeDetailGrid,
   .saleRecordSheet .saleDetailSummaryGrid{grid-template-columns:1fr}
 }
+
+
+/* Cabecalho compacto da venda em tela dedicada */
+.saleRecordSheet .saleDetailStatusBar{
+  min-height:58px;
+  padding:6px 10px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:var(--ds-surface);
+}
+.saleRecordSheet .saleDetailStatusBar>div:first-child{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+.saleRecordSheet .saleDetailEyebrow{
+  font-size:9px;
+  letter-spacing:.05em;
+}
+.saleRecordSheet .saleDetailStatusBar h2{
+  margin:0;
+  font-size:20px;
+  line-height:1;
+}
+.saleRecordSheet .saleDetailBadges{
+  gap:6px;
+  align-items:center;
+}
+.saleRecordSheet .saleDetailBadges .statusBadge{
+  min-height:24px;
+  padding:0 9px;
+  font-size:10px;
+}
