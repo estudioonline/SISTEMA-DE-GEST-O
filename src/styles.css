@@ -3881,29 +3881,34 @@
   overflow:hidden;
 }
 .fiscalSourceSummary span{
-  font-size:11px;
+  min-width:0;
+  max-width:100%;
+  font-size:clamp(9px,.78vw,11px);
   font-weight:700;
-  line-height:1.2;
+  line-height:1.15;
   text-transform:uppercase;
   color:#94A3B8;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
 }
 .fiscalSourceSummary strong{
   display:flex;
   align-items:center;
   min-width:0;
   max-width:100%;
-  line-height:1.2;
+  width:100%;
+  font-size:clamp(11px,1.02vw,16px);
+  line-height:1.15;
+  letter-spacing:-.01em;
   color:#1E293B;
+  white-space:normal;
   overflow-wrap:anywhere;
   word-break:break-word;
+  hyphens:auto;
 }
 .fiscalSourceSummary>div:nth-child(2) strong{
-  white-space:normal;
-  font-size:13px;
-  line-height:1.18;
-  letter-spacing:-.01em;
-  overflow-wrap:anywhere;
-  word-break:break-word;
+  font-size:clamp(10px,.94vw,14px);
 }
 .dark .fiscalSourceSummary strong{color:#E2E8F0}
 .fiscalCadastroWarning,
