@@ -2685,3 +2685,36 @@
   border-color:#315b9c;
   color:#bfdbfe;
 }
+
+
+/* Aprovação de venda abaixo do preço mínimo */
+.authorizationPriceWarning{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  margin:12px 0 4px;
+  padding:10px 12px;
+  border:1px solid #f59e0b;
+  border-radius:10px;
+  background:#fff7ed;
+  color:#9a3412;
+}
+.authorizationPriceWarning strong{
+  font-size:12px;
+}
+.authorizationPriceWarning span{
+  font-size:12px;
+  line-height:1.4;
+}
+.authorizationBelowMinPrice{
+  color:#b91c1c;
+  font-weight:800;
+}
+.dark .authorizationPriceWarning{
+  background:#3a2608;
+  border-color:#8a5b12;
+  color:#fed7aa;
+}
+.dark .authorizationBelowMinPrice{
+  color:#fca5a5;
+}
