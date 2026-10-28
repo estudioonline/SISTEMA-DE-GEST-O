@@ -2718,3 +2718,243 @@
 .dark .authorizationBelowMinPrice{
   color:#fca5a5;
 }
+
+
+/* Importação de NF-e via XML */
+.nfeModalOverlay{z-index:120}
+.nfeModalShell{
+  width:min(1180px,96vw);
+  max-height:92vh;
+  overflow:auto;
+}
+.nfeImportPanel{
+  display:grid;
+  gap:16px;
+}
+.nfeUploadBox{
+  min-height:260px;
+  border:2px dashed #cbd5e1;
+  border-radius:18px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:32px;
+  text-align:center;
+  background:#f8fafc;
+  color:#64748b;
+}
+.nfeUploadBox>svg{color:#3b82f6}
+.nfeUploadBox strong{font-size:18px;color:#0f172a}
+.nfeUploadBox span{max-width:620px;font-size:13px;line-height:1.5}
+.nfeFileButton{
+  position:relative;
+  overflow:hidden;
+  cursor:pointer;
+  margin-top:8px;
+}
+.nfeFileButton input{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  cursor:pointer;
+}
+.nfeError{margin:0}
+.nfeSummary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+.nfeSummary>div{
+  min-width:0;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#f8fafc;
+  padding:12px;
+}
+.nfeSummary span,
+.nfeSummary strong,
+.nfeSummary small{display:block}
+.nfeSummary span{
+  color:#64748b;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.nfeSummary strong{
+  margin:5px 0 3px;
+  color:#0f172a;
+  overflow-wrap:anywhere;
+}
+.nfeSummary small{
+  color:#64748b;
+  overflow-wrap:anywhere;
+}
+.nfePaymentPanel{
+  display:grid;
+  grid-template-columns:minmax(240px,1fr) minmax(180px,.55fr) minmax(360px,1.4fr);
+  gap:14px;
+  align-items:end;
+  padding:14px;
+}
+.nfePaymentPanel>div:first-child strong,
+.nfePaymentPanel>div:first-child span{display:block}
+.nfePaymentPanel>div:first-child span{
+  margin-top:4px;
+  color:#64748b;
+  font-size:12px;
+}
+.nfePaymentPanel label{
+  display:grid;
+  gap:5px;
+  color:#64748b;
+  font-size:11px;
+  font-weight:800;
+}
+.nfePaymentPanel select,
+.nfePaymentPanel input{
+  width:100%;
+  min-width:0;
+  height:40px;
+}
+.nfeDueDates{
+  display:flex;
+  align-items:end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.nfeDueDates label{min-width:150px;flex:1}
+.nfeDueDates label>span{
+  display:flex;
+  gap:5px;
+  align-items:center;
+}
+.nfeDueDates .ghost{height:40px}
+.nfeMappingHead{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+.nfeMappingHead h4{margin:0 0 4px}
+.nfeMappingHead p{margin:0;color:#64748b;font-size:12px}
+.nfeMappingReady,
+.nfeMappingPending{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+.nfeMappingReady{background:#dcfce7;color:#166534}
+.nfeMappingPending{background:#fef3c7;color:#92400e}
+.nfeItems{
+  display:grid;
+  gap:10px;
+}
+.nfeItemCard{
+  display:grid;
+  grid-template-columns:minmax(280px,1.25fr) minmax(320px,1fr);
+  gap:12px;
+  align-items:start;
+  padding:13px;
+  border:1px solid #dbe3ee;
+  border-radius:13px;
+  background:#fff;
+}
+.nfeItemData strong,
+.nfeItemData span{display:block}
+.nfeItemData strong{color:#0f172a}
+.nfeItemData span{margin-top:5px;color:#64748b;font-size:12px}
+.nfeMappingSelect{
+  display:grid;
+  gap:5px;
+  color:#64748b;
+  font-size:11px;
+  font-weight:800;
+}
+.nfeMappingSelect select{width:100%;min-width:0}
+.nfeAutoMapped{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  color:#15803d;
+  font-weight:700;
+}
+.nfeNewProduct{
+  grid-column:1/-1;
+  display:grid;
+  grid-template-columns:.75fr 1.5fr .55fr .75fr;
+  gap:10px;
+  padding:12px;
+  border-radius:11px;
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+}
+.nfeNewProduct label{
+  display:grid;
+  gap:5px;
+  color:#64748b;
+  font-size:11px;
+  font-weight:800;
+}
+.nfeNewProduct input{width:100%;min-width:0}
+.nfeNewProduct small{
+  grid-column:1/-1;
+  color:#64748b;
+}
+.nfeImportFooter{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  position:sticky;
+  bottom:-1px;
+  padding:12px 0 2px;
+  background:linear-gradient(transparent,#fff 28%);
+}
+.dark .nfeUploadBox,
+.dark .nfeSummary>div,
+.dark .nfeNewProduct{
+  background:#141c29;
+  border-color:#2a3648;
+}
+.dark .nfeUploadBox strong,
+.dark .nfeSummary strong,
+.dark .nfeItemData strong{color:#eef3ff}
+.dark .nfeItemCard{
+  background:#101725;
+  border-color:#2a3648;
+}
+.dark .nfeUploadBox span,
+.dark .nfeSummary span,
+.dark .nfeSummary small,
+.dark .nfePaymentPanel>div:first-child span,
+.dark .nfePaymentPanel label,
+.dark .nfeMappingHead p,
+.dark .nfeItemData span,
+.dark .nfeMappingSelect,
+.dark .nfeNewProduct label,
+.dark .nfeNewProduct small{color:#9aa8bb}
+.dark .nfeImportFooter{background:linear-gradient(transparent,#101725 28%)}
+@media(max-width:1000px){
+  .nfeSummary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .nfePaymentPanel{grid-template-columns:1fr 1fr}
+  .nfeDueDates{grid-column:1/-1}
+  .nfeItemCard{grid-template-columns:1fr}
+  .nfeNewProduct{grid-column:auto;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:680px){
+  .nfeModalShell{width:100%;max-height:96vh}
+  .nfeSummary{grid-template-columns:1fr}
+  .nfePaymentPanel{grid-template-columns:1fr}
+  .nfeDueDates{grid-column:auto}
+  .nfeMappingHead{align-items:flex-start;flex-direction:column}
+  .nfeNewProduct{grid-template-columns:1fr}
+  .nfeNewProduct small{grid-column:auto}
+  .nfeImportFooter{flex-direction:column-reverse}
+  .nfeImportFooter button{width:100%;justify-content:center}
+}
