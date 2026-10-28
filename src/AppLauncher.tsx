@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, Search, ShieldCheck, X } from 'lucide-react'
+import { Search, ShieldCheck, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { permissionModules } from './lib/permissions'
 import type { PermissionModule } from './lib/permissions'
@@ -41,11 +41,11 @@ export function AppLauncher({ menu, company, ready, canEdit, onOpen }: {
       apps.length ? <nav className="launcherGrid" aria-label="Aplicativos disponíveis">
         {apps.map(([key, label, Icon]) => {
           const meta = permissionModules.find(module => module.key === key)
-          return <button type="button" key={key} className={`launcherApp appColor-${key}`} onClick={() => onOpen(key)} aria-label={`Abrir ${label}`}>
-            <span className="launcherAppTop"><span className="launcherIcon"><Icon size={28} strokeWidth={1.7} aria-hidden="true"/></span><ArrowUpRight className="launcherArrow" size={18} aria-hidden="true"/></span>
+          const readOnly = Boolean(meta?.editable && !canEdit(key))
+          return <button type="button" key={key} className={`launcherApp appColor-${key}${readOnly?' readOnly':''}`} onClick={() => onOpen(key)} aria-label={`${readOnly?'Abrir em modo somente leitura':'Abrir'} ${label}`} title={readOnly?`${label} · somente leitura`:label}>
+            <span className="launcherIcon"><Icon size={30} strokeWidth={1.8} aria-hidden="true"/></span>
             <strong>{label}</strong>
-            <span className="launcherDescription">{descriptions[key] || meta?.description}</span>
-            <span className="launcherAccess">{meta?.editable && !canEdit(key) ? 'Somente leitura' : 'Abrir aplicativo'}<span aria-hidden="true">→</span></span>
+            {readOnly&&<span className="launcherReadOnly">Somente leitura</span>}
           </button>
         })}
       </nav> : <div className="launcherEmpty" role="status"><strong>{menu.length ? 'Nenhum aplicativo encontrado' : 'Nenhum aplicativo liberado'}</strong><p>{menu.length ? 'Tente buscar pelo nome ou pela função do aplicativo.' : 'Solicite ao administrador a liberação dos seus acessos.'}</p>{query && <button type="button" className="ghost" onClick={() => setQuery('')}>Limpar busca</button>}</div>}
