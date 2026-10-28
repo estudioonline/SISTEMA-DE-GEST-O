@@ -52,7 +52,7 @@ Deno.serve(async(req:Request)=>{
   if(!/^[a-f0-9-]{36}$/i.test(String(body.venda_id)))throw Error('Venda inválida.')
   const source=await rpc('sale',{venda_id:body.venda_id}) as SaleSource
   if(body.action==='sale')return json({source,config:credentials.config,configured:!!token},200,cors)
-  const draft=body.dados_fiscais as FiscalDraft
+  const draft=(body.dados_fiscais??{}) as FiscalDraft
   if(body.action==='draft'){
    if(!draft||JSON.stringify(draft).length>80000)throw Error('Dados fiscais inválidos.')
    const saved=await rpc('draft',{venda_id:body.venda_id,dados_fiscais:draft})
