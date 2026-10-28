@@ -4273,3 +4273,22 @@
   width:100%;
   text-align:left;
 }
+
+
+/* Cards compactos de Produtos / Estoque */
+.productsPage .compactCards{
+  gap:10px;
+  margin-bottom:10px;
+}
+.productsPage .compactCards .semanticCard{
+  min-height:82px;
+  padding:12px 14px;
+  border-radius:13px;
+}
+.productsPage .compactCards .semanticCard span{
+  font-size:12px;
+}
+.productsPage .compactCards .semanticCard strong{
+  font-size:20px;
+  margin:6px 0 0;
+}
