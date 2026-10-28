@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 
 type Request = {id:string;tipo:string;status:string;motivo:string|null;solicitado_em:string;aprovado_em:string|null;decisao_motivo:string|null;resultado_id:string|null;entidade_id:string|null;payload:Record<string,unknown>|null}
-type Product = {id:string;descricao:string;estoque_atual:number;unidade:string;custo:number|null;custo_medio:number|null;percentual_minimo_custo_venda:number|null}
+type Product = {id:string;descricao:string;estoque_atual:number;unidade:string;custo?:number|null;custo_medio?:number|null;percentual_minimo_custo_venda?:number|null}
 
 export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{admin:boolean;products:Product[];clients:{id:string;nome:string}[];sellers:{id:string;nome:string}[];onChanged:()=>Promise<void>}) {
   const [rows,setRows]=useState<Request[]>([])
