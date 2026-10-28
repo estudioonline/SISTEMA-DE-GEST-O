@@ -537,7 +537,7 @@ function App(){
     if(!r.error){setShowForm(false);setEditingClient(null);await loadData()}
   }
   async function deleteClient(c:Cliente){
-    if(!isAdmin){setMsg('Somente administrador pode excluir clientes.');return}
+    if(!(isAdmin&&canManageClients)){setMsg('Sem permissão para excluir clientes.');return}
     if(!window.confirm(`Excluir o cliente "${c.nome}"?`))return
     const r=await supabase.from('clientes').delete().eq('id',c.id)
     if(r.error?.code==='23503'){
@@ -564,7 +564,7 @@ function App(){
     if(!r.error){setShowForm(false);setEditingSupplier(null);await loadData()}
   }
   async function deleteSupplier(f:Fornecedor){
-    if(!isAdmin){setMsg('Somente administrador pode excluir fornecedores.');return}
+    if(!(isAdmin&&canManageSuppliers)){setMsg('Sem permissão para excluir fornecedores.');return}
     if(!window.confirm(`Excluir o fornecedor "${f.nome}"?`))return
     const r=await supabase.from('fornecedores').delete().eq('id',f.id)
     if(r.error?.code==='23503'){
@@ -596,7 +596,7 @@ function App(){
     if(!error){setAdjustingProduct(null);await loadData()}
   }
   async function deleteProduct(p:Produto){
-    if(!isAdmin){setMsg('Somente administrador pode excluir produtos.');return}
+    if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return}
     if(!window.confirm(`Excluir o produto "${p.descricao}"?`))return
     const r=await supabase.from('produtos').delete().eq('id',p.id)
     if(r.error?.code==='23503'){
@@ -720,7 +720,7 @@ function App(){
       const vencido=Number(creditRow?.vencido||0)
 
       if((empresa?.bloquear_cliente_inadimplente??true)&&vencido>0){
-        if(!isAdmin){setMsg(`Venda bloqueada: o cliente possui ${money(vencido)} em títulos vencidos. É necessária autorização administrativa.`);return}
+        if(!canManageAuthorizations){setMsg(`Venda bloqueada: o cliente possui ${money(vencido)} em títulos vencidos. É necessária autorização administrativa.`);return}
         const ok=window.prompt(`Cliente inadimplente: existem ${money(vencido)} vencidos. Digite AUTORIZAR para continuar.`)
         if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: inadimplência não autorizada.');return}
         motivosAprovacao.push({tipo:'inadimplencia',motivo:'Venda para cliente com títulos vencidos',detalhes:{cliente_id:saleClient,valor_vencido:vencido}})
@@ -729,7 +729,7 @@ function App(){
       const limite=Number(cliente?.limite_credito||0)
       if((empresa?.exigir_aprovacao_limite_credito??true)&&limite>0&&aberto+totalAtual>limite){
         const excesso=aberto+totalAtual-limite
-        if(!isAdmin){setMsg(`Venda bloqueada: limite de crédito excedido em ${money(excesso)}. É necessária autorização administrativa.`);return}
+        if(!canManageAuthorizations){setMsg(`Venda bloqueada: limite de crédito excedido em ${money(excesso)}. É necessária autorização administrativa.`);return}
         const ok=window.prompt(`Limite de crédito excedido em ${money(excesso)}. Digite AUTORIZAR para continuar.`)
         if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: limite de crédito não autorizado.');return}
         motivosAprovacao.push({tipo:'limite_credito',motivo:'Venda acima do limite de crédito',detalhes:{cliente_id:saleClient,limite,em_aberto:aberto,total_venda:totalAtual,excesso}})
@@ -738,11 +738,11 @@ function App(){
 
     const descontoPct=subtotalAtual>0?(descontoAtual/subtotalAtual)*100:0
     const descontoMax=Number(empresa?.desconto_max_vendedor??10)
-    if(!isAdmin&&descontoPct>descontoMax){
+    if(!canManageAuthorizations&&descontoPct>descontoMax){
       setMsg(`Venda bloqueada: desconto de ${descontoPct.toFixed(2)}% excede o limite de ${descontoMax.toFixed(2)}%.`)
       return
     }
-    if(isAdmin&&descontoPct>descontoMax){
+    if(canManageAuthorizations&&descontoPct>descontoMax){
       const ok=window.prompt(`Desconto de ${descontoPct.toFixed(2)}% acima do limite de ${descontoMax.toFixed(2)}%. Digite AUTORIZAR.`)
       if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: desconto não autorizado.');return}
       motivosAprovacao.push({tipo:'desconto',motivo:'Desconto acima do limite configurado',detalhes:{desconto_percentual:descontoPct,limite_percentual:descontoMax}})
@@ -752,7 +752,7 @@ function App(){
     const margemPct=totalAtual>0?((totalAtual-custoTotal)/totalAtual)*100:0
     const margemMin=Number(empresa?.margem_minima_percentual??0)
     if(margemPct<margemMin){
-      if(!isAdmin){setMsg(`Venda bloqueada: margem de ${margemPct.toFixed(2)}% abaixo da mínima de ${margemMin.toFixed(2)}%.`);return}
+      if(!canManageAuthorizations){setMsg(`Venda bloqueada: margem de ${margemPct.toFixed(2)}% abaixo da mínima de ${margemMin.toFixed(2)}%.`);return}
       const ok=window.prompt(`Margem de ${margemPct.toFixed(2)}% abaixo da mínima de ${margemMin.toFixed(2)}%. Digite AUTORIZAR.`)
       if((ok||'').trim().toUpperCase()!=='AUTORIZAR'){setMsg('Venda não concluída: margem não autorizada.');return}
       motivosAprovacao.push({tipo:'margem',motivo:'Venda abaixo da margem mínima',detalhes:{margem_percentual:margemPct,margem_minima:margemMin}})
@@ -762,7 +762,7 @@ function App(){
     let autorizarSemEstoque=false
     if(precisaAutorizar){
       const resumo=saleStockShortages.map(s=>`${s.produto.codigo} - ${s.produto.descricao}: faltam ${s.missing.toLocaleString('pt-BR')} ${s.produto.unidade}`).join('\n')
-      if(!isAdmin){
+      if(!canManageAuthorizations){
         setMsg('Venda bloqueada por estoque insuficiente. É necessária autorização de um administrador. '+saleStockShortages.map(s=>s.produto.descricao).join(', '))
         return
       }
@@ -813,7 +813,7 @@ function App(){
     try{(await import('./lib/invoicePdf')).generateInvoicePdf({id:v.id,fatura_numero:v.fatura_numero,created_at:v.created_at,status:v.status,subtotal:Number(v.subtotal),desconto:Number(v.desconto),total:Number(v.total),observacoes:v.observacoes,forma_pagamento:v.forma_pagamento,parcelas:Number(v.parcelas),primeiro_vencimento:v.primeiro_vencimento,rota_entrega:v.rota_entrega,vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,cliente:clientes.find(c=>c.id===v.cliente_id)||null,company:empresa||undefined,items:invoiceItems(drafts)});await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)}catch{setMsg('Não foi possível gerar o PDF.')}
   }
   async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar fatura ${invoiceNo(v.fatura_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
-  async function deleteSale(v:Venda){if(!isAdmin){setMsg('Somente administrador pode excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
+  async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
 
   // COMPRAS
   function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('cotacao');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
@@ -1053,7 +1053,7 @@ function App(){
     setMsg(r.error?r.error.message:c.status==='pedido_recebido'?'Pedido cancelado, estoque estornado e contas a pagar em aberto canceladas.':c.status==='pedido_aprovado'?'Pedido cancelado e contas a pagar em aberto canceladas.':'Cotação cancelada.')
     if(!r.error){setPurchasePanel(null);await loadData()}
   }
-  async function deletePurchase(c:Compra){if(!isAdmin){setMsg('Somente administrador pode excluir compra.');return}if(!window.confirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
+  async function deletePurchase(c:Compra){if(!(isAdmin&&canManagePurchases)){setMsg('Sem permissão para excluir compra.');return}if(!window.confirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
 
   // FINANCEIRO
   function startNewTitle(){
@@ -1168,7 +1168,7 @@ function App(){
 
   async function deleteTitle(t:Titulo){
     if(t.venda_id||t.compra_id||Number(t.valor_pago)>0){setMsg('Título vinculado ou com pagamento não pode ser excluído. Altere o documento de origem.');return}
-    if(!isAdmin){setMsg('Somente administrador pode excluir lançamento.');return}
+    if(!(isAdmin&&canManageFinance)){setMsg('Sem permissão para excluir lançamento.');return}
     if(!window.confirm('Excluir este lançamento?'))return
     const r=await supabase.from('titulos_financeiros').delete().eq('id',t.id)
     setMsg(r.error?r.error.message:'Lançamento excluído.')
@@ -1599,7 +1599,7 @@ function App(){
                     <div className="rowActions">
                       <button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>{linked?'Classificar':'Editar'}</button>
                       {!linked&&<button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>}
-                      {!linked&&isAdmin&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}
+                      {!linked&&isAdmin&&canManageFinance&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}
                     </div>
                   </div>
 
@@ -1756,7 +1756,7 @@ function App(){
           </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">{editingClient?'Salvar alterações':'Cadastrar cliente'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={!canManageClients} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="actionMeta"><strong>{c.nome}</strong><span>{c.documento||'Sem documento'} · {c.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageClients&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
+        <EditableEntityTable readOnly={!canManageClients} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="actionMeta"><strong>{c.nome}</strong><span>{c.documento||'Sem documento'} · {c.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageClients&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&canManageClients&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='fornecedores'&&<section className="semanticPage suppliersPage">
@@ -1779,7 +1779,7 @@ function App(){
           </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">{editingSupplier?'Salvar alterações':'Cadastrar fornecedor'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={!canManageSuppliers} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="actionMeta"><strong>{f.nome}</strong><span>{f.documento||'Sem documento'} · {f.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageSuppliers&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
+        <EditableEntityTable readOnly={!canManageSuppliers} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="actionMeta"><strong>{f.nome}</strong><span>{f.documento||'Sem documento'} · {f.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageSuppliers&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&canManageSuppliers&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='produtos'&&<section className="semanticPage productsPage">
@@ -2035,7 +2035,7 @@ function App(){
 
           {saleConsumesStock&&saleStockShortages.length>0&&<div className="stockAuthorizationWarning">
             <strong>Estoque insuficiente em {saleStockShortages.length} produto(s)</strong>
-            <span>{isAdmin?'Você é administrador. Ao salvar, será solicitada uma confirmação extra para autorizar estoque negativo.':'A venda não pode ser concluída por este usuário. Solicite autorização de um administrador.'}</span>
+            <span>{canManageAuthorizations?'Você possui permissão de autorização. Ao salvar, será solicitada uma confirmação extra para estoque negativo.':'A venda não pode ser concluída por este usuário. Solicite autorização a um usuário autorizado.'}</span>
           </div>}
 
           <div className="saleTotals">
@@ -2077,7 +2077,7 @@ function App(){
                         {c.status==='pedido_aprovado'&&canManagePurchases&&<button className="primary receivePurchaseBtn" onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}
                         {canManagePurchases&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
                         {canManagePurchases&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
-                        {isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
+                        {isAdmin&&canManagePurchases&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
                       </div>
                     </div>
                     {proofPanel('compra',c.id)}
@@ -2175,7 +2175,7 @@ function App(){
               <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
               <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
               <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
-              {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{isAdmin?'Exige autorização administrativa para concluir.':'Venda bloqueada: solicite autorização de um administrador.'}</b>}</div>}
+              {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
             </div>})}
           </div>
 
@@ -2229,7 +2229,7 @@ function App(){
                         <button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
                         {canManageSales&&<button className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
                         {canManageSales&&<button className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
-                        {isAdmin&&<button className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
+                        {isAdmin&&canManageSales&&<button className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
                       </div>
                     </div>
                     {proofPanel('venda',v.id)}
@@ -2258,7 +2258,7 @@ function App(){
           </select>
           <div className="formActions">
             <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSeller(null)}}>Cancelar</button>
-            <button className="primary" disabled={!isAdmin}>Salvar vendedor</button>
+            <button className="primary" disabled={!canManageCommissions}>Salvar vendedor</button>
           </div>
         </form>}
 
@@ -2288,7 +2288,7 @@ function App(){
           <div className="panelHead"><h3>Vendedores e comissões</h3><SearchField value={tableSearch.comissoes||''} onChange={v=>setSearch('comissoes',v)} placeholder="Pesquisar vendedores e valores"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendedor')}>Vendedor{sortMark('comissoes','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','percentual')}>% atual{sortMark('comissoes','percentual')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebido')}>Recebido no período{sortMark('comissoes','recebido')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','comissao')}>Comissão apurada{sortMark('comissoes','comissao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebimentos')}>Recebimentos{sortMark('comissoes','recebimentos')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendas')}>Vendas{sortMark('comissoes','vendas')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','status')}>Status{sortMark('comissoes','status')}</button></th><th>Gerenciar</th></tr></thead>
-            <tbody>{visibleSellers.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={vendedores.length===0?'Nenhum vendedor cadastrado.':'Nenhum vendedor encontrado para esta pesquisa.'} actionLabel={vendedores.length===0&&isAdmin?'+ Adicionar Vendedor':undefined} onAction={startNewSeller}/></td></tr>}{visibleSellers.map(v=>{
+            <tbody>{visibleSellers.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={vendedores.length===0?'Nenhum vendedor cadastrado.':'Nenhum vendedor encontrado para esta pesquisa.'} actionLabel={vendedores.length===0&&canManageCommissions?'+ Adicionar Vendedor':undefined} onAction={startNewSeller}/></td></tr>}{visibleSellers.map(v=>{
               const summary=comissoes.find(c=>c.vendedor_id===v.id)
               const opened=sellerPanel===v.id
               return <Fragment key={v.id}>
@@ -2300,14 +2300,14 @@ function App(){
                   <td>{summary?.pagamentos||0}</td>
                   <td>{summary?.vendas||0}</td>
                   <td><span className={v.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{v.ativo?'ativo':'inativo'}</span></td>
-                  <td>{isAdmin?<button className="rowMenuBtn" onClick={()=>setSellerPanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções do vendedor" aria-expanded={opened}><MoreVertical size={18}/></button>:<span className="readOnlyTag">Somente leitura</span>}</td>
+                  <td>{canManageCommissions?<button className="rowMenuBtn" onClick={()=>setSellerPanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções do vendedor" aria-expanded={opened}><MoreVertical size={18}/></button>:<span className="readOnlyTag">Somente leitura</span>}</td>
                 </tr>
                 {opened&&<tr className="manageRow"><td colSpan={8}>
                   <div className="actionPanel">
                     <div className="actionMeta"><strong>{v.nome}</strong><span>Comissão atual: {Number(v.percentual_comissao).toLocaleString('pt-BR')}%</span></div>
                     <div className="rowActions">
-                      {isAdmin&&<button className="ghost" onClick={()=>startEditSeller(v)}><Pencil size={15}/>Editar % / dados</button>}
-                      {isAdmin&&v.ativo&&<button className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={15}/>Desativar</button>}
+                      {canManageCommissions&&<button className="ghost" onClick={()=>startEditSeller(v)}><Pencil size={15}/>Editar % / dados</button>}
+                      {canManageCommissions&&v.ativo&&<button className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={15}/>Desativar</button>}
                     </div>
                   </div>
                 </td></tr>}
