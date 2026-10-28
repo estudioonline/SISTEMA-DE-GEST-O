@@ -2579,3 +2579,39 @@
   border-color:#63313a;
   color:#fca5a5;
 }
+
+
+/* Aviso de estoque negativo em aprovações */
+.authorizationStockWarning{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  margin:12px 0 4px;
+  padding:10px 12px;
+  border:1px solid #f59e0b;
+  border-radius:10px;
+  background:#fff7ed;
+  color:#9a3412;
+}
+.authorizationStockWarning strong{
+  font-size:12px;
+}
+.authorizationStockWarning span{
+  font-size:12px;
+  line-height:1.4;
+}
+.authorizationNegativeStock{
+  color:#b91c1c;
+  font-weight:800;
+}
+.authorizationStockOk{
+  color:#15803d;
+  font-weight:700;
+}
+.dark .authorizationStockWarning{
+  background:#3a2608;
+  border-color:#8a5b12;
+  color:#fed7aa;
+}
+.dark .authorizationNegativeStock{color:#fca5a5}
+.dark .authorizationStockOk{color:#86efac}
