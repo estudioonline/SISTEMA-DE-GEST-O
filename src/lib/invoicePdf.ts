@@ -409,7 +409,7 @@ function addFooters(doc:jsPDF,data:InvoiceData){
   }
 }
 
-export function generateInvoicePdf(data:InvoiceData){
+function buildInvoiceDocument(data:InvoiceData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
     title:`Pedido ${invoiceNo(data.fatura_numero)}`,
@@ -423,6 +423,16 @@ export function generateInvoicePdf(data:InvoiceData){
   y=drawItems(doc,data,y)
   drawNotesAndConditions(doc,data,y+5)
   addFooters(doc,data)
+  return doc
+}
 
+export function generateInvoicePdf(data:InvoiceData){
+  const doc=buildInvoiceDocument(data)
   doc.save(`${safeFilePart(data.cliente?.nome||'consumidor')}-${invoiceNo(data.fatura_numero)}.pdf`)
+}
+
+export function openInvoicePdfForPrint(data:InvoiceData){
+  const doc=buildInvoiceDocument(data)
+  const url=doc.output('bloburl')
+  window.open(String(url),'_blank','noopener,noreferrer')
 }
