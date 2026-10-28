@@ -4202,3 +4202,26 @@
 .saleActions{
   gap:14px;
 }
+
+
+/* Historico de vendas */
+.saleHistoryPanel{gap:12px}
+.saleHistoryHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.saleHistoryHead h4{margin:0 0 4px;font-size:14px}
+.saleHistoryHead p{margin:0;color:var(--ds-muted);font-size:11px}
+.saleHistoryTimeline{position:relative;display:grid;gap:10px;padding-left:18px}
+.saleHistoryTimeline:before{content:"";position:absolute;left:5px;top:4px;bottom:4px;width:2px;background:var(--ds-border)}
+.saleHistoryEvent{position:relative}
+.saleHistoryDot{position:absolute;left:-17px;top:14px;width:10px;height:10px;border-radius:50%;background:var(--ds-blue);box-shadow:0 0 0 3px var(--ds-surface)}
+.saleHistoryCard{display:grid;gap:8px;padding:11px 12px;border:1px solid var(--ds-border);border-radius:11px;background:var(--ds-surface)}
+.saleHistoryMeta,.saleHistoryUser{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.saleHistoryMeta strong{font-size:12px}
+.saleHistoryMeta span,.saleHistoryUser span{font-size:10px;color:var(--ds-muted)}
+.saleHistoryUser b{font-size:11px}
+.saleHistoryChanges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.saleHistoryChanges>div{display:grid;gap:3px;padding:7px 8px;border:1px solid var(--ds-border);border-radius:8px;background:var(--ds-bg);min-width:0}
+.saleHistoryChanges span{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--ds-muted)}
+.saleHistoryChanges strong{font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+.saleHistoryChanges strong>b{color:var(--ds-blue)}
+.saleHistoryChanges.compact{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:800px){.saleHistoryChanges,.saleHistoryChanges.compact{grid-template-columns:1fr}.saleHistoryHead{flex-direction:column}}
