@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 
 type Request = {id:string;tipo:string;status:string;motivo:string|null;solicitado_em:string;aprovado_em:string|null;decisao_motivo:string|null;resultado_id:string|null;entidade_id:string|null;payload:Record<string,unknown>|null}
-type Product = {id:string;descricao:string}
+type Product = {id:string;descricao:string;estoque_atual:number;unidade:string}
 
 export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{admin:boolean;products:Product[];clients:{id:string;nome:string}[];sellers:{id:string;nome:string}[];onChanged:()=>Promise<void>}) {
   const [rows,setRows]=useState<Request[]>([])
@@ -51,12 +51,29 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
       const p=row.payload
       const items=(Array.isArray(p?.p_itens)?p.p_itens:[]) as {produto_id:string;quantidade:number;valor_unitario:number;desconto:number}[]
       const total=items.reduce((sum,i)=>sum+Number(i.quantidade)*Number(i.valor_unitario)-Number(i.desconto||0),0)
+      const hasStockShortage=String(p?.p_status)==='pedido'||String(p?.p_status)==='faturado'
+        ? items.some(i=>{
+            const product=products.find(x=>x.id===i.produto_id)
+            return product?Number(product.estoque_atual)<Number(i.quantidade):false
+          })
+        : false
       return <article className="panel" key={row.id}>
         <h4>{p?(p.p_venda_id?'Alteração de venda':'Nova venda'):row.tipo} · {row.status}</h4>
         <p>{new Date(row.solicitado_em).toLocaleString('pt-BR')} · {row.motivo}</p>
         {p&&<><p>Cliente: {clients.find(c=>c.id===p.p_cliente_id)?.nome||'Consumidor'} · Vendedor: {sellers.find(s=>s.id===p.p_vendedor_cadastro_id)?.nome||'Sem vendedor'}</p><p>Etapa: {String(p.p_status)} · Pagamento: {String(p.p_forma_pagamento)} · Parcelas: {String(p.p_parcelas)} · Rota: {String(p.p_rota_entrega)}</p>
         <p>Primeiro vencimento: {String(p.p_primeiro_vencimento)} · Observações: {String(p.p_observacoes||'—')}</p>
-        <table><thead><tr><th>Produto</th><th>Quantidade</th><th>Preço</th><th>Desconto</th></tr></thead><tbody>{items.map((i,index)=><tr key={index}><td>{products.find(x=>x.id===i.produto_id)?.descricao||i.produto_id}</td><td>{i.quantidade}</td><td>{Number(i.valor_unitario).toFixed(2)}</td><td>{Number(i.desconto||0).toFixed(2)}</td></tr>)}</tbody></table>
+        <table><thead><tr><th>Produto</th><th>Quantidade</th><th>Preço</th><th>Desconto</th><th>Estoque após venda</th></tr></thead><tbody>{items.map((i,index)=>{
+          const product=products.find(x=>x.id===i.produto_id)
+          const projected=product?Number(product.estoque_atual)-Number(i.quantidade):null
+          return <tr key={index}>
+            <td>{product?.descricao||i.produto_id}</td>
+            <td>{i.quantidade}</td>
+            <td>{Number(i.valor_unitario).toFixed(2)}</td>
+            <td>{Number(i.desconto||0).toFixed(2)}</td>
+            <td><span className={projected!==null&&projected<0?'authorizationNegativeStock':'authorizationStockOk'}>{projected===null?'—':`${projected.toLocaleString('pt-BR')} ${product?.unidade||''}`}</span></td>
+          </tr>
+        })}</tbody></table>
+        {hasStockShortage&&<div className="authorizationStockWarning"><strong>Estoque insuficiente autorizado</strong><span>Se esta venda for aprovada, ela continuará normalmente e o saldo do produto poderá ficar negativo.</span></div>}
         <p>Total: {total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p></>}
         {row.decisao_motivo&&<p>Decisão: {row.decisao_motivo}</p>}
         {(row.resultado_id||row.entidade_id)&&<p>Venda vinculada: {row.resultado_id||row.entidade_id}</p>}
