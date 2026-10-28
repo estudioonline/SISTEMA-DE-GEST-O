@@ -1463,6 +1463,50 @@ function App(){
     const available=Number(produto.estoque_atual)+(editingSale?Number(originalSaleQtyByProduct[produtoId]||0):0)
     return demand>available?[{produto,available,demand,missing:demand-available}]:[]
   })
+  const saleBelowStockMinimum=Object.entries(saleDemandByProduct).flatMap(([produtoId,demand])=>{
+    const produto=produtos.find(p=>p.id===produtoId)
+    if(!produto)return []
+    const available=Number(produto.estoque_atual)+(editingSale?Number(originalSaleQtyByProduct[produtoId]||0):0)
+    const projected=available-demand
+    const minimum=Math.max(0,Number(produto.estoque_minimo)||0)
+    return projected>=0&&projected<minimum?[{produto,projected,minimum}]:[]
+  })
+  const salePriceMinimumIssues=saleItems.flatMap(item=>{
+    const produto=produtos.find(p=>p.id===item.produto_id)
+    if(!produto||!item.produto_id||Number(item.quantidade)<=0)return []
+    const cost=Math.round(Number(produto.custo_medio??produto.custo??0)*100)/100
+    const minimum=cost*(1+Number(produto.percentual_minimo_custo_venda??100)/100)
+    const effective=Number(item.valor_unitario)-Math.min(Number(item.desconto||0),Number(item.valor_unitario)*Number(item.quantidade))/Number(item.quantidade)
+    return effective+0.000001<minimum?[{produto,effective,minimum}]:[]
+  })
+  const saleDiscountPct=saleSubtotal>0?(saleDiscount/saleSubtotal)*100:0
+  const saleCostTotal=saleItems.reduce((sum,item)=>{
+    const product=produtos.find(p=>p.id===item.produto_id)
+    return sum+Number(product?.custo_medio??product?.custo??0)*Number(item.quantidade||0)
+  },0)
+  const saleMarginPct=saleTotal>0?((saleTotal-saleCostTotal)/saleTotal)*100:0
+  const selectedSaleClient=clientes.find(c=>c.id===saleClient)
+  const saleClientLimit=Number(selectedSaleClient?.limite_credito||0)
+  const saleHasPaidTitle=Boolean(editingSale&&titulos.some(t=>t.venda_id===editingSale.id&&Number(t.valor_pago)>0))
+  const saleHasProof=Boolean(editingSale&&comprovantes.some(p=>p.venda_id===editingSale.id))
+  const requiredSaleClient=String(empresa?.campos_obrigatorios?.venda_cliente??'false').toLowerCase()==='true'
+  const requiredSaleSeller=String(empresa?.campos_obrigatorios?.venda_vendedor??'false').toLowerCase()==='true'
+  const saleApprovalBlockers=saleStatus==='orcamento'?[]:[
+    ...(!saleRoute?[{tipo:'dados_incompletos',label:'Rota de entrega não informada',detalhe:'A aprovação poderá avançar a venda sem rota definida.'}]:[]),
+    ...(requiredSaleClient&&!saleClient?[{tipo:'dados_incompletos',label:'Cliente obrigatório não informado',detalhe:'Campo obrigatório ausente na venda.'}]:[]),
+    ...(requiredSaleSeller&&!saleSeller?[{tipo:'dados_incompletos',label:'Vendedor obrigatório não informado',detalhe:'Campo obrigatório ausente na venda.'}]:[]),
+    ...(salePriceMinimumIssues.length?[{tipo:'preco_minimo',label:'Preço abaixo do mínimo',detalhe:salePriceMinimumIssues.map(x=>`${x.produto.descricao}: ${money(x.effective)} / mín. ${money(x.minimum)}`).join(' • ')}]:[]),
+    ...(saleDiscountPct>Number(empresa?.desconto_max_vendedor??10)?[{tipo:'desconto',label:'Desconto acima do limite',detalhe:`${saleDiscountPct.toFixed(2)}% / limite ${Number(empresa?.desconto_max_vendedor??10).toFixed(2)}%`}]:[]),
+    ...(saleMarginPct<Number(empresa?.margem_minima_percentual??0)?[{tipo:'margem',label:'Margem abaixo do mínimo',detalhe:`${saleMarginPct.toFixed(2)}% / mínimo ${Number(empresa?.margem_minima_percentual??0).toFixed(2)}%`}]:[]),
+    ...((empresa?.bloquear_cliente_inadimplente??true)&&Number(saleCreditState?.vencido||0)>0?[{tipo:'inadimplencia',label:'Cliente inadimplente',detalhe:`${money(Number(saleCreditState?.vencido||0))} em títulos vencidos.`}]:[]),
+    ...((empresa?.exigir_aprovacao_limite_credito??true)&&saleClientLimit>0&&Number(saleCreditState?.em_aberto||0)+saleTotal>saleClientLimit?[{tipo:'limite_credito',label:'Limite de crédito excedido',detalhe:`Excesso de ${money(Number(saleCreditState?.em_aberto||0)+saleTotal-saleClientLimit)}.`}]:[]),
+    ...(saleStockShortages.length?[{tipo:'estoque_negativo',label:'Estoque insuficiente',detalhe:saleStockShortages.map(x=>`${x.produto.descricao}: faltam ${x.missing.toLocaleString('pt-BR')} ${x.produto.unidade}`).join(' • ')}]:[]),
+    ...(!saleStockShortages.length&&saleBelowStockMinimum.length?[{tipo:'estoque_minimo',label:'Estoque ficará abaixo do mínimo',detalhe:saleBelowStockMinimum.map(x=>`${x.produto.descricao}: saldo ${x.projected.toLocaleString('pt-BR')} / mínimo ${x.minimum.toLocaleString('pt-BR')}`).join(' • ')}]:[]),
+    ...(saleHasPaidTitle?[{tipo:'fatura_paga',label:'Fatura com pagamento registrado',detalhe:'A aprovação avançará o status preservando itens, valores e histórico financeiro já liquidados.'}]:[]),
+    ...(saleHasProof?[{tipo:'comprovante_anexado',label:'Comprovante já anexado',detalhe:'A aprovação preservará o comprovante existente.'}]:[])
+  ]
+  const saleHasAuthorizationBlocker=saleApprovalBlockers.length>0
+  const saleHasStructuralError=saleItems.length===0||saleItems.some(item=>!item.produto_id||Number(item.quantidade)<=0||!produtos.find(p=>p.id===item.produto_id&&p.ativo))
   function saleItemStockInfo(item:SaleItemDraft){
     const produto=produtos.find(p=>p.id===item.produto_id)
     if(!produto)return null
