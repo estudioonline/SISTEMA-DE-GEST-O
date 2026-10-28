@@ -1530,12 +1530,24 @@ function App(){
       {active==='clientes'&&<section className="semanticPage clientsPage">
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingClient?'Editar cliente':'Novo cliente'}><div className="saleModalShell entityModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveClient}>
           <div className="formTitle saleModalTitle"><div><h3>{editingClient?'Editar cliente':'Novo cliente'}</h3><p>Cadastre ou atualize os dados do cliente.</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de cliente" onClick={()=>{setShowForm(false);setEditingClient(null)}}><X size={18}/></button></div>
-          <input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/>
-          <input name="documento" inputMode="numeric" placeholder="CPF / CNPJ" defaultValue={maskDocument(editingClient?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
-          <input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/>
-          <input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingClient?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/>
-          <input name="limite_credito" type="number" step="0.01" placeholder="Limite de crédito" defaultValue={editingClient?.limite_credito||0}/>
-          <select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+          <label className="fieldLabel">Nome / Razão social
+            <input name="nome" placeholder="Nome / Razão social" required defaultValue={editingClient?.nome||''}/>
+          </label>
+          <label className="fieldLabel">CPF / CNPJ
+            <input name="documento" inputMode="numeric" placeholder="CPF / CNPJ" defaultValue={maskDocument(editingClient?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
+          </label>
+          <label className="fieldLabel">E-mail
+            <input name="email" type="email" placeholder="E-mail" defaultValue={editingClient?.email||''}/>
+          </label>
+          <label className="fieldLabel">Telefone
+            <input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingClient?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/>
+          </label>
+          <label className="fieldLabel">Limite de crédito
+            <input name="limite_credito" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={editingClient?.limite_credito||0}/>
+          </label>
+          <label className="fieldLabel">Status
+            <select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+          </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">{editingClient?'Salvar alterações':'Cadastrar cliente'}</button></div>
         </form></div></div>}
         <EditableEntityTable readOnly={!canManageSales} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="actionMeta"><strong>{c.nome}</strong><span>{c.documento||'Sem documento'} · {c.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageSales&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
@@ -1544,11 +1556,21 @@ function App(){
       {active==='fornecedores'&&<section className="semanticPage suppliersPage">
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingSupplier?'Editar fornecedor':'Novo fornecedor'}><div className="saleModalShell entityModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveSupplier}>
           <div className="formTitle saleModalTitle"><div><h3>{editingSupplier?'Editar fornecedor':'Novo fornecedor'}</h3><p>Cadastre ou atualize os dados do fornecedor.</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fornecedor" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}><X size={18}/></button></div>
-          <input name="nome" placeholder="Nome / Razão social" required defaultValue={editingSupplier?.nome||''}/>
-          <input name="documento" inputMode="numeric" placeholder="CNPJ / CPF" defaultValue={maskDocument(editingSupplier?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
-          <input name="email" type="email" placeholder="E-mail" defaultValue={editingSupplier?.email||''}/>
-          <input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingSupplier?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/>
-          <select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+          <label className="fieldLabel">Nome / Razão social
+            <input name="nome" placeholder="Nome / Razão social" required defaultValue={editingSupplier?.nome||''}/>
+          </label>
+          <label className="fieldLabel">CNPJ / CPF
+            <input name="documento" inputMode="numeric" placeholder="CNPJ / CPF" defaultValue={maskDocument(editingSupplier?.documento||'')} onInput={e=>{e.currentTarget.value=maskDocument(e.currentTarget.value)}}/>
+          </label>
+          <label className="fieldLabel">E-mail
+            <input name="email" type="email" placeholder="E-mail" defaultValue={editingSupplier?.email||''}/>
+          </label>
+          <label className="fieldLabel">Telefone
+            <input name="telefone" inputMode="tel" placeholder="Telefone" defaultValue={maskPhone(editingSupplier?.telefone||'')} onInput={e=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}}/>
+          </label>
+          <label className="fieldLabel">Status
+            <select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+          </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">{editingSupplier?'Salvar alterações':'Cadastrar fornecedor'}</button></div>
         </form></div></div>}
         <EditableEntityTable readOnly={!canManageStock} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="actionMeta"><strong>{f.nome}</strong><span>{f.documento||'Sem documento'} · {f.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageStock&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
