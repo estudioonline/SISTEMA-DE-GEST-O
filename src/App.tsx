@@ -164,6 +164,8 @@ function App(){
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
+  const [saleDetailItems,setSaleDetailItems]=useState<VendaItem[]>([])
+  const [saleDetailTab,setSaleDetailTab]=useState<'itens'|'informacoes'|'documentos'>('itens')
   const [saleClient,setSaleClient]=useState('')
   const [saleSeller,setSaleSeller]=useState('')
   const [saleStatus,setSaleStatus]=useState('orcamento')
@@ -680,7 +682,20 @@ function App(){
 
   // VENDAS
   function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
-  function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}resetSaleForm();setShowForm(true);setMsg('')}
+  function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}setSalePanel(null);setSaleDetailItems([]);resetSaleForm();setShowForm(true);setMsg('')}
+  async function openSaleDetail(v:Venda){
+    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
+    if(error){setMsg('Não foi possível abrir os detalhes da venda: '+error.message);return}
+    setSaleDetailItems((data||[]) as VendaItem[])
+    setSaleDetailTab('itens')
+    setSalePanel(v.id)
+    setMsg('')
+  }
+  function closeSaleDetail(){
+    setSalePanel(null)
+    setSaleDetailItems([])
+    setSaleDetailTab('itens')
+  }
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
     if(v.status==='cancelado'){setMsg('Venda cancelada não pode ser editada.');return}
@@ -692,7 +707,7 @@ function App(){
     setOriginalSaleItems(items)
     setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(Number(v.parcelas)||1);setSaleDueDate(v.primeiro_vencimento||today())
     setSaleItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)})))
-    setShowForm(true);setMsg('')
+    setSalePanel(null);setSaleDetailItems([]);setShowForm(true);setMsg('')
   }
   function chooseProduct(key:string,id:string){const p=produtos.find(x=>x.id===id);setSaleItems(items=>items.map(i=>i.key===key?{...i,produto_id:id,valor_unitario:p?Number(p.preco_venda):0}:i))}
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
@@ -1621,6 +1636,7 @@ function App(){
   const visibleSales=sortList('vendas',vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',saleStatusDisplay(v),deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])}),{
     fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,cliente:v=>clientes.find(x=>x.id===v.cliente_id)?.nome||'Consumidor',rota:v=>deliveryRouteLabel(v.rota_entrega),vendedor:v=>vendedores.find(x=>x.id===v.vendedor_cadastro_id)?.nome||'',status:v=>saleStatusDisplay(v),pagamento:v=>paymentLabel(v.forma_pagamento),statuspag:v=>salePaymentStatus(v).label,total:v=>Number(v.total)
   })
+  const openedSale=salePanel?vendas.find(v=>v.id===salePanel)||null:null
   const visibleSellers=sortList('comissoes',vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])}),{
     vendedor:v=>v.nome,percentual:v=>Number(v.percentual_comissao),recebido:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.total_recebido||0),comissao:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.comissao_apurada||0),recebimentos:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.pagamentos||0),vendas:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.vendas||0),status:v=>v.ativo?'ativo':'inativo'
   })
@@ -2318,87 +2334,147 @@ function App(){
           </div>
         </form></div></div>}
 
-        <article id="sales-table" tabIndex={-1} className="panel salesCardsPanel salesTable">
+        {openedSale?(()=>{
+          const v=openedSale
+          const client=clientes.find(x=>x.id===v.cliente_id)
+          const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
+          const paymentStatus=salePaymentStatus(v)
+          const approval=pendingSaleApproval(v.id)
+          const waiting=Boolean(approval&&v.status==='orcamento')
+          return <article className="panel saleDetailPage">
+            <div className="saleDetailTopbar">
+              <button type="button" className="ghost" onClick={closeSaleDetail}><ChevronLeft size={16}/>Voltar para lista</button>
+              <div className="saleDetailActions">
+                <button type="button" className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
+                <button type="button" className="ghost" onClick={()=>void printSalePdf(v)}><Printer size={15}/>Imprimir</button>
+                {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
+                {isAdmin&&canManageConfig&&canManageSales&&<button type="button" className="ghost" onClick={()=>setSaleDetailTab('documentos')}><ReceiptText size={15}/>NF-e / documentos</button>}
+                {canManageSales&&<button type="button" className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
+                {isAdmin&&canManageSales&&<button type="button" className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
+              </div>
+            </div>
+
+            <div className="saleDetailStatusBar">
+              <div>
+                <span className="saleDetailEyebrow">{v.status==='orcamento'?'ORÇAMENTO':'VENDA / FATURA'}</span>
+                <h2>#{invoiceNo(v.fatura_numero)}</h2>
+              </div>
+              <div className="saleDetailBadges">
+                {waiting
+                  ? <span className="statusBadge approvalPendingBadge">Aguardando aprovação</span>
+                  : <span className={'statusBadge status-'+v.status}>{saleStatusDisplay(v)}</span>}
+                <span className={'statusBadge payment-'+paymentStatus.key}>{paymentStatus.label}</span>
+              </div>
+            </div>
+
+            <div className="saleDetailSummaryGrid">
+              <div><span>Cliente</span><strong>{client?.nome||'Consumidor'}</strong></div>
+              <div><span>Data da venda</span><strong>{new Date(v.created_at).toLocaleString('pt-BR')}</strong></div>
+              <div><span>Rota</span><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></div>
+              <div><span>Vendedor</span><strong>{seller?.nome||'—'}</strong></div>
+              <div><span>Comissão</span><strong>{seller?Number(seller.percentual_comissao).toLocaleString('pt-BR')+'%':'—'}</strong></div>
+              <div><span>Pagamento</span><strong>{paymentLabel(v.forma_pagamento)} · {v.parcelas}x</strong></div>
+              <div><span>1º vencimento</span><strong>{dateBr(v.primeiro_vencimento)}</strong></div>
+              <div><span>Total</span><strong className="saleDetailTotal">{money(Number(v.total))}</strong></div>
+            </div>
+
+            <div className="saleDetailTabs" role="tablist" aria-label="Detalhes da venda">
+              <button type="button" className={saleDetailTab==='itens'?'active':''} onClick={()=>setSaleDetailTab('itens')}>Itens da venda</button>
+              <button type="button" className={saleDetailTab==='informacoes'?'active':''} onClick={()=>setSaleDetailTab('informacoes')}>Outras informações</button>
+              <button type="button" className={saleDetailTab==='documentos'?'active':''} onClick={()=>setSaleDetailTab('documentos')}>Documentos / NF-e</button>
+            </div>
+
+            {saleDetailTab==='itens'&&<div className="saleDetailSection">
+              <div className="tableWrap"><table className="saleItemsDetailTable">
+                <thead><tr><th>Produto</th><th>Quantidade</th><th>Preço unitário</th><th>Desconto</th><th>Valor</th></tr></thead>
+                <tbody>
+                  {saleDetailItems.length===0&&<tr className="emptyTableRow"><td colSpan={5}><div className="emptyState">Nenhum item nesta venda.</div></td></tr>}
+                  {saleDetailItems.map((item,index)=>{
+                    const product=produtos.find(p=>p.id===item.produto_id)
+                    return <tr key={item.produto_id+'-'+index}>
+                      <td><strong>{product?.descricao||'Produto'}</strong><br/><small>{product?.codigo||''}</small></td>
+                      <td>{Number(item.quantidade).toLocaleString('pt-BR')}</td>
+                      <td>{money(Number(item.valor_unitario))}</td>
+                      <td>{money(Number(item.desconto))}</td>
+                      <td><strong>{money(Number(item.total))}</strong></td>
+                    </tr>
+                  })}
+                </tbody>
+              </table></div>
+              <div className="saleDetailTotals">
+                <span>Subtotal <strong>{money(Number(v.subtotal))}</strong></span>
+                <span>Desconto <strong>{money(Number(v.desconto))}</strong></span>
+                <span>Total <strong>{money(Number(v.total))}</strong></span>
+              </div>
+            </div>}
+
+            {saleDetailTab==='informacoes'&&<div className="saleDetailSection saleDetailInfo">
+              <div className="saleInfoGroup">
+                <h4>Venda</h4>
+                <div><span>Status</span><strong>{saleStatusDisplay(v)}</strong></div>
+                <div><span>Rota de entrega</span><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></div>
+                <div><span>Vendedor</span><strong>{seller?.nome||'—'}</strong></div>
+                <div><span>Comissão</span><strong>{seller?Number(seller.percentual_comissao).toLocaleString('pt-BR')+'%':'—'}</strong></div>
+              </div>
+              <div className="saleInfoGroup">
+                <h4>Faturamento</h4>
+                <div><span>Método de pagamento</span><strong>{paymentLabel(v.forma_pagamento)}</strong></div>
+                <div><span>Parcelas</span><strong>{v.parcelas}x</strong></div>
+                <div><span>Primeiro vencimento</span><strong>{dateBr(v.primeiro_vencimento)}</strong></div>
+                <div><span>Status da cobrança</span><strong>{paymentStatus.label}</strong></div>
+              </div>
+              <div className="saleNotesBox">
+                <h4>Anotações</h4>
+                <p>{v.observacoes||'Nenhuma anotação registrada.'}</p>
+              </div>
+            </div>}
+
+            {saleDetailTab==='documentos'&&<div className="saleDetailSection saleDocumentsGrid">
+              <div>{proofPanel('venda',v.id)}</div>
+              <div>{isAdmin&&canManageConfig&&canManageSales?<FocusNfeSale saleId={v.id}/>:<div className="paymentNotice">NF-e disponível apenas para usuários autorizados.</div>}</div>
+            </div>}
+          </article>
+        })():<article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
           <div className="panelHead">
-            <div><h3>Orçamentos, vendas e faturas</h3><p>Resumo no card. Dê dois cliques em uma venda para abrir edição, impressão, NF-e e comprovantes.</p></div>
+            <div><h3>Orçamentos, vendas e faturas</h3><p>Lista compacta. Dê dois cliques em uma linha para abrir a venda.</p></div>
             <SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/>
           </div>
-          <div className="salesCardToolbar" aria-label="Ordenação das vendas">
-            <span>Ordenar por:</span>
-            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','fatura')}>Documento{sortMark('vendas','fatura')}</button>
-            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button>
-            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button>
-            <button type="button" className="ghost" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button>
-          </div>
-          {visibleSales.length===0
-            ? <EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/>
-            : <div className="salesCardGrid">{visibleSales.map(v=>{
-              const client=clientes.find(x=>x.id===v.cliente_id)
-              const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
-              const opened=salePanel===v.id
-              const paymentStatus=salePaymentStatus(v)
-              const approval=pendingSaleApproval(v.id)
-              const waiting=Boolean(approval&&v.status==='orcamento')
-              const openCard=()=>setSalePanel(v.id)
-              return <article
-                key={v.id}
-                className={'saleRecordCard '+(opened?'opened':'')}
-                tabIndex={0}
-                aria-label={'Abrir venda '+invoiceNo(v.fatura_numero)}
-                title="Dê dois cliques para abrir a venda. Pelo teclado, use Enter."
-                onDoubleClick={event=>{if(!(event.target as Element).closest('button,a,input,select,textarea,label,[role="button"],[contenteditable="true"]'))openCard()}}
-                onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openCard()}}}
-              >
-                <div className="saleCardHead">
-                  <div className="saleCardDocument">
-                    <span className="saleCardEyebrow">{v.status==='orcamento'?'Orçamento':'Venda / fatura'}</span>
-                    <strong>#{invoiceNo(v.fatura_numero)}</strong>
-                    <span>{new Date(v.created_at).toLocaleString('pt-BR')}</span>
-                  </div>
-                  <div className="saleCardAmount"><span>Total</span><strong>{money(Number(v.total))}</strong></div>
-                </div>
-
-                <div className="saleCardBadges">
-                  {waiting
-                    ? <span className="statusBadge approvalPendingBadge">Orçamento • aguardando aprovação</span>
-                    : <span className={'statusBadge status-'+v.status}>{saleStatusDisplay(v)}</span>}
-                  <span className={'statusBadge payment-'+paymentStatus.key}>{paymentStatus.label}</span>
-                </div>
-
-                <div className="saleCardData">
-                  <div><span>Cliente</span><strong>{client?.nome||'Consumidor'}</strong></div>
-                  <div><span>Vendedor / comissão</span><strong>{seller?seller.nome+' · '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'%':'—'}</strong></div>
-                  <div><span>Rota</span><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></div>
-                  <div><span>Pagamento</span><strong>{paymentLabel(v.forma_pagamento)} · {v.parcelas}x</strong></div>
-                  <div><span>1º vencimento</span><strong>{dateBr(v.primeiro_vencimento)}</strong></div>
-                  <div><span>Cobrança</span><strong>{paymentStatus.label}</strong></div>
-                </div>
-
-                <div className="saleCardFooter">
-                  <span>Duplo clique para abrir edição, impressão, NF-e e comprovantes.</span>
-                  <button type="button" className="rowMenuBtn saleCardOpenBtn" onClick={()=>setSalePanel(opened?null:v.id)} title={opened?'Recolher venda':'Abrir venda'} aria-label={opened?'Recolher venda':'Abrir venda'} aria-expanded={opened}><MoreVertical size={18}/></button>
-                </div>
-
-                {opened&&<div className="saleCardDetail">
-                  <div className="actionPanel saleCardActions">
-                    <div className="actionMeta">
-                      <strong>Ações da {v.status==='orcamento'?'proposta':'venda'} #{invoiceNo(v.fatura_numero)}</strong>
-                      <span>{waiting?'Aguardando decisão do administrador • ':''}PDF, impressão, edição, documentos fiscais e comprovantes ficam concentrados aqui.</span>
-                    </div>
-                    <div className="rowActions">
-                      <button type="button" className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
-                      <button type="button" className="ghost" onClick={()=>void printSalePdf(v)}><Printer size={15}/>Imprimir</button>
-                      {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
-                      {canManageSales&&<button type="button" className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
-                      {isAdmin&&canManageSales&&<button type="button" className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
-                    </div>
-                  </div>
-                  {proofPanel('venda',v.id)}
-                  {isAdmin&&canManageConfig&&canManageSales&&<FocusNfeSale saleId={v.id}/>}
-                </div>}
-              </article>
-            })}</div>}
-        </article>
+          <div className="tableWrap"><table className="salesCompactTable">
+            <thead><tr>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','fatura')}>Documento{sortMark('vendas','fatura')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th>
+              <th>Gerenciar</th>
+            </tr></thead>
+            <tbody>
+              {visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}
+              {visibleSales.map(v=>{
+                const client=clientes.find(x=>x.id===v.cliente_id)
+                const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
+                const paymentStatus=salePaymentStatus(v)
+                const waiting=Boolean(pendingSaleApproval(v.id)&&v.status==='orcamento')
+                return <tr key={v.id} {...recordRow(()=>void openSaleDetail(v),'venda '+invoiceNo(v.fatura_numero))}>
+                  <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
+                  <td>{new Date(v.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td>{client?.nome||'Consumidor'}</td>
+                  <td>{seller?.nome||'—'}</td>
+                  <td>{waiting
+                    ? <span className="statusBadge approvalPendingBadge">Aguardando aprovação</span>
+                    : <span className={'statusBadge status-'+v.status}>{saleStatusDisplay(v)}</span>}</td>
+                  <td>{paymentLabel(v.forma_pagamento)}{Number(v.parcelas)>1?' • '+v.parcelas+'x':''}<br/><small>{paymentStatus.label}</small></td>
+                  <td>{deliveryRouteLabel(v.rota_entrega)}</td>
+                  <td><strong>{money(Number(v.total))}</strong></td>
+                  <td><button type="button" className="rowMenuBtn" onClick={()=>void openSaleDetail(v)} title="Abrir venda" aria-label="Abrir venda"><MoreVertical size={18}/></button></td>
+                </tr>
+              })}
+            </tbody>
+          </table></div>
+        </article>}
       </section>}
 
       {active==='comissoes'&&<section className="semanticPage commissionsPage">
