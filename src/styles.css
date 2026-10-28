@@ -2343,7 +2343,7 @@
 
 .financeFilterPanel{
   display:grid;
-  grid-template-columns:minmax(270px,1.35fr) repeat(5,minmax(120px,.7fr)) auto;
+  grid-template-columns:repeat(5,minmax(135px,1fr)) auto;
   gap:10px;
   align-items:end;
   margin-bottom:14px;
@@ -2351,6 +2351,7 @@
 }
 .financeFilterPanel label{
   display:grid;
+  min-width:0;
   gap:5px;
   color:#5f6b7d;
   font-size:11px;
@@ -2367,10 +2368,12 @@
   color:#172033;
 }
 .financeQuickRanges{
+  grid-column:1/-1;
   display:flex;
   align-items:center;
   gap:6px;
   flex-wrap:wrap;
+  padding-bottom:2px;
 }
 .financeQuickRanges>span{
   width:100%;
@@ -2387,6 +2390,11 @@
 .financeClearFilters{
   height:40px;
   white-space:nowrap;
+}
+.financeFilterPanel>*{min-width:0}
+.financeFilterPanel select,
+.financeFilterPanel input{
+  min-width:0;
 }
 
 .financePanelTabs{
@@ -2512,10 +2520,11 @@
   border-color:#315b9c;
   color:#bfdbfe;
 }
-@media(max-width:1250px){
+@media(max-width:1450px){
   .financeOverviewGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .financeFilterPanel{grid-template-columns:repeat(3,minmax(0,1fr))}
   .financeQuickRanges{grid-column:1/-1}
+  .financeClearFilters{width:100%}
   .financeDetailGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:900px){
