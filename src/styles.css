@@ -4003,9 +4003,10 @@
 .employeeForm h3,.employeeForm .employeeHelp,.employeeForm .formActions{grid-column:1/-1}
 .employeeForm label,.employeeFilters label{display:grid;gap:7px;font-size:13px;font-weight:600}
 .employeeForm input,.employeeForm select,.employeeFilters input,.employeeFilters select{min-width:0;width:100%}
-.employeeFilters{display:flex;align-items:end;gap:14px;padding:18px;flex-wrap:wrap}
-.employeeFilters label{flex:1;min-width:150px}
+.employeeFilters{margin-bottom:0}
+.employeeFilters label{min-width:0}
+.employeeFilters .financeClearFilters{height:40px;align-self:end}
 .employeeHelp{font-size:13px;line-height:1.6;opacity:.8;margin:0}
 .employeeCategory{display:block;opacity:.7;margin-top:5px}
 .employeeFinance td .ghost{white-space:nowrap}
-@media(max-width:760px){.employeeForm{grid-template-columns:1fr}.employeeFinance .rowActions{flex-wrap:wrap}.employeeFilters label{min-width:100%}}
+@media(max-width:760px){.employeeForm{grid-template-columns:1fr}.employeeFinance .rowActions{flex-wrap:wrap}}
