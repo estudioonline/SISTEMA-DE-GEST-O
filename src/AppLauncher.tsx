@@ -11,12 +11,13 @@ const descriptions: Partial<Record<PermissionModule, string>> = {
   financeiro: 'Contas, pagamentos, gastos e vales de funcionários',
 }
 
-export function AppLauncher({ menu, company, ready, canEdit, onOpen }: {
+export function AppLauncher({ menu, company, ready, canEdit, onOpen, notifications = {} }: {
   menu: AppMenu
   company: string
   ready: boolean
   canEdit: (module: PermissionModule) => boolean
   onOpen: (module: PermissionModule) => void
+  notifications?: Partial<Record<PermissionModule, number>>
 }) {
   const [query, setQuery] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
@@ -43,7 +44,7 @@ export function AppLauncher({ menu, company, ready, canEdit, onOpen }: {
           const meta = permissionModules.find(module => module.key === key)
           const readOnly = Boolean(meta?.editable && !canEdit(key))
           return <button type="button" key={key} className={`launcherApp appColor-${key}${readOnly?' readOnly':''}`} onClick={() => onOpen(key)} aria-label={`${readOnly?'Abrir em modo somente leitura':'Abrir'} ${label}`} title={readOnly?`${label} · somente leitura`:label}>
-            <span className="launcherIcon"><Icon size={30} strokeWidth={1.8} aria-hidden="true"/></span>
+            <span className="launcherIcon"><Icon size={30} strokeWidth={1.8} aria-hidden="true"/>{Number(notifications[key]||0)>0&&<span className="launcherNotification" aria-label={`${notifications[key]} pendente(s)`}>{Number(notifications[key])>99?'99+':notifications[key]}</span>}</span>
             <strong>{label}</strong>
             {readOnly&&<span className="launcherReadOnly">Somente leitura</span>}
           </button>
