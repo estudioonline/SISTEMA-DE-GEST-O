@@ -2929,6 +2929,8 @@ function App(){
                       onClick={()=>void saveUserPermissions(u)}
                     >{savingPermissionUserId===u.user_id?'Salvando permissões...':'Salvar permissões'}</button>
                   </div>}
+                    </div>
+                  </div>
                 </div>
               </td></tr>}</Fragment>
             })}</tbody>
