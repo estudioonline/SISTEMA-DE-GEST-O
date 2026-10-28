@@ -82,6 +82,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
  const missingClient=clientMissing(source?.cliente??null)
  const missingProducts=(source?.itens??[]).map((item,index)=>({index:index+1,name:item.produto.descricao,missing:productMissing(item.produto)})).filter(x=>x.missing.length>0)
  const cadastroCompleto=!!source&&missingClient.length===0&&missingProducts.length===0
+ const vendaLiberada=!!source&&['pedido','faturado'].includes(source.venda.status)
 
  async function act(action:'emit'|'consult'){
   if(busy)return
@@ -132,8 +133,12 @@ export function FocusNfeSale({saleId}:{saleId:string}){
       {missingProducts.map(item=><p key={item.index}>Produto {item.index} — {item.name}: complete {item.missing.join(', ')} no cadastro do produto.</p>)}
     </div>}
     {cadastroCompleto&&<p className="fiscalCadastroOk">Cadastros fiscal do cliente e dos produtos completos para emissão.</p>}
+    {!vendaLiberada&&<div className="fiscalCadastroWarning" role="alert">
+      <strong>Bloqueio comercial: venda ainda está como orçamento</strong>
+      <p>Confirme a venda como <strong>Pedido</strong> ou <strong>Faturado</strong> para liberar a emissão da NF-e de teste.</p>
+    </div>}
     <div className="formActions">
-      <button type="button" className="primary" disabled={busy||!configured||!cadastroCompleto||!['pedido','faturado'].includes(source.venda.status)} onClick={()=>void act('emit')}>Emitir NF-e de teste</button>
+      <button type="button" className="primary" disabled={busy||!configured||!cadastroCompleto||!vendaLiberada} title={!vendaLiberada?'Confirme o pedido antes de emitir a NF-e de teste.':undefined} onClick={()=>void act('emit')}>Emitir NF-e de teste</button>
       <button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Recarregar cadastros</button>
       {!!note?.payload&&<button type="button" className="ghost" disabled={busy} onClick={()=>void act('consult')}>Consultar situação</button>}
       {note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button></>}
