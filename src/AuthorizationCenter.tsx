@@ -90,7 +90,7 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
         })}</tbody></table>
         {hasBelowMinimum&&<div className="authorizationPriceWarning"><strong>Preço abaixo do mínimo</strong><span>Ao aprovar, o administrador também autoriza esta venda abaixo do preço mínimo configurado para o produto.</span></div>}
         {hasStockShortage&&<div className="authorizationStockWarning"><strong>Estoque insuficiente autorizado</strong><span>Se esta venda for aprovada, ela continuará normalmente e o saldo do produto poderá ficar negativo.</span></div>}
-        <p>Total: {total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p></>
+        <p>Total: {total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p></>}
         {row.decisao_motivo&&<p>Decisão: {row.decisao_motivo}</p>}
         {(row.resultado_id||row.entidade_id)&&<p>Venda vinculada: {row.resultado_id||row.entidade_id}</p>}
         {admin&&p&&row.status==='pendente'&&<>{(()=>{
