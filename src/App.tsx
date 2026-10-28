@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
@@ -14,8 +14,10 @@ import { generatePurchaseInvoicePdf } from './lib/purchaseInvoicePdf'
 import { generateCommissionReportPdf } from './lib/commissionReportPdf'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
 import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
+import { readSettings, quoteExpiration } from './lib/erpSettings'
+import { AuthorizationCenter } from './AuthorizationCenter'
 
-type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'
+type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'|'autorizacoes'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
 type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 type PurchasePaymentMethod='pix'|'cartao'|'boleto'
@@ -41,11 +43,11 @@ type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number
 const menu=[
   ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
+  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
-const today=()=>new Date().toISOString().slice(0,10)
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 const dateBr=(v:string)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v.length===10?v+'T12:00:00':v)):'—'
 const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const deliveryRouteLabel=(v:string|null|undefined)=>v==='norte'?'Norte':v==='sul'?'Sul':v==='leste'?'Leste':v==='interestadual'?'Interestadual':v==='retirada'?'Retirada':'—'
@@ -85,11 +87,13 @@ const buildInstallmentDates=(base:string,count:number)=>Array.from({length:count
 
 function App(){
   const [session,setSession]=useState<Session|null>(null)
+  const currentSessionUser=useRef<string|null>(null)
+  currentSessionUser.current=session?.user.id??null
   const [loading,setLoading]=useState(true)
   const [active,setActive]=useState<ModuleKey>('dashboard')
   const [dark,setDark]=useState(false)
   const [sidebarCollapsed,setSidebarCollapsed]=useState(false)
-  const [profileRole,setProfileRole]=useState<PerfilRole>('vendas')
+  const [profileRole,setProfileRole]=useState<PerfilRole>('visualizador')
   const [msg,setMsg]=useState('')
   const [saleNotice,setSaleNotice]=useState('')
   useEffect(()=>{
@@ -192,6 +196,7 @@ function App(){
   const visibleMenu=menu.filter(([k])=>{
     if(k==='financeiro')return canViewFinance
     if(k==='config')return isAdmin
+    if(k==='autorizacoes')return isAdmin||isSeller
     if(k==='comissoes')return isAdmin||isSeller
     if(k==='compras'||k==='produtos'||k==='fornecedores')return isAdmin||profileRole==='estoque'
     if(k==='vendas'||k==='clientes')return isAdmin||isSeller||isViewer
@@ -205,6 +210,12 @@ function App(){
     return ()=>subscription.unsubscribe()
   },[])
 
+  useEffect(()=>{
+    setProfileRole('visualizador');setActive('dashboard');closeForms()
+    setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([])
+    setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setComissoes([])
+    setManagedUsers([]);setUserEdits({});setEmail('');setPassword('')
+  },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
   useEffect(()=>{
     if(session&&active==='comissoes')void loadCommissions()
@@ -241,6 +252,7 @@ function App(){
       supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).limit(500),
       supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).limit(1000)
     ])
+    if(currentSessionUser.current!==session.user.id)return
     if(!c.error)setClientes((c.data||[]) as Cliente[])
     if(!f.error)setFornecedores((f.data||[]) as Fornecedor[])
     if(!p.error)setProdutos((p.data||[]) as Produto[])
@@ -248,6 +260,13 @@ function App(){
     if(!cp.error)setCompras((cp.data||[]) as Compra[])
     if(!t.error)setTitulos((t.data||[]) as Titulo[])
     if(!ec.error&&ec.data)setEmpresa(ec.data as EmpresaConfig)
+    if(pr.error||!pr.data?.perfil||!pr.data.ativo){
+      setProfileRole('visualizador')
+      setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([])
+      setMsg('Acesso não liberado. Procure um administrador do sistema.')
+      await supabase.auth.signOut()
+      return
+    }
     if(!pr.error&&pr.data?.perfil){
       setProfileRole(pr.data.perfil as PerfilRole)
       if(pr.data.ativo===false){
@@ -577,6 +596,7 @@ function App(){
   function invoiceItems(items:SaleItemDraft[]){return items.map(i=>{const p=produtos.find(x=>x.id===i.produto_id);const d=Math.min(i.desconto,i.quantidade*i.valor_unitario);return{codigo:p?.codigo,descricao:p?.descricao||'Produto',unidade:p?.unidade||'UN',quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:d,total:Math.max(0,i.quantidade*i.valor_unitario-d)}})}
   async function saveSale(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(!session)return
+    if(savingSale)return
     if(!canManageSales){setMsg('Seu perfil não tem permissão para criar ou editar vendas.');return}
     setMsg('');setSaleNotice('')
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
@@ -674,14 +694,8 @@ function App(){
       : await supabase.rpc(rpcName,args)
     if(r.error||!r.data){setSavingSale(false);setMsg('Não foi possível salvar a venda: '+(r.error?.message||'erro desconhecido'));return}
     const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Venda
-    const routeUpdate=await supabase.from('vendas').update({rota_entrega:saleRoute,validade_orcamento:saleStatus==='orcamento'?addMonthsIso(today(),0):null}).eq('id',saved.id)
-    if(routeUpdate.error){setSavingSale(false);setMsg('Venda salva, mas não foi possível registrar a rota de entrega: '+routeUpdate.error.message);return}
-    if(motivosAprovacao.length){
-      await supabase.from('aprovacoes_operacoes').insert(motivosAprovacao.map(a=>({
-        tipo:a.tipo,entidade_tipo:'venda',entidade_id:saved.id,solicitado_por:session.user.id,
-        aprovado_por:session.user.id,aprovado_em:new Date().toISOString(),status:'aprovado',motivo:a.motivo,detalhes:a.detalhes
-      })))
-    }
+    const routeUpdate=await supabase.from('vendas').update({rota_entrega:saleRoute,validade_orcamento:saleStatus==='orcamento'?quoteExpiration(today(),empresa?.validade_orcamento_dias??7):null}).eq('id',saved.id)
+    if(routeUpdate.error){setSavingSale(false);setShowForm(false);resetSaleForm();await loadData();setMsg('Venda salva. Abra a venda para corrigir a rota de entrega: '+routeUpdate.error.message);return}
     const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
     const desconto=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
     const total=Math.max(0,subtotal-desconto)
@@ -691,6 +705,18 @@ function App(){
       setMsg(autorizarSemEstoque?(editingSale?'Venda atualizada com autorização administrativa de estoque e fatura reemitida.':'Venda criada com autorização administrativa de estoque e fatura emitida.'):(editingSale?'Venda atualizada e fatura reemitida.':'Venda criada e fatura emitida.'))
     }catch{setMsg('Venda salva. A fatura pode ser reemitida pelo painel.')}
     setSavingSale(false);setShowForm(false);resetSaleForm();await loadData();requestAnimationFrame(()=>{const table=document.getElementById('sales-table');table?.scrollIntoView({behavior:'smooth',block:'start'});table?.focus()})
+  }
+  async function requestSaleAuthorization(){
+    if(savingSale||!canManageSales)return
+    if(!saleRoute||!saleItems.length||saleItems.some(i=>!i.produto_id||i.quantidade<=0)){setMsg('Preencha a rota e todos os itens antes de solicitar autorização.');return}
+    const motivo=window.prompt('Justifique a solicitação para o administrador (mínimo de 5 caracteres):')
+    if(!motivo)return
+    setSavingSale(true)
+    try{
+      const {error}=await supabase.rpc('solicitar_autorizacao_venda',{p_motivo:motivo,p_payload:{p_venda_id:editingSale?.id||null,p_cliente_id:saleClient||null,p_vendedor_cadastro_id:saleSeller||null,p_status:saleStatus,p_forma_pagamento:salePayment,p_parcelas:saleInstallments,p_primeiro_vencimento:saleDueDate,p_observacoes:saleNotes,p_rota_entrega:saleRoute,p_itens:saleItems.map(({produto_id,quantidade,valor_unitario,desconto})=>({produto_id,quantidade,valor_unitario,desconto}))}})
+      if(error){setMsg(error.message);return}
+      setShowForm(false);resetSaleForm();setActive('autorizacoes');setMsg('Solicitação enviada. A operação será concluída somente após aprovação administrativa.')
+    }finally{setSavingSale(false)}
   }
   async function downloadSalePdf(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
@@ -1018,12 +1044,15 @@ function App(){
   }
 
   async function cancelTitle(t:Titulo){
+    if(t.venda_id||t.compra_id){setMsg('Cancele a venda ou compra de origem para manter o financeiro integrado.');return}
+    if(Number(t.valor_pago)>0){setMsg('Este título possui pagamento e precisa de regularização financeira antes de cancelar.');return}
     const r=await supabase.from('titulos_financeiros').update({status:'cancelado'}).eq('id',t.id)
     setMsg(r.error?r.error.message:'Lançamento cancelado.')
     if(!r.error)await loadData()
   }
 
   async function deleteTitle(t:Titulo){
+    if(t.venda_id||t.compra_id||Number(t.valor_pago)>0){setMsg('Título vinculado ou com pagamento não pode ser excluído. Altere o documento de origem.');return}
     if(!isAdmin){setMsg('Somente administrador pode excluir lançamento.');return}
     if(!window.confirm('Excluir este lançamento?'))return
     const r=await supabase.from('titulos_financeiros').delete().eq('id',t.id)
@@ -1124,8 +1153,10 @@ function App(){
     e.preventDefault()
     if(!isAdmin){setMsg('Somente administrador pode alterar configurações.');return}
     const f=new FormData(e.currentTarget)
+    let settings
+    try{settings=readSettings(f,empresa?.campos_obrigatorios)}catch(error){setMsg((error as Error).message);return}
     const payload={id:1,razao_social:String(f.get('razao_social')||'SUA EMPRESA'),nome_fantasia:String(f.get('nome_fantasia')||'SUA EMPRESA'),cnpj:String(f.get('cnpj')||'')||null,email:String(f.get('email')||'')||null,telefone:String(f.get('telefone')||'')||null,endereco:String(f.get('endereco')||'')||null,cidade:String(f.get('cidade')||'')||null,uf:String(f.get('uf')||'')||null,cep:String(f.get('cep')||'')||null,pix_chave:String(f.get('pix_chave')||'')||null,banco:String(f.get('banco')||'')||null,agencia:String(f.get('agencia')||'')||null,conta:String(f.get('conta')||'')||null,condicoes_gerais:String(f.get('condicoes_gerais')||'')||null,updated_at:new Date().toISOString()}
-    const r=await supabase.from('empresa_config').upsert(payload,{onConflict:'id'})
+    const r=await supabase.from('empresa_config').upsert({...payload,...settings},{onConflict:'id'})
     setMsg(r.error?r.error.message:'Configurações da empresa salvas.')
     if(!r.error)await loadData()
   }
@@ -1418,6 +1449,7 @@ function App(){
 
       {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
+      {active==='autorizacoes'&&(isAdmin||isSeller)&&<AuthorizationCenter admin={isAdmin} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData}/>}
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
           <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
@@ -1892,6 +1924,7 @@ function App(){
 
           <div className="saleActions">
             <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}>Cancelar</button>
+            <button type="button" className="ghost" disabled={savingSale} onClick={e=>{if(e.currentTarget.form?.reportValidity())void requestSaleAuthorization()}}>Solicitar autorização</button>
             <button className="primary" disabled={savingSale}>{savingSale?'Salvando...':editingSale?'Salvar e reemitir':'Salvar e emitir fatura'}</button>
           </div>
         </form></div></div>}
@@ -2143,6 +2176,17 @@ function App(){
           <label className="fieldLabel">Agência<input name="agencia" placeholder="Agência" defaultValue={empresa?.agencia||''}/></label>
           <label className="fieldLabel">Conta<input name="conta" placeholder="Conta" defaultValue={empresa?.conta||''}/></label>
           <label className="fieldLabel fieldLabelWide">Condições gerais da fatura<textarea name="condicoes_gerais" placeholder="Condições gerais da fatura" defaultValue={empresa?.condicoes_gerais||''}/></label>
+          <h3 className="fieldLabelWide">Regras comerciais e segurança</h3>
+          <label className="fieldLabel">Desconto máximo do vendedor (%)<input name="desconto_max_vendedor" type="number" min="0" max="100" step="0.01" required defaultValue={empresa?.desconto_max_vendedor??10}/></label>
+          <label className="fieldLabel">Margem mínima (%)<input name="margem_minima_percentual" type="number" min="0" max="100" step="0.01" required defaultValue={empresa?.margem_minima_percentual??0}/></label>
+          <label className="fieldLabel">Validade do orçamento (dias)<input name="validade_orcamento_dias" type="number" min="1" max="365" required defaultValue={empresa?.validade_orcamento_dias??7}/></label>
+          <label className="fieldLabel">Encerrar sessão inativa (minutos)<input name="sessao_inatividade_minutos" type="number" min="5" max="480" required defaultValue={empresa?.sessao_inatividade_minutos??30}/></label>
+          <label><input type="checkbox" name="bloquear_cliente_inadimplente" defaultChecked={empresa?.bloquear_cliente_inadimplente??true}/> Exigir autorização para cliente inadimplente</label>
+          <label><input type="checkbox" name="exigir_aprovacao_limite_credito" defaultChecked={empresa?.exigir_aprovacao_limite_credito??true}/> Exigir autorização acima do limite de crédito</label>
+          <label><input type="checkbox" name="venda_cliente" defaultChecked={Boolean(empresa?.campos_obrigatorios?.venda_cliente)}/> Cliente obrigatório na venda</label>
+          <label><input type="checkbox" name="venda_vendedor" defaultChecked={Boolean(empresa?.campos_obrigatorios?.venda_vendedor)}/> Vendedor obrigatório na venda</label>
+          <label><input type="checkbox" name="compra_fornecedor" defaultChecked={Boolean(empresa?.campos_obrigatorios?.compra_fornecedor)}/> Fornecedor obrigatório na compra</label>
+          <p className="fieldLabelWide">Pedidos baixam estoque ao confirmar; compras dão entrada ao receber. Novos usuários aguardam liberação de um administrador.</p>
           <div className="formActions"><button className="primary">Salvar configurações</button></div></fieldset>
         </form>
       </section>}
