@@ -37,12 +37,12 @@ const red:[number,number,number]=[220,38,38]
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
 const dateBr=(value:string)=>{
   if(!value)return '-'
-  const d=/^\\d{4}-\\d{2}-\\d{2}$/.test(value)
+  const d=/^\d{4}-\d{2}-\d{2}$/.test(value)
     ? new Date(Number(value.slice(0,4)),Number(value.slice(5,7))-1,Number(value.slice(8,10)),12)
     : new Date(value)
   return Number.isNaN(d.getTime())?'-':new Intl.DateTimeFormat('pt-BR').format(d)
 }
-const safe=(value:string)=>value.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()
+const safe=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase()
 const fitText=(doc:jsPDF,value:string,width:number)=>{
   const t=String(value||'')
   if(doc.getTextWidth(t)<=width)return t
