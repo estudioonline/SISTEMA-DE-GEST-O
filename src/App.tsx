@@ -226,12 +226,9 @@ function App(){
   const canManagePurchases=canEditModule('compras')
   const canViewFinance=canViewModule('financeiro')
   const canManageFinance=canEditModule('financeiro')
-  const canViewCommissions=canViewModule('comissoes')
   const canManageCommissions=canEditModule('comissoes')
   const canViewAuthorizations=canViewModule('autorizacoes')
   const canManageAuthorizations=canEditModule('autorizacoes')
-  const canViewReports=canViewModule('relatorios')
-  const canViewConfig=canViewModule('config')
   const canManageConfig=canEditModule('config')
   const visibleMenu=menu.filter(([k])=>canViewModule(k))
 
@@ -383,12 +380,14 @@ function App(){
   }
 
   function startNewSeller(){
+    if(!canManageCommissions){setMsg('Você possui somente visualização em Comissões.');return}
     setEditingSeller(null)
     setShowForm(true)
     setMsg('')
   }
 
   function startEditSeller(v:Vendedor){
+    if(!canManageCommissions){setMsg('Você possui somente visualização em Comissões.');return}
     setEditingSeller(v)
     setShowForm(true)
     setMsg('')
@@ -474,7 +473,7 @@ function App(){
   }
 
   async function deleteProof(p:Comprovante){
-    if(!(isAdmin||profileRole==='financeiro')){setMsg('Somente administrador ou financeiro pode excluir comprovante.');return}
+    if(!canManageFinance){setMsg('Sem permissão para excluir comprovantes.');return}
     if(!window.confirm('Excluir este comprovante?'))return
     const storage=await supabase.storage.from('comprovantes-pagamento').remove([p.storage_path])
     if(storage.error){setMsg(storage.error.message);return}
@@ -526,6 +525,7 @@ function App(){
   function startEditClient(c:Cliente){if(!canManageClients){setMsg('Você possui apenas permissão de visualização em Clientes.');return}setEditingClient(c);setShowForm(true);setMsg('')}
   async function saveClient(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if(!canManageClients){setMsg('Sem permissão para editar Clientes.');return}
     const f=new FormData(e.currentTarget)
     const payload={
       nome:String(f.get('nome')||''),documento:String(f.get('documento')||'')||null,
@@ -552,6 +552,7 @@ function App(){
   function startEditSupplier(f:Fornecedor){if(!canManageSuppliers){setMsg('Você possui apenas permissão de visualização em Fornecedores.');return}setEditingSupplier(f);setShowForm(true);setMsg('')}
   async function saveSupplier(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if(!canManageSuppliers){setMsg('Sem permissão para editar Fornecedores.');return}
     const f=new FormData(e.currentTarget)
     const payload={
       nome:String(f.get('nome')||''),documento:String(f.get('documento')||'')||null,
@@ -574,19 +575,21 @@ function App(){
   }
 
   // PRODUTOS / ESTOQUE
-  function startNewProduct(){setEditingProduct(null);setAdjustingProduct(null);setShowForm(true);setMsg('')}
-  function startEditProduct(p:Produto){setEditingProduct(p);setAdjustingProduct(null);setShowForm(true);setMsg('')}
+  function startNewProduct(){if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}setEditingProduct(null);setAdjustingProduct(null);setShowForm(true);setMsg('')}
+  function startEditProduct(p:Produto){if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}setEditingProduct(p);setAdjustingProduct(null);setShowForm(true);setMsg('')}
   async function saveProduct(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return}
     const f=new FormData(e.currentTarget)
     const base={codigo:String(f.get('codigo')||''),descricao:String(f.get('descricao')||''),unidade:String(f.get('unidade')||'UN'),custo:Number(f.get('custo')||0),preco_venda:Number(f.get('preco_venda')||0),percentual_minimo_custo_venda:Number(f.get('percentual_minimo_custo_venda')??100),estoque_minimo:Number(f.get('estoque_minimo')||0),ativo:String(f.get('ativo')||'true')==='true'}
     const r=editingProduct?await supabase.from('produtos').update(base).eq('id',editingProduct.id):await supabase.from('produtos').insert({...base,estoque_atual:Number(f.get('estoque_atual')||0)})
     setMsg(r.error?r.error.message:editingProduct?'Produto atualizado.':'Produto cadastrado.')
     if(!r.error){setEditingProduct(null);setShowForm(false);await loadData()}
   }
-  function startAdjustStock(p:Produto){setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setShowForm(false);setMsg('')}
+  function startAdjustStock(p:Produto){if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setShowForm(false);setMsg('')}
   async function adjustStock(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}
     if(!adjustingProduct)return
     const {error}=await supabase.rpc('ajustar_estoque_produto',{p_produto_id:adjustingProduct.id,p_novo_estoque:Number(stockNew),p_motivo:stockReason})
     setMsg(error?error.message:'Estoque ajustado e movimento registrado.')
@@ -814,8 +817,9 @@ function App(){
 
   // COMPRAS
   function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('cotacao');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
-  function startNewPurchase(){resetPurchaseForm();setShowForm(true);setMsg('')}
+  function startNewPurchase(){if(!canManagePurchases){setMsg('Você possui somente visualização em Compras.');return}resetPurchaseForm();setShowForm(true);setMsg('')}
   function addPurchaseSuggestion(produto:Produto,quantidade:number){
+    if(!canManagePurchases){setMsg('Sem permissão para criar compras.');return}
     const qty=Math.max(0.001,Number(quantidade)||0)
     if(!showForm){resetPurchaseForm();setShowForm(true)}
     setPurchaseItems(items=>{
@@ -831,6 +835,7 @@ function App(){
     setMsg(`${produto.descricao} adicionado à compra sugerida.`)
   }
   function addAllPurchaseSuggestions(){
+    if(!canManagePurchases){setMsg('Sem permissão para criar compras.');return}
     if(!purchaseSuggestions.length)return
     if(!showForm){resetPurchaseForm();setShowForm(true)}
     setPurchaseItems(items=>{
@@ -848,6 +853,7 @@ function App(){
     setMsg(`${purchaseSuggestions.length} item(ns) de estoque baixo adicionados à compra.`)
   }
   async function startEditPurchase(c:Compra){
+    if(!canManagePurchases){setMsg('Você possui somente visualização em Compras.');return}
     if(c.status==='cancelada'){setMsg('Compra cancelada não pode ser editada.');return}
     const {data,error}=await supabase.from('compra_itens').select('produto_id,quantidade,custo_unitario,total').eq('compra_id',c.id)
     if(error){setMsg(error.message);return}
@@ -898,6 +904,7 @@ function App(){
 
   async function savePurchase(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if(!canManagePurchases){setMsg('Sem permissão para editar Compras.');return}
     const items=purchaseItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
 
@@ -1015,6 +1022,7 @@ function App(){
     }
   }
   async function receivePurchase(c:Compra){
+    if(!canManagePurchases){setMsg('Sem permissão para receber compras.');return}
     if(c.status!=='pedido_aprovado')return
     if(!window.confirm(`Confirmar o recebimento da compra #${invoiceNo(c.fatura_numero)}? Os itens serão adicionados ao estoque.`))return
 
@@ -1034,6 +1042,7 @@ function App(){
   }
 
   async function cancelPurchase(c:Compra){
+    if(!canManagePurchases){setMsg('Sem permissão para cancelar compras.');return}
     const detail=c.status==='pedido_recebido'
       ? 'O estoque será estornado e as contas a pagar em aberto serão canceladas.'
       : c.status==='pedido_aprovado'
@@ -1048,6 +1057,7 @@ function App(){
 
   // FINANCEIRO
   function startNewTitle(){
+    if(!canManageFinance){setMsg('Você possui somente visualização no Financeiro.');return}
     setEditingTitle(null)
     setFinanceTitleType('receber')
     setFinanceTitleEntity('')
@@ -1056,6 +1066,7 @@ function App(){
   }
 
   function startEditTitle(t:Titulo){
+    if(!canManageFinance){setMsg('Você possui somente visualização no Financeiro.');return}
     setEditingTitle(t)
     setFinanceTitleType(t.tipo)
     setFinanceTitleEntity(t.entidade_nome||'')
@@ -1076,6 +1087,7 @@ function App(){
 
   async function saveTitle(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if(!canManageFinance){setMsg('Sem permissão para editar o Financeiro.');return}
     const f=new FormData(e.currentTarget)
     const linked=Boolean(editingTitle?.venda_id||editingTitle?.compra_id)
     const classification={
@@ -1118,6 +1130,7 @@ function App(){
   }
 
   async function registerPayment(t:Titulo){
+    if(!canManageFinance){setMsg('Sem permissão para registrar pagamentos ou recebimentos.');return}
     const amount=Number(paymentAmount)
     const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
     if(!paymentDate){setMsg('Informe a data do pagamento/recebimento.');return}
@@ -1145,6 +1158,7 @@ function App(){
   }
 
   async function cancelTitle(t:Titulo){
+    if(!canManageFinance){setMsg('Sem permissão para cancelar lançamentos financeiros.');return}
     if(t.venda_id||t.compra_id){setMsg('Cancele a venda ou compra de origem para manter o financeiro integrado.');return}
     if(Number(t.valor_pago)>0){setMsg('Este título possui pagamento e precisa de regularização financeira antes de cancelar.');return}
     const r=await supabase.from('titulos_financeiros').update({status:'cancelado'}).eq('id',t.id)
@@ -1532,7 +1546,7 @@ function App(){
         <div><strong>{p.nome_arquivo}</strong><span>{dateBr(p.created_at)}{p.tamanho?' • '+(Number(p.tamanho)/1024).toFixed(0)+' KB':''}</span></div>
         <div className="rowActions">
           <button type="button" className="ghost" onClick={()=>void openProof(p)}><ExternalLink size={14}/>Abrir</button>
-          {(isAdmin||profileRole==='financeiro')&&<button type="button" className="dangerAction" onClick={()=>void deleteProof(p)}><Trash2 size={14}/>Excluir</button>}
+          {canManageFinance&&<button type="button" className="dangerAction" onClick={()=>void deleteProof(p)}><Trash2 size={14}/>Excluir</button>}
         </div>
       </div>)}</div>}
     </div>
