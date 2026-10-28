@@ -4016,31 +4016,36 @@
 .recordDetailOverlay{
   position:fixed;
   inset:0;
-  z-index:1200;
+  z-index:3000;
   display:flex;
   align-items:flex-start;
   justify-content:center;
-  padding:7vh 24px 32px;
+  padding:24px;
+  overflow:auto;
+  background:rgba(15,23,42,.62);
+  backdrop-filter:blur(4px);
 }
 .recordDetailBackdrop{
-  position:absolute;
+  position:fixed;
   inset:0;
-  background:rgba(15,23,42,.38);
-  backdrop-filter:blur(2px);
+  z-index:0;
+  background:transparent;
 }
 .recordDetailSheet{
   position:relative;
   z-index:1;
-  width:min(920px,calc(100vw - 32px));
-  max-height:86vh;
+  width:min(1180px,100%);
+  min-height:min(520px,calc(100vh - 48px));
+  max-height:calc(100vh - 48px);
+  margin:auto;
   overflow:auto;
   border:1px solid var(--ds-border);
   border-radius:18px;
   background:var(--ds-surface);
-  box-shadow:0 24px 70px rgba(15,23,42,.24);
+  box-shadow:0 28px 90px rgba(15,23,42,.34);
   padding:18px;
 }
-.recordDetailSheetWide{width:min(1120px,calc(100vw - 32px))}
+.recordDetailSheetWide{width:min(1280px,100%)}
 .recordDetailHeader{
   position:sticky;
   top:-18px;
