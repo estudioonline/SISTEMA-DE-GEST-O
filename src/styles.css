@@ -3366,3 +3366,178 @@
     width:100%;
   }
 }
+
+
+/* Cards de vendas: resumo direto no card e painel completo por duplo clique */
+.salesCardsPanel{
+  display:grid;
+  gap:14px;
+}
+.salesCardToolbar{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.salesCardToolbar>span{
+  font-size:12px;
+  font-weight:700;
+  color:#64748B;
+}
+.salesCardToolbar .ghost{
+  height:34px;
+  min-height:34px;
+  padding:0 10px;
+}
+.salesCardGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
+  gap:14px;
+}
+.saleRecordCard{
+  border:1px solid #E2E8F0;
+  border-radius:16px;
+  background:#FFFFFF;
+  box-shadow:0 8px 22px rgba(15,23,42,.06);
+  padding:16px;
+  display:grid;
+  gap:14px;
+  outline:none;
+  transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.saleRecordCard:hover{
+  border-color:#CBD5E1;
+  box-shadow:0 12px 28px rgba(15,23,42,.09);
+  transform:translateY(-1px);
+}
+.saleRecordCard:focus-visible{
+  border-color:#3B82F6;
+  box-shadow:0 0 0 3px rgba(59,130,246,.13),0 12px 28px rgba(15,23,42,.09);
+}
+.saleRecordCard.opened{
+  grid-column:1/-1;
+  border-color:#93C5FD;
+}
+.saleCardHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+}
+.saleCardDocument,
+.saleCardAmount{
+  display:grid;
+  gap:3px;
+}
+.saleCardDocument>strong{
+  font-size:20px;
+  color:#0F172A;
+}
+.saleCardDocument>span:last-child,
+.saleCardAmount>span{
+  font-size:12px;
+  color:#64748B;
+}
+.saleCardEyebrow{
+  font-size:11px!important;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#3B82F6!important;
+}
+.saleCardAmount{
+  text-align:right;
+}
+.saleCardAmount>strong{
+  font-size:20px;
+  color:#1D4ED8;
+}
+.saleCardBadges{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.saleCardData{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px 18px;
+  padding:12px 0;
+  border-top:1px solid #EEF2F7;
+  border-bottom:1px solid #EEF2F7;
+}
+.saleCardData>div{
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+.saleCardData span{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:#94A3B8;
+}
+.saleCardData strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#1E293B;
+}
+.saleCardFooter{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.saleCardFooter>span{
+  font-size:12px;
+  color:#64748B;
+}
+.saleCardOpenBtn{
+  flex:0 0 auto;
+}
+.saleCardDetail{
+  display:grid;
+  gap:14px;
+  padding-top:4px;
+}
+.saleCardActions{
+  margin-top:0!important;
+}
+.dark .saleRecordCard{
+  background:#151C2B;
+  border-color:#2A3648;
+  box-shadow:0 10px 28px rgba(0,0,0,.2);
+}
+.dark .saleRecordCard:hover{
+  border-color:#3B4A61;
+}
+.dark .saleRecordCard.opened{
+  border-color:#3B82F6;
+}
+.dark .saleCardDocument>strong,
+.dark .saleCardData strong{
+  color:#E2E8F0;
+}
+.dark .saleCardDocument>span:last-child,
+.dark .saleCardAmount>span,
+.dark .saleCardFooter>span,
+.dark .salesCardToolbar>span{
+  color:#94A3B8;
+}
+.dark .saleCardAmount>strong{
+  color:#60A5FA;
+}
+.dark .saleCardData{
+  border-color:#273347;
+}
+.dark .saleCardData span{
+  color:#7F8EA3;
+}
+@media(max-width:760px){
+  .salesCardGrid{grid-template-columns:1fr}
+  .saleCardHead{flex-direction:column}
+  .saleCardAmount{text-align:left}
+  .saleCardData{grid-template-columns:1fr}
+  .saleCardFooter{align-items:flex-start}
+}
