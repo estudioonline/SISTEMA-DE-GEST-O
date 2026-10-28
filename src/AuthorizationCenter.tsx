@@ -60,7 +60,7 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
       return <article className="panel" key={row.id}>
         <h4>{p?(row.entidade_id?'Orçamento → venda':p.p_venda_id?'Alteração de venda':'Nova venda'):row.tipo} · {row.status}</h4>
         <p>{new Date(row.solicitado_em).toLocaleString('pt-BR')} · {row.motivo}</p>
-        {p&&<>{row.entidade_id&&<p className="authorizationQuoteLink"><strong>Orçamento vinculado:</strong> {row.entidade_id} · aguardando aprovação para avançar para {String(p.p_status)==='faturado'?'Faturado':'Pedido'}.</p>}<p>Cliente: {clients.find(c=>c.id===p.p_cliente_id)?.nome||'Consumidor'} · Vendedor: {sellers.find(s=>s.id===p.p_vendedor_cadastro_id)?.nome||'Sem vendedor'}</p><p>Etapa: {String(p.p_status)} · Pagamento: {String(p.p_forma_pagamento)} · Parcelas: {String(p.p_parcelas)} · Rota: {String(p.p_rota_entrega)}</p>
+        {p&&<>{row.entidade_id&&<p className="authorizationQuoteLink"><strong>Orçamento vinculado.</strong> Aguardando aprovação para avançar para {String(p.p_status)==='faturado'?'Faturado':'Pedido'}.</p>}<p>Cliente: {clients.find(c=>c.id===p.p_cliente_id)?.nome||'Consumidor'} · Vendedor: {sellers.find(s=>s.id===p.p_vendedor_cadastro_id)?.nome||'Sem vendedor'}</p><p>Etapa: {String(p.p_status)} · Pagamento: {String(p.p_forma_pagamento)} · Parcelas: {String(p.p_parcelas)} · Rota: {String(p.p_rota_entrega)}</p>
         <p>Primeiro vencimento: {String(p.p_primeiro_vencimento)} · Observações: {String(p.p_observacoes||'—')}</p>
         <table><thead><tr><th>Produto</th><th>Quantidade</th><th>Preço</th><th>Desconto</th><th>Estoque após venda</th></tr></thead><tbody>{items.map((i,index)=>{
           const product=products.find(x=>x.id===i.produto_id)
