@@ -2662,7 +2662,6 @@ function App(){
               <button type="button" className="ghost" onClick={closeSaleDetail}><ChevronLeft size={16}/>Voltar para lista</button>
               <div className="saleDetailActions">
                 <button type="button" className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
-                <button type="button" className="ghost" onClick={()=>void printSalePdf(v)}><Printer size={15}/>Imprimir</button>
                 {canManageSales&&v.status==='orcamento'&&<button type="button" className="primary advanceSaleBtn" disabled={savingSale||waiting} title={waiting?'Aguardando aprovação administrativa':'Avançar orçamento para pedido'} onClick={()=>void advanceSaleToOrder(v)}><CheckCircle2 size={15}/>{waiting?'Aguardando autorização':'Avançar para pedido'}</button>}
                 {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
                 <button type="button" className="ghost" disabled={saleHistoryBusy} onClick={()=>void loadSaleHistory(v)}><RefreshCw size={15}/>{saleHistoryBusy?'Carregando...':'Histórico'}</button>
