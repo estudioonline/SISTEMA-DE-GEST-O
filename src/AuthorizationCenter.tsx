@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 
 type Request = {id:string;tipo:string;status:string;motivo:string|null;solicitado_em:string;aprovado_em:string|null;decisao_motivo:string|null;resultado_id:string|null;entidade_id:string|null;payload:Record<string,unknown>|null}
-type Product = {id:string;descricao:string;estoque_atual:number;unidade:string}
+type Product = {id:string;descricao:string;estoque_atual:number;unidade:string;custo:number|null;custo_medio:number|null;percentual_minimo_custo_venda:number|null}
 
 export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{admin:boolean;products:Product[];clients:{id:string;nome:string}[];sellers:{id:string;nome:string}[];onChanged:()=>Promise<void>}) {
   const [rows,setRows]=useState<Request[]>([])
@@ -46,7 +46,7 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
     <div className="panelHead"><div><h3>Central de autorizações</h3><p>A aprovação salva a venda e seus vínculos em uma única operação. Preços, crédito e estoque são verificados novamente no banco.</p></div><button className="ghost" onClick={()=>void load()}>Atualizar</button></div>
     {error&&<p role="alert">{error}</p>}
     <label className="fieldLabel">Status<select value={filter} onChange={e=>{setPage(0);setFilter(e.target.value)}}><option value="pendente">Pendentes</option><option value="todos">Todos</option><option value="aprovado">Aprovados</option><option value="rejeitado">Rejeitados</option></select></label>
-    <p>{count} registro(s). {admin?'Ao autorizar, você também aprova eventuais exceções de crédito, desconto, margem e estoque negativo deste rascunho. O preço mínimo por produto continua obrigatório.':'Você acompanha suas próprias solicitações.'}</p>
+    <p>{count} registro(s). {admin?'Ao autorizar, você também aprova eventuais exceções de crédito, desconto, margem, estoque negativo e preço abaixo do mínimo deste rascunho.':'Você acompanha suas próprias solicitações.'}</p>
     {rows.filter(r=>filter==='todos'||r.status===filter).map(row=>{
       const p=row.payload
       const items=(Array.isArray(p?.p_itens)?p.p_itens:[]) as {produto_id:string;quantidade:number;valor_unitario:number;desconto:number}[]
@@ -57,24 +57,40 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
             return product?Number(product.estoque_atual)<Number(i.quantidade):false
           })
         : false
+      const hasBelowMinimum=String(p?.p_status)==='pedido'||String(p?.p_status)==='faturado'
+        ? items.some(i=>{
+            const product=products.find(x=>x.id===i.produto_id)
+            if(!product||Number(i.quantidade)<=0)return false
+            const cost=Math.round(Number(product.custo_medio??product.custo??0)*100)/100
+            const minimum=cost*(1+Number(product.percentual_minimo_custo_venda??100)/100)
+            const effective=Number(i.valor_unitario)-Math.min(Number(i.desconto||0),Number(i.quantidade)*Number(i.valor_unitario))/Number(i.quantidade)
+            return effective+0.000001<minimum
+          })
+        : false
       return <article className="panel" key={row.id}>
         <h4>{p?(row.entidade_id?'Orçamento → venda':p.p_venda_id?'Alteração de venda':'Nova venda'):row.tipo} · {row.status}</h4>
         <p>{new Date(row.solicitado_em).toLocaleString('pt-BR')} · {row.motivo}</p>
         {p&&<>{row.entidade_id&&<p className="authorizationQuoteLink"><strong>Orçamento vinculado.</strong> Aguardando aprovação para avançar para {String(p.p_status)==='faturado'?'Faturado':'Pedido'}.</p>}<p>Cliente: {clients.find(c=>c.id===p.p_cliente_id)?.nome||'Consumidor'} · Vendedor: {sellers.find(s=>s.id===p.p_vendedor_cadastro_id)?.nome||'Sem vendedor'}</p><p>Etapa: {String(p.p_status)} · Pagamento: {String(p.p_forma_pagamento)} · Parcelas: {String(p.p_parcelas)} · Rota: {String(p.p_rota_entrega)}</p>
         <p>Primeiro vencimento: {String(p.p_primeiro_vencimento)} · Observações: {String(p.p_observacoes||'—')}</p>
-        <table><thead><tr><th>Produto</th><th>Quantidade</th><th>Preço</th><th>Desconto</th><th>Estoque após venda</th></tr></thead><tbody>{items.map((i,index)=>{
+        <table><thead><tr><th>Produto</th><th>Quantidade</th><th>Preço</th><th>Preço mínimo</th><th>Desconto</th><th>Estoque após venda</th></tr></thead><tbody>{items.map((i,index)=>{
           const product=products.find(x=>x.id===i.produto_id)
           const projected=product?Number(product.estoque_atual)-Number(i.quantidade):null
+          const cost=product?Math.round(Number(product.custo_medio??product.custo??0)*100)/100:0
+          const minimum=product?cost*(1+Number(product.percentual_minimo_custo_venda??100)/100):0
+          const effective=Number(i.quantidade)>0?Number(i.valor_unitario)-Math.min(Number(i.desconto||0),Number(i.quantidade)*Number(i.valor_unitario))/Number(i.quantidade):0
+          const below=Boolean(product)&&effective+0.000001<minimum
           return <tr key={index}>
             <td>{product?.descricao||i.produto_id}</td>
             <td>{i.quantidade}</td>
-            <td>{Number(i.valor_unitario).toFixed(2)}</td>
+            <td><span className={below?'authorizationBelowMinPrice':''}>{Number(i.valor_unitario).toFixed(2)}</span></td>
+            <td>{product?minimum.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'—'}</td>
             <td>{Number(i.desconto||0).toFixed(2)}</td>
             <td><span className={projected!==null&&projected<0?'authorizationNegativeStock':'authorizationStockOk'}>{projected===null?'—':`${projected.toLocaleString('pt-BR')} ${product?.unidade||''}`}</span></td>
           </tr>
         })}</tbody></table>
+        {hasBelowMinimum&&<div className="authorizationPriceWarning"><strong>Preço abaixo do mínimo</strong><span>Ao aprovar, o administrador também autoriza esta venda abaixo do preço mínimo configurado para o produto.</span></div>}
         {hasStockShortage&&<div className="authorizationStockWarning"><strong>Estoque insuficiente autorizado</strong><span>Se esta venda for aprovada, ela continuará normalmente e o saldo do produto poderá ficar negativo.</span></div>}
-        <p>Total: {total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p></>}
+        <p>Total: {total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p></>
         {row.decisao_motivo&&<p>Decisão: {row.decisao_motivo}</p>}
         {(row.resultado_id||row.entidade_id)&&<p>Venda vinculada: {row.resultado_id||row.entidade_id}</p>}
         {admin&&p&&row.status==='pendente'&&<>{(()=>{
