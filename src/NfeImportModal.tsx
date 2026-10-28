@@ -248,6 +248,15 @@ export function NfeImportModal({
   const autoCount=items.filter(i=>i.autoMapped).length
   const itemTotal=items.reduce((sum,item)=>sum+Number(item.valor_total||0),0)
   const difference=nfe?nfe.valor_total-itemTotal:0
+  const installmentValues=useMemo(()=>{
+    if(!nfe||dueDates.length===0)return []
+    const total=Math.round(Number(nfe.valor_total||0)*100)/100
+    const base=Math.floor((total/dueDates.length)*100)/100
+    return dueDates.map((_,index)=>index===dueDates.length-1
+      ? Math.round((total-base*(dueDates.length-1))*100)/100
+      : base
+    )
+  },[nfe,dueDates])
 
   return <div className="saleModalOverlay nfeModalOverlay" role="dialog" aria-modal="true" aria-label="Importar XML de NF-e">
     <div className="saleModalShell nfeModalShell">
@@ -290,7 +299,8 @@ export function NfeImportModal({
               </select>
             </label>
             <div className="nfeDueDates">
-              {dueDates.map((date,index)=><label key={index}>Vencimento {index+1}
+              {dueDates.map((date,index)=><label key={index}>
+                <span className="nfeDueLabel"><span>Vencimento {index+1}</span><strong>{money(installmentValues[index]||0)}</strong></span>
                 <span><input type="date" value={date} onChange={e=>updateDue(index,e.target.value)}/>{dueDates.length>1&&<button type="button" className="iconBtn" onClick={()=>removeInstallment(index)} aria-label="Remover parcela"><X size={14}/></button>}</span>
               </label>)}
               {payment!=='pix'&&<button type="button" className="ghost" onClick={addInstallment}><Plus size={15}/>Parcela</button>}
