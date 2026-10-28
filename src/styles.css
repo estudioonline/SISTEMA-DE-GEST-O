@@ -2543,3 +2543,39 @@
   .financePanelTabs{width:100%}
   .financePanelTabs button{flex:1}
 }
+
+
+/* Central de autorizações - validação visível da decisão */
+.authorizationReasonField textarea{
+  min-height:82px;
+  resize:vertical;
+}
+.authorizationReasonHint,
+.authorizationReasonOk{
+  margin-top:2px;
+  font-size:11px;
+  font-weight:700;
+}
+.authorizationReasonHint{
+  color:#b45309;
+}
+.authorizationReasonOk{
+  color:#15803d;
+}
+.authorizationInlineError{
+  margin:8px 0 0;
+  padding:10px 12px;
+  border:1px solid #fecaca;
+  border-radius:10px;
+  background:#fef2f2;
+  color:#b91c1c;
+  font-size:12px;
+  font-weight:700;
+}
+.dark .authorizationReasonHint{color:#fbbf24}
+.dark .authorizationReasonOk{color:#86efac}
+.dark .authorizationInlineError{
+  background:#3b1d22;
+  border-color:#63313a;
+  color:#fca5a5;
+}
