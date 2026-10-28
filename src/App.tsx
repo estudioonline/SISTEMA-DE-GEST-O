@@ -1261,6 +1261,52 @@ function App(){
   const monthSales=vendas.filter(v=>{const d=new Date(v.created_at),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&v.status!=='cancelado'}).reduce((s,v)=>s+Number(v.total),0)
   const openReceivables=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   const openPayables=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const openReceivableCount=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0).length
+  const openPayableCount=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0).length
+  const financeCategories=Array.from(new Set(titulos.map(t=>t.categoria).filter((v):v is string=>Boolean(v)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))
+  const financeCenters=Array.from(new Set(titulos.map(t=>t.centro_custo).filter((v):v is string=>Boolean(v)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))
+  const financeMonthStart=monthStartIso()
+  const financeMonthEnd=monthEndIso()
+  const financeTitleById=new Map(titulos.map(t=>[t.id,t]))
+  const financePaymentById=new Map(financePayments.map(p=>[p.id,p]))
+  const monthMovement=(type:'receber'|'pagar')=>{
+    const payments=financePayments
+      .filter(p=>p.data_pagamento>=financeMonthStart&&p.data_pagamento<=financeMonthEnd&&financeTitleById.get(p.titulo_id)?.tipo===type)
+      .reduce((s,p)=>s+Number(p.valor),0)
+    const reversals=financeReversals
+      .filter(e=>{
+        const p=financePaymentById.get(e.pagamento_id)
+        return e.data_estorno>=financeMonthStart&&e.data_estorno<=financeMonthEnd&&p&&financeTitleById.get(p.titulo_id)?.tipo===type
+      })
+      .reduce((s,e)=>s+Number(e.valor),0)
+    return payments-reversals
+  }
+  const receivedThisMonth=monthMovement('receber')
+  const paidThisMonth=monthMovement('pagar')
+  const cashResultThisMonth=receivedThisMonth-paidThisMonth
+  const next7End=addDaysIso(today(),6)
+  const dueNext7Receivable=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=today()&&t.vencimento<=next7End).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const dueNext7Payable=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=today()&&t.vencimento<=next7End).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const financeProjectionRanges=[[0,6],[7,13],[14,20],[21,29]] as const
+  const financeProjection=financeProjectionRanges.map(([from,to],index)=>{
+    const start=addDaysIso(today(),from),end=addDaysIso(today(),to)
+    const relevant=titulos.filter(t=>t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=start&&t.vencimento<=end)
+    const receber=relevant.filter(t=>t.tipo==='receber').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+    const pagar=relevant.filter(t=>t.tipo==='pagar').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+    return {label:index===0?'Próx. 7 dias':`${from+1}–${to+1} dias`,start,end,receber,pagar,liquido:receber-pagar}
+  })
+  const financeProjectionMax=Math.max(1,...financeProjection.flatMap(p=>[p.receber,p.pagar]))
+
+  function setFinanceQuickRange(kind:'hoje'|'7d'|'30d'|'mes'){
+    const base=today()
+    if(kind==='hoje'){setFinanceStart(base);setFinanceEnd(base);return}
+    if(kind==='7d'){setFinanceStart(base);setFinanceEnd(addDaysIso(base,6));return}
+    if(kind==='30d'){setFinanceStart(base);setFinanceEnd(addDaysIso(base,29));return}
+    setFinanceStart(monthStartIso(base));setFinanceEnd(monthEndIso(base))
+  }
+  function clearFinanceFilters(){
+    setFinanceStart('');setFinanceEnd('');setFinanceStatusFilter('todos');setFinanceCategory('todos');setFinanceCenter('todos')
+  }
 
   const dashboardSalesMonths=Array.from({length:6},(_,idx)=>{
     const d=new Date()
