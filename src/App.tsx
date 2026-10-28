@@ -174,6 +174,7 @@ function App(){
   const [saleDueDate,setSaleDueDate]=useState(today())
   const [saleItems,setSaleItems]=useState<SaleItemDraft[]>([newSaleItem()])
   const [originalSaleItems,setOriginalSaleItems]=useState<VendaItem[]>([])
+  const [saleCreditState,setSaleCreditState]=useState<{em_aberto:number;vencido:number}|null>(null)
   const [savingSale,setSavingSale]=useState(false)
   const [saleRequestId,setSaleRequestId]=useState(()=>crypto.randomUUID())
 
@@ -263,6 +264,20 @@ function App(){
   useEffect(()=>{
     if(session&&active==='financeiro'&&canViewFinance)void loadFinanceActivity()
   },[session?.user.id,active,profileRole])
+
+  useEffect(()=>{
+    if(!session||!showForm||active!=='vendas'||saleStatus==='orcamento'||!saleClient){
+      setSaleCreditState(null)
+      return
+    }
+    let cancelled=false
+    void supabase.rpc('situacao_credito_cliente',{p_cliente_id:saleClient,p_excluir_venda_id:editingSale?.id||null}).then(({data,error})=>{
+      if(cancelled||error)return
+      const row=Array.isArray(data)?data[0]:data
+      setSaleCreditState({em_aberto:Number(row?.em_aberto||0),vencido:Number(row?.vencido||0)})
+    })
+    return ()=>{cancelled=true}
+  },[session?.user.id,showForm,active,saleStatus,saleClient,editingSale?.id])
 
   useEffect(()=>{
     if(!session)return
@@ -664,7 +679,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}resetSaleForm();setShowForm(true);setMsg('')}
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
