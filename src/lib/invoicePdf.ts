@@ -127,40 +127,57 @@ function companyData(data:InvoiceData){
 function drawBrandHeader(doc:jsPDF,data:InvoiceData){
   const company=companyData(data)
 
-  doc.setFillColor(...paleBlue)
-  doc.rect(0,0,210,49,'F')
-  doc.setFillColor(255,255,255)
-  doc.triangle(126,49,145,38,145,49,'F')
+  const headerBottom=56
+  const brandLeft=12
+  const companyRight=196
+  const companyBlockWidth=78
 
+  doc.setFillColor(...paleBlue)
+  doc.rect(0,0,210,headerBottom,'F')
+  doc.setFillColor(255,255,255)
+  doc.triangle(126,headerBottom,145,44,145,headerBottom,'F')
+
+  // Marca: ocupa somente o bloco esquerdo.
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
   doc.setFontSize(21)
-  doc.text(company.nome,12,17)
+  const brandLines=doc.splitTextToSize(company.nome,88) as string[]
+  doc.text(brandLines.slice(0,2),brandLeft,16,{lineHeightFactor:1.05})
 
+  const brandSubtitleY=brandLines.length>1?29:23
   doc.setTextColor(...blue)
   doc.setFontSize(7.5)
   doc.setCharSpace(1.5)
-  doc.text('SISTEMA DE GESTÃO',12,23)
+  doc.text('SISTEMA DE GESTÃO',brandLeft,brandSubtitleY)
   doc.setCharSpace(0)
 
-  doc.setTextColor(...text)
-  doc.setFont('helvetica','normal')
-  doc.setFontSize(8.3)
-  const rightX=196
-  const companyLines=[
-    company.razao && company.razao!==company.nome ? company.razao : '',
-    company.endereco,
-    company.cidade,
-    company.cep,
-    'Brasil',
-  ].filter(Boolean)
-  let ry=12
-  companyLines.slice(0,5).forEach(v=>{doc.text(v,rightX,ry,{align:'right'});ry+=5.2})
+  // Dados da empresa: bloco direito com largura limitada e quebra automática.
+  // Isso evita que endereços longos atravessem o logo ou sejam cortados.
+  let ry=9
+  const drawRightBlock=(value:string,options?:{bold?:boolean;size?:number;gap?:number})=>{
+    if(!value)return
+    doc.setFont('helvetica',options?.bold?'bold':'normal')
+    doc.setFontSize(options?.size??7.2)
+    const lines=doc.splitTextToSize(value,companyBlockWidth) as string[]
+    lines.forEach(lineText=>{
+      doc.text(lineText,companyRight,ry,{align:'right'})
+      ry+=3.8
+    })
+    ry+=options?.gap??0.8
+  }
+
+  const legalName=company.razao&&company.razao!==company.nome?company.razao:company.nome
+  drawRightBlock(legalName,{bold:true,size:7.3,gap:1})
+  drawRightBlock(company.endereco,{size:7.1,gap:0.7})
+
+  const locality=[company.cidade,company.cep].filter(Boolean).join('  •  ')
+  drawRightBlock(locality,{size:7.1,gap:0.4})
+  drawRightBlock('Brasil',{size:7.1,gap:0})
 
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(20)
-  doc.text(`Pedido nº ${invoiceNo(data.fatura_numero)}`,196,46,{align:'right'})
+  doc.setFontSize(18)
+  doc.text(`Pedido nº ${invoiceNo(data.fatura_numero)}`,196,52,{align:'right'})
 }
 
 function drawCustomer(doc:jsPDF,data:InvoiceData){
@@ -168,11 +185,11 @@ function drawCustomer(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
   doc.setFontSize(9.5)
-  doc.text(c?.nome||'CONSUMIDOR',12,61)
+  doc.text(c?.nome||'CONSUMIDOR',12,66)
 
   doc.setFont('helvetica','normal')
   doc.setFontSize(8.2)
-  let y=67
+  let y=72
   const lines=[
     c?.email||'',
     c?.telefone||'',
@@ -180,7 +197,7 @@ function drawCustomer(doc:jsPDF,data:InvoiceData){
   ].filter(Boolean)
 
   lines.forEach(v=>{doc.text(v,12,y);y+=5})
-  return Math.max(84,y+4)
+  return Math.max(89,y+4)
 }
 
 function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
