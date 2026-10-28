@@ -29,9 +29,9 @@ type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 type PurchasePaymentMethod='pix'|'cartao'|'boleto'
 type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 
-type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean}
+type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
@@ -546,9 +546,23 @@ function App(){
     if(!canManageClients){setMsg('Sem permissão para editar Clientes.');return}
     const f=new FormData(e.currentTarget)
     const payload={
-      nome:String(f.get('nome')||''),documento:String(f.get('documento')||'')||null,
-      email:String(f.get('email')||'')||null,telefone:String(f.get('telefone')||'')||null,
-      limite_credito:Number(f.get('limite_credito')||0),ativo:String(f.get('ativo')||'true')==='true'
+      nome:String(f.get('nome')||'').trim(),
+      documento:String(f.get('documento')||'').trim()||null,
+      email:String(f.get('email')||'').trim()||null,
+      telefone:String(f.get('telefone')||'').trim()||null,
+      limite_credito:Number(f.get('limite_credito')||0),
+      logradouro:String(f.get('logradouro')||'').trim()||null,
+      numero:String(f.get('numero')||'').trim()||null,
+      bairro:String(f.get('bairro')||'').trim()||null,
+      municipio:String(f.get('municipio')||'').trim()||null,
+      codigo_municipio:onlyDigits(String(f.get('codigo_municipio')||''),7)||null,
+      uf:String(f.get('uf')||'').trim().toUpperCase()||null,
+      cep:onlyDigits(String(f.get('cep')||''),8)||null,
+      indicador_ie:String(f.get('indicador_ie')||'').trim()||null,
+      inscricao_estadual:String(f.get('inscricao_estadual')||'').trim()||null,
+      consumidor_final:String(f.get('consumidor_final')||'true')==='true',
+      presenca_comprador:Number(f.get('presenca_comprador')||0)||null,
+      ativo:String(f.get('ativo')||'true')==='true'
     }
     const r=editingClient?await supabase.from('clientes').update(payload).eq('id',editingClient.id):await supabase.from('clientes').insert(payload)
     setMsg(r.error?r.error.message:editingClient?'Cliente atualizado.':'Cliente cadastrado.')
@@ -599,7 +613,36 @@ function App(){
     e.preventDefault()
     if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return}
     const f=new FormData(e.currentTarget)
-    const base={codigo:String(f.get('codigo')||''),descricao:String(f.get('descricao')||''),unidade:String(f.get('unidade')||'UN'),custo:Number(f.get('custo')||0),preco_venda:Number(f.get('preco_venda')||0),percentual_minimo_custo_venda:Number(f.get('percentual_minimo_custo_venda')??100),estoque_minimo:Number(f.get('estoque_minimo')||0),ativo:String(f.get('ativo')||'true')==='true'}
+    let complemento:Record<string,unknown>={}
+    const complementoRaw=String(f.get('complemento_tributario')||'').trim()
+    if(complementoRaw){
+      try{
+        const parsed=JSON.parse(complementoRaw)
+        if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error()
+        complemento=parsed as Record<string,unknown>
+      }catch{
+        setMsg('Complemento tributário deve ser um objeto JSON válido.')
+        return
+      }
+    }
+    const base={
+      codigo:String(f.get('codigo')||'').trim(),
+      descricao:String(f.get('descricao')||'').trim(),
+      unidade:String(f.get('unidade')||'UN').trim(),
+      custo:Number(f.get('custo')||0),
+      preco_venda:Number(f.get('preco_venda')||0),
+      percentual_minimo_custo_venda:Number(f.get('percentual_minimo_custo_venda')??100),
+      estoque_minimo:Number(f.get('estoque_minimo')||0),
+      ncm:onlyDigits(String(f.get('ncm')||''),8)||null,
+      cfop_interno:onlyDigits(String(f.get('cfop_interno')||''),4)||null,
+      cfop_interestadual:onlyDigits(String(f.get('cfop_interestadual')||''),4)||null,
+      origem:String(f.get('origem')||'')===''?null:Number(f.get('origem')),
+      cst_icms:onlyDigits(String(f.get('cst_icms')||''),3)||null,
+      cst_pis:onlyDigits(String(f.get('cst_pis')||''),2)||null,
+      cst_cofins:onlyDigits(String(f.get('cst_cofins')||''),2)||null,
+      complemento_tributario:complemento,
+      ativo:String(f.get('ativo')||'true')==='true'
+    }
     const r=editingProduct?await supabase.from('produtos').update(base).eq('id',editingProduct.id):await supabase.from('produtos').insert({...base,estoque_atual:Number(f.get('estoque_atual')||0)})
     setMsg(r.error?r.error.message:editingProduct?'Produto atualizado.':'Produto cadastrado.')
     if(!r.error){setEditingProduct(null);setShowForm(false);await loadData()}
@@ -1875,6 +1918,34 @@ function App(){
           <label className="fieldLabel">Limite de crédito
             <input name="limite_credito" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={editingClient?.limite_credito||0}/>
           </label>
+          <div className="fiscalCadastroSection">
+            <div className="fiscalCadastroTitle"><strong>Dados fiscais e endereço para NF-e</strong><span>Estes dados são usados automaticamente na emissão. Mantenha o cadastro completo.</span></div>
+            <label className="fieldLabel">Logradouro<input name="logradouro" defaultValue={editingClient?.logradouro||''} placeholder="Rua, avenida..."/></label>
+            <label className="fieldLabel">Número<input name="numero" defaultValue={editingClient?.numero||''} placeholder="Número"/></label>
+            <label className="fieldLabel">Bairro<input name="bairro" defaultValue={editingClient?.bairro||''} placeholder="Bairro"/></label>
+            <label className="fieldLabel">Município<input name="municipio" defaultValue={editingClient?.municipio||''} placeholder="Cidade"/></label>
+            <label className="fieldLabel">Código IBGE<input name="codigo_municipio" inputMode="numeric" maxLength={7} defaultValue={editingClient?.codigo_municipio||''} placeholder="7 dígitos"/></label>
+            <label className="fieldLabel">UF<input name="uf" maxLength={2} defaultValue={editingClient?.uf||''} placeholder="SP"/></label>
+            <label className="fieldLabel">CEP<input name="cep" inputMode="numeric" defaultValue={maskCep(editingClient?.cep||'')} onInput={e=>{e.currentTarget.value=maskCep(e.currentTarget.value)}} placeholder="00000-000"/></label>
+            <label className="fieldLabel">Inscrição estadual
+              <select name="indicador_ie" defaultValue={editingClient?.indicador_ie||'9'}>
+                <option value="1">Contribuinte com IE</option>
+                <option value="2">Contribuinte isento</option>
+                <option value="9">Não contribuinte</option>
+              </select>
+            </label>
+            <label className="fieldLabel">Número da inscrição estadual<input name="inscricao_estadual" defaultValue={editingClient?.inscricao_estadual||''} placeholder="Obrigatório para contribuinte"/></label>
+            <label className="fieldLabel">Consumidor final
+              <select name="consumidor_final" defaultValue={editingClient?.consumidor_final===false?'false':'true'}>
+                <option value="true">Sim</option><option value="false">Não</option>
+              </select>
+            </label>
+            <label className="fieldLabel">Presença do comprador
+              <select name="presenca_comprador" defaultValue={String(editingClient?.presenca_comprador||1)}>
+                <option value="1">Presencial</option><option value="2">Internet</option><option value="3">Teleatendimento</option><option value="5">Presencial fora do estabelecimento</option><option value="9">Não presencial, outros</option>
+              </select>
+            </label>
+          </div>
           <label className="fieldLabel">Status
             <select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
           </label>
@@ -1975,6 +2046,24 @@ function App(){
             <label className="fieldLabel">Estoque mínimo
               <input name="estoque_minimo" type="number" min="0" step="0.001" placeholder="0" defaultValue={editingProduct?.estoque_minimo??''}/>
             </label>
+            <div className="fiscalCadastroSection productFiscalSection">
+              <div className="fiscalCadastroTitle"><strong>Tributação para NF-e</strong><span>Cadastre uma vez no produto. A venda usa estes dados automaticamente.</span></div>
+              <label className="fieldLabel">NCM<input name="ncm" inputMode="numeric" maxLength={8} defaultValue={editingProduct?.ncm||''} placeholder="8 dígitos"/></label>
+              <label className="fieldLabel">CFOP interno<input name="cfop_interno" inputMode="numeric" maxLength={4} defaultValue={editingProduct?.cfop_interno||''} placeholder="Ex.: 5102"/></label>
+              <label className="fieldLabel">CFOP interestadual<input name="cfop_interestadual" inputMode="numeric" maxLength={4} defaultValue={editingProduct?.cfop_interestadual||''} placeholder="Ex.: 6102"/></label>
+              <label className="fieldLabel">Origem
+                <select name="origem" defaultValue={editingProduct?.origem==null?'':String(editingProduct.origem)}>
+                  <option value="">Selecione</option>
+                  {Array.from({length:9},(_,i)=><option key={i} value={i}>{i}</option>)}
+                </select>
+              </label>
+              <label className="fieldLabel">CST / CSOSN<input name="cst_icms" inputMode="numeric" maxLength={3} defaultValue={editingProduct?.cst_icms||''} placeholder="2 ou 3 dígitos"/></label>
+              <label className="fieldLabel">CST PIS<input name="cst_pis" inputMode="numeric" maxLength={2} defaultValue={editingProduct?.cst_pis||''} placeholder="2 dígitos"/></label>
+              <label className="fieldLabel">CST COFINS<input name="cst_cofins" inputMode="numeric" maxLength={2} defaultValue={editingProduct?.cst_cofins||''} placeholder="2 dígitos"/></label>
+              <label className="fieldLabel fieldLabelWide">Complementos tributários (JSON)
+                <textarea name="complemento_tributario" rows={3} defaultValue={editingProduct?.complemento_tributario&&Object.keys(editingProduct.complemento_tributario).length?JSON.stringify(editingProduct.complemento_tributario,null,2):''} placeholder="Opcional. Somente quando orientado pelo contador."/>
+              </label>
+            </div>
             <label className="fieldLabel">Status
               <select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}>
                 <option value="true">Ativo</option>
