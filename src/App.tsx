@@ -2120,6 +2120,8 @@ function App(){
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
               const opened=salePanel===v.id
               const paymentStatus=salePaymentStatus(v)
+              const approval=pendingSaleApproval(v.id)
+              const waiting=Boolean(approval&&v.status==='orcamento')
               return <Fragment key={v.id}>
                 <tr {...recordRow(()=>setSalePanel(v.id),'venda '+invoiceNo(v.fatura_numero))}>
                   <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
@@ -2127,7 +2129,9 @@ function App(){
                   <td>{client?.nome||'Consumidor'}</td>
                   <td><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></td>
                   <td>{seller?.nome||'—'}</td>
-                  <td><span className={'statusBadge status-'+v.status}>{v.status}</span></td>
+                  <td>{waiting
+                    ? <span className="statusBadge approvalPendingBadge">Orçamento • aguardando aprovação</span>
+                    : <span className={'statusBadge status-'+v.status}>{saleStatusDisplay(v)}</span>}</td>
                   <td>{paymentLabel(v.forma_pagamento)} {Number(v.parcelas)>1?'• '+v.parcelas+'x':''}</td>
                   <td><span className={'statusBadge payment-'+paymentStatus.key}>{paymentStatus.label}</span></td>
                   <td><strong>{money(Number(v.total))}</strong></td>
@@ -2137,12 +2141,12 @@ function App(){
                   <div className="invoiceManagePanel">
                     <div className="actionPanel">
                       <div className="actionMeta">
-                        <strong>Fatura #{invoiceNo(v.fatura_numero)}</strong>
-                        <span>{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}Rota: {deliveryRouteLabel(v.rota_entrega)} • {paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)} • pagamento: {paymentStatus.label}</span>
+                        <strong>{v.status==='orcamento'?'Orçamento':'Fatura'} #{invoiceNo(v.fatura_numero)}</strong>
+                        <span>{waiting?'Aguardando decisão do administrador • ':''}{seller?seller.nome+' • comissão '+Number(seller.percentual_comissao).toLocaleString('pt-BR')+'% • ':''}Rota: {deliveryRouteLabel(v.rota_entrega)} • {paymentLabel(v.forma_pagamento)} • {v.parcelas}x • {dateBr(v.primeiro_vencimento)} • pagamento: {paymentStatus.label}</span>
                       </div>
                       <div className="rowActions">
                         <button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
-                        {canManageSales&&<button className="ghost" disabled={v.status==='cancelado'} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
+                        {canManageSales&&<button className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
                         {canManageSales&&<button className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
                         {isAdmin&&<button className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
                       </div>
