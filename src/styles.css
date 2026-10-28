@@ -4010,3 +4010,80 @@
 .employeeCategory{display:block;opacity:.7;margin-top:5px}
 .employeeFinance td .ghost{white-space:nowrap}
 @media(max-width:760px){.employeeForm{grid-template-columns:1fr}.employeeFinance .rowActions{flex-wrap:wrap}}
+
+
+/* Global record detail surface: double-click opens a dedicated layer instead of expanding rows. */
+.recordDetailOverlay{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:7vh 24px 32px;
+}
+.recordDetailBackdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,.38);
+  backdrop-filter:blur(2px);
+}
+.recordDetailSheet{
+  position:relative;
+  z-index:1;
+  width:min(920px,calc(100vw - 32px));
+  max-height:86vh;
+  overflow:auto;
+  border:1px solid var(--ds-border);
+  border-radius:18px;
+  background:var(--ds-surface);
+  box-shadow:0 24px 70px rgba(15,23,42,.24);
+  padding:18px;
+}
+.recordDetailSheetWide{width:min(1120px,calc(100vw - 32px))}
+.recordDetailHeader{
+  position:sticky;
+  top:-18px;
+  z-index:3;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin:-18px -18px 18px;
+  padding:14px 18px;
+  border-bottom:1px solid var(--ds-border);
+  background:var(--ds-surface);
+}
+.recordDetailHeader>strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:15px;
+}
+.recordDetailClose{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  min-height:38px;
+  padding:0 12px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:transparent;
+  color:var(--ds-text);
+  font-weight:700;
+  cursor:pointer;
+}
+.recordDetailClose:hover{background:rgba(148,163,184,.12)}
+.recordDetailOverlay .manageRow,
+.recordDetailOverlay .actionPanel,
+.recordDetailOverlay .financeManagePanel,
+.recordDetailOverlay .invoiceManagePanel,
+.recordDetailOverlay .userPermissionPanel{width:100%}
+@media(max-width:700px){
+  .recordDetailOverlay{padding:12px}
+  .recordDetailSheet,.recordDetailSheetWide{width:100%;max-height:calc(100vh - 24px);border-radius:14px;padding:14px}
+  .recordDetailHeader{top:-14px;margin:-14px -14px 14px;padding:12px 14px}
+  .recordDetailClose{min-width:40px;padding:0 10px}
+}
