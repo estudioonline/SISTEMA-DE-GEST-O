@@ -3110,3 +3110,95 @@
   .nfeInstallmentCard>strong{grid-column:auto}
   .nfeInstallmentTotal{width:100%}
 }
+
+
+/* Matriz de permissoes por usuario */
+.userPermissionPanel{
+  display:grid;
+  gap:14px;
+  padding:4px;
+}
+.permissionSafetyNotice{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:10px 12px;
+  border:1px solid #bfdbfe;
+  border-radius:10px;
+  background:#eff6ff;
+  color:#1e40af;
+  font-size:12px;
+  font-weight:700;
+}
+.permissionSafetyNotice svg{flex:0 0 auto}
+.permissionGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.permissionRow{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(170px,.55fr);
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid #e2e8f0;
+  border-radius:11px;
+  background:#f8fafc;
+}
+.permissionModuleInfo{
+  min-width:0;
+}
+.permissionModuleInfo strong,
+.permissionModuleInfo span{
+  display:block;
+}
+.permissionModuleInfo strong{
+  color:#0f172a;
+  font-size:13px;
+}
+.permissionModuleInfo span{
+  margin-top:3px;
+  color:#64748b;
+  font-size:11px;
+  line-height:1.35;
+}
+.permissionRow select{
+  width:100%;
+  min-width:0;
+  height:40px;
+  font-weight:700;
+}
+.permissionActions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding-top:2px;
+}
+.permissionActions>span{
+  color:#64748b;
+  font-size:11px;
+  line-height:1.4;
+}
+.dark .permissionSafetyNotice{
+  background:#172554;
+  border-color:#315b9c;
+  color:#bfdbfe;
+}
+.dark .permissionRow{
+  background:#141c29;
+  border-color:#2a3648;
+}
+.dark .permissionModuleInfo strong{color:#eef3ff}
+.dark .permissionModuleInfo span,
+.dark .permissionActions>span{color:#9aa8bb}
+@media(max-width:1100px){
+  .permissionGrid{grid-template-columns:1fr}
+}
+@media(max-width:680px){
+  .permissionRow{grid-template-columns:1fr}
+  .permissionActions{align-items:stretch;flex-direction:column}
+  .permissionActions .primary{width:100%;justify-content:center}
+}
