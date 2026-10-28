@@ -344,6 +344,64 @@ begin
     $new$if auth.uid() is null or not private.usuario_pode('comissoes','editar') then raise exception 'Sem permissão para reabrir comissões'; end if;$new$
   );
   execute v_def;
+
+  select pg_get_functiondef('private.salvar_venda_erp_impl(uuid,jsonb,boolean)'::regprocedure) into v_def;
+  v_def:=replace(v_def,
+    $old$select perfil='administrador' into v_admin from public.profiles where id=auth.uid() and ativo;$old$,
+    $new$v_admin:=private.usuario_pode('autorizacoes','editar');$new$
+  );
+  execute v_def;
+
+  select pg_get_functiondef('private.definir_visualizador(uuid)'::regprocedure) into v_def;
+  v_def:=replace(v_def,
+    $old$if not exists (
+    select 1
+    from public.profiles p
+    where p.id=(select auth.uid())
+      and p.ativo
+      and p.perfil='administrador'
+  ) then
+    raise exception 'Somente administrador pode criar usuário visualizador';
+  end if;$old$,
+    $new$if not private.usuario_pode('config','editar') then
+    raise exception 'Sem permissão para gerenciar usuários';
+  end if;$new$
+  );
+  execute v_def;
+
+  select pg_get_functiondef('public.criar_venda_completa_admin_sem_estoque(uuid,uuid,text,text,integer,date,text,jsonb)'::regprocedure) into v_def;
+  v_def:=replace(v_def,
+    $old$if not exists (
+    select 1
+    from public.profiles p
+    where p.id=(select auth.uid())
+      and p.ativo
+      and p.perfil='administrador'
+  ) then
+    raise exception 'Apenas um administrador pode autorizar venda sem estoque';
+  end if;$old$,
+    $new$if not private.usuario_pode('autorizacoes','editar') then
+    raise exception 'Sem permissão para autorizar venda sem estoque';
+  end if;$new$
+  );
+  execute v_def;
+
+  select pg_get_functiondef('public.atualizar_venda_completa_admin_sem_estoque(uuid,uuid,uuid,text,text,integer,date,text,jsonb)'::regprocedure) into v_def;
+  v_def:=replace(v_def,
+    $old$if not exists (
+    select 1
+    from public.profiles p
+    where p.id=(select auth.uid())
+      and p.ativo
+      and p.perfil='administrador'
+  ) then
+    raise exception 'Apenas um administrador pode autorizar venda sem estoque';
+  end if;$old$,
+    $new$if not private.usuario_pode('autorizacoes','editar') then
+    raise exception 'Sem permissão para autorizar venda sem estoque';
+  end if;$new$
+  );
+  execute v_def;
 end
 $do$;
 
