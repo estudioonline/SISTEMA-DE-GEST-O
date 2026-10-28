@@ -2615,3 +2615,73 @@
 }
 .dark .authorizationNegativeStock{color:#fca5a5}
 .dark .authorizationStockOk{color:#86efac}
+
+
+/* Fluxo Orçamento -> aprovação -> venda */
+.approvalPendingBadge{
+  background:#fff3cd!important;
+  color:#92400e!important;
+  border:1px solid #f6d365!important;
+  white-space:normal;
+  line-height:1.2;
+  text-align:center;
+}
+.saleStageHint{
+  display:block;
+  margin-top:4px;
+  color:#64748b;
+  font-size:10px;
+  font-weight:600;
+}
+.saleStageNotice{
+  transition:background .2s ease,border-color .2s ease;
+}
+.saleStage-orcamento{
+  background:#f8fafc!important;
+  border-color:#cbd5e1!important;
+  color:#334155!important;
+}
+.saleStage-pedido{
+  background:#fff7ed!important;
+  border-color:#fdba74!important;
+  color:#9a3412!important;
+}
+.saleStage-faturado{
+  background:#eff6ff!important;
+  border-color:#93c5fd!important;
+  color:#1d4ed8!important;
+}
+.authorizationQuoteLink{
+  padding:9px 11px;
+  border:1px solid #bfdbfe;
+  border-radius:9px;
+  background:#eff6ff;
+  color:#1e40af;
+  font-size:12px;
+}
+.dark .approvalPendingBadge{
+  background:#3a2a0b!important;
+  color:#fde68a!important;
+  border-color:#6b4e12!important;
+}
+.dark .saleStageHint{color:#94a3b8}
+.dark .saleStage-orcamento{
+  background:#17202d!important;
+  border-color:#344154!important;
+  color:#cbd5e1!important;
+}
+.dark .saleStage-pedido{
+  background:#3a2608!important;
+  border-color:#8a5b12!important;
+  color:#fed7aa!important;
+}
+.dark .saleStage-faturado{
+  background:#172554!important;
+  border-color:#315b9c!important;
+  color:#bfdbfe!important;
+}
+.dark .authorizationQuoteLink{
+  background:#172554;
+  border-color:#315b9c;
+  color:#bfdbfe;
+}
