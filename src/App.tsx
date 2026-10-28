@@ -1478,13 +1478,18 @@ function App(){
     const baseRows=titulos
       .filter(t=>t.tipo===type)
       .filter(t=>!overdueOnly||(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0))
-    const rows=sortList(searchKey,baseRows.filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),t.status,t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||''])),{
+      .filter(t=>financeStatusFilter==='todos'||t.status===financeStatusFilter)
+      .filter(t=>!financeStart||t.vencimento>=financeStart)
+      .filter(t=>!financeEnd||t.vencimento<=financeEnd)
+      .filter(t=>financeCategory==='todos'||t.categoria===financeCategory)
+      .filter(t=>financeCenter==='todos'||t.centro_custo===financeCenter)
+    const rows=sortList(searchKey,baseRows.filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),financeStatusLabel(t.status),t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||''])),{
       descricao:t=>t.descricao,entidade:t=>t.entidade_nome||'',vencimento:t=>t.vencimento,valor:t=>Number(t.valor),pago:t=>Number(t.valor_pago),saldo:t=>Math.max(0,Number(t.valor)-Number(t.valor_pago)),status:t=>t.status
     })
     const groupTitle=overdueOnly?(type==='receber'?'Vencidos a receber':'Vencidos a pagar'):(type==='receber'?'Contas a receber':'Contas a pagar')
-    const empty=overdueOnly?(type==='receber'?'Nenhuma conta a receber vencida.':'Nenhuma conta a pagar vencida.'):(type==='receber'?'Nenhuma conta a receber.':'Nenhuma conta a pagar.')
+    const empty=overdueOnly?(type==='receber'?'Nenhuma conta a receber vencida com estes filtros.':'Nenhuma conta a pagar vencida com estes filtros.'):(type==='receber'?'Nenhuma conta a receber com estes filtros.':'Nenhuma conta a pagar com estes filtros.')
     return <article className={'panel tablePanel financeGroup '+(type==='receber'?'financeReceivableGroup':'financePayableGroup')}>
-      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
+      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s) exibido(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
       <div className="tableWrap"><table>
         <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'descricao')}>Descrição{sortMark(searchKey,'descricao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'entidade')}>Cliente / Fornecedor{sortMark(searchKey,'entidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'vencimento')}>Vencimento{sortMark(searchKey,'vencimento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'valor')}>Valor{sortMark(searchKey,'valor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'pago')}>{type==='receber'?'Recebido':'Pago'}{sortMark(searchKey,'pago')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'saldo')}>Saldo{sortMark(searchKey,'saldo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'status')}>Status{sortMark(searchKey,'status')}</button></th><th>Gerenciar</th></tr></thead>
         <tbody>
@@ -1492,6 +1497,8 @@ function App(){
           {rows.map(t=>{
             const opened=financePanel===t.id
             const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
+            const linked=Boolean(t.venda_id||t.compra_id)
+            const origin=t.venda_id?'Venda':t.compra_id?'Compra':'Manual'
             return <Fragment key={t.id}>
               <tr {...recordRow(()=>{if(financePanel!==t.id)openFinancePanel(t)},t.descricao)} className={'recordRow '+(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueRow':'')}>
                 <td>{t.descricao}</td>
@@ -1500,7 +1507,7 @@ function App(){
                 <td><strong>{money(Number(t.valor))}</strong></td>
                 <td>{money(Number(t.valor_pago))}</td>
                 <td><strong>{money(balance)}</strong></td>
-                <td><span className={'statusBadge status-'+(t.status==='pago'?'faturado':t.status==='cancelado'?'cancelado':'pedido')}>{t.status}</span></td>
+                <td><span className={'statusBadge '+financeStatusClass(t.status)}>{financeStatusLabel(t.status)}</span></td>
                 <td>{!canManageFinance?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={()=>openFinancePanel(t)} title="Opções" aria-label="Abrir opções" aria-expanded={opened}><MoreVertical size={18}/></button>}</td>
               </tr>
               {canManageFinance&&opened&&<tr className="manageRow"><td colSpan={8}>
@@ -1508,25 +1515,45 @@ function App(){
                   <div className="actionPanel">
                     <div className="actionMeta">
                       <strong>{t.descricao}</strong>
-                      <span>{t.venda_id?'Ligado à venda • parcela '+(t.parcela_numero||1):t.compra_id?'Ligado à compra • parcela '+(t.parcela_numero||1):'Lançamento manual'} • saldo {money(balance)}</span>
+                      <span>{linked?`Ligado à ${origin.toLowerCase()} • parcela ${t.parcela_numero||1}`:'Lançamento manual'} • saldo {money(balance)}</span>
                     </div>
                     <div className="rowActions">
-                      <button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>Editar</button>
-                      <button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>
-                      {isAdmin&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}
+                      <button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>{linked?'Classificar':'Editar'}</button>
+                      {!linked&&<button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>}
+                      {!linked&&isAdmin&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}
                     </div>
                   </div>
-                  {t.status!=='pago'&&t.status!=='cancelado'&&balance>0&&<div className="paymentEntry">
-                    <div><strong>{type==='receber'?'Registrar recebimento':'Registrar pagamento'}</strong><span>A data informada será usada no histórico{type==='receber'?' e no período da comissão':''}.</span></div>
-                    <label>Data<input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)}/></label>
-                    <label>Valor<input type="number" min="0.01" step="0.01" max={balance} value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)}/></label>
-                    {(t.venda_id||t.compra_id)&&<label className="ghost proofUpload paymentProofUpload iconOnlyProof" title="Anexar comprovante" aria-label="Anexar comprovante"><Paperclip size={15}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id),e)}/></label>}
-                    <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
+
+                  <div className="financePanelTabs">
+                    <button type="button" className={financePanelTab==='detalhes'?'active':''} onClick={()=>setFinancePanelTab('detalhes')}>Detalhes</button>
+                    <button type="button" className={financePanelTab==='pagamentos'?'active':''} onClick={()=>setFinancePanelTab('pagamentos')}>Pagamentos</button>
+                    {linked&&<button type="button" className={financePanelTab==='comprovantes'?'active':''} onClick={()=>setFinancePanelTab('comprovantes')}>Comprovantes</button>}
+                  </div>
+
+                  {financePanelTab==='detalhes'&&<div className="financeDetailGrid">
+                    <div><span>Origem</span><strong>{origin}</strong></div>
+                    <div><span>Cliente / Fornecedor</span><strong>{t.entidade_nome||'Não informado'}</strong></div>
+                    <div><span>Vencimento</span><strong>{dateBr(t.vencimento)}</strong></div>
+                    <div><span>Forma de pagamento</span><strong>{t.forma_pagamento?paymentLabel(t.forma_pagamento):'Não informada'}</strong></div>
+                    <div><span>Valor</span><strong>{money(Number(t.valor))}</strong></div>
+                    <div><span>{type==='receber'?'Recebido':'Pago'}</span><strong>{money(Number(t.valor_pago))}</strong></div>
+                    <div><span>Saldo</span><strong>{money(balance)}</strong></div>
+                    <div><span>Status</span><strong>{financeStatusLabel(t.status)}</strong></div>
+                    <div><span>Categoria</span><strong>{t.categoria||'Sem categoria'}</strong></div>
+                    <div><span>Centro de custo</span><strong>{t.centro_custo||'Sem centro de custo'}</strong></div>
                   </div>}
-                  <PaymentHistory titleId={t.id} onChanged={loadData}/>
-                  {(t.venda_id||t.compra_id)&&proofsFor(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id)).length>0&&<div className="financeProofSummary">
-                    <Paperclip size={14}/><span>{proofsFor(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id)).length} comprovante(s) anexado(s)</span>
-                  </div>}
+
+                  {financePanelTab==='pagamentos'&&<>
+                    {t.status!=='pago'&&t.status!=='cancelado'&&balance>0&&<div className="paymentEntry">
+                      <div><strong>{type==='receber'?'Registrar recebimento':'Registrar pagamento'}</strong><span>A data informada será usada no histórico{type==='receber'?' e no período da comissão':''}.</span></div>
+                      <label>Data<input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)}/></label>
+                      <label>Valor<input type="number" min="0.01" step="0.01" max={balance} value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)}/></label>
+                      <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
+                    </div>}
+                    <PaymentHistory titleId={t.id} onChanged={refreshFinance}/>
+                  </>}
+
+                  {financePanelTab==='comprovantes'&&linked&&proofPanel(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id))}
                 </div>
               </td></tr>}
             </Fragment>
