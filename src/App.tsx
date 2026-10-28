@@ -2513,7 +2513,11 @@ function App(){
           const paymentStatus=salePaymentStatus(v)
           const approval=pendingSaleApproval(v.id)
           const waiting=Boolean(approval&&v.status==='orcamento')
-          return <article className="panel saleDetailPage">
+          return <div className="recordDetailOverlay saleRecordOverlay" role="dialog" aria-modal="true" aria-label={`Venda #${invoiceNo(v.fatura_numero)}`}>
+            <div className="recordDetailBackdrop" onClick={closeSaleDetail}/>
+            <div className="recordDetailSheet recordDetailSheetWide saleRecordSheet">
+              <div className="recordDetailHeader"><strong>Venda #${invoiceNo(v.fatura_numero)}</strong><button type="button" className="recordDetailClose" onClick={closeSaleDetail}><X size={17}/>Fechar</button></div>
+              <article className="panel saleDetailPage">
             <div className="saleDetailTopbar">
               <button type="button" className="ghost" onClick={closeSaleDetail}><ChevronLeft size={16}/>Voltar para lista</button>
               <div className="saleDetailActions">
@@ -2605,7 +2609,9 @@ function App(){
               <div>{proofPanel('venda',v.id)}</div>
               <div>{isAdmin&&canManageConfig&&canManageSales?<FocusNfeSale saleId={v.id}/>:<div className="paymentNotice">NF-e disponível apenas para usuários autorizados.</div>}</div>
             </div>}
-          </article>
+              </article>
+            </div>
+          </div>
         })():<article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
           <div className="panelHead">
             <div><h3>Orçamentos, vendas e faturas</h3><p>Lista compacta. Dê dois cliques em uma linha para abrir a venda.</p></div>
