@@ -2980,3 +2980,133 @@
 }
 .dark .nfeDueLabel>span{color:#9aa8bb}
 .dark .nfeDueLabel>strong{color:#eef3ff}
+
+
+/* Parcelas editáveis da importação de NF-e */
+.nfeInstallmentCard{
+  position:relative;
+  min-width:270px;
+  display:grid;
+  grid-template-columns:minmax(138px,1fr) minmax(120px,.8fr);
+  gap:8px;
+  padding:10px 36px 10px 10px;
+  border:1px solid #dbe3ee;
+  border-radius:11px;
+  background:#f8fafc;
+}
+.nfeInstallmentCard>strong{
+  grid-column:1/-1;
+  color:#334155;
+  font-size:12px;
+}
+.nfeInstallmentCard label{
+  min-width:0!important;
+  display:grid;
+  gap:4px;
+  color:#64748b;
+  font-size:10px;
+  font-weight:800;
+}
+.nfeInstallmentCard input{
+  width:100%;
+  min-width:0;
+  height:38px;
+}
+.nfeInstallmentValue{
+  display:flex;
+  align-items:center;
+  min-width:0;
+  height:38px;
+  border:1px solid #dbe3ee;
+  border-radius:9px;
+  background:#fff;
+  overflow:hidden;
+}
+.nfeInstallmentValue>span{
+  padding:0 8px;
+  color:#64748b;
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.nfeInstallmentValue input{
+  border:0!important;
+  border-left:1px solid #e2e8f0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.nfeRemoveInstallment{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:28px;
+  height:28px;
+}
+.nfeInstallmentTotal{
+  min-width:180px;
+  align-self:stretch;
+  display:grid;
+  align-content:center;
+  gap:2px;
+  padding:8px 12px;
+  border-radius:10px;
+  border:1px solid #dbe3ee;
+  background:#f8fafc;
+}
+.nfeInstallmentTotal span{
+  color:#64748b;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.nfeInstallmentTotal strong{
+  font-size:14px;
+}
+.nfeInstallmentTotal small{
+  font-size:10px;
+  font-weight:700;
+}
+.nfeInstallmentTotal.valid{
+  border-color:#86efac;
+  background:#f0fdf4;
+  color:#166534;
+}
+.nfeInstallmentTotal.invalid{
+  border-color:#fdba74;
+  background:#fff7ed;
+  color:#9a3412;
+}
+.dark .nfeInstallmentCard,
+.dark .nfeInstallmentTotal{
+  background:#141c29;
+  border-color:#2a3648;
+}
+.dark .nfeInstallmentCard>strong{color:#e2e8f0}
+.dark .nfeInstallmentCard label,
+.dark .nfeInstallmentTotal span{color:#9aa8bb}
+.dark .nfeInstallmentValue{
+  background:#101725;
+  border-color:#2a3648;
+}
+.dark .nfeInstallmentValue input{
+  border-left-color:#2a3648!important;
+}
+.dark .nfeInstallmentTotal.valid{
+  background:#123524;
+  border-color:#2f6f4e;
+  color:#86efac;
+}
+.dark .nfeInstallmentTotal.invalid{
+  background:#3a2608;
+  border-color:#8a5b12;
+  color:#fed7aa;
+}
+@media(max-width:680px){
+  .nfeInstallmentCard{
+    width:100%;
+    min-width:0;
+    grid-template-columns:1fr;
+  }
+  .nfeInstallmentCard>strong{grid-column:auto}
+  .nfeInstallmentTotal{width:100%}
+}
