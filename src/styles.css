@@ -3541,3 +3541,170 @@
   .saleCardData{grid-template-columns:1fr}
   .saleCardFooter{align-items:flex-start}
 }
+
+
+/* Tela de vendas: lista compacta + detalhe dedicado inspirado no fluxo de referência */
+.salesCompactTable{
+  min-width:1050px;
+}
+.salesCompactTable td,
+.salesCompactTable th{
+  white-space:nowrap;
+}
+.saleDetailPage{
+  display:grid;
+  gap:16px;
+}
+.saleDetailTopbar,
+.saleDetailStatusBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.saleDetailActions,
+.saleDetailBadges{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.saleDetailStatusBar{
+  padding:14px 0 4px;
+  border-bottom:1px solid #E5E7EB;
+}
+.saleDetailStatusBar h2{
+  margin:2px 0 0;
+  font-size:28px;
+}
+.saleDetailEyebrow{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.07em;
+  color:#64748B;
+}
+.saleDetailSummaryGrid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+  padding:14px 0;
+}
+.saleDetailSummaryGrid>div{
+  display:grid;
+  gap:4px;
+}
+.saleDetailSummaryGrid span,
+.saleInfoGroup span{
+  font-size:11px;
+  text-transform:uppercase;
+  font-weight:700;
+  letter-spacing:.04em;
+  color:#94A3B8;
+}
+.saleDetailSummaryGrid strong,
+.saleInfoGroup strong{
+  color:#1E293B;
+}
+.saleDetailTotal{
+  color:#2563EB!important;
+  font-size:18px;
+}
+.saleDetailTabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  border-bottom:1px solid #E5E7EB;
+}
+.saleDetailTabs button{
+  border:0;
+  background:transparent;
+  padding:10px 12px;
+  border-bottom:3px solid transparent;
+  font-weight:700;
+  color:#64748B;
+  cursor:pointer;
+}
+.saleDetailTabs button.active{
+  color:#2563EB;
+  border-bottom-color:#2563EB;
+}
+.saleDetailSection{
+  display:grid;
+  gap:14px;
+}
+.saleDetailTotals{
+  display:flex;
+  justify-content:flex-end;
+  gap:18px;
+  flex-wrap:wrap;
+  padding-top:8px;
+}
+.saleDetailTotals span{
+  color:#64748B;
+}
+.saleDetailTotals strong{
+  color:#1E293B;
+  margin-left:6px;
+}
+.saleDetailInfo{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.saleInfoGroup{
+  border:1px solid #E5E7EB;
+  border-radius:14px;
+  padding:14px;
+  display:grid;
+  gap:10px;
+}
+.saleInfoGroup h4,
+.saleNotesBox h4{
+  margin:0 0 4px;
+}
+.saleInfoGroup>div{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+.saleNotesBox{
+  grid-column:1/-1;
+  border:1px solid #E5E7EB;
+  border-radius:14px;
+  padding:14px;
+}
+.saleNotesBox p{
+  margin:0;
+  color:#475569;
+}
+.saleDocumentsGrid{
+  grid-template-columns:1fr 1fr;
+}
+.dark .saleDetailStatusBar,
+.dark .saleDetailTabs{
+  border-color:#273347;
+}
+.dark .saleDetailSummaryGrid strong,
+.dark .saleInfoGroup strong,
+.dark .saleDetailTotals strong{
+  color:#E2E8F0;
+}
+.dark .saleInfoGroup,
+.dark .saleNotesBox{
+  border-color:#2A3648;
+  background:#151C2B;
+}
+.dark .saleNotesBox p{
+  color:#CBD5E1;
+}
+.dark .saleDetailTotal{
+  color:#60A5FA!important;
+}
+@media(max-width:980px){
+  .saleDetailSummaryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .saleDocumentsGrid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .saleDetailSummaryGrid,
+  .saleDetailInfo{grid-template-columns:1fr}
+  .saleDetailTopbar{align-items:flex-start}
+  .saleDetailActions{width:100%}
+}
