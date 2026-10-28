@@ -2168,7 +2168,25 @@ function App(){
           </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">{editingClient?'Salvar alterações':'Cadastrar cliente'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={!canManageClients} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="actionMeta"><strong>{c.nome}</strong><span>{c.documento||'Sem documento'} · {c.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageClients&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&canManageClients&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
+        <EditableEntityTable readOnly={!canManageClients} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="entityDetailGrid">
+  <div><span>Nome / Razão social</span><strong>{c.nome}</strong></div>
+  <div><span>CPF / CNPJ</span><strong>{c.documento||'—'}</strong></div>
+  <div><span>E-mail</span><strong>{c.email||'—'}</strong></div>
+  <div><span>Telefone</span><strong>{c.telefone||'—'}</strong></div>
+  <div><span>Limite de crédito</span><strong>{money(Number(c.limite_credito))}</strong></div>
+  <div><span>Status</span><strong>{c.ativo?'Ativo':'Inativo'}</strong></div>
+  <div><span>Logradouro</span><strong>{c.logradouro||'—'}</strong></div>
+  <div><span>Número</span><strong>{c.numero||'—'}</strong></div>
+  <div><span>Bairro</span><strong>{c.bairro||'—'}</strong></div>
+  <div><span>Município</span><strong>{c.municipio||'—'}</strong></div>
+  <div><span>Código IBGE</span><strong>{c.codigo_municipio||'—'}</strong></div>
+  <div><span>UF</span><strong>{c.uf||'—'}</strong></div>
+  <div><span>CEP</span><strong>{c.cep?maskCep(c.cep):'—'}</strong></div>
+  <div><span>Inscrição estadual</span><strong>{c.indicador_ie==='1'?'Contribuinte com IE':c.indicador_ie==='2'?'Contribuinte isento':'Não contribuinte'}</strong></div>
+  <div><span>Nº inscrição estadual</span><strong>{c.inscricao_estadual||'—'}</strong></div>
+  <div><span>Consumidor final</span><strong>{c.consumidor_final===false?'Não':'Sim'}</strong></div>
+  <div><span>Presença do comprador</span><strong>{c.presenca_comprador===2?'Internet':c.presenca_comprador===3?'Teleatendimento':c.presenca_comprador===5?'Presencial fora do estabelecimento':c.presenca_comprador===9?'Não presencial, outros':'Presencial'}</strong></div>
+</div><div className="rowActions entityDetailActions">{canManageClients&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&canManageClients&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='fornecedores'&&<section className="semanticPage suppliersPage">
@@ -2191,7 +2209,13 @@ function App(){
           </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">{editingSupplier?'Salvar alterações':'Cadastrar fornecedor'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={!canManageSuppliers} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="actionMeta"><strong>{f.nome}</strong><span>{f.documento||'Sem documento'} · {f.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageSuppliers&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&canManageSuppliers&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
+        <EditableEntityTable readOnly={!canManageSuppliers} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="entityDetailGrid">
+  <div><span>Nome / Razão social</span><strong>{f.nome}</strong></div>
+  <div><span>CNPJ / CPF</span><strong>{f.documento||'—'}</strong></div>
+  <div><span>E-mail</span><strong>{f.email||'—'}</strong></div>
+  <div><span>Telefone</span><strong>{f.telefone||'—'}</strong></div>
+  <div><span>Status</span><strong>{f.ativo?'Ativo':'Inativo'}</strong></div>
+</div><div className="rowActions entityDetailActions">{canManageSuppliers&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&canManageSuppliers&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='produtos'&&<section className="semanticPage productsPage">
