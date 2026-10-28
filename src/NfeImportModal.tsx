@@ -43,6 +43,14 @@ const nextMonth=(base:string)=>{
   return `${result.getFullYear()}-${String(result.getMonth()+1).padStart(2,'0')}-${String(result.getDate()).padStart(2,'0')}`
 }
 
+const splitInstallments=(total:number,count:number)=>{
+  if(count<=0)return []
+  const cents=Math.round(Number(total||0)*100)
+  const base=Math.floor(cents/count)
+  const remainder=cents-(base*count)
+  return Array.from({length:count},(_,index)=>((base+(index===count-1?remainder:0))/100).toFixed(2))
+}
+
 export function NfeImportModal({
   open,
   products,
@@ -62,6 +70,7 @@ export function NfeImportModal({
   const [saving,setSaving]=useState(false)
   const [payment,setPayment]=useState<'pix'|'cartao'|'boleto'>('pix')
   const [dueDates,setDueDates]=useState<string[]>([])
+  const [dueValues,setDueValues]=useState<string[]>([])
 
   const activeProducts=useMemo(
     ()=>products.filter(p=>p.ativo).sort((a,b)=>a.descricao.localeCompare(b.descricao,'pt-BR')),
@@ -79,6 +88,7 @@ export function NfeImportModal({
     setSaving(false)
     setPayment('pix')
     setDueDates([])
+    setDueValues([])
   }
 
   const close=()=>{
@@ -141,8 +151,13 @@ export function NfeImportModal({
 
       const emissionDate=parsed.data_emissao.slice(0,10)
       const xmlDueDates=parsed.vencimentos.filter(v=>/^\d{4}-\d{2}-\d{2}$/.test(v)).slice(0,24)
+      const initialDates=xmlDueDates.length?xmlDueDates:[emissionDate]
+      const xmlValues=parsed.valores_vencimentos.length===initialDates.length
+        ? parsed.valores_vencimentos.map(value=>Number(value).toFixed(2))
+        : splitInstallments(parsed.valor_total,initialDates.length)
       setPayment(xmlDueDates.length?'boleto':'pix')
-      setDueDates(xmlDueDates.length?xmlDueDates:[emissionDate])
+      setDueDates(initialDates)
+      setDueValues(xmlValues)
       setNfe(parsed)
       setFileName(file.name)
     }catch(err){
@@ -169,23 +184,39 @@ export function NfeImportModal({
   function changePayment(value:'pix'|'cartao'|'boleto'){
     setPayment(value)
     const base=dueDates[0]||nfe?.data_emissao.slice(0,10)||new Date().toISOString().slice(0,10)
-    if(value==='pix')setDueDates([base])
-    else setDueDates(old=>(old.length?old:[base]).slice(0,value==='cartao'?12:24))
+    if(value==='pix'){
+      setDueDates([base])
+      setDueValues([Number(nfe?.valor_total||0).toFixed(2)])
+      return
+    }
+    const max=value==='cartao'?12:24
+    const dates=(dueDates.length?dueDates:[base]).slice(0,max)
+    setDueDates(dates)
+    setDueValues(splitInstallments(Number(nfe?.valor_total||0),dates.length))
   }
 
   function updateDue(index:number,value:string){
     setDueDates(old=>old.map((d,i)=>i===index?value:d))
   }
 
+  function updateDueValue(index:number,value:string){
+    if(value!==''&&!/^\d*(?:[.,]\d{0,2})?$/.test(value))return
+    setDueValues(old=>old.map((amount,i)=>i===index?value.replace(',','.'):amount))
+  }
+
   function addInstallment(){
     const max=payment==='cartao'?12:24
     if(payment==='pix'||dueDates.length>=max)return
-    setDueDates(old=>[...old,nextMonth(old[old.length-1]||nfe?.data_emissao.slice(0,10)||new Date().toISOString().slice(0,10))])
+    const nextDates=[...dueDates,nextMonth(dueDates[dueDates.length-1]||nfe?.data_emissao.slice(0,10)||new Date().toISOString().slice(0,10))]
+    setDueDates(nextDates)
+    setDueValues(splitInstallments(Number(nfe?.valor_total||0),nextDates.length))
   }
 
   function removeInstallment(index:number){
     if(dueDates.length<=1)return
-    setDueDates(old=>old.filter((_,i)=>i!==index))
+    const nextDates=dueDates.filter((_,i)=>i!==index)
+    setDueDates(nextDates)
+    setDueValues(splitInstallments(Number(nfe?.valor_total||0),nextDates.length))
   }
 
   async function importNfe(){
@@ -205,6 +236,15 @@ export function NfeImportModal({
       setError('Informe corretamente as datas de vencimento.')
       return
     }
+    if(dueValues.length!==dueDates.length||dueValues.some(value=>!Number.isFinite(Number(value))||Number(value)<=0)){
+      setError('Informe um valor maior que zero para cada parcela.')
+      return
+    }
+    const installmentSum=Math.round(dueValues.reduce((sum,value)=>sum+Number(value),0)*100)/100
+    if(Math.abs(installmentSum-nfe.valor_total)>0.009){
+      setError(`A soma das parcelas é ${money(installmentSum)} e precisa ser igual ao valor da NF-e: ${money(nfe.valor_total)}.`)
+      return
+    }
 
     setSaving(true)
     try{
@@ -217,6 +257,7 @@ export function NfeImportModal({
         valor_total:nfe.valor_total,
         forma_pagamento:payment,
         vencimentos:dueDates,
+        valores_parcelas:dueValues.map(value=>Number(value)),
         itens:items.map(item=>({
           codigo_fornecedor:item.codigo_fornecedor,
           descricao:item.descricao,
@@ -248,15 +289,9 @@ export function NfeImportModal({
   const autoCount=items.filter(i=>i.autoMapped).length
   const itemTotal=items.reduce((sum,item)=>sum+Number(item.valor_total||0),0)
   const difference=nfe?nfe.valor_total-itemTotal:0
-  const installmentValues=useMemo(()=>{
-    if(!nfe||dueDates.length===0)return []
-    const total=Math.round(Number(nfe.valor_total||0)*100)/100
-    const base=Math.floor((total/dueDates.length)*100)/100
-    return dueDates.map((_,index)=>index===dueDates.length-1
-      ? Math.round((total-base*(dueDates.length-1))*100)/100
-      : base
-    )
-  },[nfe,dueDates])
+  const installmentTotal=Math.round(dueValues.reduce((sum,value)=>sum+(Number(value)||0),0)*100)/100
+  const installmentDifference=nfe?Math.round((nfe.valor_total-installmentTotal)*100)/100:0
+  const installmentsValid=Boolean(nfe)&&dueValues.length===dueDates.length&&dueValues.every(value=>Number(value)>0)&&Math.abs(installmentDifference)<0.009
 
   return <div className="saleModalOverlay nfeModalOverlay" role="dialog" aria-modal="true" aria-label="Importar XML de NF-e">
     <div className="saleModalShell nfeModalShell">
@@ -299,11 +334,22 @@ export function NfeImportModal({
               </select>
             </label>
             <div className="nfeDueDates">
-              {dueDates.map((date,index)=><label key={index}>
-                <span className="nfeDueLabel"><span>Vencimento {index+1}</span><strong>{money(installmentValues[index]||0)}</strong></span>
-                <span><input type="date" value={date} onChange={e=>updateDue(index,e.target.value)}/>{dueDates.length>1&&<button type="button" className="iconBtn" onClick={()=>removeInstallment(index)} aria-label="Remover parcela"><X size={14}/></button>}</span>
-              </label>)}
+              {dueDates.map((date,index)=><div className="nfeInstallmentCard" key={index}>
+                <strong>Parcela {index+1}</strong>
+                <label>Vencimento
+                  <input type="date" value={date} onChange={e=>updateDue(index,e.target.value)}/>
+                </label>
+                <label>Valor da parcela
+                  <div className="nfeInstallmentValue"><span>R$</span><input type="number" min="0.01" step="0.01" value={dueValues[index]??''} onChange={e=>updateDueValue(index,e.target.value)}/></div>
+                </label>
+                {dueDates.length>1&&<button type="button" className="iconBtn nfeRemoveInstallment" onClick={()=>removeInstallment(index)} aria-label="Remover parcela"><X size={14}/></button>}
+              </div>)}
               {payment!=='pix'&&<button type="button" className="ghost" onClick={addInstallment}><Plus size={15}/>Parcela</button>}
+              <div className={installmentsValid?'nfeInstallmentTotal valid':'nfeInstallmentTotal invalid'}>
+                <span>Total das parcelas</span>
+                <strong>{money(installmentTotal)}</strong>
+                {!installmentsValid&&nfe&&<small>{installmentDifference>0?`Falta ${money(installmentDifference)}`:`Excede ${money(Math.abs(installmentDifference))}`}</small>}
+              </div>
             </div>
           </div>
 
@@ -339,7 +385,7 @@ export function NfeImportModal({
 
           <div className="nfeImportFooter">
             <button type="button" className="ghost" onClick={close} disabled={saving}>Cancelar</button>
-            <button type="button" className="primary" onClick={()=>void importNfe()} disabled={saving||mappedCount!==items.length}>
+            <button type="button" className="primary" onClick={()=>void importNfe()} disabled={saving||mappedCount!==items.length||!installmentsValid}>
               <FileText size={16}/>{saving?'Importando NF-e...':'Importar NF-e e receber compra'}
             </button>
           </div>
