@@ -3712,36 +3712,36 @@
 
 /* 2026-10-28: detalhe da venda em cinza + zebra striping forte em todas as listas */
 
-/* Painel detalhado da venda: cinza mais presente, mantendo boa leitura */
+/* Painel detalhado da venda: topo claro; cinza começa somente nas abas/conteúdo */
 .app:not(.dark) .saleDetailPage{
-  background:#D9DEE5;
-  border-color:#C2C9D2;
-  box-shadow:0 10px 28px rgba(15,23,42,.12);
+  background:#FFFFFF;
+  border-color:#E2E8F0;
+  box-shadow:0 10px 28px rgba(15,23,42,.08);
 }
 .app:not(.dark) .saleDetailTopbar{
   padding:10px 12px;
-  border:1px solid #BEC6D0;
+  border:1px solid #E2E8F0;
   border-radius:12px;
-  background:#CCD2DA;
+  background:#FFFFFF;
 }
 .app:not(.dark) .saleDetailStatusBar{
   margin:0;
   padding:16px;
-  border:1px solid #BEC6D0;
+  border:1px solid #E2E8F0;
   border-radius:12px;
-  background:#C8CED7;
+  background:#FFFFFF;
 }
 .app:not(.dark) .saleDetailSummaryGrid{
   padding:14px;
-  border:1px solid #BEC6D0;
+  border:1px solid #E2E8F0;
   border-radius:12px;
-  background:#D0D5DC;
+  background:#FFFFFF;
 }
 .app:not(.dark) .saleDetailSummaryGrid>div{
   padding:10px 11px;
-  border:1px solid #C0C7D0;
+  border:1px solid #D7DEE8;
   border-radius:10px;
-  background:#E2E6EB;
+  background:#F8FAFC;
 }
 .app:not(.dark) .saleDetailTabs{
   padding:0 10px;
