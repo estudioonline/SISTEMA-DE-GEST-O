@@ -51,6 +51,7 @@ type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativ
 type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
 type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string}
 type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number;referencia:string|null;created_at:string}
+type SaleHistoryEvent={evento_id:string;fonte:string;acao:string;usuario_id:string|null;usuario_nome:string;usuario_perfil:string|null;ocorrido_em:string;dados_antes:Record<string,unknown>|null;dados_depois:Record<string,unknown>|null}
 
 const menu=[
   ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
@@ -171,7 +172,9 @@ function App(){
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
   const [saleDetailItems,setSaleDetailItems]=useState<VendaItem[]>([])
-  const [saleDetailTab,setSaleDetailTab]=useState<'itens'|'informacoes'|'documentos'>('itens')
+  const [saleDetailTab,setSaleDetailTab]=useState<'itens'|'informacoes'|'documentos'|'historico'>('itens')
+  const [saleHistory,setSaleHistory]=useState<SaleHistoryEvent[]>([])
+  const [saleHistoryBusy,setSaleHistoryBusy]=useState(false)
   const [saleClient,setSaleClient]=useState('')
   const [saleSeller,setSaleSeller]=useState('')
   const [saleStatus,setSaleStatus]=useState('orcamento')
@@ -789,7 +792,42 @@ function App(){
   function closeSaleDetail(){
     setSalePanel(null)
     setSaleDetailItems([])
+    setSaleHistory([])
     setSaleDetailTab('itens')
+  }
+  async function loadSaleHistory(v:Venda){
+    setSaleHistoryBusy(true);setMsg('')
+    try{
+      const {data,error}=await supabase.rpc('historico_venda',{p_venda_id:v.id})
+      if(error)throw error
+      setSaleHistory((data||[]) as SaleHistoryEvent[])
+      setSaleDetailTab('historico')
+    }catch(error){setMsg(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível carregar o histórico da venda.')}
+    finally{setSaleHistoryBusy(false)}
+  }
+  function historyLabel(event:SaleHistoryEvent){
+    const after=event.dados_depois||{}
+    if(event.fonte==='vendas')return event.acao==='INSERT'?'Venda criada':event.acao==='DELETE'?'Venda excluída':'Venda alterada'
+    if(event.fonte==='venda_itens')return event.acao==='INSERT'?'Item adicionado':event.acao==='DELETE'?'Item removido':'Item alterado'
+    if(event.fonte==='titulos_financeiros')return event.acao==='INSERT'?'Fatura financeira criada':event.acao==='DELETE'?'Fatura financeira removida':'Fatura financeira alterada'
+    if(event.fonte==='pagamentos_titulos')return event.acao==='INSERT'?'Pagamento registrado':event.acao==='DELETE'?'Pagamento removido':'Pagamento alterado'
+    if(event.fonte==='estornos_pagamentos')return 'Pagamento estornado'
+    if(event.fonte==='comprovantes_pagamento')return event.acao==='DELETE'?'Comprovante removido':'Comprovante anexado'
+    if(event.fonte==='notas_fiscais_teste')return event.acao==='DELETE'?'NF-e removida':event.acao==='UPDATE'?'NF-e atualizada':'NF-e registrada'
+    if(event.fonte==='autorizacoes')return event.acao==='REQUEST'?'Autorização solicitada':event.acao==='APROVADO'?'Autorização aprovada':event.acao==='REJEITADO'?'Autorização rejeitada':'Autorização atualizada'
+    if(event.fonte==='estoque')return event.acao==='SAIDA'?'Saída de estoque':event.acao==='ENTRADA'?'Entrada de estoque':'Ajuste de estoque'
+    return String(after.descricao||event.fonte)
+  }
+  function historyChanges(event:SaleHistoryEvent){
+    const before=event.dados_antes||{},after=event.dados_depois||{}
+    const ignored=new Set(['id','created_at','updated_at','fatura_gerada_em'])
+    return Array.from(new Set([...Object.keys(before),...Object.keys(after)])).filter(key=>!ignored.has(key)&&JSON.stringify(before[key])!==JSON.stringify(after[key])).slice(0,8).map(key=>({key,before:before[key],after:after[key]}))
+  }
+  function historyValue(value:unknown){
+    if(value===null||value===undefined||value==='')return '—'
+    if(typeof value==='boolean')return value?'Sim':'Não'
+    if(typeof value==='object')return JSON.stringify(value)
+    return String(value)
   }
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
@@ -2627,6 +2665,7 @@ function App(){
                 <button type="button" className="ghost" onClick={()=>void printSalePdf(v)}><Printer size={15}/>Imprimir</button>
                 {canManageSales&&v.status==='orcamento'&&<button type="button" className="primary advanceSaleBtn" disabled={savingSale||waiting} title={waiting?'Aguardando aprovação administrativa':'Avançar orçamento para pedido'} onClick={()=>void advanceSaleToOrder(v)}><CheckCircle2 size={15}/>{waiting?'Aguardando autorização':'Avançar para pedido'}</button>}
                 {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
+                <button type="button" className="ghost" disabled={saleHistoryBusy} onClick={()=>void loadSaleHistory(v)}><RefreshCw size={15}/>{saleHistoryBusy?'Carregando...':'Histórico'}</button>
                 {isAdmin&&canManageConfig&&canManageSales&&<button type="button" className="ghost" onClick={()=>setSaleDetailTab('documentos')}><ReceiptText size={15}/>NF-e / documentos</button>}
                 {canManageSales&&<button type="button" className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
                 {isAdmin&&canManageSales&&<button type="button" className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
@@ -2661,6 +2700,7 @@ function App(){
               <button type="button" className={saleDetailTab==='itens'?'active':''} onClick={()=>setSaleDetailTab('itens')}>Itens da venda</button>
               <button type="button" className={saleDetailTab==='informacoes'?'active':''} onClick={()=>setSaleDetailTab('informacoes')}>Outras informações</button>
               <button type="button" className={saleDetailTab==='documentos'?'active':''} onClick={()=>setSaleDetailTab('documentos')}>Documentos / NF-e</button>
+              <button type="button" className={saleDetailTab==='historico'?'active':''} onClick={()=>void loadSaleHistory(v)}>Histórico</button>
             </div>
 
             {saleDetailTab==='itens'&&<div className="saleDetailSection">
@@ -2711,6 +2751,24 @@ function App(){
             {saleDetailTab==='documentos'&&<div className="saleDetailSection saleDocumentsGrid">
               <div>{proofPanel('venda',v.id)}</div>
               <div>{isAdmin&&canManageConfig&&canManageSales?<FocusNfeSale saleId={v.id}/>:<div className="paymentNotice">NF-e disponível apenas para usuários autorizados.</div>}</div>
+            </div>}
+            {saleDetailTab==='historico'&&<div className="saleDetailSection saleHistoryPanel">
+              <div className="saleHistoryHead"><div><h4>Histórico completo</h4><p>Registro somente leitura de alterações, pagamentos, estoque, autorizações e documentos.</p></div><button type="button" className="ghost" disabled={saleHistoryBusy} onClick={()=>void loadSaleHistory(v)}><RefreshCw size={14}/>{saleHistoryBusy?'Atualizando...':'Atualizar'}</button></div>
+              <div className="saleHistoryTimeline">
+                {!saleHistoryBusy&&saleHistory.length===0&&<div className="emptyState">Nenhum evento registrado para esta venda.</div>}
+                {saleHistory.map(event=>{
+                  const changes=historyChanges(event)
+                  return <article key={event.evento_id} className="saleHistoryEvent">
+                    <div className="saleHistoryDot"/>
+                    <div className="saleHistoryCard">
+                      <div className="saleHistoryMeta"><strong>{historyLabel(event)}</strong><span>{new Date(event.ocorrido_em).toLocaleString('pt-BR')}</span></div>
+                      <div className="saleHistoryUser"><b>{event.usuario_nome||'Sistema'}</b>{event.usuario_perfil&&<span>{profileLabel(event.usuario_perfil as PerfilRole)}</span>}</div>
+                      {changes.length>0&&<div className="saleHistoryChanges">{changes.map(change=><div key={change.key}><span>{change.key.replaceAll('_',' ')}</span><strong>{historyValue(change.before)} <b>→</b> {historyValue(change.after)}</strong></div>)}</div>}
+                      {changes.length===0&&event.dados_depois&&<div className="saleHistoryChanges compact">{Object.entries(event.dados_depois).filter(([key])=>!['id','created_at','updated_at','venda_id'].includes(key)).slice(0,4).map(([key,value])=><div key={key}><span>{key.replaceAll('_',' ')}</span><strong>{historyValue(value)}</strong></div>)}</div>}
+                    </div>
+                  </article>
+                })}
+              </div>
             </div>}
               </article>
             </div>
