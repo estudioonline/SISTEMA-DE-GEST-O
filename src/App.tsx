@@ -2261,10 +2261,28 @@ function App(){
             <div className="grandTotal"><span>Total</span><strong>{money(saleTotal)}</strong></div>
           </div>
 
+          {saleHasAuthorizationBlocker&&<div className="saleAuthorizationBlockers" role="alert">
+            <div className="saleAuthorizationBlockersHead">
+              <ShieldCheck size={20}/>
+              <div><strong>Esta venda precisa de autorização</strong><span>{saleApprovalBlockers.length} bloqueio(s) identificado(s). A venda normal não será concluída enquanto houver estes bloqueios.</span></div>
+            </div>
+            <div className="saleAuthorizationBlockerList">
+              {saleApprovalBlockers.map((blocker,index)=><div key={blocker.tipo+'-'+index}>
+                <strong>{blocker.label}</strong>
+                <span>{blocker.detalhe}</span>
+              </div>)}
+            </div>
+          </div>}
+
           <div className="saleActions">
             <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}>Cancelar</button>
-            {editingSale&&saleStatus!=='orcamento'&&<button type="button" className="ghost" disabled={savingSale||saleApprovals.some(a=>a.entidade_id===editingSale.id)} onClick={e=>{if(e.currentTarget.form?.reportValidity())void requestSaleAuthorization()}}>Solicitar autorização</button>}
-            <button className="primary" disabled={savingSale}>{savingSale?'Salvando...':!editingSale?'Salvar orçamento':saleStatus==='orcamento'?'Salvar orçamento':saleStatus==='pedido'?'Salvar como pedido':'Salvar como faturado'}</button>
+            {editingSale&&saleStatus!=='orcamento'&&saleHasAuthorizationBlocker&&<button
+              type="button"
+              className="authorizationRequestBtn"
+              disabled={savingSale||saleApprovals.some(a=>a.entidade_id===editingSale.id)}
+              onClick={()=>void requestSaleAuthorization()}
+            ><ShieldCheck size={17}/>Solicitar autorização ({saleApprovalBlockers.length})</button>}
+            <button className="primary" disabled={savingSale||(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker)} title={saleHasAuthorizationBlocker?'Use Solicitar autorização para avançar esta venda.':''}>{savingSale?'Salvando...':!editingSale?'Salvar orçamento':saleStatus==='orcamento'?'Salvar orçamento':saleStatus==='pedido'?'Salvar como pedido':'Salvar como faturado'}</button>
           </div>
         </form></div></div>}
 
