@@ -1,0 +1,1 @@
+ALTER TABLE public.produtos ADD COLUMN IF NOT EXISTS percentual_minimo_custo_venda numeric(6,2) NOT NULL DEFAULT 100 CHECK (percentual_minimo_custo_venda >= 0 AND percentual_minimo_custo_venda <= 100); COMMENT ON COLUMN public.produtos.percentual_minimo_custo_venda IS 'Percentual minimo do custo permitido para venda do produto (100 = preco nao inferior ao custo)';

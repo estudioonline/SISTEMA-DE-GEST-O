@@ -1,0 +1,115 @@
+{
+  "checkpoint": "2026-10-28",
+  "migrations": [
+    {
+      "version": "20261027012702",
+      "name": "add_delivery_route_to_sales",
+      "sha256": "568b4f2f5471ad08c8a759f61639ff09d4eee4d6980d956c04a28de3d9a78b79"
+    },
+    {
+      "version": "20261027105011",
+      "name": "erp_controles_avancados_sem_fechamento_financeiro",
+      "sha256": "482b778f09c69e7b60b08cfc25fc73c30a397257b055b496fb0f630a8da9ea75"
+    },
+    {
+      "version": "20261027105222",
+      "name": "otimiza_rls_controles_avancados",
+      "sha256": "33495c1d4fc17e8b7dbe79bd1cd2fad80f50a654fb3e5c8cb81f91788582ba3c"
+    },
+    {
+      "version": "20261027105304",
+      "name": "automacoes_custo_reposicao_pagamentos_comissoes",
+      "sha256": "116877d07245397e3b8b92e1a1160b42799d3fe35464a156b72abdbe54fba6e5"
+    },
+    {
+      "version": "20261027105321",
+      "name": "integridade_historico_e_numeracao",
+      "sha256": "059101be15502bb378b374daa1b356d706c5ef8365a4f7e5d385b3eda7c18a78"
+    },
+    {
+      "version": "20261027105344",
+      "name": "limpa_indices_e_politicas_avancadas",
+      "sha256": "e15b240f43128161392574df36ab33414781287d4726f6a5ca0b62f08ea61340"
+    },
+    {
+      "version": "20261027105939",
+      "name": "corrige_auditoria_rls_vendas",
+      "sha256": "a3b60e891baf526cd6be082b689651a1a32f130d8b91f5413d8ed52fc9ab7e1f"
+    },
+    {
+      "version": "20261027110215",
+      "name": "perfis_vendedor_financeiro_isolados",
+      "sha256": "ecca554cf9c6076b45b69fe938503a3ae197b70615441081ebd49cb10efa3280"
+    },
+    {
+      "version": "20261027112340",
+      "name": "libera_execucao_controlada_credito_cliente",
+      "sha256": "3eb7f9d8e6c4d9925f60a2843df68113def11e2e8b45004acaccbaf139247459"
+    },
+    {
+      "version": "20261027154612",
+      "name": "produto_percentual_minimo_custo_venda",
+      "sha256": "3e4acde67ae74894088183adeed94dd053765b53addf3b38399a980980f6643d"
+    },
+    {
+      "version": "20261027155509",
+      "name": "permitir_acrescimo_preco_ate_mil_porcento",
+      "sha256": "8b6933d82b47daa37ba5a89ff3480c46c2c40c40c5698dbff73f084e33f59b2c"
+    },
+    {
+      "version": "20261028114131",
+      "name": "erp_settings_security",
+      "sha256": "0c3dee382eaeff683948dc74a7b71d1861c493fc50a23b9d6b443816a62f2e59"
+    },
+    {
+      "version": "20261028114217",
+      "name": "erp_integrations",
+      "sha256": "d6287ed3dd16d46fad7876df184fbd4e9c6138398ffab1670ccaaeb5e779dddb"
+    },
+    {
+      "version": "20261028114222",
+      "name": "erp_authorizations",
+      "sha256": "b0cfabf58e340c083552fa5e8ea0c69ca222e7ba4618e756e2973b7baec9c3cb"
+    },
+    {
+      "version": "20261028114351",
+      "name": "erp_transaction_fixes",
+      "sha256": "17a755aac757182def84e575ee18d8301a4fdafb002d523570094eadfa439f10"
+    },
+    {
+      "version": "20261028114550",
+      "name": "erp_authorization_atomicity",
+      "sha256": "611e71c6329041725fc8e86f931796a4fa181449c4283115d64d2f6820b9019f"
+    },
+    {
+      "version": "20261028114805",
+      "name": "erp_financial_integrity",
+      "sha256": "7e14e257c9b0f495484125a9ae8f0c3629fad81606ced065f0a4f8e5c07f735a"
+    },
+    {
+      "version": "20261028115002",
+      "name": "erp_edit_authorizations",
+      "sha256": "14f0e7fb585df9e87a4beb3fc44698503747e0773bcf7b975d13ff598e65b31a"
+    },
+    {
+      "version": "20261028122305",
+      "name": "erp_atomic_sales",
+      "sha256": "42e0e1e96048816eff5fcbbcc12113ed3b33f74c2c46815f2f6a15f13d4699d2"
+    },
+    {
+      "version": "20261028122312",
+      "name": "erp_reversals_administration",
+      "sha256": "4e2adace51dab3a1d1a7735c6d37af4fd701fcfaff69e4c617c36bbbdeafb01b"
+    },
+    {
+      "version": "20261028124101",
+      "name": "erp_catalog_audit",
+      "sha256": "162852d278409330a168f31d1dfd4e48dcfbaee04dc121e24a635ea8091879dc"
+    },
+    {
+      "version": "20261028124544",
+      "name": "erp_commission_visibility",
+      "sha256": "353e775b7f8b6e315d157f424cedcb1fb2345b6e83dacebda3d3ede1eb83c59e"
+    }
+  ]
+}

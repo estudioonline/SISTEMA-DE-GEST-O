@@ -54,11 +54,17 @@ Os testes SQL em `tests/erp-transactions.sql` e `tests/erp-roles-purchases.sql` 
 
 As sete migrações desta entrega foram aplicadas incrementalmente, sem limpeza, seed, reset ou reprocessamento dos registros atuais. Contagens e assinaturas dos campos originais das 19 tabelas públicas coincidiram antes/depois. Isso verifica preservação dos registros; não substitui um backup restaurável de banco e arquivos.
 
-### Pendências explícitas
-- Habilitar proteção contra senhas vazadas no Supabase Auth (aviso remanescente do assessor de segurança).
-- Fluxo de estorno de pagamentos e comissões com lançamentos compensatórios; enquanto isso, cancelamentos de documentos pagos são bloqueados.
-- Alteração da política de estoque de pedidos abertos requer migração própria; mantém-se a baixa de estoque atual ao confirmar pedido.
-- Reconciliar o histórico anterior do banco com os antigos arquivos `001`/`002` antes de usar `db push` ou recriar o banco do zero. Os arquivos desta entrega correspondem às versões remotas; `schema-before-functions.sql` é apenas uma referência das funções anteriores, não uma migração-base completa.
-- Categorias financeiras/centros de custo existentes e fechamentos de comissão ainda não têm uma tela de administração completa.
-- Paginação integral de relatórios e histórico de autorizações (a central mostra os 200 registros mais recentes), além de divisão do pacote frontend para melhorar o carregamento.
-- O salvamento direto da venda ainda grava rota/validade em uma segunda chamada; se essa gravação falhar, a venda salva é mantida e a tela solicita correção, evitando um novo cadastro por reenvio. A aprovação pela central grava tudo na mesma transação.
+### Continuação das melhorias — 28/10/2026
+- Venda, itens, rota e validade passam a ser gravados em uma única transação. Uma chave de requisição impede duplicação ao repetir um envio concluído e recusa a mesma chave com outros dados.
+- Estornos integrais de pagamentos ficam em registros separados, preservando o original. O saldo do título é recalculado; a comissão recebe uma compensação negativa na data do estorno. Documentos com saldo pago ainda são bloqueados para cancelamento. Após estorno integral, o cancelamento preserva o histórico financeiro.
+- Configurações agora incluem administração de categorias, centros de custo, fechamento e reabertura de comissões com justificativa. Categorias e centros são inativados em vez de apagados pela interface. Os resumos de fechamento são restritos a administrador e financeiro.
+- A central de autorizações tem paginação e filtro no servidor. As consultas usadas em totais e exportações percorrem todas as páginas, sem os antigos cortes de 300/500 registros. Falha em uma página não produz um total parcial.
+- PDF e Excel carregam sob demanda. O JavaScript inicial foi reduzido de cerca de 1,44 MB para 530 KB antes de compressão, dividido em blocos de aplicação, React e Supabase para cache.
+- O administrador confirmou a política: **baixar estoque ao confirmar o pedido**. Essa regra foi mantida, sem converter os pedidos existentes.
+- O histórico remoto foi recuperado integralmente; os antigos arquivos não registrados foram arquivados em `supabase/history/legacy`. O manifesto e o verificador de histórico entram no CI. O checkpoint e o bootstrap para projeto vazio estão documentados em `supabase/checkpoints/README.md`.
+- A reconstrução do checkpoint foi testada em schemas isolados, incluindo criação de venda, pagamento e estorno. Os testes SQL e a estrutura temporária são revertidos ao final.
+
+### Dependências externas remanescentes
+- A organização Supabase está no plano gratuito. A proteção nativa contra senhas vazadas requer Pro ou superior: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection. Não houve contratação ou troca de plano.
+- A conferência visual das telas internas depende de uma sessão autenticada do usuário. Testes do banco, permissões, TypeScript, testes automatizados e build são executados independentemente dessa sessão.
+- O checkpoint reconstrói a estrutura da aplicação; usuários, configurações de Auth e arquivos do Storage exigem backup próprio. O bootstrap recusa bancos que já contenham vendas e deve ser usado exclusivamente em projeto vazio.

@@ -1,0 +1,1 @@
+alter policy fechamentos_comissao_select on public.fechamentos_comissao using(exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.ativo and p.perfil in ('administrador','financeiro')));

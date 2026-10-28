@@ -9,13 +9,12 @@ import {
   Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
-import { generateInvoicePdf } from './lib/invoicePdf'
-import { generatePurchaseInvoicePdf } from './lib/purchaseInvoicePdf'
-import { generateCommissionReportPdf } from './lib/commissionReportPdf'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
-import { downloadProductsTemplate, exportProductsExcel, parseProductsExcel } from './lib/productsExcel'
-import { readSettings, quoteExpiration } from './lib/erpSettings'
+import { readAllRows } from './lib/readAllRows'
+import { readSettings } from './lib/erpSettings'
 import { AuthorizationCenter } from './AuthorizationCenter'
+import { PaymentHistory } from './PaymentHistory'
+import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'|'autorizacoes'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
@@ -155,6 +154,7 @@ function App(){
   const [saleItems,setSaleItems]=useState<SaleItemDraft[]>([newSaleItem()])
   const [originalSaleItems,setOriginalSaleItems]=useState<VendaItem[]>([])
   const [savingSale,setSavingSale]=useState(false)
+  const [saleRequestId,setSaleRequestId]=useState(()=>crypto.randomUUID())
 
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
   const [purchasePanel,setPurchasePanel]=useState<string|null>(null)
@@ -240,17 +240,17 @@ function App(){
   async function loadData(){
     if(!session)return
     const [c,f,p,v,cp,t,ec,pr,vd,cv,me]=await Promise.all([
-      supabase.from('clientes').select('*').order('nome'),
-      supabase.from('fornecedores').select('*').order('nome'),
-      supabase.from('produtos').select('*').order('descricao'),
-      supabase.from('vendas').select('*').order('created_at',{ascending:false}).limit(300),
-      supabase.from('compras').select('*').order('created_at',{ascending:false}).limit(300),
-      supabase.from('titulos_financeiros').select('*').order('vencimento',{ascending:true}).limit(500),
+      readAllRows((from,to)=>supabase.from('clientes').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('fornecedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('produtos').select('*').order('descricao',{ascending:true}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('vendas').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('compras').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('titulos_financeiros').select('*').order('vencimento',{ascending:true}).order('id').range(from,to)),
       supabase.from('empresa_config').select('*').eq('id',1).maybeSingle(),
       supabase.from('profiles').select('perfil,ativo').eq('id',session.user.id).maybeSingle(),
-      supabase.from('vendedores').select('*').order('nome'),
-      supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).limit(500),
-      supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).limit(1000)
+      readAllRows((from,to)=>supabase.from('vendedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).order('id').range(from,to))
     ])
     if(currentSessionUser.current!==session.user.id)return
     if(!c.error)setClientes((c.data||[]) as Cliente[])
@@ -281,20 +281,20 @@ function App(){
   }
 
   async function loadCommissions(){
-    const {data,error}=await supabase.rpc('comissoes_por_periodo',{
+    const {data,error}=await readAllRows((from,to)=>supabase.rpc('comissoes_por_periodo',{
       p_inicio:commissionStart,
       p_fim:commissionEnd
-    })
+    }).order('vendedor_nome').order('vendedor_id').range(from,to))
     if(error){setMsg('Não foi possível calcular as comissões: '+error.message);return}
     setComissoes((data||[]) as ComissaoResumo[])
   }
 
   async function downloadCommissionReport(){
     setMsg('')
-    const {data,error}=await supabase.rpc('relatorio_comissoes_vendas',{
+    const {data,error}=await readAllRows((from,to)=>supabase.rpc('relatorio_comissoes_vendas',{
       p_inicio:commissionStart,
       p_fim:commissionEnd
-    })
+    }).order('data_pagamento').order('pagamento_id').range(from,to))
     if(error){
       setMsg('Não foi possível gerar o relatório de comissões: '+error.message)
       return
@@ -308,7 +308,7 @@ function App(){
       ? null
       : vendedores.find(v=>v.id===commissionReportSeller)?.nome||'Vendedor'
 
-    generateCommissionReportPdf({
+    ;(await import('./lib/commissionReportPdf')).generateCommissionReportPdf({
       inicio:commissionStart,
       fim:commissionEnd,
       company:empresa,
@@ -519,18 +519,18 @@ function App(){
     await loadData()
   }
 
-  function exportProducts(){
+  async function exportProducts(){
     try{
-      exportProductsExcel(produtos)
+      (await import('./lib/productsExcel')).exportProductsExcel(produtos)
       setMsg(`Relatório Excel exportado com ${produtos.length} produto(s).`)
     }catch{
       setMsg('Não foi possível exportar o relatório Excel.')
     }
   }
 
-  function downloadProductModel(){
+  async function downloadProductModel(){
     try{
-      downloadProductsTemplate()
+      (await import('./lib/productsExcel')).downloadProductsTemplate()
       setMsg('Modelo Excel de importação gerado.')
     }catch{
       setMsg('Não foi possível gerar o modelo Excel.')
@@ -549,7 +549,7 @@ function App(){
 
     try{
       setMsg('Validando planilha...')
-      const rows=await parseProductsExcel(file)
+      const rows=await (await import('./lib/productsExcel')).parseProductsExcel(file)
 
       const confirmed=window.confirm(
         `Importar ${rows.length} linha(s)?\n\nProdutos com o mesmo código serão atualizados. O valor da coluna "Estoque Atual" substituirá o saldo atual e a diferença ficará registrada no histórico.`
@@ -576,7 +576,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}resetSaleForm();setShowForm(true);setMsg('')}
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
@@ -584,6 +584,7 @@ function App(){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
     if(error){setMsg(error.message);return}
     const items=(data||[]) as VendaItem[]
+    setSaleRequestId(crypto.randomUUID())
     setOriginalSaleItems(items)
     setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(Number(v.parcelas)||1);setSaleDueDate(v.primeiro_vencimento||today())
     setSaleItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)})))
@@ -686,21 +687,14 @@ function App(){
 
     setSavingSale(true);setMsg('')
     const args={p_cliente_id:saleClient||null,p_vendedor_cadastro_id:saleSeller||null,p_status:saleStatus,p_forma_pagamento:salePayment,p_parcelas:saleInstallments,p_primeiro_vencimento:saleDueDate,p_observacoes:saleNotes,p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto}))}
-    const rpcName=editingSale
-      ? (autorizarSemEstoque?'atualizar_venda_completa_admin_sem_estoque':'atualizar_venda_completa')
-      : (autorizarSemEstoque?'criar_venda_completa_admin_sem_estoque':'criar_venda_completa')
-    const r=editingSale
-      ? await supabase.rpc(rpcName,{p_venda_id:editingSale.id,...args})
-      : await supabase.rpc(rpcName,args)
+    const r=await supabase.rpc('salvar_venda_erp',{p_requisicao:saleRequestId,p_payload:{...args,p_venda_id:editingSale?.id||null,p_rota_entrega:saleRoute},p_autorizar_sem_estoque:autorizarSemEstoque})
     if(r.error||!r.data){setSavingSale(false);setMsg('Não foi possível salvar a venda: '+(r.error?.message||'erro desconhecido'));return}
     const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Venda
-    const routeUpdate=await supabase.from('vendas').update({rota_entrega:saleRoute,validade_orcamento:saleStatus==='orcamento'?quoteExpiration(today(),empresa?.validade_orcamento_dias??7):null}).eq('id',saved.id)
-    if(routeUpdate.error){setSavingSale(false);setShowForm(false);resetSaleForm();await loadData();setMsg('Venda salva. Abra a venda para corrigir a rota de entrega: '+routeUpdate.error.message);return}
     const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
     const desconto=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
     const total=Math.max(0,subtotal-desconto)
     try{
-      generateInvoicePdf({id:saved.id,fatura_numero:saved.fatura_numero,created_at:saved.created_at||new Date().toISOString(),status:saved.status,subtotal,desconto,total,observacoes:saleNotes||null,forma_pagamento:salePayment,parcelas:saleInstallments,primeiro_vencimento:saleDueDate,rota_entrega:saleRoute,vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,cliente:clientes.find(c=>c.id===saleClient)||null,company:empresa||undefined,items:invoiceItems(items)})
+      (await import('./lib/invoicePdf')).generateInvoicePdf({id:saved.id,fatura_numero:saved.fatura_numero,created_at:saved.created_at||new Date().toISOString(),status:saved.status,subtotal,desconto,total,observacoes:saleNotes||null,forma_pagamento:salePayment,parcelas:saleInstallments,primeiro_vencimento:saleDueDate,rota_entrega:saleRoute,vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,cliente:clientes.find(c=>c.id===saleClient)||null,company:empresa||undefined,items:invoiceItems(items)})
       await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
       setMsg(autorizarSemEstoque?(editingSale?'Venda atualizada com autorização administrativa de estoque e fatura reemitida.':'Venda criada com autorização administrativa de estoque e fatura emitida.'):(editingSale?'Venda atualizada e fatura reemitida.':'Venda criada e fatura emitida.'))
     }catch{setMsg('Venda salva. A fatura pode ser reemitida pelo painel.')}
@@ -723,7 +717,7 @@ function App(){
     if(error){setMsg(error.message);return}
     const items=(data||[]) as VendaItem[]
     const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
-    try{generateInvoicePdf({id:v.id,fatura_numero:v.fatura_numero,created_at:v.created_at,status:v.status,subtotal:Number(v.subtotal),desconto:Number(v.desconto),total:Number(v.total),observacoes:v.observacoes,forma_pagamento:v.forma_pagamento,parcelas:Number(v.parcelas),primeiro_vencimento:v.primeiro_vencimento,rota_entrega:v.rota_entrega,vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,cliente:clientes.find(c=>c.id===v.cliente_id)||null,company:empresa||undefined,items:invoiceItems(drafts)});await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)}catch{setMsg('Não foi possível gerar o PDF.')}
+    try{(await import('./lib/invoicePdf')).generateInvoicePdf({id:v.id,fatura_numero:v.fatura_numero,created_at:v.created_at,status:v.status,subtotal:Number(v.subtotal),desconto:Number(v.desconto),total:Number(v.total),observacoes:v.observacoes,forma_pagamento:v.forma_pagamento,parcelas:Number(v.parcelas),primeiro_vencimento:v.primeiro_vencimento,rota_entrega:v.rota_entrega,vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,cliente:clientes.find(c=>c.id===v.cliente_id)||null,company:empresa||undefined,items:invoiceItems(drafts)});await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)}catch{setMsg('Não foi possível gerar o PDF.')}
   }
   async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar fatura ${invoiceNo(v.fatura_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
   async function deleteSale(v:Venda){if(!isAdmin){setMsg('Somente administrador pode excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
@@ -857,7 +851,7 @@ function App(){
       setMsg(editingPurchase?'Cotação atualizada com sucesso. Sem financeiro e sem movimentação de estoque.':'Cotação salva com sucesso. Sem financeiro e sem movimentação de estoque.')
     }else{
       try{
-        generatePurchaseInvoicePdf({
+        (await import('./lib/purchaseInvoicePdf')).generatePurchaseInvoicePdf({
           id:saved.id,
           fatura_numero:saved.fatura_numero,
           created_at:saved.created_at||new Date().toISOString(),
@@ -900,7 +894,7 @@ function App(){
     const fornecedor=fornecedores.find(f=>f.id===compra.fornecedor_id)||null
 
     try{
-      generatePurchaseInvoicePdf({
+      (await import('./lib/purchaseInvoicePdf')).generatePurchaseInvoicePdf({
         id:compra.id,
         fatura_numero:compra.fatura_numero,
         created_at:compra.created_at,
@@ -1404,6 +1398,7 @@ function App(){
                     {(t.venda_id||t.compra_id)&&<label className="ghost proofUpload paymentProofUpload iconOnlyProof" title="Anexar comprovante" aria-label="Anexar comprovante"><Paperclip size={15}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id),e)}/></label>}
                     <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
                   </div>}
+                  <PaymentHistory titleId={t.id} onChanged={loadData}/>
                   {(t.venda_id||t.compra_id)&&proofsFor(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id)).length>0&&<div className="financeProofSummary">
                     <Paperclip size={14}/><span>{proofsFor(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id)).length} comprovante(s) anexado(s)</span>
                   </div>}
@@ -2068,8 +2063,7 @@ function App(){
           <label className="fieldLabel">Cliente / Fornecedor<input name="entidade_nome" placeholder="Cliente / Fornecedor" defaultValue={editingTitle?.entidade_nome||''}/></label>
           <label className="fieldLabel">Data de vencimento<input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()}/></label>
           <label className="fieldLabel">Valor (R$)<input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0}/></label>
-          <label className="fieldLabel">Categoria<input name="categoria" placeholder="Categoria" defaultValue={editingTitle?.categoria||''}/></label>
-          <label className="fieldLabel">Centro de custo<input name="centro_custo" placeholder="Centro de custo" defaultValue={editingTitle?.centro_custo||''}/></label>
+          <FinanceClassifications category={editingTitle?.categoria||null} center={editingTitle?.centro_custo||null}/>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">{editingTitle?'Salvar alterações':'Criar fatura'}</button></div>
         </form></div></div>}
 
@@ -2111,6 +2105,7 @@ function App(){
       </section>}
 
       {active==='config'&&<section>
+        {isAdmin&&<FinanceAdministration/>}
         {isAdmin&&<form className="panel viewerUserForm" onSubmit={createManagedUserAccount}>
           <div className="formTitle"><div><h3>Criar novo usuário</h3><p>O acesso ao ERP passa a ser controlado pelo administrador. Escolha o perfil inicial do usuário.</p></div></div>
           <label className="fieldLabel">Nome do usuário<input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Digite o nome" required/></label>
@@ -2186,7 +2181,7 @@ function App(){
           <label><input type="checkbox" name="venda_cliente" defaultChecked={Boolean(empresa?.campos_obrigatorios?.venda_cliente)}/> Cliente obrigatório na venda</label>
           <label><input type="checkbox" name="venda_vendedor" defaultChecked={Boolean(empresa?.campos_obrigatorios?.venda_vendedor)}/> Vendedor obrigatório na venda</label>
           <label><input type="checkbox" name="compra_fornecedor" defaultChecked={Boolean(empresa?.campos_obrigatorios?.compra_fornecedor)}/> Fornecedor obrigatório na compra</label>
-          <p className="fieldLabelWide">Pedidos baixam estoque ao confirmar; compras dão entrada ao receber. Novos usuários aguardam liberação de um administrador.</p>
+          <p className="fieldLabelWide">Política de estoque: baixa ao confirmar o pedido, conforme definido pela administração. Compras dão entrada ao receber. Novos usuários aguardam liberação de um administrador.</p>
           <div className="formActions"><button className="primary">Salvar configurações</button></div></fieldset>
         </form>
       </section>}
