@@ -49,3 +49,24 @@
 @media(prefers-reduced-motion:reduce){.appsWorkspace .launcherApp{transition:none}.appsWorkspace .launcherApp:hover{transform:none}}
 
 .launcherReadOnly{font-size:10px;color:var(--ds-muted);margin-top:-4px}
+
+
+.launcherIcon{position:relative}
+.launcherNotification{
+  position:absolute;
+  top:-6px;
+  right:-8px;
+  display:grid;
+  place-items:center;
+  min-width:20px;
+  height:20px;
+  padding:0 5px;
+  border:2px solid var(--ds-surface);
+  border-radius:999px;
+  background:#ef4444;
+  color:#fff;
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
+  box-shadow:0 4px 10px rgba(15,23,42,.18);
+}
