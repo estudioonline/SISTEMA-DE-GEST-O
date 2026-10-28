@@ -4092,3 +4092,68 @@
   .recordDetailHeader{top:-14px;margin:-14px -14px 14px;padding:12px 14px}
   .recordDetailClose{min-width:40px;padding:0 10px}
 }
+
+
+/* Compactacao das telas dedicadas financeiras e de vendas */
+.recordDetailSheet .financeManagePanel{display:grid;gap:10px}
+.recordDetailSheet .actionPanel{padding:10px 12px}
+.recordDetailSheet .actionMeta{gap:2px}
+.recordDetailSheet .actionMeta strong{font-size:13px}
+.recordDetailSheet .actionMeta span{font-size:11px}
+.recordDetailSheet .financePanelTabs{margin:0}
+.recordDetailSheet .financePanelTabs button{height:30px;padding:0 10px;font-size:12px}
+.recordDetailSheet .financeDetailGrid{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+}
+.recordDetailSheet .financeDetailGrid>div{
+  padding:8px 10px;
+  border-radius:9px;
+}
+.recordDetailSheet .financeDetailGrid span{
+  font-size:9px;
+  line-height:1.1;
+}
+.recordDetailSheet .financeDetailGrid strong{
+  font-size:12px;
+  line-height:1.25;
+}
+.recordDetailSheet .paymentHistory,
+.recordDetailSheet .proofPanel{margin-top:0}
+
+.saleRecordSheet{width:min(1280px,100%)}
+.saleRecordSheet .saleDetailPage{
+  border:0;
+  box-shadow:none;
+  padding:0;
+  gap:12px;
+}
+.saleRecordSheet .saleDetailTopbar{padding:0}
+.saleRecordSheet .saleDetailStatusBar{
+  padding:8px 0 2px;
+}
+.saleRecordSheet .saleDetailStatusBar h2{font-size:24px}
+.saleRecordSheet .saleDetailSummaryGrid{
+  gap:8px;
+  padding:8px 0;
+}
+.saleRecordSheet .saleDetailSummaryGrid>div{
+  padding:8px 10px;
+  border:1px solid var(--ds-border);
+  border-radius:9px;
+  background:var(--ds-bg);
+}
+.saleRecordSheet .saleDetailSummaryGrid span{font-size:9px}
+.saleRecordSheet .saleDetailSummaryGrid strong{font-size:12px}
+.saleRecordSheet .saleDetailTotal{font-size:15px}
+.saleRecordSheet .saleDetailTabs button{padding:8px 10px;font-size:12px}
+.saleRecordSheet .saleDetailSection{gap:10px}
+
+@media(max-width:900px){
+  .recordDetailSheet .financeDetailGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .saleRecordSheet .saleDetailSummaryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  .recordDetailSheet .financeDetailGrid,
+  .saleRecordSheet .saleDetailSummaryGrid{grid-template-columns:1fr}
+}
