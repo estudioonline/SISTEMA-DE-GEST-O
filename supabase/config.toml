@@ -1,0 +1,4 @@
+[functions.focus-nfe]
+# The handler validates the session with Auth getUser and checks the active
+# administrator profile and module permissions before every operation.
+verify_jwt = false

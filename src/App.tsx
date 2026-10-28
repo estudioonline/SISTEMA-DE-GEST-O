@@ -19,6 +19,7 @@ import { AuthorizationCenter } from './AuthorizationCenter'
 import { PaymentHistory } from './PaymentHistory'
 import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
 import { NfeImportModal } from './NfeImportModal'
+import { FocusNfeSettings, FocusNfeSale } from './FocusNfe'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
 import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
 
@@ -2233,6 +2234,7 @@ function App(){
                       </div>
                     </div>
                     {proofPanel('venda',v.id)}
+                    {isAdmin&&canManageConfig&&canManageSales&&<FocusNfeSale saleId={v.id}/>}
                   </div>
                 </td></tr>}
               </Fragment>
@@ -2419,6 +2421,7 @@ function App(){
       </section>}
 
       {active==='config'&&<section>
+        {isAdmin&&canManageConfig&&<FocusNfeSettings/>}
         {canManageConfig&&<FinanceAdministration/>}
         {canManageConfig&&<form className="panel viewerUserForm" onSubmit={createManagedUserAccount}>
           <div className="formTitle"><div><h3>Criar novo usuário</h3><p>O acesso ao ERP passa a ser controlado pelo administrador. Escolha o perfil inicial do usuário.</p></div></div>
@@ -2595,3 +2598,4 @@ function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelet
 }
 
 export default App
+

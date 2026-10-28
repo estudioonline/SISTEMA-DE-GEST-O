@@ -3202,3 +3202,15 @@
   .permissionActions{align-items:stretch;flex-direction:column}
   .permissionActions .primary{width:100%;justify-content:center}
 }
+
+/* Fiscal homologation controls */
+.fiscalPanel{margin-top:16px;padding:16px;border:1px solid var(--border,#cbd5e1);border-radius:12px;min-width:0}
+.fiscalPanel fieldset{border:0;padding:0;margin:0;min-width:0}
+.fiscalGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
+.fiscalPanel input,.fiscalPanel select,.fiscalPanel textarea{width:100%;box-sizing:border-box}
+.fiscalPanel p{overflow-wrap:anywhere}
+.fiscalPanel .formActions{flex-wrap:wrap}
+.fiscalPanel .fieldLabel{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.fiscalPanel textarea{min-height:100px}
+.fiscalItem{border-top:1px solid var(--border,#cbd5e1);padding:14px 0}
+.fiscalError{color:#b42318;background:#fff1f0;padding:12px;border-radius:8px}
