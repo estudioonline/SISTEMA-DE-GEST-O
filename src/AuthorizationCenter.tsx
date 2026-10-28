@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 
 type Request = {id:string;tipo:string;status:string;motivo:string|null;solicitado_em:string;aprovado_em:string|null;decisao_motivo:string|null;resultado_id:string|null;entidade_id:string|null;payload:Record<string,unknown>|null}
-type Product = {id:string;descricao:string;estoque_atual:number;unidade:string;custo?:number|null;custo_medio?:number|null;percentual_minimo_custo_venda?:number|null}
+type Product = {id:string;descricao:string;estoque_atual:number;estoque_minimo?:number|null;unidade:string;custo?:number|null;custo_medio?:number|null;percentual_minimo_custo_venda?:number|null}
+type ApprovalBlocker = {tipo:string;label:string;detalhe?:string}
 
 export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{admin:boolean;products:Product[];clients:{id:string;nome:string}[];sellers:{id:string;nome:string}[];onChanged:()=>Promise<void>}) {
   const [rows,setRows]=useState<Request[]>([])
@@ -46,11 +47,12 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
     <div className="panelHead"><div><h3>Central de autorizações</h3><p>A aprovação salva a venda e seus vínculos em uma única operação. Preços, crédito e estoque são verificados novamente no banco.</p></div><button className="ghost" onClick={()=>void load()}>Atualizar</button></div>
     {error&&<p role="alert">{error}</p>}
     <label className="fieldLabel">Status<select value={filter} onChange={e=>{setPage(0);setFilter(e.target.value)}}><option value="pendente">Pendentes</option><option value="todos">Todos</option><option value="aprovado">Aprovados</option><option value="rejeitado">Rejeitados</option></select></label>
-    <p>{count} registro(s). {admin?'Ao autorizar, você também aprova eventuais exceções de crédito, desconto, margem, estoque negativo e preço abaixo do mínimo deste rascunho.':'Você acompanha suas próprias solicitações.'}</p>
+    <p>{count} registro(s). {admin?'Ao aprovar, o sistema libera as exceções listadas no pedido e avança a venda. Faturas já pagas mantêm os itens, valores e histórico financeiro já liquidados.':'Você acompanha suas próprias solicitações.'}</p>
     {rows.filter(r=>filter==='todos'||r.status===filter).map(row=>{
       const p=row.payload
       const items=(Array.isArray(p?.p_itens)?p.p_itens:[]) as {produto_id:string;quantidade:number;valor_unitario:number;desconto:number}[]
       const total=items.reduce((sum,i)=>sum+Number(i.quantidade)*Number(i.valor_unitario)-Number(i.desconto||0),0)
+      const blockers=(Array.isArray(p?.p_bloqueios)?p?.p_bloqueios:[]) as ApprovalBlocker[]
       const hasStockShortage=String(p?.p_status)==='pedido'||String(p?.p_status)==='faturado'
         ? items.some(i=>{
             const product=products.find(x=>x.id===i.produto_id)
@@ -70,7 +72,16 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
       return <article className="panel" key={row.id}>
         <h4>{p?(row.entidade_id?'Orçamento → venda':p.p_venda_id?'Alteração de venda':'Nova venda'):row.tipo} · {row.status}</h4>
         <p>{new Date(row.solicitado_em).toLocaleString('pt-BR')} · {row.motivo}</p>
-        {p&&<>{row.entidade_id&&<p className="authorizationQuoteLink"><strong>Orçamento vinculado.</strong> Aguardando aprovação para avançar para {String(p.p_status)==='faturado'?'Faturado':'Pedido'}.</p>}<p>Cliente: {clients.find(c=>c.id===p.p_cliente_id)?.nome||'Consumidor'} · Vendedor: {sellers.find(s=>s.id===p.p_vendedor_cadastro_id)?.nome||'Sem vendedor'}</p><p>Etapa: {String(p.p_status)} · Pagamento: {String(p.p_forma_pagamento)} · Parcelas: {String(p.p_parcelas)} · Rota: {String(p.p_rota_entrega)}</p>
+        {p&&<>{row.entidade_id&&<p className="authorizationQuoteLink"><strong>Venda vinculada.</strong> Aguardando aprovação para avançar para {String(p.p_status)==='faturado'?'Faturado':'Pedido'}.</p>}
+        {blockers.length>0&&<div className="authorizationBlockerSummary">
+          <div><strong>Bloqueios que serão autorizados</strong><span>{blockers.length} exceção(ões) identificada(s)</span></div>
+          <div className="authorizationBlockerGrid">{blockers.map((blocker,index)=><div key={blocker.tipo+'-'+index}>
+            <strong>{blocker.label||blocker.tipo}</strong>
+            {blocker.detalhe&&<span>{blocker.detalhe}</span>}
+          </div>)}</div>
+          {blockers.some(b=>b.tipo==='fatura_paga')&&<p><strong>Fatura paga:</strong> a aprovação avança o status, mas preserva os itens, valores e recebimentos já registrados.</p>}
+        </div>}
+        <p>Cliente: {clients.find(c=>c.id===p.p_cliente_id)?.nome||'Consumidor'} · Vendedor: {sellers.find(s=>s.id===p.p_vendedor_cadastro_id)?.nome||'Sem vendedor'}</p><p>Etapa: {String(p.p_status)} · Pagamento: {String(p.p_forma_pagamento)} · Parcelas: {String(p.p_parcelas)} · Rota: {String(p.p_rota_entrega||'não informada')}</p>
         <p>Primeiro vencimento: {String(p.p_primeiro_vencimento)} · Observações: {String(p.p_observacoes||'—')}</p>
         <table><thead><tr><th>Produto</th><th>Quantidade</th><th>Preço</th><th>Preço mínimo</th><th>Desconto</th><th>Estoque após venda</th></tr></thead><tbody>{items.map((i,index)=>{
           const product=products.find(x=>x.id===i.produto_id)
@@ -115,7 +126,7 @@ export function AuthorizationCenter({admin,products,clients,sellers,onChanged}:{
             {decisionErrors[row.id]&&<p className="authorizationInlineError" role="alert">{decisionErrors[row.id]}</p>}
             <div className="formActions">
               <button className="ghost" disabled={!canDecide} title={!canDecide?'Preencha a justificativa com pelo menos 5 caracteres':''} onClick={()=>void decide(row,false)}>Rejeitar</button>
-              <button className="primary" disabled={!canDecide} title={!canDecide?'Preencha a justificativa com pelo menos 5 caracteres':''} onClick={()=>void decide(row,true)}>{busy===row.id?'Processando...':'Autorizar e salvar venda'}</button>
+              <button className="primary authorizationApproveBtn" disabled={!canDecide} title={!canDecide?'Preencha a justificativa com pelo menos 5 caracteres':''} onClick={()=>void decide(row,true)}>{busy===row.id?'Processando...':'Aprovar exceções e avançar venda'}</button>
             </div>
           </>
         })()}</>}
