@@ -253,8 +253,14 @@ function App(){
     if(session&&active==='comissoes')void loadCommissions()
   },[session,active,commissionStart,commissionEnd])
   useEffect(()=>{
-    if(session&&active==='config'&&profileRole==='administrador')void loadManagedUsers()
-  },[session,active,profileRole])
+    if(session&&active==='config'&&canManageConfig)void loadManagedUsers()
+  },[session,active,userPermissions])
+
+  useEffect(()=>{
+    if(!session||canViewModule(active))return
+    const first=visibleMenu[0]?.[0]
+    if(first)setActive(first)
+  },[session,userPermissions,active])
 
   useEffect(()=>{
     if(session&&active==='financeiro'&&canViewFinance)void loadFinanceActivity()
@@ -1157,12 +1163,16 @@ function App(){
 
   // CONFIG
   async function loadManagedUsers(){
-    if(!isAdmin)return
+    if(!canManageConfig)return
     const {data,error}=await supabase.rpc('listar_usuarios_erp')
     if(error){setMsg('Não foi possível carregar os usuários: '+error.message);return}
-    const rows=(data||[]) as ManagedUser[]
+    const rows=((data||[]) as Omit<ManagedUser,'permissoes'>[]&{permissoes?:unknown}[]).map(u=>({
+      ...u,
+      permissoes:normalizePermissions(u.permissoes,u.perfil)
+    })) as ManagedUser[]
     setManagedUsers(rows)
     setUserEdits(Object.fromEntries(rows.map(u=>[u.user_id,{nome:u.nome,perfil:u.perfil,ativo:u.ativo}])))
+    setUserPermissionEdits(Object.fromEntries(rows.map(u=>[u.user_id,{...u.permissoes}])))
   }
 
   function editManagedUser(id:string,field:'nome'|'perfil'|'ativo',value:string|boolean){
@@ -1175,8 +1185,39 @@ function App(){
     }))
   }
 
+  function editUserPermission(id:string,module:PermissionModule,level:AccessLevel){
+    setUserPermissionEdits(prev=>({
+      ...prev,
+      [id]:{
+        ...(prev[id]||defaultPermissionsForRole(managedUsers.find(u=>u.user_id===id)?.perfil||'visualizador')),
+        [module]:level
+      }
+    }))
+  }
+
+  function resetUserPermissionsToRole(u:ManagedUser){
+    const draftRole=userEdits[u.user_id]?.perfil||u.perfil
+    setUserPermissionEdits(prev=>({...prev,[u.user_id]:defaultPermissionsForRole(draftRole)}))
+  }
+
+  async function saveUserPermissions(u:ManagedUser){
+    if(!canManageConfig){setMsg('Sem permissão para gerenciar acessos.');return}
+    if(u.usuario_atual){setMsg('Para sua segurança, suas próprias permissões devem ser alteradas por outro administrador.');return}
+    const draft=userPermissionEdits[u.user_id]||u.permissoes
+    setSavingPermissionUserId(u.user_id)
+    setMsg('')
+    const {error}=await supabase.rpc('salvar_permissoes_usuario_erp',{
+      p_user_id:u.user_id,
+      p_permissoes:draft
+    })
+    setSavingPermissionUserId(null)
+    if(error){setMsg(error.message);return}
+    setMsg('Permissões do usuário atualizadas.')
+    await loadManagedUsers()
+  }
+
   async function saveManagedUser(u:ManagedUser){
-    if(!isAdmin){setMsg('Somente administrador pode gerenciar usuários.');return}
+    if(!canManageConfig){setMsg('Sem permissão para gerenciar usuários.');return}
     const draft=userEdits[u.user_id]||{nome:u.nome,perfil:u.perfil,ativo:u.ativo}
     if(!draft.ativo&&u.ativo&&!window.confirm(`Desativar o acesso de "${u.nome}" ao sistema?`))return
 
@@ -1197,8 +1238,8 @@ function App(){
 
   async function createManagedUserAccount(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
-    if(!isAdmin){
-      setMsg('Somente administrador pode criar usuários.')
+    if(!canManageConfig){
+      setMsg('Sem permissão para criar usuários.')
       return
     }
     if(!supabaseUrl||!supabasePublishableKey){
@@ -1246,7 +1287,7 @@ function App(){
 
   async function saveCompany(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
-    if(!isAdmin){setMsg('Somente administrador pode alterar configurações.');return}
+    if(!canManageConfig){setMsg('Sem permissão para alterar configurações.');return}
     const f=new FormData(e.currentTarget)
     let settings
     try{settings=readSettings(f,empresa?.campos_obrigatorios)}catch(error){setMsg((error as Error).message);return}
@@ -2364,8 +2405,8 @@ function App(){
       </section>}
 
       {active==='config'&&<section>
-        {isAdmin&&<FinanceAdministration/>}
-        {isAdmin&&<form className="panel viewerUserForm" onSubmit={createManagedUserAccount}>
+        {canManageConfig&&<FinanceAdministration/>}
+        {canManageConfig&&<form className="panel viewerUserForm" onSubmit={createManagedUserAccount}>
           <div className="formTitle"><div><h3>Criar novo usuário</h3><p>O acesso ao ERP passa a ser controlado pelo administrador. Escolha o perfil inicial do usuário.</p></div></div>
           <label className="fieldLabel">Nome do usuário<input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Digite o nome" required/></label>
           <label className="fieldLabel">E-mail<input type="email" value={viewerEmail} onChange={e=>setViewerEmail(e.target.value)} placeholder="usuario@empresa.com" required/></label>
@@ -2382,7 +2423,7 @@ function App(){
           <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar usuário'}</button>
         </form>}
 
-        {isAdmin&&<article className="panel userManagementPanel">
+        {canManageConfig&&<article className="panel userManagementPanel">
           <div className="panelHead">
             <div><h3>Gerenciar usuários</h3><p>Altere nome, perfil de acesso e status. Usuários desativados deixam de acessar os dados do ERP.</p></div>
             <button type="button" className="ghost" onClick={()=>void loadManagedUsers()}><RefreshCw size={15}/>Atualizar</button>
@@ -2410,13 +2451,56 @@ function App(){
                 <td>{u.ultimo_acesso?new Date(u.ultimo_acesso).toLocaleString('pt-BR'):'Nunca acessou'}</td>
                 <td><button type="button" className="primary userSaveBtn" disabled={!changed||savingUserId===u.user_id} onClick={()=>void saveManagedUser(u)}>{savingUserId===u.user_id?'Salvando...':'Salvar'}</button></td>
               </tr>
-              {managedUserCard===u.user_id&&<tr className="manageRow"><td colSpan={6}><div className="actionPanel"><div className="actionMeta"><strong>{u.nome}</strong><span>{u.email} · {profileLabel(u.perfil)} · {u.ativo?'Ativo':'Inativo'}</span><span>Cadastrado em {dateBr(u.criado_em)}</span></div><button type="button" className="ghost" onClick={()=>setManagedUserCard(null)}>Fechar card</button></div></td></tr>}</Fragment>
+              {managedUserCard===u.user_id&&<tr className="manageRow"><td colSpan={6}>
+                <div className="userPermissionPanel">
+                  <div className="actionPanel">
+                    <div className="actionMeta">
+                      <strong>{u.nome}</strong>
+                      <span>{u.email} · {profileLabel(u.perfil)} · {u.ativo?'Ativo':'Inativo'}</span>
+                      <span>Cadastrado em {dateBr(u.criado_em)}</span>
+                    </div>
+                    <div className="rowActions">
+                      {!u.usuario_atual&&<button type="button" className="ghost" onClick={()=>resetUserPermissionsToRole(u)}>Usar padrão do perfil</button>}
+                      <button type="button" className="ghost" onClick={()=>setManagedUserCard(null)}>Fechar</button>
+                    </div>
+                  </div>
+                  {u.usuario_atual&&<div className="permissionSafetyNotice"><ShieldCheck size={16}/><span>Suas próprias permissões ficam bloqueadas nesta sessão. Outro administrador pode alterá-las.</span></div>}
+                  <div className="permissionGrid">
+                    {permissionModules.map(module=>{
+                      const draft=userPermissionEdits[u.user_id]||u.permissoes
+                      const level=draft[module.key]
+                      return <div className="permissionRow" key={module.key}>
+                        <div className="permissionModuleInfo"><strong>{module.label}</strong><span>{module.description}</span></div>
+                        <select
+                          value={level}
+                          disabled={u.usuario_atual}
+                          onChange={e=>editUserPermission(u.user_id,module.key,e.target.value as AccessLevel)}
+                          aria-label={`Permissão de ${module.label}`}
+                        >
+                          <option value="nenhum">Sem acesso</option>
+                          <option value="visualizar">Somente visualizar</option>
+                          {module.editable&&<option value="editar">Editar</option>}
+                        </select>
+                      </div>
+                    })}
+                  </div>
+                  {!u.usuario_atual&&<div className="permissionActions">
+                    <span>Perfil define o padrão inicial; esta matriz personaliza o acesso deste usuário.</span>
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={savingPermissionUserId===u.user_id||JSON.stringify(userPermissionEdits[u.user_id]||u.permissoes)===JSON.stringify(u.permissoes)}
+                      onClick={()=>void saveUserPermissions(u)}
+                    >{savingPermissionUserId===u.user_id?'Salvando permissões...':'Salvar permissões'}</button>
+                  </div>}
+                </div>
+              </td></tr>}</Fragment>
             })}</tbody>
           </table></div>
         </article>}
 
         <form className="panel configForm" onSubmit={saveCompany}>
-          <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!isAdmin&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!isAdmin}>
+          <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!canManageConfig&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!canManageConfig}>
           <label className="fieldLabel">Razão social<input name="razao_social" placeholder="Razão social da empresa" defaultValue={empresa?.razao_social||''} required/></label>
           <label className="fieldLabel">Nome fantasia<input name="nome_fantasia" placeholder="Nome fantasia" defaultValue={empresa?.nome_fantasia||''} required/></label>
           <label className="fieldLabel">CNPJ<input name="cnpj" inputMode="numeric" placeholder="00.000.000/0000-00" defaultValue={maskCnpj(empresa?.cnpj||'')} onInput={e=>{e.currentTarget.value=maskCnpj(e.currentTarget.value)}}/></label>
