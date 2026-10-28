@@ -18,6 +18,7 @@ import { readSettings } from './lib/erpSettings'
 import { AuthorizationCenter } from './AuthorizationCenter'
 import { PaymentHistory } from './PaymentHistory'
 import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
+import { NfeImportModal } from './NfeImportModal'
 
 type ModuleKey='dashboard'|'clientes'|'fornecedores'|'produtos'|'compras'|'vendas'|'comissoes'|'financeiro'|'relatorios'|'config'|'autorizacoes'
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
@@ -31,7 +32,7 @@ type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:numb
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
-type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null}
+type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
 type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
@@ -181,6 +182,7 @@ function App(){
   const [purchaseInstallmentDates,setPurchaseInstallmentDates]=useState<string[]>([today()])
   const [purchaseItems,setPurchaseItems]=useState<PurchaseItemDraft[]>([newPurchaseItem()])
   const [savingPurchase,setSavingPurchase]=useState(false)
+  const [showNfeImport,setShowNfeImport]=useState(false)
 
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
@@ -480,6 +482,7 @@ function App(){
     setAdjustingProduct(null)
     setEditingTitle(null)
     setEditingSeller(null)
+    setShowNfeImport(false)
     resetSaleForm()
     resetPurchaseForm()
   }
@@ -1599,6 +1602,7 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
+          {active==='compras'&&(isAdmin||profileRole==='estoque')&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
           {canManageStock&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
@@ -1848,6 +1852,17 @@ function App(){
           </article>
         </>}
       </section>}
+
+      {showNfeImport&&<NfeImportModal
+        open={showNfeImport}
+        products={produtos}
+        onClose={()=>setShowNfeImport(false)}
+        onImported={async result=>{
+          setShowNfeImport(false)
+          setMsg(`NF-e importada com sucesso na compra #${invoiceNo(result.fatura_numero)}. Estoque e financeiro atualizados.`)
+          await loadData()
+        }}
+      />}
 
       {active==='compras'&&<section className="semanticPage purchasesPage">
         <article className="panel purchaseSuggestionPanel">
