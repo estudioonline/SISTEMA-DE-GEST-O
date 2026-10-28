@@ -396,7 +396,7 @@ function App(){
 
   async function saveSeller(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
-    if(!isAdmin){setMsg('Somente administrador pode cadastrar ou editar vendedores.');return}
+    if(!canManageCommissions){setMsg('Sem permissão para editar vendedores e comissões.');return}
     const f=new FormData(e.currentTarget)
     const payload={
       nome:String(f.get('nome')||'').trim(),
@@ -419,7 +419,7 @@ function App(){
   }
 
   async function deactivateSeller(v:Vendedor){
-    if(!isAdmin)return
+    if(!canManageCommissions)return
     const {error}=await supabase.from('vendedores').update({ativo:false,updated_at:new Date().toISOString()}).eq('id',v.id)
     setMsg(error?error.message:'Vendedor desativado.')
     if(!error){await loadData();await loadCommissions()}
@@ -433,7 +433,7 @@ function App(){
     const file=e.target.files?.[0]
     e.target.value=''
     if(!file)return
-    if(isViewer){setMsg('Usuário visualizador não pode anexar comprovantes.');return}
+    if(kind==='venda'?!canManageSales:!canManagePurchases){setMsg('Você possui somente visualização neste módulo e não pode anexar comprovantes.');return}
     const allowed=['application/pdf','image/jpeg','image/png','image/webp']
     if(!allowed.includes(file.type)){setMsg('Envie um comprovante em PDF, JPG, PNG ou WEBP.');return}
     if(file.size>10*1024*1024){setMsg('O comprovante deve ter no máximo 10 MB.');return}
@@ -522,8 +522,8 @@ function App(){
     finally{setStatementBusy(null)}
   }
 
-  function startNewClient(){if(!canManageSales){setMsg('Seu perfil permite apenas consultar clientes.');return}setEditingClient(null);setShowForm(true);setMsg('')}
-  function startEditClient(c:Cliente){if(!canManageSales){setMsg('Seu perfil permite apenas consultar clientes.');return}setEditingClient(c);setShowForm(true);setMsg('')}
+  function startNewClient(){if(!canManageClients){setMsg('Você possui apenas permissão de visualização em Clientes.');return}setEditingClient(null);setShowForm(true);setMsg('')}
+  function startEditClient(c:Cliente){if(!canManageClients){setMsg('Você possui apenas permissão de visualização em Clientes.');return}setEditingClient(c);setShowForm(true);setMsg('')}
   async function saveClient(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const f=new FormData(e.currentTarget)
@@ -548,8 +548,8 @@ function App(){
   }
 
   // FORNECEDORES
-  function startNewSupplier(){if(!canManageStock){setMsg('Seu perfil permite apenas consultar fornecedores.');return}setEditingSupplier(null);setShowForm(true);setMsg('')}
-  function startEditSupplier(f:Fornecedor){if(!canManageStock){setMsg('Seu perfil permite apenas consultar fornecedores.');return}setEditingSupplier(f);setShowForm(true);setMsg('')}
+  function startNewSupplier(){if(!canManageSuppliers){setMsg('Você possui apenas permissão de visualização em Fornecedores.');return}setEditingSupplier(null);setShowForm(true);setMsg('')}
+  function startEditSupplier(f:Fornecedor){if(!canManageSuppliers){setMsg('Você possui apenas permissão de visualização em Fornecedores.');return}setEditingSupplier(f);setShowForm(true);setMsg('')}
   async function saveSupplier(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const f=new FormData(e.currentTarget)
@@ -626,8 +626,8 @@ function App(){
     e.target.value=''
     if(!file)return
 
-    if(!canManageStock){
-      setMsg('Somente administrador ou perfil de estoque pode importar produtos e ajustar estoque.')
+    if(!canManageProducts){
+      setMsg('Sem permissão para importar produtos ou ajustar estoque.')
       return
     }
 
@@ -1526,7 +1526,7 @@ function App(){
     return <div className="proofPanel">
       <div className="proofHead">
         <div><strong>Comprovantes de pagamento</strong><span>{list.length?String(list.length)+' arquivo(s) anexado(s)':'Nenhum comprovante anexado'}</span></div>
-        {!isViewer&&<label className="ghost proofUpload iconOnlyProof" title="Anexar comprovante" aria-label="Anexar comprovante"><Paperclip size={15}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(kind,id,e)}/></label>}
+        {((kind==='venda'&&canManageSales)||(kind==='compra'&&canManagePurchases))&&<label className="ghost proofUpload iconOnlyProof" title="Anexar comprovante" aria-label="Anexar comprovante"><Paperclip size={15}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>void uploadProof(kind,id,e)}/></label>}
       </div>
       {list.length>0&&<div className="proofList">{list.map(p=><div className="proofItem" key={p.id}>
         <div><strong>{p.nome_arquivo}</strong><span>{dateBr(p.created_at)}{p.tamanho?' • '+(Number(p.tamanho)/1024).toFixed(0)+' KB':''}</span></div>
@@ -1652,17 +1652,17 @@ function App(){
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
-          {active==='compras'&&(isAdmin||profileRole==='estoque')&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
-          {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
-          {canManageStock&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
+          {active==='compras'&&canManagePurchases&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
+          {((active==='vendas'&&canManageSales)||(active==='clientes'&&canManageClients)||(active==='fornecedores'&&canManageSuppliers)||(active==='compras'&&canManagePurchases))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
+          {canManageProducts&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
-          {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
+          {canManageCommissions&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
 
       {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
-      {active==='autorizacoes'&&(isAdmin||isSeller)&&<AuthorizationCenter admin={isAdmin} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData}/>}
+      {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData}/>}
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
           <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
@@ -1671,9 +1671,9 @@ function App(){
           <article className="card dashboardCard dashboardCardLowStock"><span>Estoque baixo</span><strong>{low}</strong><small>de {produtos.filter(p=>p.ativo).length} produtos ativos</small></article>
         </div>
         <div className="cards compactCards dashboardCards">
-          <article className="card dashboardCard"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('clientes');if(clientes.length===0&&!isViewer)startNewClient()}}>{clientes.length===0&&!isViewer?'+ Adicionar Cliente':'Gerenciar'}</button></article>
-          <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('fornecedores');if(fornecedores.length===0&&!isViewer)startNewSupplier()}}>{fornecedores.length===0&&!isViewer?'+ Adicionar Fornecedor':'Gerenciar'}</button></article>
-          <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>{setActive('produtos');if(produtos.length===0&&!isViewer)startNewProduct()}}>{produtos.length===0&&!isViewer?'+ Adicionar Produto':'Gerenciar'}</button></article>
+          <article className="card dashboardCard"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('clientes');if(clientes.length===0&&canManageClients)startNewClient()}}>{clientes.length===0&&canManageClients?'+ Adicionar Cliente':'Gerenciar'}</button></article>
+          <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('fornecedores');if(fornecedores.length===0&&canManageSuppliers)startNewSupplier()}}>{fornecedores.length===0&&canManageSuppliers?'+ Adicionar Fornecedor':'Gerenciar'}</button></article>
+          <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>{setActive('produtos');if(produtos.length===0&&canManageProducts)startNewProduct()}}>{produtos.length===0&&canManageProducts?'+ Adicionar Produto':'Gerenciar'}</button></article>
         </div>
 
         <div className={canViewFinance?'dashboardCharts dashboardChartsThree':'dashboardCharts'}>
@@ -1742,7 +1742,7 @@ function App(){
           </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">{editingClient?'Salvar alterações':'Cadastrar cliente'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={!canManageSales} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="actionMeta"><strong>{c.nome}</strong><span>{c.documento||'Sem documento'} · {c.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageSales&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
+        <EditableEntityTable readOnly={!canManageClients} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="actionMeta"><strong>{c.nome}</strong><span>{c.documento||'Sem documento'} · {c.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageClients&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='fornecedores'&&<section className="semanticPage suppliersPage">
@@ -1765,7 +1765,7 @@ function App(){
           </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">{editingSupplier?'Salvar alterações':'Cadastrar fornecedor'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={!canManageStock} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="actionMeta"><strong>{f.nome}</strong><span>{f.documento||'Sem documento'} · {f.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageStock&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
+        <EditableEntityTable readOnly={!canManageSuppliers} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="actionMeta"><strong>{f.nome}</strong><span>{f.documento||'Sem documento'} · {f.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageSuppliers&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='produtos'&&<section className="semanticPage productsPage">
@@ -1795,9 +1795,9 @@ function App(){
             <div className="excelActions">
               <button type="button" className="ghost" onClick={downloadProductModel}><FileSpreadsheet size={16}/>Baixar modelo</button>
               <button type="button" className="ghost" onClick={exportProducts}><Download size={16}/>Exportar Excel</button>
-              <label className={canManageStock?'primary excelUpload':'ghost excelUpload disabledUpload'}>
+              <label className={canManageProducts?'primary excelUpload':'ghost excelUpload disabledUpload'}>
                 <Upload size={16}/>Importar Excel
-                <input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv" onChange={e=>void importProducts(e)} disabled={!canManageStock}/>
+                <input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv" onChange={e=>void importProducts(e)} disabled={!canManageProducts}/>
               </label>
             </div>
             <small className="excelWarning">Na importação, o <strong>Estoque Atual</strong> da planilha substitui o saldo existente. Toda diferença é registrada como ajuste de estoque.</small>
@@ -1857,7 +1857,7 @@ function App(){
             <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div>
           </form>}
 
-          <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={!canManageStock}/>
+          <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>
         </>}
 
         {productSubtab==='movimentos'&&<>
@@ -2038,7 +2038,7 @@ function App(){
           <div className="panelHead"><h3>Cotações, pedidos e compras</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fatura')}>Fatura{sortMark('compras','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','data')}>Data{sortMark('compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fornecedor')}>Fornecedor{sortMark('compras','fornecedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','status')}>Status{sortMark('compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','pagamento')}>Pagamento{sortMark('compras','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','total')}>Total{sortMark('compras','total')}</button></th><th>Gerenciar</th></tr></thead>
-            <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={compras.length===0&&!isViewer?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
+            <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={compras.length===0&&canManagePurchases?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
               return <Fragment key={c.id}>
@@ -2060,9 +2060,9 @@ function App(){
                       </div>
                       <div className="rowActions">
                         <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
-                        {c.status==='pedido_aprovado'&&canManageStock&&<button className="primary receivePurchaseBtn" onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}
-                        {canManageStock&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
-                        {canManageStock&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
+                        {c.status==='pedido_aprovado'&&canManagePurchases&&<button className="primary receivePurchaseBtn" onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}
+                        {canManagePurchases&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
+                        {canManagePurchases&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
                         {isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
                       </div>
                     </div>
@@ -2182,7 +2182,7 @@ function App(){
           <div className="panelHead"><h3>Orçamentos, vendas e faturas</h3><SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','fatura')}>Documento{sortMark('vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagamento{sortMark('vendas','statuspag')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th><th>Gerenciar</th></tr></thead>
-            <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&!isViewer?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
+            <tbody>{visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}{visibleSales.map(v=>{
               const client=clientes.find(x=>x.id===v.cliente_id)
               const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
               const opened=salePanel===v.id
