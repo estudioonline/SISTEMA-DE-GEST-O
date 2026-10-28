@@ -889,6 +889,108 @@ function App(){
     })
   }
 
+
+  async function advanceSaleToOrder(v:Venda){
+    if(savingSale||!canManageSales||v.status!=='orcamento')return
+    setSavingSale(true);setMsg('')
+    try{
+      const {data:itemData,error:itemError}=await supabase.from('venda_itens').select('*').eq('venda_id',v.id)
+      if(itemError)throw itemError
+      const items=((itemData||[]) as VendaItem[]).map(i=>({produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
+      if(!items.length)throw new Error('Este orçamento não possui itens válidos.')
+
+      const demand=items.reduce<Record<string,number>>((acc,item)=>{acc[item.produto_id]=(acc[item.produto_id]||0)+item.quantidade;return acc},{})
+      const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
+      const discount=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
+      const total=Math.max(0,subtotal-discount)
+      const discountPct=subtotal>0?(discount/subtotal)*100:0
+      const costTotal=items.reduce((sum,item)=>{
+        const product=produtos.find(p=>p.id===item.produto_id)
+        return sum+Number(product?.custo_medio??product?.custo??0)*item.quantidade
+      },0)
+      const marginPct=total>0?((total-costTotal)/total)*100:0
+      const priceIssues=items.flatMap(item=>{
+        const product=produtos.find(p=>p.id===item.produto_id)
+        if(!product||item.quantidade<=0)return []
+        const cost=Math.round(Number(product.custo_medio??product.custo??0)*100)/100
+        const minimum=cost*(1+Number(product.percentual_minimo_custo_venda??100)/100)
+        const effective=item.valor_unitario-Math.min(item.desconto,item.valor_unitario*item.quantidade)/item.quantidade
+        return effective+0.000001<minimum?[{product,effective,minimum}]:[]
+      })
+      const shortages=Object.entries(demand).flatMap(([productId,qty])=>{
+        const product=produtos.find(p=>p.id===productId)
+        if(!product)return []
+        const available=Number(product.estoque_atual)
+        return qty>available?[{product,missing:qty-available}]:[]
+      })
+      const belowMinimum=Object.entries(demand).flatMap(([productId,qty])=>{
+        const product=produtos.find(p=>p.id===productId)
+        if(!product)return []
+        const available=Number(product.estoque_atual)
+        const projected=available-qty
+        const minimum=Math.max(0,Number(product.estoque_minimo)||0)
+        return projected>=0&&projected<minimum?[{product,projected,minimum}]:[]
+      })
+
+      let credit={em_aberto:0,vencido:0}
+      if(v.cliente_id){
+        const {data}=await supabase.rpc('situacao_credito_cliente',{p_cliente_id:v.cliente_id,p_excluir_venda_id:v.id})
+        const row=Array.isArray(data)?data[0]:data
+        credit={em_aberto:Number(row?.em_aberto||0),vencido:Number(row?.vencido||0)}
+      }
+      const client=clientes.find(x=>x.id===v.cliente_id)
+      const limit=Number(client?.limite_credito||0)
+      const paidTitle=titulos.some(t=>t.venda_id===v.id&&Number(t.valor_pago)>0)
+      const proof=comprovantes.some(p=>p.venda_id===v.id)
+      const requiredClient=String(empresa?.campos_obrigatorios?.venda_cliente??'false').toLowerCase()==='true'
+      const requiredSeller=String(empresa?.campos_obrigatorios?.venda_vendedor??'false').toLowerCase()==='true'
+      const blockers=[
+        ...(!v.rota_entrega?[{tipo:'dados_incompletos',label:'Rota de entrega não informada',detalhe:'A aprovação poderá avançar a venda sem rota definida.'}]:[]),
+        ...(requiredClient&&!v.cliente_id?[{tipo:'dados_incompletos',label:'Cliente obrigatório não informado',detalhe:'Campo obrigatório ausente na venda.'}]:[]),
+        ...(requiredSeller&&!v.vendedor_cadastro_id?[{tipo:'dados_incompletos',label:'Vendedor obrigatório não informado',detalhe:'Campo obrigatório ausente na venda.'}]:[]),
+        ...(priceIssues.length?[{tipo:'preco_minimo',label:'Preço abaixo do mínimo',detalhe:priceIssues.map(x=>`${x.product.descricao}: ${money(x.effective)} / mín. ${money(x.minimum)}`).join(' • ')}]:[]),
+        ...(discountPct>Number(empresa?.desconto_max_vendedor??10)?[{tipo:'desconto',label:'Desconto acima do limite',detalhe:`${discountPct.toFixed(2)}% / limite ${Number(empresa?.desconto_max_vendedor??10).toFixed(2)}%`}]:[]),
+        ...(marginPct<Number(empresa?.margem_minima_percentual??0)?[{tipo:'margem',label:'Margem abaixo do mínimo',detalhe:`${marginPct.toFixed(2)}% / mínimo ${Number(empresa?.margem_minima_percentual??0).toFixed(2)}%`}]:[]),
+        ...((empresa?.bloquear_cliente_inadimplente??true)&&credit.vencido>0?[{tipo:'inadimplencia',label:'Cliente inadimplente',detalhe:`${money(credit.vencido)} em títulos vencidos.`}]:[]),
+        ...((empresa?.exigir_aprovacao_limite_credito??true)&&limit>0&&credit.em_aberto+total>limit?[{tipo:'limite_credito',label:'Limite de crédito excedido',detalhe:`Excesso de ${money(credit.em_aberto+total-limit)}.`}]:[]),
+        ...(shortages.length?[{tipo:'estoque_negativo',label:'Estoque insuficiente',detalhe:shortages.map(x=>`${x.product.descricao}: faltam ${x.missing.toLocaleString('pt-BR')} ${x.product.unidade}`).join(' • ')}]:[]),
+        ...(!shortages.length&&belowMinimum.length?[{tipo:'estoque_minimo',label:'Estoque ficará abaixo do mínimo',detalhe:belowMinimum.map(x=>`${x.product.descricao}: saldo ${x.projected.toLocaleString('pt-BR')} / mínimo ${x.minimum.toLocaleString('pt-BR')}`).join(' • ')}]:[]),
+        ...(paidTitle?[{tipo:'fatura_paga',label:'Fatura com pagamento registrado',detalhe:'A aprovação avançará o status preservando itens, valores e histórico financeiro já liquidados.'}]:[]),
+        ...(proof?[{tipo:'comprovante_anexado',label:'Comprovante já anexado',detalhe:'A aprovação preservará o comprovante existente.'}]:[])
+      ]
+
+      const payload={
+        p_venda_id:v.id,
+        p_cliente_id:v.cliente_id||null,
+        p_vendedor_cadastro_id:v.vendedor_cadastro_id||null,
+        p_status:'pedido',
+        p_forma_pagamento:v.forma_pagamento||'pix',
+        p_parcelas:Number(v.parcelas)||1,
+        p_primeiro_vencimento:v.primeiro_vencimento||today(),
+        p_observacoes:v.observacoes||'',
+        p_rota_entrega:v.rota_entrega||null,
+        p_itens:items
+      }
+
+      if(blockers.length){
+        if(saleApprovals.some(a=>a.entidade_id===v.id)){setMsg('Este orçamento já está aguardando autorização.');return}
+        const motivo=window.prompt(`Este orçamento possui ${blockers.length} bloqueio(s). Informe o motivo para solicitar autorização:`)
+        if(!motivo)return
+        const {error}=await supabase.rpc('solicitar_autorizacao_venda',{p_motivo:motivo,p_payload:{...payload,p_bloqueios:blockers}})
+        if(error)throw error
+        setMsg('Orçamento enviado para autorização. Após aprovação, será avançado para pedido.')
+      }else{
+        const {error}=await supabase.rpc('salvar_venda_erp',{p_requisicao:crypto.randomUUID(),p_payload:payload,p_autorizar_sem_estoque:false})
+        if(error)throw error
+        setMsg('Orçamento avançado para pedido com sucesso.')
+        closeSaleDetail()
+      }
+      await loadData()
+    }catch(error){
+      setMsg(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível avançar o orçamento.')
+    }finally{setSavingSale(false)}
+  }
+
   async function requestSaleAuthorization(){
     if(savingSale||!canManageSales)return
     if(!editingSale){
@@ -2523,6 +2625,7 @@ function App(){
               <div className="saleDetailActions">
                 <button type="button" className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
                 <button type="button" className="ghost" onClick={()=>void printSalePdf(v)}><Printer size={15}/>Imprimir</button>
+                {canManageSales&&v.status==='orcamento'&&<button type="button" className="primary advanceSaleBtn" disabled={savingSale||waiting} title={waiting?'Aguardando aprovação administrativa':'Avançar orçamento para pedido'} onClick={()=>void advanceSaleToOrder(v)}><CheckCircle2 size={15}/>{waiting?'Aguardando autorização':'Avançar para pedido'}</button>}
                 {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
                 {isAdmin&&canManageConfig&&canManageSales&&<button type="button" className="ghost" onClick={()=>setSaleDetailTab('documentos')}><ReceiptText size={15}/>NF-e / documentos</button>}
                 {canManageSales&&<button type="button" className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
