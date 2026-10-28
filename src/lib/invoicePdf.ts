@@ -170,7 +170,7 @@ function drawBrandHeader(doc:jsPDF,data:InvoiceData){
   drawRightBlock(legalName,{bold:true,size:7.3,gap:1})
   drawRightBlock(company.endereco,{size:7.1,gap:0.7})
 
-  const locality=[company.cidade,company.cep].filter(Boolean).join('  •  ')
+  const locality=[company.cidade,company.cep].filter(Boolean).join(' - ')
   drawRightBlock(locality,{size:7.1,gap:0.4})
   drawRightBlock('Brasil',{size:7.1,gap:0})
 
