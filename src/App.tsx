@@ -2039,7 +2039,7 @@ function App(){
     <main className="main">
       {showApps?<>
         {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
-        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp}/>
+        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp} notifications={{autorizacoes:saleApprovals.length}}/>
       </>:permissionsReady&&canViewModule(active)&&<>
       <header className="topbar">
         <div><h1 ref={moduleHeading} tabIndex={-1}>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'}</p></div>
