@@ -1021,12 +1021,16 @@ function App(){
   // FINANCEIRO
   function startNewTitle(){
     setEditingTitle(null)
+    setFinanceTitleType('receber')
+    setFinanceTitleEntity('')
     setShowForm(true)
     setMsg('')
   }
 
   function startEditTitle(t:Titulo){
     setEditingTitle(t)
+    setFinanceTitleType(t.tipo)
+    setFinanceTitleEntity(t.entidade_nome||'')
     setShowForm(true)
     setMsg('')
   }
@@ -1037,6 +1041,7 @@ function App(){
       return
     }
     setFinancePanel(t.id)
+    setFinancePanelTab('detalhes')
     setPaymentDate(today())
     setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))
   }
@@ -1044,6 +1049,19 @@ function App(){
   async function saveTitle(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const f=new FormData(e.currentTarget)
+    const linked=Boolean(editingTitle?.venda_id||editingTitle?.compra_id)
+    const classification={
+      categoria:String(f.get('categoria')||'')||null,
+      centro_custo:String(f.get('centro_custo')||'')||null
+    }
+
+    if(linked&&editingTitle){
+      const r=await supabase.from('titulos_financeiros').update(classification).eq('id',editingTitle.id)
+      setMsg(r.error?r.error.message:'Classificação financeira atualizada. Os dados da fatura permanecem vinculados ao documento de origem.')
+      if(!r.error){setShowForm(false);setEditingTitle(null);await loadData()}
+      return
+    }
+
     const valor=Number(f.get('valor')||0)
     if(editingTitle&&valor<Number(editingTitle.valor_pago)){
       setMsg('O valor do título não pode ficar abaixo do que já foi pago/recebido.')
@@ -1051,13 +1069,12 @@ function App(){
     }
 
     const payload={
-      tipo:String(f.get('tipo')) as 'pagar'|'receber',
+      tipo:financeTitleType,
       descricao:String(f.get('descricao')||''),
-      entidade_nome:String(f.get('entidade_nome')||'')||null,
+      entidade_nome:financeTitleEntity||null,
       vencimento:String(f.get('vencimento')||today()),
       valor,
-      categoria:String(f.get('categoria')||'')||null,
-      centro_custo:String(f.get('centro_custo')||'')||null
+      ...classification
     }
 
     const r=editingTitle
@@ -1094,7 +1111,7 @@ function App(){
 
     if(!error){
       setFinancePanel(null)
-      await loadData()
+      await refreshFinance()
       if(active==='comissoes')await loadCommissions()
     }
   }
