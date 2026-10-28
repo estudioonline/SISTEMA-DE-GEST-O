@@ -2553,7 +2553,6 @@ function App(){
               <select value={saleStatus} onChange={e=>setSaleStatus(e.target.value)} disabled={!editingSale}>
                 <option value="orcamento">Orçamento</option>
                 <option value="pedido">Pedido</option>
-                <option value="faturado">Faturado</option>
               </select>
               {!editingSale&&<small className="saleStageHint">Toda nova venda começa como orçamento.</small>}
             </label>
@@ -2589,7 +2588,7 @@ function App(){
           </div>
 
           <div className={`paymentNotice saleStageNotice saleStage-${saleStatus}`}>
-            <strong>{saleStatus==='orcamento'?'Orçamento — sem cobrança e sem movimentação de estoque':saleStatus==='pedido'?'Pedido — gera cobrança e movimenta estoque':'Faturado — gera cobrança e movimenta estoque'}</strong>
+            <strong>{saleStatus==='orcamento'?'Orçamento — sem cobrança e sem movimentação de estoque':'Pedido — gera cobrança e movimenta estoque'}</strong>
             <span>{saleStatus==='orcamento'
               ? 'Depois de salvo, o orçamento pode ser convertido em Pedido/Venda. Se houver bloqueio, seguirá para aprovação.'
               : `${paymentLabel(salePayment)} • ${saleInstallments}x • vencimento ${dateBr(saleDueDate)}${saleSeller?' • comissão: '+String(vendedores.find(v=>v.id===saleSeller)?.percentual_comissao||0)+'%':''}`}</span>
@@ -2642,7 +2641,7 @@ function App(){
               disabled={savingSale||saleApprovals.some(a=>a.entidade_id===editingSale.id)}
               onClick={()=>void requestSaleAuthorization()}
             ><ShieldCheck size={17}/>Solicitar autorização ({saleApprovalBlockers.length})</button>}
-            <button className="primary" disabled={savingSale||(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker)} title={saleHasAuthorizationBlocker?'Use Solicitar autorização para avançar esta venda.':''}>{savingSale?'Salvando...':!editingSale?'Salvar orçamento':saleStatus==='orcamento'?'Salvar orçamento':saleStatus==='pedido'?'Salvar como pedido':'Salvar como faturado'}</button>
+            <button className="primary" disabled={savingSale||(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker)} title={saleHasAuthorizationBlocker?'Use Solicitar autorização para avançar esta venda.':''}>{savingSale?'Salvando...':!editingSale?'Salvar orçamento':saleStatus==='orcamento'?'Salvar orçamento':'Salvar como pedido'}</button>
           </div>
         </form></div></div>}
 
