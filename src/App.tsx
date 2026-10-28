@@ -1809,7 +1809,11 @@ function App(){
                 <td>{!canManageFinance?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={()=>openFinancePanel(t)} title="Opções" aria-label="Abrir opções" aria-expanded={opened}><MoreVertical size={18}/></button>}</td>
               </tr>
               {canManageFinance&&opened&&<tr className="manageRow"><td colSpan={8}>
-                <div className="financeManagePanel">
+                <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={t.descricao}>
+                  <div className="recordDetailBackdrop" onClick={()=>setFinancePanel(null)}/>
+                  <div className="recordDetailSheet">
+                    <div className="recordDetailHeader"><strong>{t.descricao}</strong><button type="button" className="recordDetailClose" onClick={()=>setFinancePanel(null)}><X size={17}/>Fechar</button></div>
+                    <div className="financeManagePanel">
                   <div className="actionPanel">
                     <div className="actionMeta">
                       <strong>{t.descricao}</strong>
@@ -1852,6 +1856,8 @@ function App(){
                   </>}
 
                   {financePanelTab==='comprovantes'&&linked&&proofPanel(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id))}
+                    </div>
+                  </div>
                 </div>
               </td></tr>}
             </Fragment>
@@ -2350,7 +2356,11 @@ function App(){
                   <td><button className="rowMenuBtn" onClick={()=>setPurchasePanel(opened?null:c.id)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></td>
                 </tr>
                 {opened&&<tr className="manageRow"><td colSpan={7}>
-                  <div className="invoiceManagePanel">
+                  <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={`Compra #${invoiceNo(c.fatura_numero)}`}>
+                    <div className="recordDetailBackdrop" onClick={()=>setPurchasePanel(null)}/>
+                    <div className="recordDetailSheet">
+                      <div className="recordDetailHeader"><strong>{c.status==='cotacao'?'Cotação':'Compra'} #{invoiceNo(c.fatura_numero)}</strong><button type="button" className="recordDetailClose" onClick={()=>setPurchasePanel(null)}><X size={17}/>Fechar</button></div>
+                      <div className="invoiceManagePanel">
                     <div className="actionPanel">
                       <div className="actionMeta">
                         <strong>{c.status==='cotacao'?'Cotação':'Fatura de compra'} #{invoiceNo(c.fatura_numero)}</strong>
@@ -2365,6 +2375,8 @@ function App(){
                       </div>
                     </div>
                     {proofPanel('compra',c.id)}
+                      </div>
+                    </div>
                   </div>
                 </td></tr>}
               </Fragment>
@@ -2699,11 +2711,17 @@ function App(){
                   <td>{canManageCommissions?<button className="rowMenuBtn" onClick={()=>setSellerPanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções do vendedor" aria-expanded={opened}><MoreVertical size={18}/></button>:<span className="readOnlyTag">Somente leitura</span>}</td>
                 </tr>
                 {opened&&<tr className="manageRow"><td colSpan={8}>
-                  <div className="actionPanel">
+                  <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={v.nome}>
+                    <div className="recordDetailBackdrop" onClick={()=>setSellerPanel(null)}/>
+                    <div className="recordDetailSheet">
+                      <div className="recordDetailHeader"><strong>{v.nome}</strong><button type="button" className="recordDetailClose" onClick={()=>setSellerPanel(null)}><X size={17}/>Fechar</button></div>
+                      <div className="actionPanel">
                     <div className="actionMeta"><strong>{v.nome}</strong><span>Comissão atual: {Number(v.percentual_comissao).toLocaleString('pt-BR')}%</span></div>
                     <div className="rowActions">
                       {canManageCommissions&&<button className="ghost" onClick={()=>startEditSeller(v)}><Pencil size={15}/>Editar % / dados</button>}
                       {canManageCommissions&&v.ativo&&<button className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={15}/>Desativar</button>}
+                    </div>
+                      </div>
                     </div>
                   </div>
                 </td></tr>}
@@ -2866,7 +2884,11 @@ function App(){
                 <td><button type="button" className="primary userSaveBtn" disabled={!changed||savingUserId===u.user_id} onClick={()=>void saveManagedUser(u)}>{savingUserId===u.user_id?'Salvando...':'Salvar'}</button></td>
               </tr>
               {managedUserCard===u.user_id&&<tr className="manageRow"><td colSpan={6}>
-                <div className="userPermissionPanel">
+                <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={`Permissões de ${u.nome}`}>
+                  <div className="recordDetailBackdrop" onClick={()=>setManagedUserCard(null)}/>
+                  <div className="recordDetailSheet recordDetailSheetWide">
+                    <div className="recordDetailHeader"><strong>{u.nome}</strong><button type="button" className="recordDetailClose" onClick={()=>setManagedUserCard(null)}><X size={17}/>Fechar</button></div>
+                    <div className="userPermissionPanel">
                   <div className="actionPanel">
                     <div className="actionMeta">
                       <strong>{u.nome}</strong>
@@ -2975,7 +2997,7 @@ function EditableEntityTable({title,headers,rows,readOnly=false,emptyActionLabel
     return sort.dir==='asc'?cmp:-cmp
   })
   const toggle=(index:number)=>setSort(s=>({index,dir:s?.index===index&&s.dir==='asc'?'desc':'asc'}))
-  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map((h,i)=><th key={h}>{i===headers.length-1?h:<button className="tableSortBtn" onClick={()=>toggle(i)}>{h}{sort?.index===i?(sort.dir==='asc'?' ▲':' ▼'):''}</button>}</th>)}</tr></thead><tbody>{sorted.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{sorted.map(r=><Fragment key={r.id}><tr {...recordRow(()=>{if(!r.opened)r.onToggle()},String(r.cells[0]))}>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td><button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button></td></tr>{r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map((h,i)=><th key={h}>{i===headers.length-1?h:<button className="tableSortBtn" onClick={()=>toggle(i)}>{h}{sort?.index===i?(sort.dir==='asc'?' ▲':' ▼'):''}</button>}</th>)}</tr></thead><tbody>{sorted.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{sorted.map(r=><Fragment key={r.id}><tr {...recordRow(()=>{if(!r.opened)r.onToggle()},String(r.cells[0]))}>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td><button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button></td></tr>{r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={String(r.cells[0])}><div className="recordDetailBackdrop" onClick={r.onToggle}/><div className="recordDetailSheet"><div className="recordDetailHeader"><strong>{String(r.cells[0])}</strong><button type="button" className="recordDetailClose" onClick={r.onToggle}><X size={17}/>Fechar</button></div><div className="actionPanel">{r.panel}</div></div></div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
 function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
@@ -2992,7 +3014,7 @@ function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelet
   })
   const toggle=(key:typeof sort extends never?never:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>setSort(s=>({key,dir:s?.key===key&&s.dir==='asc'?'desc':'asc'}))
   const mark=(key:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>sort?.key===key?(sort.dir==='asc'?' ▲':' ▼'):''
-  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th><th>Gerenciar</th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{sorted.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr {...recordRow(()=>{if(!opened)onToggle(p.id)},p.descricao)}><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td><button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button></td></tr>{opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions">{!readOnly&&<button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button>}{!readOnly&&<button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>}{canDelete&&!readOnly&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th><th>Gerenciar</th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{sorted.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr {...recordRow(()=>{if(!opened)onToggle(p.id)},p.descricao)}><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td><button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button></td></tr>{opened&&<tr className="manageRow"><td colSpan={9}><div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={p.descricao}><div className="recordDetailBackdrop" onClick={()=>onToggle(p.id)}/><div className="recordDetailSheet"><div className="recordDetailHeader"><strong>{p.codigo} - {p.descricao}</strong><button type="button" className="recordDetailClose" onClick={()=>onToggle(p.id)}><X size={17}/>Fechar</button></div><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions">{!readOnly&&<button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button>}{!readOnly&&<button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>}{canDelete&&!readOnly&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
 }
 
 export default App
