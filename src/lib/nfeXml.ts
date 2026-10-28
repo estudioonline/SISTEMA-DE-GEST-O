@@ -16,6 +16,7 @@ export type ParsedNfe={
   data_emissao:string
   valor_total:number
   vencimentos:string[]
+  valores_vencimentos:number[]
   itens:ParsedNfeItem[]
 }
 
@@ -92,9 +93,17 @@ export function parseNfeXml(xmlText:string):ParsedNfe{
 
   if(!itens.length)throw new Error('A NF-e não possui itens de produto.')
 
-  const vencimentos=nodes(infNfe,'dup')
-    .map(dup=>text(dup,'dVenc'))
-    .filter(v=>/^\d{4}-\d{2}-\d{2}$/.test(v))
+  const duplicatas=nodes(infNfe,'dup')
+    .map(dup=>({
+      vencimento:text(dup,'dVenc'),
+      valor:decimal(text(dup,'vDup'))
+    }))
+    .filter(dup=>/^\d{4}-\d{2}-\d{2}$/.test(dup.vencimento))
+
+  const vencimentos=duplicatas.map(dup=>dup.vencimento)
+  const valores_vencimentos=duplicatas.length&&duplicatas.every(dup=>Number.isFinite(dup.valor)&&dup.valor>0)
+    ? duplicatas.map(dup=>dup.valor)
+    : []
 
   return {
     chave_nfe,
@@ -104,6 +113,7 @@ export function parseNfeXml(xmlText:string):ParsedNfe{
     data_emissao,
     valor_total,
     vencimentos,
+    valores_vencimentos,
     itens
   }
 }
