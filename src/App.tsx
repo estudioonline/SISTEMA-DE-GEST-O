@@ -20,6 +20,8 @@ import { PaymentHistory } from './PaymentHistory'
 import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
 import { NfeImportModal } from './NfeImportModal'
 import { FocusNfeSettings, FocusNfeSale } from './FocusNfe'
+import { EmployeeFinance } from './EmployeeFinance'
+import type { EmployeeTitle } from './EmployeeFinance'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
 import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
 
@@ -38,7 +40,7 @@ type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitari
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
-type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
+type Titulo=EmployeeTitle&{id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
 type SaleApproval={id:string;entidade_id:string|null;status:string;solicitado_em:string;payload:Record<string,unknown>|null}
 type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:number}
 type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
@@ -197,7 +199,7 @@ function App(){
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
-  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'>('geral')
+  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'funcionarios'|'vales'>('geral')
   const [financeStatusFilter,setFinanceStatusFilter]=useState<'todos'|'aberto'|'parcial'|'pago'|'cancelado'>('todos')
   const [financeStart,setFinanceStart]=useState('')
   const [financeEnd,setFinanceEnd]=useState('')
@@ -1866,7 +1868,7 @@ function App(){
     <aside className="sidebar">
       <button className="sidebarToggle" onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed?'Expandir menu':'Recolher menu'} aria-label={sidebarCollapsed?'Expandir menu lateral':'Recolher menu lateral'}>{sidebarCollapsed?<ChevronRight size={17}/>:<ChevronLeft size={17}/>}</button>
       <div className="brand"><div className="brandMark">SG</div><div className="brandText"><strong>Sistema de Gestão</strong><span>ERP Empresarial</span></div></div>
-      <nav>{visibleMenu.map(([k,l,I])=><button key={k} title={l} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>)}</nav>
+      <nav>{visibleMenu.map(([k,l,I])=><Fragment key={k}><button title={l} className={active===k?'navItem active':'navItem'} onClick={()=>{setActive(k as ModuleKey);if(k==='financeiro')setFinanceSubtab('geral');closeForms();setMsg('')}}><I size={18}/><span>{l}</span></button>{k==='financeiro'&&<div className="financeSubmenu">{(['funcionarios','vales'] as const).map(sub=><button key={sub} title={sub==='funcionarios'?'Gastos com funcionários':'Vales de funcionários'} className={'navItem financeSubmenuItem'+(active==='financeiro'&&financeSubtab===sub?' active':'')} onClick={()=>{setActive('financeiro');setFinanceSubtab(sub);closeForms();setMsg('')}}>{sub==='funcionarios'?<Users size={15}/>:<WalletCards size={15}/>}<span>{sub==='funcionarios'?'Gastos com funcionários':'Vales de funcionários'}</span></button>)}</div>}</Fragment>)}</nav>
       <div className="sidebarFooter"><span>{session.user.email}</span><small>{profileLabel(profileRole)}</small><button className="navItem" title="Sair" onClick={()=>supabase.auth.signOut()}><LogOut size={16}/><span>Sair</span></button></div>
     </aside>
 
@@ -1879,7 +1881,7 @@ function App(){
           {active==='compras'&&canManagePurchases&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&canManageClients)||(active==='fornecedores'&&canManageSuppliers)||(active==='compras'&&canManagePurchases))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
           {canManageProducts&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
-          {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
+          {canManageFinance&&active==='financeiro'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {canManageCommissions&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
@@ -2692,6 +2694,8 @@ function App(){
 
       {active==='financeiro'&&<section className="semanticPage financePage">
         <div className="subTabs financeSubTabs">
+          <button className={financeSubtab==='funcionarios'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('funcionarios');closeForms()}}><Users size={16}/>Gastos com funcionários</button>
+          <button className={financeSubtab==='vales'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('vales');closeForms()}}><WalletCards size={16}/>Vales de funcionários</button>
           <button className={financeSubtab==='geral'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('geral');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Visão geral</button>
           <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
           <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount neutralCount">{openReceivableCount}</span></button>
@@ -2752,7 +2756,7 @@ function App(){
           </article>
         </>}
 
-        {financeSubtab!=='geral'&&<div className="panel financeFilterPanel">
+        {financeSubtab!=='geral'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&<div className="panel financeFilterPanel">
           <div className="financeQuickRanges">
             <span>Período</span>
             <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('hoje')}>Hoje</button>
@@ -2784,6 +2788,7 @@ function App(){
 
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
+        {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/>}
       </section>}
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
