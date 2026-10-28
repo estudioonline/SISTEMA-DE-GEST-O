@@ -48,21 +48,50 @@ export function FocusNfeSettings(){
  </fieldset></form>}
  </section>
 }
-const blankDraft=():Draft=>({destinatario:{},itens:{},natureza_operacao:'Venda de mercadoria',consumidor_final:'',presenca_comprador:'',forma_pagamento:''})
 const labels:Record<string,string>={rascunho:'Rascunho',enviando:'Enviando',processando_autorizacao:'Aguardando autorização',autorizado:'Autorizada em teste',erro_autorizacao:'Erro de autorização',rejeitado:'Rejeitada',incerto:'Resposta não confirmada',nao_encontrado:'Não localizada na Focus',cancelado:'Cancelada',denegado:'Denegada'}
+type FiscalClient={nome:string;documento:string;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null}
+type FiscalProduct={descricao:string;codigo:string;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null}
+type SaleSource={venda:{status:string;total:number;forma_pagamento:string};cliente: FiscalClient|null;itens:{id:string;quantidade:number;valor_unitario:number;desconto:number;produto: FiscalProduct}[];nota:Note|null}
+
+function clientMissing(client: FiscalClient|null){
+ if(!client)return ['cliente vinculado']
+ const fields:[keyof FiscalClient,string][]=[
+  ['documento','CPF/CNPJ'],['logradouro','logradouro'],['numero','número'],['bairro','bairro'],['municipio','município'],
+  ['codigo_municipio','código IBGE'],['uf','UF'],['cep','CEP'],['indicador_ie','situação da inscrição estadual'],['presenca_comprador','presença do comprador']
+ ]
+ const missing=fields.filter(([key])=>client[key]==null||String(client[key]).trim()==='').map(([,label])=>label)
+ if(client.indicador_ie==='1'&&!client.inscricao_estadual?.trim())missing.push('inscrição estadual')
+ return missing
+}
+function productMissing(product: FiscalProduct){
+ const fields:[keyof FiscalProduct,string][]=[
+  ['ncm','NCM'],['cfop_interno','CFOP interno'],['cfop_interestadual','CFOP interestadual'],['origem','origem'],
+  ['cst_icms','CST/CSOSN'],['cst_pis','CST PIS'],['cst_cofins','CST COFINS']
+ ]
+ return fields.filter(([key])=>product[key]==null||String(product[key]).trim()==='').map(([,label])=>label)
+}
+
 export function FocusNfeSale({saleId}:{saleId:string}){
- const [opened,setOpened]=useState(false),[source,setSource]=useState<Source|null>(null),[draft,setDraft]=useState<Draft>(blankDraft),[note,setNote]=useState<Note|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[configured,setConfigured]=useState(false)
+ const [opened,setOpened]=useState(false),[source,setSource]=useState<SaleSource|null>(null),[note,setNote]=useState<Note|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[configured,setConfigured]=useState(false)
  const load=useCallback(async()=>{
   setBusy(true);setError('')
-  try{const r=await focus('sale',{venda_id:saleId});setSource(r.source);setNote(r.source.nota);setConfigured(r.configured);setDraft(r.source.nota?.dados_fiscais??blankDraft())}catch(e){setError((e as Error).message)}finally{setBusy(false)}
+  try{const r=await focus('sale',{venda_id:saleId});setSource(r.source);setNote(r.source.nota);setConfigured(r.configured)}catch(e){setError((e as Error).message)}finally{setBusy(false)}
  },[saleId])
  useEffect(()=>{if(opened)void load()},[opened,load])
- const locked=!!note&&!['rascunho','erro_autorizacao','rejeitado'].includes(note.status)
- async function act(action:'draft'|'emit'|'consult'){
+
+ const missingClient=clientMissing(source?.cliente??null)
+ const missingProducts=(source?.itens??[]).map((item,index)=>({index:index+1,name:item.produto.descricao,missing:productMissing(item.produto)})).filter(x=>x.missing.length>0)
+ const cadastroCompleto=!!source&&missingClient.length===0&&missingProducts.length===0
+
+ async function act(action:'emit'|'consult'){
   if(busy)return
   if(action==='emit'&&!window.confirm('Enviar esta venda para emitir uma NF-e de TESTE, sem valor fiscal?'))return
   setBusy(true);setError('');setMessage('')
-  try{const r=await focus(action,{venda_id:saleId,dados_fiscais:draft});setNote(r.nota??r);setMessage(r.message??(action==='draft'?'Rascunho fiscal salvo.':action==='emit'?'Solicitação enviada em homologação. Consulte a situação para acompanhar.':'Situação atualizada.'))}catch(e){setError((e as Error).message)}finally{setBusy(false)}
+  try{
+   const r=await focus(action,{venda_id:saleId,dados_fiscais:{}})
+   setNote(r.nota??r)
+   setMessage(r.message??(action==='emit'?'Solicitação enviada em homologação. Consulte a situação para acompanhar.':'Situação atualizada.'))
+  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
  async function download(kind:'xml'|'danfe'){
   setBusy(true);setError('')
@@ -73,38 +102,44 @@ export function FocusNfeSale({saleId}:{saleId:string}){
    const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download='nfe-teste-'+(note?.retorno.numero??saleId)+'.'+(kind==='xml'?'xml':'pdf');a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
- function itemChange(id:string,value:Fields){setDraft({...draft,itens:{...draft.itens,[id]:value}})}
- return <section className="fiscalPanel"><button type="button" className="ghost" onClick={()=>setOpened(!opened)} aria-expanded={opened}>NF-e de teste · {opened?'recolher':'abrir emissão'}</button>
- {opened&&<div><h4>NF-e · homologação, sem valor fiscal</h4><p>Esta emissão usa os valores salvos da venda e não movimenta estoque nem financeiro.</p>
- {error&&<p role="alert" className="fiscalError">{error}</p>}{message&&<p role="status">{message}</p>}
- {note&&<><p><strong>{labels[note.status]??note.status}</strong> · Referência: {note.referencia}</p>
- {note.retorno.mensagem_sefaz!=null&&<p>SEFAZ: {String(note.retorno.status_sefaz??'')} · {String(note.retorno.mensagem_sefaz)}</p>}
- {note.retorno.mensagem!=null&&<p>{String(note.retorno.mensagem)}</p>}
- {Array.isArray(note.retorno.erros)&&<ul>{note.retorno.erros.map((e,i)=><li key={i}>{typeof e==='object'&&e?String((e as {mensagem?:string}).mensagem??JSON.stringify(e)):String(e)}</li>)}</ul>}
- {note.retorno.chave_nfe!=null&&<p>Chave: {String(note.retorno.chave_nfe)}</p>}</>}
- {!source&&<button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Carregar dados fiscais</button>}
- {source&&<><p>Cliente: {source.cliente?.nome??'Não informado'} · Documento: {source.cliente?.documento??'Não informado'} · Total: {Number(source.venda.total).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p>
- {!configured&&<p>Cadastre o token em Configurações → Focus NFe para habilitar os envios.</p>}
- <form onSubmit={e=>{e.preventDefault();void act('emit')}}><fieldset disabled={busy||locked}>
- <label className="fieldLabel">Natureza da operação<input required maxLength={60} value={draft.natureza_operacao} onChange={e=>setDraft({...draft,natureza_operacao:e.target.value})}/></label>
- <div className="fiscalGrid">
- <label className="fieldLabel">Consumidor final<select required value={draft.consumidor_final} onChange={e=>setDraft({...draft,consumidor_final:e.target.value})}><option value="">Selecione</option><option value="1">Sim</option><option value="0">Não</option></select></label>
- <label className="fieldLabel">Presença do comprador<select required value={draft.presenca_comprador} onChange={e=>setDraft({...draft,presenca_comprador:e.target.value})}><option value="">Selecione</option><option value="1">Presencial</option><option value="2">Internet</option><option value="3">Teleatendimento</option><option value="5">Presencial fora do estabelecimento</option><option value="9">Não presencial, outros</option></select></label>
- <label className="fieldLabel">Pagamento fiscal<select required value={draft.forma_pagamento} onChange={e=>setDraft({...draft,forma_pagamento:e.target.value})}><option value="">Selecione</option><option value="01">Dinheiro</option><option value="03">Cartão de crédito</option><option value="04">Cartão de débito</option><option value="15">Boleto</option><option value="17">PIX dinâmico</option><option value="20">PIX estático</option><option value="91">Pagamento posterior</option></select></label>
- </div><h4>Endereço fiscal do cliente</h4>
- <FieldsForm required fields={addressFields} value={draft.destinatario} onChange={v=>setDraft({...draft,destinatario:v})}/>
- <label className="fieldLabel">Inscrição estadual do cliente<select required value={draft.destinatario.indicador_ie??''} onChange={e=>setDraft({...draft,destinatario:{...draft.destinatario,indicador_ie:e.target.value}})}><option value="">Selecione</option><option value="1">Contribuinte com IE</option><option value="2">Contribuinte isento</option><option value="9">Não contribuinte</option></select></label>
- {draft.destinatario.indicador_ie==='1'&&<FieldsForm required fields={[['ie','Inscrição estadual']]} value={draft.destinatario} onChange={v=>setDraft({...draft,destinatario:v})}/>}
- <h4>Tributação dos itens</h4><p>Informe os códigos indicados pelo contador. Operação nacional, sem frete ou tributos que alterem o total comercial nesta primeira versão de testes.</p>
- {source.itens.map((i,index)=><div className="fiscalItem" key={i.id}><strong>{index+1}. {i.produto.descricao}</strong><p>{i.quantidade} × {Number(i.valor_unitario).toFixed(2)} · desconto {Number(i.desconto).toFixed(2)}</p>
- <FieldsForm required fields={[['ncm','NCM','8 dígitos'],['cfop','CFOP','4 dígitos'],['origem','Origem','0 a 8'],['icms','CST / CSOSN'],['pis','CST PIS'],['cofins','CST COFINS']]} value={draft.itens[i.id]??{}} onChange={v=>itemChange(i.id,v)}/>
- <details><summary>Complementos tributários do item</summary><p>Campos da Focus em JSON, revisados pelo contador. Somente campos de impostos são aceitos.</p><textarea aria-label={'Complementos tributários do item '+(index+1)} value={draft.itens[i.id]?.complemento??''} onChange={e=>itemChange(i.id,{...draft.itens[i.id],complemento:e.target.value})} placeholder='{}'/></details>
- </div>)}
- <div className="formActions"><button type="button" className="ghost" onClick={()=>void act('draft')}>Salvar rascunho fiscal</button><button className="primary" type="submit" disabled={!configured||!['pedido','faturado'].includes(source.venda.status)}>Emitir NF-e de teste</button></div>
- </fieldset></form>
- {note?.status==='nao_encontrado'&&<button type="button" className="primary" disabled={busy||!configured} onClick={()=>void act('emit')}>Reenviar solicitação original de teste</button>}
- <div className="formActions"><button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Recarregar dados salvos</button>{!!note?.payload&&<button type="button" className="ghost" disabled={busy} onClick={()=>void act('consult')}>Consultar situação na Focus</button>}{note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button></>}</div>
- </>}
- {busy&&<p role="status">Processando…</p>}
- </div>}</section>
+
+ return <section className="fiscalPanel">
+  <button type="button" className="ghost" onClick={()=>setOpened(!opened)} aria-expanded={opened}>NF-e de teste · {opened?'recolher':'abrir emissão'}</button>
+  {opened&&<div className="fiscalSaleCompact">
+   <h4>NF-e · homologação, sem valor fiscal</h4>
+   <p>Os dados fiscais são lidos automaticamente dos cadastros do cliente e dos produtos. A venda não repete esses campos.</p>
+   {error&&<p role="alert" className="fiscalError">{error}</p>}
+   {message&&<p role="status">{message}</p>}
+   {note&&<div className="fiscalStatusBox">
+    <p><strong>{labels[note.status]??note.status}</strong> · Referência: {note.referencia}</p>
+    {note.retorno.mensagem_sefaz!=null&&<p>SEFAZ: {String(note.retorno.status_sefaz??'')} · {String(note.retorno.mensagem_sefaz)}</p>}
+    {note.retorno.mensagem!=null&&<p>{String(note.retorno.mensagem)}</p>}
+    {Array.isArray(note.retorno.erros)&&<ul>{note.retorno.erros.map((e,i)=><li key={i}>{typeof e==='object'&&e?String((e as {mensagem?:string}).mensagem??JSON.stringify(e)):String(e)}</li>)}</ul>}
+    {note.retorno.chave_nfe!=null&&<p>Chave: {String(note.retorno.chave_nfe)}</p>}
+   </div>}
+   {!source&&<button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Carregar dados fiscais</button>}
+   {source&&<>
+    <div className="fiscalSourceSummary">
+      <div><span>Cliente</span><strong>{source.cliente?.nome??'Não informado'}</strong></div>
+      <div><span>Documento</span><strong>{source.cliente?.documento??'Não informado'}</strong></div>
+      <div><span>Total</span><strong>{Number(source.venda.total).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>
+      <div><span>Itens</span><strong>{source.itens.length}</strong></div>
+    </div>
+    {!configured&&<p className="fiscalError">Cadastre o token em Configurações → Focus NFe para habilitar os envios.</p>}
+    {!cadastroCompleto&&<div className="fiscalCadastroWarning">
+      <strong>Cadastro fiscal incompleto</strong>
+      {missingClient.length>0&&<p>Cliente: complete {missingClient.join(', ')} no cadastro do cliente.</p>}
+      {missingProducts.map(item=><p key={item.index}>Produto {item.index} — {item.name}: complete {item.missing.join(', ')} no cadastro do produto.</p>)}
+    </div>}
+    {cadastroCompleto&&<p className="fiscalCadastroOk">Cadastros fiscal do cliente e dos produtos completos para emissão.</p>}
+    <div className="formActions">
+      <button type="button" className="primary" disabled={busy||!configured||!cadastroCompleto||!['pedido','faturado'].includes(source.venda.status)} onClick={()=>void act('emit')}>Emitir NF-e de teste</button>
+      <button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Recarregar cadastros</button>
+      {!!note?.payload&&<button type="button" className="ghost" disabled={busy} onClick={()=>void act('consult')}>Consultar situação</button>}
+      {note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button></>}
+    </div>
+   </>}
+   {busy&&<p role="status">Processando…</p>}
+  </div>}
+ </section>
 }
