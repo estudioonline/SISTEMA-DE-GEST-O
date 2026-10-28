@@ -1911,6 +1911,36 @@ function App(){
     </div>
   }
 
+  async function downloadPayablesReport(rows:Titulo[]){
+    try{
+      const reportRows=rows.map(t=>({
+        descricao:t.descricao,
+        fornecedor:t.entidade_nome||'—',
+        vencimento:t.vencimento,
+        valor:Number(t.valor),
+        pago:Number(t.valor_pago),
+        saldo:Math.max(0,Number(t.valor)-Number(t.valor_pago)),
+        status:t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'Vencido':financeStatusLabel(t.status),
+        categoria:t.categoria||'—',
+        centro_custo:t.centro_custo||'—',
+        forma_pagamento:t.forma_pagamento||'—',
+        parcela_numero:t.parcela_numero
+      }))
+      ;(await import('./lib/payablesReportPdf')).generatePayablesReportPdf({
+        inicio:financeStart||undefined,
+        fim:financeEnd||undefined,
+        statusFiltro:financeStatusFilter==='todos'?'Todos':financeStatusLabel(financeStatusFilter),
+        categoriaFiltro:financeCategory==='todos'?'Todas':financeCategory,
+        centroFiltro:financeCenter==='todos'?'Todos':financeCenter,
+        company:empresa,
+        rows:reportRows
+      })
+      setMsg('Relatório de contas a pagar gerado em PDF.')
+    }catch{
+      setMsg('Não foi possível gerar o relatório de contas a pagar.')
+    }
+  }
+
   function financeTable(type:'receber'|'pagar',overdueOnly=false){
     const searchKey=(overdueOnly?'financeiro-vencidos-':'financeiro-')+(type==='receber'?'receber':'pagar')
     const baseRows=titulos
@@ -1927,7 +1957,7 @@ function App(){
     const groupTitle=overdueOnly?(type==='receber'?'Vencidos a receber':'Vencidos a pagar'):(type==='receber'?'Contas a receber':'Contas a pagar')
     const empty=overdueOnly?(type==='receber'?'Nenhuma conta a receber vencida com estes filtros.':'Nenhuma conta a pagar vencida com estes filtros.'):(type==='receber'?'Nenhuma conta a receber com estes filtros.':'Nenhuma conta a pagar com estes filtros.')
     return <article className={'panel tablePanel financeGroup '+(type==='receber'?'financeReceivableGroup':'financePayableGroup')}>
-      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s) exibido(s)</p></div><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div>
+      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s) exibido(s)</p></div><div className="financeTableActions">{type==='pagar'&&!overdueOnly&&<button type="button" className="ghost" onClick={()=>void downloadPayablesReport(rows)}><FileDown size={15}/>PDF</button>}<SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div></div>
       <div className="tableWrap"><table>
         <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'descricao')}>Descrição{sortMark(searchKey,'descricao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'entidade')}>Cliente / Fornecedor{sortMark(searchKey,'entidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'vencimento')}>Vencimento{sortMark(searchKey,'vencimento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'valor')}>Valor{sortMark(searchKey,'valor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'pago')}>{type==='receber'?'Recebido':'Pago'}{sortMark(searchKey,'pago')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'saldo')}>Saldo{sortMark(searchKey,'saldo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'status')}>Status{sortMark(searchKey,'status')}</button></th><th>Gerenciar</th></tr></thead>
         <tbody>
