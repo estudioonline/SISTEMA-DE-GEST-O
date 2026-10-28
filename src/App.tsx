@@ -2715,12 +2715,12 @@ function App(){
 
       {active==='financeiro'&&<section className="semanticPage financePage">
         <div className="subTabs financeSubTabs">
-          <button className={financeSubtab==='funcionarios'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('funcionarios');closeForms()}}><Users size={16}/>Gastos com funcionários</button>
-          <button className={financeSubtab==='vales'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('vales');closeForms()}}><WalletCards size={16}/>Vales de funcionários</button>
           <button className={financeSubtab==='geral'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('geral');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Visão geral</button>
-          <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
-          <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount neutralCount">{openReceivableCount}</span></button>
           <button className={financeSubtab==='pagar'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('pagar');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Contas a pagar <span className="subTabCount neutralCount">{openPayableCount}</span></button>
+          <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount neutralCount">{openReceivableCount}</span></button>
+          <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
+          <button className={financeSubtab==='funcionarios'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('funcionarios');closeForms()}}><Users size={16}/>Funcionários</button>
+          <button className={financeSubtab==='vales'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('vales');closeForms()}}><WalletCards size={16}/>Vale</button>
         </div>
 
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingTitle?'Editar fatura':'Nova fatura'}><div className="saleModalShell financeModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveTitle}>
