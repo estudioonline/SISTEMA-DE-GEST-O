@@ -68,3 +68,9 @@ As sete migrações desta entrega foram aplicadas incrementalmente, sem limpeza,
 - A organização Supabase está no plano gratuito. A proteção nativa contra senhas vazadas requer Pro ou superior: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection. Não houve contratação ou troca de plano.
 - A conferência visual das telas internas depende de uma sessão autenticada do usuário. Testes do banco, permissões, TypeScript, testes automatizados e build são executados independentemente dessa sessão.
 - O checkpoint reconstrói a estrutura da aplicação; usuários, configurações de Auth e arquivos do Storage exigem backup próprio. O bootstrap recusa bancos que já contenham vendas e deve ser usado exclusivamente em projeto vazio.
+
+### Abertura de cards e relatórios por cadastro
+- Duplo clique nas linhas abre o card de venda, compra, título financeiro, produto, cliente, fornecedor, vendedor ou usuário. Nas linhas de relatórios e movimentos de estoque, o atalho leva ao card de origem. Enter e Espaço também abrem a linha selecionada; botões e campos preservam suas ações.
+- Os cards de clientes e fornecedores oferecem **PDF de faturas em aberto** para administrador e financeiro. O financeiro pode consultar esses cadastros sem ganhar permissão de edição.
+- O relatório consulta todas as parcelas vinculadas ao ID do cadastro e separa vencidas de a vencer, incluindo hoje neste último grupo. Mostra valor original, pago, saldo e subtotais; exclui faturas pagas, canceladas, orçamentos e cotações. Pagamentos parciais reduzem o saldo apresentado.
+- O PDF carrega sob demanda, repete cabeçalho e identificação em cada página e informa a data da posição. Não há alterações no banco ou nas faturas ao emitir o relatório.

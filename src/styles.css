@@ -2208,3 +2208,6 @@
     grid-column:auto;
   }
 }
+/* Record cards: rows keep keyboard access and buttons keep their own actions. */
+.recordRow{cursor:pointer}
+.recordRow:focus-visible{outline:2px solid #2563eb;outline-offset:-2px}

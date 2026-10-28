@@ -10,6 +10,9 @@ import {
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
+import { recordRow } from './lib/recordRow'
+import { buildStatement } from './lib/entityStatement'
+import type { StatementKind, StatementWire } from './lib/entityStatement'
 import { readAllRows } from './lib/readAllRows'
 import { readSettings } from './lib/erpSettings'
 import { AuthorizationCenter } from './AuthorizationCenter'
@@ -124,6 +127,7 @@ function App(){
   const [creatingViewer,setCreatingViewer]=useState(false)
   const [newUserRole,setNewUserRole]=useState<PerfilRole>('visualizador')
   const [managedUsers,setManagedUsers]=useState<ManagedUser[]>([])
+  const [managedUserCard,setManagedUserCard]=useState<string|null>(null)
   const [userEdits,setUserEdits]=useState<Record<string,{nome:string;perfil:PerfilRole;ativo:boolean}>>({})
   const [savingUserId,setSavingUserId]=useState<string|null>(null)
 
@@ -132,6 +136,7 @@ function App(){
   const [clientPanel,setClientPanel]=useState<string|null>(null)
   const [editingSupplier,setEditingSupplier]=useState<Fornecedor|null>(null)
   const [supplierPanel,setSupplierPanel]=useState<string|null>(null)
+  const [statementBusy,setStatementBusy]=useState<string|null>(null)
 
   const [editingProduct,setEditingProduct]=useState<Produto|null>(null)
   const [productPanel,setProductPanel]=useState<string|null>(null)
@@ -198,8 +203,10 @@ function App(){
     if(k==='config')return isAdmin
     if(k==='autorizacoes')return isAdmin||isSeller
     if(k==='comissoes')return isAdmin||isSeller
-    if(k==='compras'||k==='produtos'||k==='fornecedores')return isAdmin||profileRole==='estoque'
-    if(k==='vendas'||k==='clientes')return isAdmin||isSeller||isViewer
+    if(k==='fornecedores')return isAdmin||isFinance||profileRole==='estoque'
+    if(k==='clientes')return isAdmin||isSeller||isViewer||isFinance
+    if(k==='compras'||k==='produtos')return isAdmin||profileRole==='estoque'
+    if(k==='vendas')return isAdmin||isSeller||isViewer
     return true
   })
 
@@ -214,7 +221,7 @@ function App(){
     setProfileRole('visualizador');setActive('dashboard');closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setComissoes([])
-    setManagedUsers([]);setUserEdits({});setEmail('');setPassword('')
+    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setEmail('');setPassword('')
   },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
   useEffect(()=>{
@@ -438,8 +445,27 @@ function App(){
   }
 
   // CLIENTES
-  function startNewClient(){setEditingClient(null);setShowForm(true);setMsg('')}
-  function startEditClient(c:Cliente){setEditingClient(c);setShowForm(true);setMsg('')}
+  async function downloadEntityStatement(kind:StatementKind,entity:Cliente|Fornecedor){
+    if(!canViewFinance||statementBusy)return
+    setStatementBusy(kind+':'+entity.id);setMsg('')
+    const asOf=today()
+    try{
+      const columns='id,tipo,descricao,vencimento,valor,valor_pago,status,parcela_numero,'+(kind==='cliente'?'vendas!inner(cliente_id,fatura_numero,status)':'compras!inner(fornecedor_id,fatura_numero,status)')
+      const result=await readAllRows((from,to)=>{
+        let query=supabase.from('titulos_financeiros').select(columns).eq('tipo',kind==='cliente'?'receber':'pagar').in('status',['aberto','parcial'])
+        query=kind==='cliente'?query.eq('vendas.cliente_id',entity.id).in('vendas.status',['pedido','faturado']):query.eq('compras.fornecedor_id',entity.id).in('compras.status',['pedido_aprovado','pedido_recebido'])
+        return query.order('vencimento').order('id').range(from,to)
+      })
+      if(result.error)throw new Error(result.error.message)
+      const statement=buildStatement(result.data as unknown as StatementWire[],kind,entity.id,asOf)
+      ;(await import('./lib/entityStatementPdf')).downloadEntityStatementPdf({kind,entity,company:empresa,statement})
+      setMsg('Relatório de faturas vencidas e a vencer gerado para '+entity.nome+'.')
+    }catch(error){setMsg('Não foi possível gerar o relatório: '+(error instanceof Error?error.message:'erro desconhecido'))}
+    finally{setStatementBusy(null)}
+  }
+
+  function startNewClient(){if(!canManageSales){setMsg('Seu perfil permite apenas consultar clientes.');return}setEditingClient(null);setShowForm(true);setMsg('')}
+  function startEditClient(c:Cliente){if(!canManageSales){setMsg('Seu perfil permite apenas consultar clientes.');return}setEditingClient(c);setShowForm(true);setMsg('')}
   async function saveClient(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const f=new FormData(e.currentTarget)
@@ -464,8 +490,8 @@ function App(){
   }
 
   // FORNECEDORES
-  function startNewSupplier(){setEditingSupplier(null);setShowForm(true);setMsg('')}
-  function startEditSupplier(f:Fornecedor){setEditingSupplier(f);setShowForm(true);setMsg('')}
+  function startNewSupplier(){if(!canManageStock){setMsg('Seu perfil permite apenas consultar fornecedores.');return}setEditingSupplier(null);setShowForm(true);setMsg('')}
+  function startEditSupplier(f:Fornecedor){if(!canManageStock){setMsg('Seu perfil permite apenas consultar fornecedores.');return}setEditingSupplier(f);setShowForm(true);setMsg('')}
   async function saveSupplier(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     const f=new FormData(e.currentTarget)
@@ -1368,7 +1394,7 @@ function App(){
             const opened=financePanel===t.id
             const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
             return <Fragment key={t.id}>
-              <tr className={t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueRow':''}>
+              <tr {...recordRow(()=>{if(financePanel!==t.id)openFinancePanel(t)},t.descricao)} className={'recordRow '+(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueRow':'')}>
                 <td>{t.descricao}</td>
                 <td>{t.entidade_nome||'—'}</td>
                 <td><span className={t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueDate':''}>{dateBr(t.vencimento)}</span></td>
@@ -1436,7 +1462,7 @@ function App(){
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           <button className="iconBtn" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&(isAdmin||isSeller))||(active==='fornecedores'&&(isAdmin||profileRole==='estoque'))||(active==='compras'&&(isAdmin||profileRole==='estoque')))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Nova venda':active==='compras'?'Nova compra':'Novo'}</button>}
-          {!isViewer&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
+          {canManageStock&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
           {canManageFinance&&active==='financeiro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {isAdmin&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
@@ -1512,7 +1538,7 @@ function App(){
           <select name="ativo" defaultValue={editingClient?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">{editingClient?'Salvar alterações':'Cadastrar cliente'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={isViewer} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
+        <EditableEntityTable readOnly={!canManageSales} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="actionMeta"><strong>{c.nome}</strong><span>{c.documento||'Sem documento'} · {c.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageSales&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='fornecedores'&&<section className="semanticPage suppliersPage">
@@ -1525,7 +1551,7 @@ function App(){
           <select name="ativo" defaultValue={editingSupplier?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingSupplier(null)}}>Cancelar</button><button className="primary">{editingSupplier?'Salvar alterações':'Cadastrar fornecedor'}</button></div>
         </form></div></div>}
-        <EditableEntityTable readOnly={isViewer} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<div className="rowActions"><button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div>}))}/>
+        <EditableEntityTable readOnly={!canManageStock} title="Fornecedores" emptyActionLabel="+ Adicionar Fornecedor" onEmptyAction={startNewSupplier} headers={['Nome','Documento','E-mail','Telefone','Status','Gerenciar']} rows={fornecedores.map(f=>({id:f.id,cells:[f.nome,f.documento||'—',f.email||'—',f.telefone||'—',f.ativo?'Ativo':'Inativo'],opened:supplierPanel===f.id,onToggle:()=>setSupplierPanel(supplierPanel===f.id?null:f.id),panel:<><div className="actionMeta"><strong>{f.nome}</strong><span>{f.documento||'Sem documento'} · {f.telefone||'Sem telefone'}</span></div><div className="rowActions">{canManageStock&&<button className="ghost" onClick={()=>startEditSupplier(f)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('fornecedor',f)}><FileDown size={15}/>{statementBusy==='fornecedor:'+f.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&<button className="dangerAction" onClick={()=>void deleteSupplier(f)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
       {active==='produtos'&&<section className="semanticPage productsPage">
@@ -1617,7 +1643,7 @@ function App(){
             <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div>
           </form>}
 
-          <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={isViewer}/>
+          <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin} readOnly={!canManageStock}/>
         </>}
 
         {productSubtab==='movimentos'&&<>
@@ -1649,7 +1675,7 @@ function App(){
                 const p=produtos.find(x=>x.id===m.produto_id)
                 const isEntry=m.tipo==='entrada'||(m.tipo==='ajuste'&&Number(m.quantidade)>=0)
                 const label=m.tipo==='entrada'?'Entrada':m.tipo==='saida'?'Saída':isEntry?'Ajuste entrada':'Ajuste saída'
-                return <tr key={m.id}>
+                return <tr key={m.id} {...recordRow(()=>{setProductSubtab('cadastro');setProductPanel(m.produto_id)},p?.descricao||'produto')}>
                   <td>{new Date(m.created_at).toLocaleString('pt-BR')}</td>
                   <td><span className={isEntry?'movementBadge movement-in':'movementBadge movement-out'}>{label}</span></td>
                   <td><strong>{p?.codigo||'—'}</strong></td>
@@ -1791,7 +1817,7 @@ function App(){
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
               return <Fragment key={c.id}>
-                <tr>
+                <tr {...recordRow(()=>setPurchasePanel(c.id),'compra '+invoiceNo(c.fatura_numero))}>
                   <td><strong>#{invoiceNo(c.fatura_numero)}</strong></td>
                   <td>{new Date(c.created_at).toLocaleString('pt-BR')}</td>
                   <td>{f?.nome||'Sem fornecedor'}</td>
@@ -1809,9 +1835,9 @@ function App(){
                       </div>
                       <div className="rowActions">
                         <button className="ghost" onClick={()=>void downloadPurchasePdf(c)}><FileDown size={15}/>PDF</button>
-                        {c.status==='pedido_aprovado'&&!isViewer&&<button className="primary receivePurchaseBtn" onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}
-                        {!isViewer&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
-                        {!isViewer&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
+                        {c.status==='pedido_aprovado'&&canManageStock&&<button className="primary receivePurchaseBtn" onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}
+                        {canManageStock&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
+                        {canManageStock&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
                         {isAdmin&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
                       </div>
                     </div>
@@ -1934,7 +1960,7 @@ function App(){
               const opened=salePanel===v.id
               const paymentStatus=salePaymentStatus(v)
               return <Fragment key={v.id}>
-                <tr>
+                <tr {...recordRow(()=>setSalePanel(v.id),'venda '+invoiceNo(v.fatura_numero))}>
                   <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
                   <td>{new Date(v.created_at).toLocaleString('pt-BR')}</td>
                   <td>{client?.nome||'Consumidor'}</td>
@@ -1955,8 +1981,8 @@ function App(){
                       </div>
                       <div className="rowActions">
                         <button className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
-                        {!isViewer&&<button className="ghost" disabled={v.status==='cancelado'} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
-                        {!isViewer&&<button className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
+                        {canManageSales&&<button className="ghost" disabled={v.status==='cancelado'} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
+                        {canManageSales&&<button className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
                         {isAdmin&&<button className="dangerAction" onClick={()=>void deleteSale(v)}><Trash2 size={15}/>Excluir</button>}
                       </div>
                     </div>
@@ -2020,7 +2046,7 @@ function App(){
               const summary=comissoes.find(c=>c.vendedor_id===v.id)
               const opened=sellerPanel===v.id
               return <Fragment key={v.id}>
-                <tr>
+                <tr {...recordRow(()=>setSellerPanel(v.id),v.nome)}>
                   <td><strong>{v.nome}</strong><br/><small>{v.email||v.telefone||'—'}</small></td>
                   <td>{Number(v.percentual_comissao).toLocaleString('pt-BR')}%</td>
                   <td>{money(Number(summary?.total_recebido||0))}</td>
@@ -2030,12 +2056,12 @@ function App(){
                   <td><span className={v.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{v.ativo?'ativo':'inativo'}</span></td>
                   <td>{isAdmin?<button className="rowMenuBtn" onClick={()=>setSellerPanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções do vendedor" aria-expanded={opened}><MoreVertical size={18}/></button>:<span className="readOnlyTag">Somente leitura</span>}</td>
                 </tr>
-                {isAdmin&&opened&&<tr className="manageRow"><td colSpan={8}>
+                {opened&&<tr className="manageRow"><td colSpan={8}>
                   <div className="actionPanel">
                     <div className="actionMeta"><strong>{v.nome}</strong><span>Comissão atual: {Number(v.percentual_comissao).toLocaleString('pt-BR')}%</span></div>
                     <div className="rowActions">
-                      <button className="ghost" onClick={()=>startEditSeller(v)}><Pencil size={15}/>Editar % / dados</button>
-                      {v.ativo&&<button className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={15}/>Desativar</button>}
+                      {isAdmin&&<button className="ghost" onClick={()=>startEditSeller(v)}><Pencil size={15}/>Editar % / dados</button>}
+                      {isAdmin&&v.ativo&&<button className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={15}/>Desativar</button>}
                     </div>
                   </div>
                 </td></tr>}
@@ -2101,7 +2127,7 @@ function App(){
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
         <div className="cards compactCards semanticCards"><article className="card semanticCard semanticBlue"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card semanticCard semanticNegative"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className={'card semanticCard '+(reportSalesTotal-reportPurchaseTotal>=0?'semanticPositive':'semanticNegative')}><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
-        <div className="reportsStack"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','fatura')}>Fatura{sortMark('relatorio-vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','data')}>Data{sortMark('relatorio-vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','status')}>Status{sortMark('relatorio-vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','total')}>Total{sortMark('relatorio-vendas','total')}</button></th></tr></thead><tbody>{sortList('relatorio-vendas',filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.fatura_numero),dateBr(v.created_at),v.status,money(Number(v.total))])),{fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,status:v=>v.status,total:v=>Number(v.total)}).map(v=><tr key={v.id}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','data')}>Data{sortMark('relatorio-compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','status')}>Status{sortMark('relatorio-compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','total')}>Total{sortMark('relatorio-compras','total')}</button></th></tr></thead><tbody>{sortList('relatorio-compras',filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])),{data:c=>c.created_at,status:c=>c.status,total:c=>Number(c.total)}).map(c=><tr key={c.id}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
+        <div className="reportsStack"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','fatura')}>Fatura{sortMark('relatorio-vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','data')}>Data{sortMark('relatorio-vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','status')}>Status{sortMark('relatorio-vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','total')}>Total{sortMark('relatorio-vendas','total')}</button></th></tr></thead><tbody>{sortList('relatorio-vendas',filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.fatura_numero),dateBr(v.created_at),v.status,money(Number(v.total))])),{fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,status:v=>v.status,total:v=>Number(v.total)}).map(v=><tr key={v.id} {...recordRow(()=>{setActive('vendas');setSalePanel(v.id)},'venda '+invoiceNo(v.fatura_numero))}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','data')}>Data{sortMark('relatorio-compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','status')}>Status{sortMark('relatorio-compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','total')}>Total{sortMark('relatorio-compras','total')}</button></th></tr></thead><tbody>{sortList('relatorio-compras',filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])),{data:c=>c.created_at,status:c=>c.status,total:c=>Number(c.total)}).map(c=><tr key={c.id} {...recordRow(()=>{setActive('compras');setPurchasePanel(c.id)},'compra '+invoiceNo(c.fatura_numero))}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
       </section>}
 
       {active==='config'&&<section>
@@ -2134,7 +2160,7 @@ function App(){
             <tbody>{sortList('usuarios',managedUsers.filter(u=>searchMatches('usuarios',[u.nome,u.email,u.perfil,u.ativo?'ativo':'inativo'])),{nome:u=>u.nome,email:u=>u.email,perfil:u=>u.perfil,status:u=>u.ativo?'ativo':'inativo',acesso:u=>u.ultimo_acesso||''}).map(u=>{
               const draft=userEdits[u.user_id]||{nome:u.nome,perfil:u.perfil,ativo:u.ativo}
               const changed=draft.nome!==u.nome||draft.perfil!==u.perfil||draft.ativo!==u.ativo
-              return <tr key={u.user_id}>
+              return <Fragment key={u.user_id}><tr {...recordRow(()=>setManagedUserCard(u.user_id),u.nome)}>
                 <td><input className="userInlineInput" value={draft.nome} onChange={e=>editManagedUser(u.user_id,'nome',e.target.value)} disabled={u.usuario_atual&&savingUserId===u.user_id}/>{u.usuario_atual&&<small className="currentUserMark">Você</small>}</td>
                 <td>{u.email}</td>
                 <td><select className="userInlineSelect" value={draft.perfil} onChange={e=>editManagedUser(u.user_id,'perfil',e.target.value as PerfilRole)} disabled={u.usuario_atual}>
@@ -2151,6 +2177,7 @@ function App(){
                 <td>{u.ultimo_acesso?new Date(u.ultimo_acesso).toLocaleString('pt-BR'):'Nunca acessou'}</td>
                 <td><button type="button" className="primary userSaveBtn" disabled={!changed||savingUserId===u.user_id} onClick={()=>void saveManagedUser(u)}>{savingUserId===u.user_id?'Salvando...':'Salvar'}</button></td>
               </tr>
+              {managedUserCard===u.user_id&&<tr className="manageRow"><td colSpan={6}><div className="actionPanel"><div className="actionMeta"><strong>{u.nome}</strong><span>{u.email} · {profileLabel(u.perfil)} · {u.ativo?'Ativo':'Inativo'}</span><span>Cadastrado em {dateBr(u.criado_em)}</span></div><button type="button" className="ghost" onClick={()=>setManagedUserCard(null)}>Fechar card</button></div></td></tr>}</Fragment>
             })}</tbody>
           </table></div>
         </article>}
@@ -2216,7 +2243,7 @@ function EditableEntityTable({title,headers,rows,readOnly=false,emptyActionLabel
     return sort.dir==='asc'?cmp:-cmp
   })
   const toggle=(index:number)=>setSort(s=>({index,dir:s?.index===index&&s.dir==='asc'?'desc':'asc'}))
-  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map((h,i)=><th key={h}>{i===headers.length-1?h:<button className="tableSortBtn" onClick={()=>toggle(i)}>{h}{sort?.index===i?(sort.dir==='asc'?' ▲':' ▼'):''}</button>}</th>)}</tr></thead><tbody>{sorted.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{sorted.map(r=><Fragment key={r.id}><tr>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map((h,i)=><th key={h}>{i===headers.length-1?h:<button className="tableSortBtn" onClick={()=>toggle(i)}>{h}{sort?.index===i?(sort.dir==='asc'?' ▲':' ▼'):''}</button>}</th>)}</tr></thead><tbody>{sorted.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{sorted.map(r=><Fragment key={r.id}><tr {...recordRow(()=>{if(!r.opened)r.onToggle()},String(r.cells[0]))}>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td><button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button></td></tr>{r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="actionPanel">{r.panel}</div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
 function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
@@ -2233,7 +2260,7 @@ function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelet
   })
   const toggle=(key:typeof sort extends never?never:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>setSort(s=>({key,dir:s?.key===key&&s.dir==='asc'?'desc':'asc'}))
   const mark=(key:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>sort?.key===key?(sort.dir==='asc'?' ▲':' ▼'):''
-  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th><th>Gerenciar</th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{sorted.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td>{readOnly?<span className="readOnlyTag">Somente leitura</span>:<button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button>}</td></tr>{!readOnly&&opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions"><button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button><button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>{canDelete&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th><th>Gerenciar</th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{sorted.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr {...recordRow(()=>{if(!opened)onToggle(p.id)},p.descricao)}><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td><button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button></td></tr>{opened&&<tr className="manageRow"><td colSpan={9}><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions">{!readOnly&&<button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button>}{!readOnly&&<button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>}{canDelete&&!readOnly&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
 }
 
 export default App
