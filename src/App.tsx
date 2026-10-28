@@ -35,6 +35,7 @@ type Compra={id:string;fornecedor_id:string|null;status:string;total:number;obse
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
 type Titulo={id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
+type SaleApproval={id:string;entidade_id:string|null;status:string;solicitado_em:string;payload:Record<string,unknown>|null}
 type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:number}
 type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
 type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
@@ -120,6 +121,7 @@ function App(){
   const [vendas,setVendas]=useState<Venda[]>([])
   const [compras,setCompras]=useState<Compra[]>([])
   const [titulos,setTitulos]=useState<Titulo[]>([])
+  const [saleApprovals,setSaleApprovals]=useState<SaleApproval[]>([])
   const [empresa,setEmpresa]=useState<EmpresaConfig|null>(null)
   const [vendedores,setVendedores]=useState<Vendedor[]>([])
   const [comprovantes,setComprovantes]=useState<Comprovante[]>([])
@@ -157,7 +159,7 @@ function App(){
   const [salePanel,setSalePanel]=useState<string|null>(null)
   const [saleClient,setSaleClient]=useState('')
   const [saleSeller,setSaleSeller]=useState('')
-  const [saleStatus,setSaleStatus]=useState('pedido')
+  const [saleStatus,setSaleStatus]=useState('orcamento')
   const [saleNotes,setSaleNotes]=useState('')
   const [saleRoute,setSaleRoute]=useState<DeliveryRoute|''>('')
   const [salePayment,setSalePayment]=useState<PaymentMethod>('pix')
@@ -236,7 +238,7 @@ function App(){
 
   useEffect(()=>{
     setProfileRole('visualizador');setActive('dashboard');closeForms()
-    setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([])
+    setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setComissoes([])
     setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setFinancePayments([]);setFinanceReversals([]);setEmail('');setPassword('')
   },[session?.user.id])
@@ -267,7 +269,7 @@ function App(){
 
   async function loadData(){
     if(!session)return
-    const [c,f,p,v,cp,t,ec,pr,vd,cv,me]=await Promise.all([
+    const [c,f,p,v,cp,t,ec,pr,vd,cv,me,sa]=await Promise.all([
       readAllRows((from,to)=>supabase.from('clientes').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('fornecedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('produtos').select('*').order('descricao',{ascending:true}).order('id').range(from,to)),
@@ -278,7 +280,8 @@ function App(){
       supabase.from('profiles').select('perfil,ativo').eq('id',session.user.id).maybeSingle(),
       readAllRows((from,to)=>supabase.from('vendedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
-      readAllRows((from,to)=>supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).order('id').range(from,to))
+      readAllRows((from,to)=>supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to))
     ])
     if(currentSessionUser.current!==session.user.id)return
     if(!c.error)setClientes((c.data||[]) as Cliente[])
@@ -306,6 +309,7 @@ function App(){
     if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
     if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
+    if(!sa.error)setSaleApprovals((sa.data||[]) as SaleApproval[])
   }
 
   async function loadFinanceActivity(){
@@ -638,11 +642,12 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('pedido');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}resetSaleForm();setShowForm(true);setMsg('')}
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
     if(v.status==='cancelado'){setMsg('Venda cancelada não pode ser editada.');return}
+    if(saleApprovals.some(a=>a.entidade_id===v.id)){setMsg('Este orçamento está aguardando aprovação e não pode ser alterado até a decisão do administrador.');return}
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
     if(error){setMsg(error.message);return}
     const items=(data||[]) as VendaItem[]
@@ -668,7 +673,7 @@ function App(){
     for(const item of items){
       const produto=produtos.find(p=>p.id===item.produto_id)
       if(!produto)continue
-      const custo=Number(produto.custo_medio??produto.custo??0)
+      const custo=Math.round(Number(produto.custo_medio??produto.custo??0)*100)/100
       const percentual=Number(produto.percentual_minimo_custo_venda??100)
       const minimo=custo*(1+percentual/100)
       const precoEfetivo=item.valor_unitario-Math.min(item.desconto,item.valor_unitario*item.quantidade)/item.quantidade
@@ -764,6 +769,9 @@ function App(){
   }
   async function requestSaleAuthorization(){
     if(savingSale||!canManageSales)return
+    if(!editingSale){setMsg('Salve primeiro como orçamento. Depois abra o orçamento e escolha Pedido ou Faturado para solicitar aprovação.');return}
+    if(saleStatus==='orcamento'){setMsg('Selecione Pedido ou Faturado para solicitar a conversão do orçamento.');return}
+    if(saleApprovals.some(a=>a.entidade_id===editingSale.id)){setMsg('Este orçamento já está aguardando aprovação.');return}
     if(!saleRoute||!saleItems.length||saleItems.some(i=>!i.produto_id||i.quantidade<=0)){setMsg('Preencha a rota e todos os itens antes de solicitar autorização.');return}
     const motivo=window.prompt('Justifique a solicitação para o administrador (mínimo de 5 caracteres):')
     if(!motivo)return
@@ -771,7 +779,7 @@ function App(){
     try{
       const {error}=await supabase.rpc('solicitar_autorizacao_venda',{p_motivo:motivo,p_payload:{p_venda_id:editingSale?.id||null,p_cliente_id:saleClient||null,p_vendedor_cadastro_id:saleSeller||null,p_status:saleStatus,p_forma_pagamento:salePayment,p_parcelas:saleInstallments,p_primeiro_vencimento:saleDueDate,p_observacoes:saleNotes,p_rota_entrega:saleRoute,p_itens:saleItems.map(({produto_id,quantidade,valor_unitario,desconto})=>({produto_id,quantidade,valor_unitario,desconto}))}})
       if(error){setMsg(error.message);return}
-      setShowForm(false);resetSaleForm();setActive('autorizacoes');setMsg('Solicitação enviada. A operação será concluída somente após aprovação administrativa.')
+      setShowForm(false);resetSaleForm();setActive('vendas');await loadData();setMsg('Orçamento salvo na lista e aguardando aprovação administrativa para virar venda.')
     }finally{setSavingSale(false)}
   }
   async function downloadSalePdf(v:Venda){
