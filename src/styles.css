@@ -1310,8 +1310,35 @@
 @media(max-width:900px){.financePanelHead{align-items:stretch}.financeDueToolbar{justify-content:flex-start}.financeDueToolbar .tableSearch{width:100%}}
 
 .financeSingleList{margin-top:14px}
-.financeSubTabs{flex-wrap:wrap}
-@media(max-width:760px){.financeSubTabs{width:100%;grid-template-columns:1fr 1fr}}
+.financeSubTabs{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:8px;
+  width:100%;
+  max-width:none;
+  padding:6px;
+  flex-wrap:initial;
+}
+.financeSubTabs .subTab{
+  min-width:0;
+  width:100%;
+  height:38px;
+  padding:0 10px;
+  justify-content:center;
+  font-size:12px;
+  line-height:1.1;
+  white-space:nowrap;
+}
+.financeSubTabs .subTab svg{width:15px;height:15px;flex:0 0 auto}
+.financeSubTabs .subTabCount{
+  min-width:20px;
+  height:20px;
+  padding:0 6px;
+  font-size:10px;
+}
+@media(max-width:1050px){.financeSubTabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.financeSubTabs{grid-template-columns:repeat(2,minmax(0,1fr))}.financeSubTabs .subTab{white-space:normal;height:44px}}
+
 
 .tableSortBtn{
   appearance:none;
