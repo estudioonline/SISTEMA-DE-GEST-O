@@ -670,17 +670,19 @@ function App(){
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length){setMsg('Adicione pelo menos um produto.');return}
     if(!saleRoute){setMsg('Selecione a rota de entrega.');return}
-    for(const item of items){
+    const belowMinimumItems=items.flatMap(item=>{
       const produto=produtos.find(p=>p.id===item.produto_id)
-      if(!produto)continue
+      if(!produto)return []
       const custo=Math.round(Number(produto.custo_medio??produto.custo??0)*100)/100
       const percentual=Number(produto.percentual_minimo_custo_venda??100)
       const minimo=custo*(1+percentual/100)
       const precoEfetivo=item.valor_unitario-Math.min(item.desconto,item.valor_unitario*item.quantidade)/item.quantidade
-      if(precoEfetivo+0.000001<minimo){
-        setMsg(`Venda bloqueada: ${produto.descricao} está com preço líquido de ${money(precoEfetivo)}, abaixo do mínimo de ${money(minimo)} (custo + ${percentual.toLocaleString('pt-BR')}% de acréscimo). Ajuste o preço/desconto ou a configuração do produto.`)
-        return
-      }
+      return precoEfetivo+0.000001<minimo?[{produto,precoEfetivo,minimo,percentual}]:[]
+    })
+    if(saleStatus!=='orcamento'&&belowMinimumItems.length){
+      const resumo=belowMinimumItems.map(x=>`${x.produto.descricao}: ${money(x.precoEfetivo)} (mínimo ${money(x.minimo)})`).join(' • ')
+      setMsg(`Venda abaixo do preço mínimo. Solicite autorização administrativa para concluir. ${resumo}`)
+      return
     }
 
     const subtotalAtual=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
