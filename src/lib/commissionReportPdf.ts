@@ -117,7 +117,7 @@ export function generateCommissionReportPdf(data:CommissionReportData){
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'})
   doc.setProperties({
     title:`Relatório de Comissões ${dateBr(data.inicio)} a ${dateBr(data.fim)}`,
-    subject:'Comissões sobre vendas recebidas',
+    subject:'Comissões sobre recebimentos líquidos de estornos',
     author:data.company?.nome_fantasia||data.company?.razao_social||'Sistema de Gestão'
   })
 
@@ -131,7 +131,7 @@ export function generateCommissionReportPdf(data:CommissionReportData){
 
   const cards=[
     {x:12,label:'Vendas recebidas',value:String(sales)},
-    {x:78,label:'Total recebido',value:money(totalReceived)},
+    {x:78,label:'Recebido líquido de estornos',value:money(totalReceived)},
     {x:144,label:'Comissão apurada',value:money(totalCommission)},
     {x:210,label:'Vendedores',value:String(sellers)}
   ]

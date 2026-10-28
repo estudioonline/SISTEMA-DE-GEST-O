@@ -1,0 +1,30 @@
+\set ON_ERROR_STOP on
+begin;
+\ir erp_schema_20261028.sql
+create schema if not exists supabase_migrations;
+create table if not exists supabase_migrations.schema_migrations(version text primary key,statements text[],name text);
+insert into public.empresa_config(id) values(1);
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values ('comprovantes-pagamento','comprovantes-pagamento',false,10485760,array['application/pdf','image/jpeg','image/png','image/webp']) on conflict(id) do nothing;
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027012702','add_delivery_route_to_sales',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027105011','erp_controles_avancados_sem_fechamento_financeiro',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027105222','otimiza_rls_controles_avancados',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027105304','automacoes_custo_reposicao_pagamentos_comissoes',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027105321','integridade_historico_e_numeracao',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027105344','limpa_indices_e_politicas_avancadas',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027105939','corrige_auditoria_rls_vendas',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027110215','perfis_vendedor_financeiro_isolados',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027112340','libera_execucao_controlada_credito_cliente',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027154612','produto_percentual_minimo_custo_venda',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261027155509','permitir_acrescimo_preco_ate_mil_porcento',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028114131','erp_settings_security',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028114217','erp_integrations',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028114222','erp_authorizations',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028114351','erp_transaction_fixes',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028114550','erp_authorization_atomicity',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028114805','erp_financial_integrity',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028115002','erp_edit_authorizations',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028122305','erp_atomic_sales',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028122312','erp_reversals_administration',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028124101','erp_catalog_audit',array[]::text[]);
+insert into supabase_migrations.schema_migrations(version,name,statements) values ('20261028124544','erp_commission_visibility',array[]::text[]);
+commit;
