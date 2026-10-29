@@ -190,6 +190,21 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
     }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
   }
 
+  async function requeueDelivery(d:Delivery){
+    if(!canEdit||busy)return
+    const base=new Date();base.setDate(base.getDate()+1)
+    const suggested=base.toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})
+    const date=window.prompt('Nova data para a entrega (AAAA-MM-DD):',suggested)
+    if(!date)return
+    setBusy(true);setMessage('')
+    try{
+      const {error}=await supabase.rpc('logistica_reagendar_entrega',{p_entrega_id:d.id,p_data:date,p_rota_id:null})
+      if(error)throw error
+      setMessage('Entrega retornou para a fila em '+new Date(date+'T12:00:00').toLocaleDateString('pt-BR')+'.')
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  }
+
   async function updateLogisticsField(d:Delivery,field:'rota'|'entregador_nome'|'data_prevista',value:string){
     if(!canEdit||busy)return
     const current=field==='rota'?(d.rota||''):field==='entregador_nome'?(d.entregador_nome||''):d.data_prevista
@@ -420,7 +435,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
         const s=saleFor(d),c=clientFor(d)
         return <article key={d.id}>
           <div><strong>#{String(s?.fatura_numero||0).padStart(7,'0')} · {c?.nome||'Cliente'}</strong><span>{routeLabel(d.rota)} · {d.entregador_nome||'Entregador não informado'}</span></div>
-          <div><span className={'deliveryHistoryStatus '+d.status}>{d.status==='entregue'?'Entregue':'Pendente de reagendamento'}</span><small>{d.status==='entregue'?dateTimeBr(d.entregue_em):`${failLabel(d.falha_motivo)} · ${dateTimeBr(d.falha_em)}`}</small></div>
+          <div><span className={'deliveryHistoryStatus '+d.status}>{d.status==='entregue'?'Entregue':'Pendente de reagendamento'}</span><small>{d.status==='entregue'?dateTimeBr(d.entregue_em):`${failLabel(d.falha_motivo)} · ${dateTimeBr(d.falha_em)}`}</small>{d.status==='reagendamento'&&canEdit&&<button className="deliveryRequeue" disabled={busy} onClick={()=>void requeueDelivery(d)}>Reagendar / voltar à fila</button>}</div>
         </article>
       })}</div>
     </section>}
