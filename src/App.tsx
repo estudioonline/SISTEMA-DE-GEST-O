@@ -214,6 +214,13 @@ function App(){
   const [salePaymentStateFilter,setSalePaymentStateFilter]=useState('todos')
   const [saleRouteFilter,setSaleRouteFilter]=useState('todos')
   const [saleActionMenu,setSaleActionMenu]=useState<string|null>(null)
+  const productsRef=useRef<Produto[]>(produtos)
+  const saleItemsRef=useRef<SaleItemDraft[]>(saleItems)
+  const saleUiRef=useRef({active,showForm})
+  productsRef.current=produtos
+  saleItemsRef.current=saleItems
+  saleUiRef.current={active,showForm}
+
 
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
   const [purchasePanel,setPurchasePanel]=useState<string|null>(null)
@@ -303,6 +310,92 @@ function App(){
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s))
     return ()=>subscription.unsubscribe()
   },[])
+
+  useEffect(()=>{
+    if(!session||!permissionsReady)return
+
+    const notifySaleProductChange=(before:Produto|undefined,after:Produto)=>{
+      const ui=saleUiRef.current
+      if(ui.active!=='vendas'||!ui.showForm||!saleItemsRef.current.some(item=>item.produto_id===after.id))return
+
+      const notices:string[]=[]
+      if(before&&Number(before.estoque_atual)!==Number(after.estoque_atual)){
+        notices.push(`${after.descricao}: estoque atualizado para ${Number(after.estoque_atual).toLocaleString('pt-BR')} ${after.unidade}.`)
+      }
+      if(before&&Number(before.preco_venda)!==Number(after.preco_venda)){
+        notices.push(`${after.descricao}: preço cadastrado mudou de ${money(Number(before.preco_venda))} para ${money(Number(after.preco_venda))}. O preço já digitado nesta venda foi mantido.`)
+      }
+      if(before?.ativo!==false&&after.ativo===false){
+        notices.push(`${after.descricao} foi desativado enquanto esta venda estava aberta.`)
+      }
+      if(notices.length)setSaleNotice('Atualização em tempo real: '+notices.join(' '))
+    }
+
+    const channel=supabase
+      .channel(`erp-live-${session.user.id}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'produtos'},payload=>{
+        if(payload.eventType==='DELETE'){
+          const deleted=payload.old as {id?:string}
+          if(!deleted.id)return
+          const used=saleItemsRef.current.some(item=>item.produto_id===deleted.id)
+          const next=productsRef.current.filter(row=>row.id!==deleted.id)
+          productsRef.current=next
+          setProdutos(next)
+          if(used&&saleUiRef.current.active==='vendas'&&saleUiRef.current.showForm){
+            setSaleNotice('Atualização em tempo real: um produto desta venda foi removido. Revise os itens antes de continuar.')
+          }
+          return
+        }
+
+        const nextProduct=payload.new as Produto
+        if(!nextProduct?.id)return
+        const before=productsRef.current.find(row=>row.id===nextProduct.id)
+        notifySaleProductChange(before,nextProduct)
+        const next=before
+          ? productsRef.current.map(row=>row.id===nextProduct.id?nextProduct:row)
+          : [...productsRef.current,nextProduct]
+        next.sort((a,b)=>a.descricao.localeCompare(b.descricao,'pt-BR'))
+        productsRef.current=next
+        setProdutos(next)
+      })
+      .on('postgres_changes',{event:'*',schema:'public',table:'produto_componentes'},async()=>{
+        const result=await readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to))
+        if(!result.error)setProdutoComponentes((result.data||[]) as ProdutoComponente[])
+      })
+      .on('postgres_changes',{event:'*',schema:'public',table:'movimentos_estoque'},payload=>{
+        if(payload.eventType==='INSERT'){
+          const row=payload.new as MovimentoEstoque
+          if(row?.id)setMovimentosEstoque(rows=>[row,...rows.filter(item=>item.id!==row.id)])
+        }else if(payload.eventType==='UPDATE'){
+          const row=payload.new as MovimentoEstoque
+          if(row?.id)setMovimentosEstoque(rows=>rows.map(item=>item.id===row.id?row:item))
+        }else if(payload.eventType==='DELETE'){
+          const row=payload.old as {id?:string}
+          if(row.id)setMovimentosEstoque(rows=>rows.filter(item=>item.id!==row.id))
+        }
+      })
+      .subscribe()
+
+    const refreshProducts=async()=>{
+      if(document.visibilityState!=='visible')return
+      const result=await readAllRows((from,to)=>supabase.from('produtos').select('*').order('descricao',{ascending:true}).order('id').range(from,to))
+      if(result.error)return
+      const next=(result.data||[]) as Produto[]
+      productsRef.current=next
+      setProdutos(next)
+    }
+
+    const onVisibility=()=>{if(document.visibilityState==='visible')void refreshProducts()}
+    const onFocus=()=>void refreshProducts()
+    document.addEventListener('visibilitychange',onVisibility)
+    window.addEventListener('focus',onFocus)
+
+    return ()=>{
+      document.removeEventListener('visibilitychange',onVisibility)
+      window.removeEventListener('focus',onFocus)
+      void supabase.removeChannel(channel)
+    }
+  },[session?.user.id,permissionsReady])
 
   useEffect(()=>{
     setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');setShowApps(true);setPermissionsReady(false);closeForms()
