@@ -35,6 +35,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   const [titles,setTitles]=useState<Title[]>([])
   const [company,setCompany]=useState<Company|null>(null)
   const [selectedRoutes,setSelectedRoutes]=useState<string[]>([])
+  const [selectedDeliveryIds,setSelectedDeliveryIds]=useState<string[]>([])
   const [reportDate,setReportDate]=useState(today())
   const [driverFilter,setDriverFilter]=useState('')
   const [message,setMessage]=useState('')
@@ -79,6 +80,12 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
     return titles.filter(t=>t.venda_id===vendaId&&t.status!=='cancelado').reduce((sum,t)=>sum+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   }
   function toggleRoute(route:string){setSelectedRoutes(prev=>prev.includes(route)?prev.filter(x=>x!==route):[...prev,route])}
+  function toggleDelivery(id:string){setSelectedDeliveryIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])}
+  function toggleAllVisible(){
+    const ids=active.map(d=>d.id)
+    const allSelected=ids.length>0&&ids.every(id=>selectedDeliveryIds.includes(id))
+    setSelectedDeliveryIds(prev=>allSelected?prev.filter(id=>!ids.includes(id)):Array.from(new Set([...prev,...ids])))
+  }
 
   function openModal(d:Delivery,next:Mode){
     setModalDelivery(d);setMode(next);setReceiverName('');setReceiverDoc('');setProofFile(null);setFailReason('cliente_ausente');setFailDetails('')
@@ -170,12 +177,26 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
     }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
   }
 
-  async function updateLogistics(d:Delivery,route:string,driver:string,date:string){
-    if(!canEdit)return
-    const {error}=await supabase.from('entregas').update({rota:route.trim()||null,rota_manual:true,entregador_nome:driver.trim()||null,data_prevista:date,updated_at:new Date().toISOString()}).eq('id',d.id)
-    if(error){setMessage(error.message);return}
-    await supabase.from('entrega_eventos').insert({entrega_id:d.id,tipo:'organizacao',status_anterior:d.status,status_novo:d.status,detalhes:`Rota: ${route||'sem rota'} · Entregador: ${driver||'não informado'} · Data: ${date}`})
-    await load()
+  async function updateLogisticsField(d:Delivery,field:'rota'|'entregador_nome'|'data_prevista',value:string){
+    if(!canEdit||busy)return
+    const selected=selectedDeliveryIds.includes(d.id)&&selectedDeliveryIds.length>1
+    const ids=selected?selectedDeliveryIds:[d.id]
+    const current=field==='rota'?(d.rota||''):field==='entregador_nome'?(d.entregador_nome||''):d.data_prevista
+    if(value===current&&!selected)return
+    setBusy(true);setMessage('')
+    try{
+      const stamp=new Date().toISOString()
+      const patch:Record<string,unknown>={[field]:field==='rota'?(value.trim()||null):field==='entregador_nome'?(value.trim()||null):value,updated_at:stamp}
+      if(field==='rota')patch.rota_manual=true
+      const {error}=await supabase.from('entregas').update(patch).in('id',ids)
+      if(error)throw error
+      const rows=deliveries.filter(x=>ids.includes(x.id))
+      const label=field==='rota'?'Rota':field==='entregador_nome'?'Motorista / entregador':'Data prevista'
+      const events=rows.map(row=>({entrega_id:row.id,tipo:'organizacao',status_anterior:row.status,status_novo:row.status,detalhes:`${label} alterado para ${value||'não informado'}${selected?` em lote (${ids.length} entregas)`:''}`}))
+      if(events.length)await supabase.from('entrega_eventos').insert(events)
+      setMessage(selected?`${label} aplicado a ${ids.length} entregas selecionadas.`:`${label} atualizado.`)
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
   }
 
   async function generatePdf(){
@@ -236,30 +257,36 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
 
     <div className="deliverySummary"><Truck size={18}/><strong>{active.length} entrega(s)</strong><span>{selectedRoutes.length?`em ${activeRoutes} rota(s) selecionada(s)`:'em todas as rotas'}</span></div>
 
-    <div className="deliveryGrid">
+    {active.length>0&&<div className="deliveryBulkBar">
+      <label><input type="checkbox" checked={active.every(d=>selectedDeliveryIds.includes(d.id))} onChange={toggleAllVisible}/><span>Selecionar todas as entregas visíveis</span></label>
+      <div><strong>{selectedDeliveryIds.length} selecionada(s)</strong>{selectedDeliveryIds.length>1&&<span>Altere rota, motorista ou data em qualquer linha selecionada para replicar nas demais.</span>}</div>
+      {selectedDeliveryIds.length>0&&<button type="button" onClick={()=>setSelectedDeliveryIds([])}>Limpar seleção</button>}
+    </div>}
+
+    <div className="deliveryListWrap">
+      {active.length>0&&<div className="deliveryListHead">
+        <span></span><span>Pedido / Cliente</span><span>Endereço</span><span>Rota</span><span>Motorista</span><span>Data</span><span>Valor</span><span>Status</span><span>Ações</span>
+      </div>}
+      <div className="deliveryList">
       {active.map(d=>{
-        const s=saleFor(d),c=clientFor(d),address=addressOf(c),phone=cleanPhone(c?.telefone||null),due=openAmount(d.venda_id)
-        return <article className="deliveryCard" key={d.id}>
-          <div className="deliveryCardHead"><div><span>Pedido / NF</span><strong>#{String(s?.fatura_numero||0).padStart(7,'0')}</strong></div><span className={'deliveryStatus '+d.status}>{d.status==='em_transito'?'Em trânsito':'A entregar'}</span></div>
-          <div className="deliveryClient"><strong>{c?.nome||'Cliente não identificado'}</strong>{c?.telefone&&<a href={`https://wa.me/55${phone}`} target="_blank" rel="noreferrer"><MessageCircle size={16}/> {c.telefone}</a>}</div>
-          <div className="deliveryAddress"><MapPin size={17}/><div><strong>{address||'Endereço não cadastrado'}</strong><div>{address&&<><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer">Google Maps</a><a href={`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`} target="_blank" rel="noreferrer">Waze</a></>}</div></div></div>
-          <div className="deliveryMeta">
-            <span className="deliveryRouteTag"><Route size={14}/>{routeLabel(d.rota)}</span>
-            <span><b>{money(Number(s?.total||0))}</b> · {due<=0?'Pago':`Cobrar ${money(due)} · ${paymentLabel(s?.forma_pagamento||'')}`}</span>
-          </div>
-          <div className="deliveryLogistics">
-            <input defaultValue={d.rota||''} placeholder="Rota" aria-label="Rota" disabled={!canEdit} onBlur={e=>void updateLogistics(d,e.target.value,d.entregador_nome||'',d.data_prevista)}/>
-            <input defaultValue={d.entregador_nome||''} placeholder="Entregador" aria-label="Entregador" disabled={!canEdit} onBlur={e=>void updateLogistics(d,d.rota||'',e.target.value,d.data_prevista)}/>
-            <input type="date" defaultValue={d.data_prevista} aria-label="Data prevista" disabled={!canEdit} onChange={e=>void updateLogistics(d,d.rota||'',d.entregador_nome||'',e.target.value)}/>
-          </div>
-          {(d.observacoes_entrega||s?.observacoes)&&<div className="deliveryNotes"><strong>Observações</strong><span>{d.observacoes_entrega||s?.observacoes}</span></div>}
-          <div className="deliveryActions">
-            {d.status==='a_entregar'&&canEdit&&<button className="deliveryTransit" disabled={busy} onClick={()=>void markTransit(d)}><Navigation size={16}/>Em trânsito</button>}
-            <button className="deliverySuccess" disabled={!canEdit||busy} onClick={()=>openModal(d,'entregue')}><CheckCircle2 size={17}/>Confirmar entregue</button>
-            <button className="deliveryFail" disabled={!canEdit||busy} onClick={()=>openModal(d,'falha')}><XCircle size={17}/>Não entregue</button>
+        const s=saleFor(d),c=clientFor(d),address=addressOf(c),phone=cleanPhone(c?.telefone||null),due=openAmount(d.venda_id),selected=selectedDeliveryIds.includes(d.id)
+        return <article className={'deliveryListRow'+(selected?' selected':'')} key={d.id}>
+          <label className="deliverySelectCell" title="Selecionar para alteração em lote"><input type="checkbox" checked={selected} onChange={()=>toggleDelivery(d.id)}/></label>
+          <div className="deliveryOrderCell"><strong>#{String(s?.fatura_numero||0).padStart(7,'0')}</strong><span>{c?.nome||'Cliente não identificado'}</span>{c?.telefone&&<a href={`https://wa.me/55${phone}`} target="_blank" rel="noreferrer"><MessageCircle size={14}/>{c.telefone}</a>}</div>
+          <div className="deliveryAddressCell"><strong>{address||'Endereço não cadastrado'}</strong>{address&&<div><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer">Maps</a><a href={`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`} target="_blank" rel="noreferrer">Waze</a></div>}{(d.observacoes_entrega||s?.observacoes)&&<small title={d.observacoes_entrega||s?.observacoes||''}>Obs.: {d.observacoes_entrega||s?.observacoes}</small>}</div>
+          <div className="deliveryInlineField"><input key={`route-${d.id}-${d.rota||''}`} defaultValue={d.rota||''} placeholder="Rota" aria-label="Rota" disabled={!canEdit||busy} onBlur={e=>void updateLogisticsField(d,'rota',e.target.value)}/></div>
+          <div className="deliveryInlineField"><input key={`driver-${d.id}-${d.entregador_nome||''}`} defaultValue={d.entregador_nome||''} placeholder="Entregador" aria-label="Entregador" disabled={!canEdit||busy} onBlur={e=>void updateLogisticsField(d,'entregador_nome',e.target.value)}/></div>
+          <div className="deliveryInlineField"><input key={`date-${d.id}-${d.data_prevista}`} type="date" defaultValue={d.data_prevista} aria-label="Data prevista" disabled={!canEdit||busy} onChange={e=>void updateLogisticsField(d,'data_prevista',e.target.value)}/></div>
+          <div className="deliveryValueCell"><strong>{money(Number(s?.total||0))}</strong><span>{due<=0?'Pago':`Cobrar ${money(due)}`}</span><small>{paymentLabel(s?.forma_pagamento||'')}</small></div>
+          <div className="deliveryStatusCell"><span className={'deliveryStatus '+d.status}>{d.status==='em_transito'?'Em trânsito':'A entregar'}</span><small><Route size={12}/>{routeLabel(d.rota)}</small></div>
+          <div className="deliveryActions compact">
+            {d.status==='a_entregar'&&canEdit&&<button title="Marcar em trânsito" className="deliveryTransit" disabled={busy} onClick={()=>void markTransit(d)}><Navigation size={15}/>Trânsito</button>}
+            <button title="Confirmar entregue" className="deliverySuccess" disabled={!canEdit||busy} onClick={()=>openModal(d,'entregue')}><CheckCircle2 size={15}/>Entregue</button>
+            <button title="Registrar não entrega" className="deliveryFail" disabled={!canEdit||busy} onClick={()=>openModal(d,'falha')}><XCircle size={15}/>Falha</button>
           </div>
         </article>
       })}
+      </div>
     </div>
     {!active.length&&<div className="deliveryEmpty"><Truck size={34}/><strong>Nenhuma entrega ativa</strong><span>Pedidos com logística “A entregar” ou “Em trânsito” aparecerão aqui.</span></div>}
 
