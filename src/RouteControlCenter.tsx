@@ -68,13 +68,13 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
       supabase.from('motoristas_logistica').select('*').order('nome'),
       supabase.from('veiculos_logistica').select('*').order('descricao'),
       supabase.from('rota_eventos').select('*').order('created_at',{ascending:false}).limit(300),
-      supabase.from('profiles').select('id,nome,perfil,ativo').eq('ativo',true).order('nome')
+      canEdit?supabase.from('profiles').select('id,nome,perfil,ativo').eq('ativo',true).order('nome'):Promise.resolve({data:[],error:null})
     ])
     const error=r.error||e.error||s.error||c.error||t.error||d.error||v.error||ev.error||pf.error
     if(error){setMsg(error.message);return}
     setRoutes((r.data||[]) as RoutePlan[]);setDeliveries((e.data||[]) as Delivery[]);setSales((s.data||[]) as Sale[])
     setClients((c.data||[]) as Client[]);setTitles((t.data||[]) as Title[]);setDrivers((d.data||[]) as Driver[]);setVehicles((v.data||[]) as Vehicle[]);setEvents((ev.data||[]) as RouteEvent[]);setProfiles((pf.data||[]) as UserProfile[])
-  },[])
+  },[canEdit])
   useEffect(()=>{void load()},[load])
 
   const dayRoutes=useMemo(()=>routes.filter(r=>r.data_rota===day&&r.status!=='cancelada'),[routes,day])
