@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState} from 'react'
-import {ArrowDown,ArrowUp,CheckCircle2,FileDown,MapPin,Plus,RefreshCw,Route,Truck,Users,Car,XCircle} from 'lucide-react'
+import {ArrowDown,ArrowUp,CheckCircle2,FileDown,MapPin,Plus,RefreshCw,Route,Trash2,Truck,Users,Car,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
 type RouteStatus='montagem'|'liberada'|'concluida'|'cancelada'
@@ -163,6 +163,23 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
     if(field==='veiculo_id'){const v=vehicles.find(x=>x.id===value);patch.veiculo=v?[v.descricao,v.placa].filter(Boolean).join(' - '):null}
     const {error}=await supabase.from('rotas_logisticas').update(patch).eq('id',selectedRoute.id);if(error)setMsg(error.message);else await refresh()
   }
+  async function deleteRoute(){
+    if(!selectedRoute||!canEdit||busy)return
+    const count=stops.length
+    const warning=selectedRoute.status==='montagem'&&count>0
+      ? 'Esta rota tem '+count+' entrega(s). Ao excluir, elas voltarão para a fila de montagem. Deseja continuar?'
+      : 'Deseja excluir a rota '+selectedRoute.nome+'?'
+    if(!window.confirm(warning))return
+    setBusy(true);setMsg('')
+    try{
+      const {error}=await supabase.rpc('logistica_excluir_rota',{p_rota_id:selectedRoute.id})
+      if(error)throw error
+      setSelectedRouteId('')
+      setMsg('Rota excluída com sucesso.')
+      await refresh()
+    }catch(e){setMsg((e as Error).message)}finally{setBusy(false)}
+  }
+
   async function release(){
     if(!selectedRoute)return
     setBusy(true);try{const {error}=await supabase.rpc('logistica_liberar_rota',{p_rota_id:selectedRoute.id});if(error)throw error;setTab('rota');setMsg('Rota liberada com segurança.');await refresh()}catch(e){setMsg((e as Error).message)}finally{setBusy(false)}
@@ -230,7 +247,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
           <div className="routeCenterHeader">
             <div><input className="routeTitleInput" defaultValue={selectedRoute.nome} disabled={!canEdit||selectedRoute.status!=='montagem'} onBlur={e=>void updateRoute('nome',e.target.value)}/><span>{selectedRoute.status==='montagem'?'Em montagem':selectedRoute.status==='liberada'?'Em rota':selectedRoute.status==='concluida'?'Concluída':'Cancelada'} · {selectedRoute.data_rota}</span></div>
             <div className="routeHeaderSelectors"><select value={selectedRoute.motorista_id||''} disabled={!canEdit||selectedRoute.status!=='montagem'} onChange={e=>void updateRoute('motorista_id',e.target.value)}><option value="">Motorista</option>{drivers.filter(d=>d.ativo).map(d=><option key={d.id} value={d.id}>{d.nome}</option>)}</select><select value={selectedRoute.veiculo_id||''} disabled={!canEdit||selectedRoute.status!=='montagem'} onChange={e=>void updateRoute('veiculo_id',e.target.value)}><option value="">Veículo</option>{vehicles.filter(v=>v.ativo).map(v=><option key={v.id} value={v.id}>{v.descricao}{v.placa?' - '+v.placa:''}</option>)}</select></div>
-            <div className="routeHeaderActions"><button onClick={openMaps} disabled={!stops.length}><MapPin size={15}/>Maps</button><button onClick={()=>void routePdf()} disabled={!stops.length}><FileDown size={15}/>PDF</button>{selectedRoute.status==='montagem'&&canEdit&&<button onClick={()=>void optimize()} disabled={stops.length<3}>Otimizar</button>}{selectedRoute.status==='montagem'&&canEdit&&<button className="releaseRoute" onClick={()=>void release()} disabled={!stops.length||overCapacity}><Truck size={15}/>Liberar</button>}</div>
+            <div className="routeHeaderActions"><button onClick={openMaps} disabled={!stops.length}><MapPin size={15}/>Maps</button><button onClick={()=>void routePdf()} disabled={!stops.length}><FileDown size={15}/>PDF</button>{selectedRoute.status==='montagem'&&canEdit&&<button onClick={()=>void optimize()} disabled={stops.length<3}>Otimizar</button>}{canEdit&&(selectedRoute.status==='montagem'||(selectedRoute.status==='liberada'&&!stops.length))&&<button className="deleteRouteButton" onClick={()=>void deleteRoute()} disabled={busy}><Trash2 size={15}/>Excluir</button>}{selectedRoute.status==='montagem'&&canEdit&&<button className="releaseRoute" onClick={()=>void release()} disabled={!stops.length||overCapacity}><Truck size={15}/>Liberar</button>}</div>
           </div>
 
           <div className="routeKpis">
