@@ -1357,6 +1357,16 @@
   border-color:#0A4EBA;
   box-shadow:0 7px 16px rgba(10,78,186,.28);
 }
+.app:not(.dark) .financeSubTabs .subTab.active{
+  background:linear-gradient(180deg,#1767D8 0%,#0A4EBA 100%)!important;
+  color:#FFFFFF!important;
+  border-color:#0A4EBA!important;
+  box-shadow:0 7px 16px rgba(10,78,186,.28)!important;
+}
+.app:not(.dark) .financeSubTabs .subTab.active svg{
+  color:#FFFFFF!important;
+  opacity:1!important;
+}
 .financeSubTabs .subTab.active svg{color:#FFFFFF}
 .financeSubTabs .subTab svg{width:16px;height:16px;flex:0 0 auto}
 .financeSubTabs .subTabCount{
@@ -1390,6 +1400,12 @@
   color:#FFFFFF!important;
   border-color:#DC2626;
   box-shadow:0 7px 16px rgba(220,38,38,.24);
+}
+.app:not(.dark) .financeSubTabs .overdueTab.active{
+  background:linear-gradient(180deg,#EF4444 0%,#DC2626 100%)!important;
+  color:#FFFFFF!important;
+  border-color:#DC2626!important;
+  box-shadow:0 7px 16px rgba(220,38,38,.24)!important;
 }
 .financeSubTabs .overdueTab.active .subTabCount{
   background:rgba(255,255,255,.18);
