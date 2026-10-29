@@ -196,7 +196,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     </div>
     <div className="bankJournalActions compact">
       <button className="bankTransactionsButton" onClick={()=>openJournal(j.id,'transactions')}><List size={20}/>Transações</button>
-      {canEdit&&<button className="bankLoadButton" onClick={()=>openUploadForJournal(j.id)}><Upload size={20}/>Carregar (OFX)</button>}
+      {canEdit&&<button className="bankLoadButton" onClick={()=>openUploadForJournal(j.id)}><Upload size={20}/>Carregar</button>}
     </div>
    </article>
   })}</div>
