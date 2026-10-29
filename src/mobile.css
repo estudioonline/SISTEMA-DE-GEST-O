@@ -1,0 +1,671 @@
+/* Global mobile stabilization for the ERP.
+   Loaded after all existing styles so desktop remains unchanged. */
+
+@media (max-width: 760px) {
+  html, body, #root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  *, *::before, *::after {
+    min-width: 0;
+  }
+
+  /* Workspace / shell */
+  .app,
+  .app.appsWorkspace,
+  .appsWorkspace {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main,
+  .appsWorkspace .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 12px 10px 28px !important;
+    overflow-x: hidden;
+  }
+
+  .appsWorkspace .workspaceBar {
+    width: 100%;
+    min-height: 62px;
+    padding: 9px 10px;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .workspaceIdentity {
+    flex: 1;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .workspaceBrandMark {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .workspaceBrandText {
+    min-width: 0;
+  }
+
+  .workspaceBrandText strong {
+    max-width: 120px;
+    font-size: 12px;
+  }
+
+  .workspaceBrandText small {
+    display: none;
+  }
+
+  .appsWorkspace .workspaceHome {
+    min-height: 38px;
+    padding: 0 9px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .workspaceControls {
+    flex-shrink: 0;
+    gap: 5px;
+  }
+
+  .appsWorkspace .workspaceIcon {
+    width: 38px;
+    min-height: 38px;
+  }
+
+  .workspaceAccount {
+    display: none;
+  }
+
+  /* Module heading / header actions */
+  .topbar,
+  .appsWorkspace .topbar {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .topbar > div:first-child {
+    min-width: 0;
+  }
+
+  .topbar h1 {
+    font-size: 22px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .topbar p {
+    font-size: 12px;
+  }
+
+  .topActions,
+  .appsWorkspace .topActions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .topActions .primary,
+  .topActions .ghost {
+    min-height: 42px;
+    flex: 1 1 145px;
+    justify-content: center;
+  }
+
+  .topActions .iconBtn {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* Panels and dashboard */
+  .panel,
+  .card,
+  .modulePlaceholder {
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px;
+    border-radius: 13px;
+  }
+
+  .cards,
+  .compactCards,
+  .dashboardCards {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .grid2,
+  .dashboardCharts,
+  .dashboardChartsThree {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .dashboardChart,
+  .dashboardCard {
+    min-width: 0;
+  }
+
+  .dashboardBarChart,
+  .dashboardHorizontalChart {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Tabs must scroll inside themselves, never widen the page */
+  .subTabs {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .subTab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Generic forms */
+  .dataForm,
+  .configForm,
+  .viewerUserForm,
+  .sellerForm,
+  .commissionFilters,
+  .reportFilters,
+  .stockForm,
+  .paymentEntry,
+  .saleHeader,
+  .saleHeaderExpanded {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .dataForm > *,
+  .configForm > *,
+  .viewerUserForm > *,
+  .sellerForm > *,
+  .commissionFilters > *,
+  .reportFilters > *,
+  .stockForm > *,
+  .paymentEntry > *,
+  .saleHeader > *,
+  .saleHeaderExpanded > * {
+    grid-column: auto !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .formTitle,
+  .saleItemsHead,
+  .paymentNotice,
+  .proofHead,
+  .proofItem,
+  .actionPanel {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .formActions,
+  .saleActions,
+  .rowActions,
+  .excelActions {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+    justify-content: stretch !important;
+  }
+
+  .formActions > *,
+  .saleActions > *,
+  .rowActions > *,
+  .excelActions > * {
+    width: 100%;
+    justify-content: center;
+    min-height: 42px;
+  }
+
+  /* Sale/purchase item editors: one field per row on narrow screens */
+  .saleItemRow,
+  .purchaseItemRow {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .saleItemRow > *,
+  .purchaseItemRow > * {
+    grid-column: auto !important;
+    width: 100%;
+  }
+
+  .saleItemRow strong,
+  .purchaseItemRow strong {
+    text-align: left;
+  }
+
+  .saleTotals {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+  }
+
+  /* Tables stay inside the panel and scroll internally */
+  .tablePanel {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .tablePanel .panelHead {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .tableSearch {
+    width: 100%;
+  }
+
+  .tableWrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto !important;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .tableWrap table {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .tableWrap th,
+  .tableWrap td {
+    white-space: nowrap;
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .tableWrap .manageRow td {
+    white-space: normal;
+  }
+
+  /* Full-screen/bottom-sheet forms on phones */
+  .saleModalOverlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9000 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .saleModalShell,
+  .entityModalShell,
+  .productModalShell,
+  .financeModalShell {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 96dvh !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  .saleModalForm,
+  .entityModalForm,
+  .productModalForm {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+    padding: 14px !important;
+  }
+
+  .saleModalTitle {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    padding-bottom: 10px;
+    background: inherit;
+  }
+
+  .saleModalClose {
+    flex-shrink: 0;
+  }
+
+  /* Record detail overlay */
+  .recordDetailOverlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 8800 !important;
+  }
+
+  .recordDetailSheet,
+  .recordDetailSheetWide,
+  .saleRecordSheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    inset: auto 0 0 0 !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  .recordDetailHeader {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  /* Delivery module */
+  .deliveryHero {
+    padding: 14px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .deliveryHero h2 {
+    font-size: 20px !important;
+  }
+
+  .deliveryPdfButton {
+    width: 100% !important;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .deliveryToolbar {
+    grid-template-columns: 1fr !important;
+    padding: 10px !important;
+  }
+
+  .deliveryReportFilters {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .deliveryReportFilters label,
+  .deliveryReportFilters input {
+    width: 100%;
+  }
+
+  .deliveryBulkBar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .deliveryListWrap {
+    overflow: visible !important;
+  }
+
+  .deliveryListHead {
+    display: none !important;
+  }
+
+  .deliveryListRow {
+    min-width: 0 !important;
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 28px minmax(0,1fr) auto !important;
+    grid-template-areas:
+      "select order status"
+      "address address address"
+      "route route route"
+      "driver driver driver"
+      "date value value"
+      "actions actions actions" !important;
+    gap: 9px !important;
+    padding: 11px !important;
+  }
+
+  .deliveryListRow > :nth-child(1) { grid-area: select; }
+  .deliveryListRow > :nth-child(2) { grid-area: order; }
+  .deliveryListRow > :nth-child(3) { grid-area: address; }
+  .deliveryListRow > :nth-child(4) { grid-area: route; }
+  .deliveryListRow > :nth-child(5) { grid-area: driver; }
+  .deliveryListRow > :nth-child(6) { grid-area: date; }
+  .deliveryListRow > :nth-child(7) { grid-area: value; }
+  .deliveryListRow > :nth-child(8) { grid-area: status; }
+  .deliveryListRow > :nth-child(9) { grid-area: actions; }
+
+  .deliveryOrderCell span,
+  .deliveryAddressCell strong,
+  .deliveryAddressCell small {
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+
+  .deliveryInlineField input {
+    height: 44px !important;
+  }
+
+  .deliveryActions.compact {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+  }
+
+  .deliveryActions.compact > button {
+    min-height: 44px !important;
+  }
+
+  .deliveryActionMenu summary {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* Route control center */
+  .routeCenter {
+    padding: 9px !important;
+  }
+
+  .routeCenterTabs {
+    display: grid !important;
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .routeCenterTabs > button {
+    width: 100% !important;
+    min-height: 42px;
+    padding: 0 6px !important;
+  }
+
+  .routeCenterTabs label {
+    grid-column: 1 / -1;
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .routeCenterTabs label input {
+    width: 100%;
+    height: 42px;
+  }
+
+  .routeSetupGrid,
+  .routeCenterBody,
+  .routeCenterSidebar,
+  .routeCenterHeader,
+  .routeHeaderSelectors,
+  .routeBulkApply {
+    grid-template-columns: 1fr !important;
+  }
+
+  .routeCenterList {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 7px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .routeCenterList > button {
+    min-width: 220px;
+    flex: 0 0 auto;
+  }
+
+  .routeHeaderActions {
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    width: 100%;
+  }
+
+  .routeHeaderActions button {
+    width: 100%;
+    min-height: 42px;
+    justify-content: center;
+  }
+
+  .routeKpis {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+
+  .routeAssignBar {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .routeAssignBar button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .routeStops.advanced {
+    overflow: visible !important;
+    padding: 7px !important;
+  }
+
+  .routeStops.advanced article,
+  .routeStops.advanced article:has(.routeStopDeliver) {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: 44px minmax(0,1fr) !important;
+    grid-template-areas:
+      "order info"
+      "order value"
+      "status status"
+      "action action" !important;
+    gap: 8px !important;
+  }
+
+  .routeStops.advanced article > :nth-child(1) { grid-area: order; }
+  .routeStops.advanced article > :nth-child(2) { grid-area: info; }
+  .routeStops.advanced article > :nth-child(3) { grid-area: value; }
+  .routeStops.advanced article > :nth-child(4) { grid-area: status; }
+  .routeStops.advanced article > :nth-child(5) { grid-area: action; }
+
+  .routeStopRemove,
+  .routeStopDeliver {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .routeAudit article {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Delivery confirmation modal */
+  .deliveryModalBackdrop {
+    padding: 0 !important;
+    align-items: end !important;
+  }
+
+  .deliveryModal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 95dvh !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  .deliveryFormGrid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .workspaceBrandText {
+    display: none !important;
+  }
+
+  .appsWorkspace .workspaceHome span {
+    display: none;
+  }
+
+  .appsWorkspace .workspaceHome {
+    width: 38px;
+    padding: 0;
+  }
+
+  .routeCenterTabs {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+
+  .routeKpis {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .deliveryListRow {
+    grid-template-columns: 26px minmax(0,1fr) !important;
+    grid-template-areas:
+      "select order"
+      "status status"
+      "address address"
+      "route route"
+      "driver driver"
+      "date date"
+      "value value"
+      "actions actions" !important;
+  }
+}
