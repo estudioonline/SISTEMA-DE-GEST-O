@@ -3568,12 +3568,11 @@ function App(){
         <article className="panel tablePanel commissionsTable">
           <div className="panelHead"><h3>Vendedores e comissões</h3><SearchField value={tableSearch.comissoes||''} onChange={v=>setSearch('comissoes',v)} placeholder="Pesquisar vendedores e valores"/></div>
           <div className="tableWrap"><table>
-            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendedor')}>Vendedor{sortMark('comissoes','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','percentual')}>% atual{sortMark('comissoes','percentual')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebido')}>Recebido no período{sortMark('comissoes','recebido')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','comissao')}>Comissão apurada{sortMark('comissoes','comissao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebimentos')}>Recebimentos{sortMark('comissoes','recebimentos')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendas')}>Vendas{sortMark('comissoes','vendas')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','status')}>Status{sortMark('comissoes','status')}</button></th><th>Gerenciar</th></tr></thead>
+            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendedor')}>Vendedor{sortMark('comissoes','vendedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','percentual')}>% atual{sortMark('comissoes','percentual')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebido')}>Recebido no período{sortMark('comissoes','recebido')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','comissao')}>Comissão apurada{sortMark('comissoes','comissao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','recebimentos')}>Recebimentos{sortMark('comissoes','recebimentos')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','vendas')}>Vendas{sortMark('comissoes','vendas')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('comissoes','status')}>Status{sortMark('comissoes','status')}</button></th><th>Ações</th></tr></thead>
             <tbody>{visibleSellers.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={vendedores.length===0?'Nenhum vendedor cadastrado.':'Nenhum vendedor encontrado para esta pesquisa.'} actionLabel={vendedores.length===0&&canManageCommissions?'+ Adicionar Vendedor':undefined} onAction={startNewSeller}/></td></tr>}{visibleSellers.map(v=>{
               const summary=comissoes.find(c=>c.vendedor_id===v.id)
-              const opened=sellerPanel===v.id
               return <Fragment key={v.id}>
-                <tr {...recordRow(()=>setSellerPanel(v.id),v.nome)}>
+                <tr {...recordRow(()=>{if(canManageCommissions)startEditSeller(v)},v.nome)}>
                   <td><strong>{v.nome}</strong><br/><small>{v.email||v.telefone||'—'}</small></td>
                   <td>{Number(v.percentual_comissao).toLocaleString('pt-BR')}%</td>
                   <td>{money(Number(summary?.total_recebido||0))}</td>
@@ -3581,23 +3580,8 @@ function App(){
                   <td>{summary?.pagamentos||0}</td>
                   <td>{summary?.vendas||0}</td>
                   <td><span className={v.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{v.ativo?'ativo':'inativo'}</span></td>
-                  <td>{canManageCommissions?<button className="rowMenuBtn" onClick={()=>setSellerPanel(opened?null:v.id)} title="Opções" aria-label="Abrir opções do vendedor" aria-expanded={opened}><MoreVertical size={18}/></button>:<span className="readOnlyTag">Somente leitura</span>}</td>
+                  <td>{canManageCommissions&&v.ativo?<button type="button" className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={14}/>Desativar</button>:<span className="readOnlyTag">{v.ativo?'Duplo clique para editar':'Inativo'}</span>}</td>
                 </tr>
-                {opened&&<tr className="manageRow"><td colSpan={8}>
-                  <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={v.nome}>
-                    <div className="recordDetailBackdrop" onClick={()=>setSellerPanel(null)}/>
-                    <div className="recordDetailSheet">
-                      <div className="recordDetailHeader"><strong>{v.nome}</strong><button type="button" className="recordDetailClose" onClick={()=>setSellerPanel(null)}><X size={17}/>Fechar</button></div>
-                      <div className="actionPanel">
-                    <div className="actionMeta"><strong>{v.nome}</strong><span>Comissão atual: {Number(v.percentual_comissao).toLocaleString('pt-BR')}%</span></div>
-                    <div className="rowActions">
-                      {canManageCommissions&&<button className="ghost" onClick={()=>startEditSeller(v)}><Pencil size={15}/>Editar % / dados</button>}
-                      {canManageCommissions&&v.ativo&&<button className="warningBtn" onClick={()=>void deactivateSeller(v)}><Ban size={15}/>Desativar</button>}
-                    </div>
-                      </div>
-                    </div>
-                  </div>
-                </td></tr>}
               </Fragment>
             })}</tbody>
           </table></div>
