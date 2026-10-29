@@ -194,11 +194,14 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   {journals.length===0&&<div className="bankEmpty"><Landmark size={30}/><strong>Nenhum diário bancário cadastrado</strong><span>Cadastre uma conta para começar a importar OFX.</span></div>}
   <div className="bankJournalGrid">{journals.map(j=>{
    const rows=transactions.filter(t=>t.diario_id===j.id),pendingRows=rows.filter(t=>t.status!=='conciliado'),pendingPayments=pendingRows.filter(t=>t.trntype==='DEBIT').reduce((s,t)=>s+Math.abs(Number(t.valor)),0),line=sparkline(j.id)
-   return <article className="bankJournalCard" key={j.id}>
-    <div className="bankJournalHead"><div><Landmark size={18}/><strong>{j.nome}</strong><span>{[j.banco,j.agencia,j.conta].filter(Boolean).join(' • ')||'Conta bancária'}</span></div>{pendingRows.length>0&&<button className="bankPending" onClick={()=>openJournal(j.id,'matching')}>{pendingRows.length} a conciliar</button>}</div>
-    <div className="bankJournalMetrics"><div><span>Saldo</span><strong>{money(Number(j.saldo_atual))}</strong></div><div><span>Pagamentos</span><strong>{money(pendingPayments)}</strong></div></div>
-    <svg className="bankSpark" viewBox="0 0 100 32" preserveAspectRatio="none">{line&&<polyline points={line} fill="none" vectorEffect="non-scaling-stroke"/>}</svg>
-    <div className="bankJournalActions"><button onClick={()=>openJournal(j.id,'transactions')}>Transações</button><button onClick={()=>openJournal(j.id,'matching')}><Link2 size={14}/>Conciliar</button></div>
+   const area=line?line+' 100,32 0,32':''
+   return <article className="bankJournalCard compactJournalCard" key={j.id}>
+    <div className="bankJournalTop">
+      <div className="bankJournalIdentity"><strong>{j.nome}</strong><span>{[j.banco,j.agencia,j.conta].filter(Boolean).join(' • ')||'Conta bancária'}</span></div>
+      <div className="bankJournalMetrics compact"><div><span>Saldo</span><strong>{money(Number(j.saldo_atual))}</strong></div><div><span>Pagamentos</span><strong>{money(pendingPayments)}</strong></div></div>
+    </div>
+    <div className="bankJournalActions compact"><button onClick={()=>openJournal(j.id,'transactions')}>Transações</button>{pendingRows.length>0&&<button className="bankPending" onClick={()=>openJournal(j.id,'matching')}>{pendingRows.length} a conciliar</button>}</div>
+    <svg className="bankSpark compact" viewBox="0 0 100 32" preserveAspectRatio="none">{area&&<polygon points={area}/>} {line&&<polyline points={line} fill="none" vectorEffect="non-scaling-stroke"/>}</svg>
    </article>
   })}</div>
   {canClosePeriods&&closedPeriods.length>0&&<div className="bankClosedPeriods"><strong>Períodos financeiros</strong>{closedPeriods.slice(0,6).map(p=><div key={p.id}><span>{dateBr(p.inicio)} a {dateBr(p.fim)} · {p.reaberto_em?'Reaberto':'Fechado'}</span>{!p.reaberto_em&&<button disabled={busy} onClick={()=>void reopenPeriod(p.id)}>Reabrir</button>}</div>)}</div>}
