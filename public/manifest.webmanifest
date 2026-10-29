@@ -1,0 +1,19 @@
+{
+  "name": "SG Sistema de Gestão",
+  "short_name": "SG",
+  "description": "Sistema de Gestão Empresarial SG",
+  "start_url": "/SISTEMA-DE-GEST-O/",
+  "scope": "/SISTEMA-DE-GEST-O/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/SISTEMA-DE-GEST-O/sg-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
