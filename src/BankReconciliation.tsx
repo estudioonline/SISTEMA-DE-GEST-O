@@ -176,6 +176,9 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  function openJournal(id:string,target:'matching'|'transactions'){
   setActiveJournal(id);setScreen(target);setSearch('');setSelected({});setMessage('')
  }
+ function openUploadForJournal(id:string){
+  setActiveJournal(id);setUploadOpen(true);setMessage('')
+ }
  function toggleTitle(title:Title){
   const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago))
   setSelected(prev=>prev[title.id]?Object.fromEntries(Object.entries(prev).filter(([id])=>id!==title.id)):{...prev,[title.id]:balance})
@@ -189,7 +192,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  }
 
  if(screen==='dashboard')return <section className="bankRecon bankReconDark">
-  <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div><div className="bankActions">{canClosePeriods&&<button onClick={()=>setPeriodOpen(true)}>Fechar período</button>}{canEdit&&<button className="bankPrimary" onClick={()=>setNewJournalOpen(true)}><Plus size={15}/>Novo diário</button>}</div></div>
+  <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div></div>
   {message&&<div className="bankMessage">{message}</div>}
   {journals.length===0&&<div className="bankEmpty"><Landmark size={30}/><strong>Nenhum diário bancário cadastrado</strong><span>Cadastre uma conta para começar a importar OFX.</span></div>}
   <div className="bankJournalGrid">{journals.map(j=>{
@@ -200,10 +203,11 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       <div className="bankJournalIdentity"><strong>{j.nome}</strong><span>{[j.banco,j.agencia,j.conta].filter(Boolean).join(' • ')||'Conta bancária'}</span></div>
       <div className="bankJournalMetrics compact"><div><span>Saldo</span><strong>{money(Number(j.saldo_atual))}</strong></div><div><span>Pagamentos</span><strong>{money(pendingPayments)}</strong></div></div>
     </div>
-    <div className="bankJournalActions compact"><button onClick={()=>openJournal(j.id,'transactions')}>Transações</button>{pendingRows.length>0&&<button className="bankPending" onClick={()=>openJournal(j.id,'matching')}>{pendingRows.length} a conciliar</button>}</div>
+    <div className="bankJournalActions compact"><button onClick={()=>openJournal(j.id,'transactions')}>Transações</button>{canEdit&&<button className="bankLoadButton" onClick={()=>openUploadForJournal(j.id)}><Upload size={13}/>Carregar (OFX)</button>}{pendingRows.length>0&&<button className="bankPending" onClick={()=>openJournal(j.id,'matching')}>{pendingRows.length} a conciliar</button>}</div>
     <svg className="bankSpark compact" viewBox="0 0 100 32" preserveAspectRatio="none">{area&&<polygon points={area}/>} {line&&<polyline points={line} fill="none" vectorEffect="non-scaling-stroke"/>}</svg>
    </article>
   })}</div>
+  {uploadOpen&&<div className="bankModalBackdrop"><div className="bankModal"><div className="bankModalHead"><strong>Carregar extrato</strong><button onClick={()=>setUploadOpen(false)}><XCircle size={18}/></button></div><p>O arquivo será atribuído automaticamente ao diário <strong>{journal?.nome}</strong>. FITIDs já importados serão descartados.</p><input ref={fileRef} type="file" accept=".ofx,.qfx,.csv" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file)}}/><div className="bankUploadHint"><FileUp size={18}/><span>Formatos aceitos: OFX, QFX e CSV.</span></div></div></div>}
   {canClosePeriods&&closedPeriods.length>0&&<div className="bankClosedPeriods"><strong>Períodos financeiros</strong>{closedPeriods.slice(0,6).map(p=><div key={p.id}><span>{dateBr(p.inicio)} a {dateBr(p.fim)} · {p.reaberto_em?'Reaberto':'Fechado'}</span>{!p.reaberto_em&&<button disabled={busy} onClick={()=>void reopenPeriod(p.id)}>Reabrir</button>}</div>)}</div>}
   {newJournalOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createJournal}><div className="bankModalHead"><strong>Novo diário bancário</strong><button type="button" onClick={()=>setNewJournalOpen(false)}><XCircle size={18}/></button></div><label>Nome<input name="nome" required placeholder="Ex.: Itaú Supremion"/></label><div className="bankFormGrid"><label>Banco<input name="banco"/></label><label>Agência<input name="agencia"/></label><label>Conta<input name="conta"/></label><label>Saldo inicial<input name="saldo" type="number" step="0.01" defaultValue="0"/></label></div><div className="bankModalActions"><button type="button" onClick={()=>setNewJournalOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Criar diário</button></div></form></div>}
   {periodOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={closePeriod}><div className="bankModalHead"><strong>Encerrar período financeiro</strong><button type="button" onClick={()=>setPeriodOpen(false)}><XCircle size={18}/></button></div><p>Importações, conciliações e reversões dentro deste período ficarão bloqueadas.</p><div className="bankFormGrid"><label>Início<input name="inicio" type="date" required/></label><label>Fim<input name="fim" type="date" required/></label></div><label>Justificativa<input name="motivo" minLength={5} required/></label><div className="bankModalActions"><button type="button" onClick={()=>setPeriodOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Encerrar período</button></div></form></div>}
