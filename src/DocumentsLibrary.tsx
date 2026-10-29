@@ -63,7 +63,7 @@ const mimeByExtension: Record<string, string> = {
 }
 const acceptTypes = '.pdf,.doc,.docx,.xls,.xlsx,.csv,.xml,.jpg,.jpeg,.png,.webp,.txt,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/xml,text/xml,image/jpeg,image/png,image/webp,text/plain,application/zip'
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
-const extensionOf = (file: CloudDocument | File) => (file.name?.split('.').pop() || file.nome_arquivo?.split('.').pop() || '').toLowerCase()
+const extensionOf = (file: CloudDocument) => (file.nome_arquivo?.split('.').pop() || '').toLowerCase()
 const isPdf = (file: CloudDocument) => file.mime_type?.toLowerCase().includes('pdf') || extensionOf(file) === 'pdf'
 const isImage = (file: CloudDocument) => file.mime_type?.toLowerCase().startsWith('image/') || ['jpg','jpeg','png','webp'].includes(extensionOf(file))
 const isSpreadsheet = (file: CloudDocument) => ['xls','xlsx','csv'].includes(extensionOf(file)) || Boolean(file.mime_type?.includes('spreadsheet') || file.mime_type?.includes('excel') || file.mime_type === 'text/csv')
@@ -218,7 +218,7 @@ export function DocumentsLibrary({ canEdit }: Props) {
         setUploadProgress(`Enviando ${index + 1} de ${files.length}: ${file.name}`)
         const extension = (file.name.split('.').pop() || '').toLowerCase()
         const mimeType = mimeByExtension[extension] || 'application/octet-stream'
-        const path = `${uploadCategory}/${year}/${month}/${crypto.randomUUID()}_${safeFileName(file.name)}`
+        const path = `${uploadCategory}/${year}/${month}/${crypto.randomUUID()}.${extension}`
         const upload = await supabase.storage.from('documentos-empresa').upload(path, file, {
           contentType: mimeType,
           upsert: false,
