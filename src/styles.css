@@ -4710,3 +4710,5 @@
 .routeStops.advanced article:has(.routeStopDeliver){grid-template-columns:70px minmax(260px,1fr) 125px 130px auto}
 
 .deliveryListRow.assigned{opacity:.78}.deliverySelectCell{position:relative}.deliveryAssignedBadge{position:absolute;left:24px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:8px;font-weight:900;color:#92400e;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:3px 6px}.dark .deliveryAssignedBadge{color:#fdba74;background:#431407;border-color:#9a3412}.deliverySelectCell input:disabled{cursor:not-allowed}
+
+.routeCenterWorkspace.routeCenterWorkspaceEmpty{min-height:0}.routeCenterWorkspaceEmpty .routeWorkspaceEmpty{min-height:90px;padding:12px}

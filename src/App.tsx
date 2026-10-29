@@ -138,6 +138,7 @@ function App(){
   const [empresa,setEmpresa]=useState<EmpresaConfig|null>(null)
   const [vendedores,setVendedores]=useState<Vendedor[]>([])
   const [comprovantes,setComprovantes]=useState<Comprovante[]>([])
+  const [commissionsLoading,setCommissionsLoading]=useState(true)
   const [comissoes,setComissoes]=useState<ComissaoResumo[]>([])
   const [movimentosEstoque,setMovimentosEstoque]=useState<MovimentoEstoque[]>([])
 
@@ -216,6 +217,7 @@ function App(){
   const [financeCenter,setFinanceCenter]=useState('todos')
   const [financeTitleType,setFinanceTitleType]=useState<'receber'|'pagar'>('receber')
   const [financeTitleEntity,setFinanceTitleEntity]=useState('')
+  const [financeActivityState,setFinanceActivityState]=useState<'loading'|'ready'|'error'>('loading')
   const [financePayments,setFinancePayments]=useState<FinancePayment[]>([])
   const [financeReversals,setFinanceReversals]=useState<FinanceReversal[]>([])
   const [paymentDate,setPaymentDate]=useState(today())
@@ -280,7 +282,7 @@ function App(){
 
   useEffect(()=>{
     if(session&&active==='financeiro'&&canViewFinance)void loadFinanceActivity()
-  },[session?.user.id,active,profileRole])
+  },[session?.user.id,active,profileRole,canViewFinance])
 
   useEffect(()=>{
     if(!session||!showForm||active!=='vendas'||saleStatus==='orcamento'||!saleClient){
@@ -362,11 +364,14 @@ function App(){
 
   async function loadFinanceActivity(){
     if(!session||!canViewFinance)return
+    setFinanceActivityState('loading')
     const [p,e]=await Promise.all([
       readAllRows((from,to)=>supabase.from('pagamentos_titulos').select('id,titulo_id,data_pagamento,valor').order('data_pagamento',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('estornos_pagamentos').select('id,pagamento_id,valor,data_estorno').order('data_estorno',{ascending:false}).order('id').range(from,to))
     ])
     if(currentSessionUser.current!==session.user.id)return
+    setFinanceActivityState(p.error||e.error?'error':'ready')
+    if(p.error||e.error)setMsg('Não foi possível carregar os recebimentos: '+(p.error||e.error)?.message)
     if(!p.error)setFinancePayments((p.data||[]) as FinancePayment[])
     if(!e.error)setFinanceReversals((e.data||[]) as FinanceReversal[])
   }
@@ -376,10 +381,12 @@ function App(){
   }
 
   async function loadCommissions(){
+    setCommissionsLoading(true)
     const {data,error}=await readAllRows((from,to)=>supabase.rpc('comissoes_por_periodo',{
       p_inicio:commissionStart,
       p_fim:commissionEnd
     }).order('vendedor_nome').order('vendedor_id').range(from,to))
+    setCommissionsLoading(false)
     if(error){setMsg('Não foi possível calcular as comissões: '+error.message);return}
     setComissoes((data||[]) as ComissaoResumo[])
   }
@@ -2821,7 +2828,7 @@ function App(){
           return <div className="recordDetailOverlay saleRecordOverlay" role="dialog" aria-modal="true" aria-label={`Venda #${invoiceNo(v.fatura_numero)}`}>
             <div className="recordDetailBackdrop" onClick={closeSaleDetail}/>
             <div className="recordDetailSheet recordDetailSheetWide saleRecordSheet">
-              <div className="recordDetailHeader"><strong>Venda #${invoiceNo(v.fatura_numero)}</strong><button type="button" className="recordDetailClose" onClick={closeSaleDetail}><X size={17}/>Fechar</button></div>
+              <div className="recordDetailHeader"><strong>Venda #{invoiceNo(v.fatura_numero)}</strong><button type="button" className="recordDetailClose" onClick={closeSaleDetail}><X size={17}/>Fechar</button></div>
               <article className="panel saleDetailPage">
             <div className="saleDetailTopbar">
               <button type="button" className="ghost" onClick={closeSaleDetail}><ChevronLeft size={16}/>Voltar para lista</button>
@@ -3023,8 +3030,8 @@ function App(){
         {salesWithoutSeller>0&&<div className="commissionWarning">{salesWithoutSeller} venda(s) estão sem vendedor definido e não gerarão comissão até serem vinculadas a um vendedor.</div>}
 
         <div className="cards compactCards semanticCards">
-          <article className="card semanticCard semanticPositive"><span>Recebido no período</span><strong>{money(commissionReceived)}</strong><small>{dateBr(commissionStart)} a {dateBr(commissionEnd)}</small></article>
-          <article className="card semanticCard semanticBlue"><span>Comissões apuradas</span><strong>{money(commissionTotal)}</strong><small>sobre recebimentos</small></article>
+          <article className="card semanticCard semanticPositive"><span>Recebido no período</span><strong>{commissionsLoading?'Carregando…':money(commissionReceived)}</strong><small>{dateBr(commissionStart)} a {dateBr(commissionEnd)}</small></article>
+          <article className="card semanticCard semanticBlue"><span>Comissões apuradas</span><strong>{commissionsLoading?'Carregando…':money(commissionTotal)}</strong><small>sobre recebimentos</small></article>
           <article className="card semanticCard semanticNeutral"><span>Vendedores ativos</span><strong>{vendedores.filter(v=>v.ativo).length}</strong><small>{salesWithoutSeller} venda(s) sem vendedor</small></article>
         </div>
 
@@ -3109,9 +3116,9 @@ function App(){
             <article className="card financeOverviewCard semanticWarning"><span>Total vencido</span><strong>{money(overdueReceivables+overduePayables)}</strong><small>{overdueTitles.length} título(s) em atraso</small></article>
             <article className={'card financeOverviewCard '+(openReceivables-openPayables>=0?'semanticBlue':'semanticNegative')}><span>Resultado líquido em aberto</span><strong>{money(openReceivables-openPayables)}</strong><small>a receber - a pagar</small></article>
 
-            <article className="card financeOverviewCard semanticPositive"><span>Recebido no mês</span><strong>{money(receivedThisMonth)}</strong><small>líquido de estornos</small></article>
-            <article className="card financeOverviewCard semanticNegative"><span>Pago no mês</span><strong>{money(paidThisMonth)}</strong><small>líquido de estornos</small></article>
-            <article className={'card financeOverviewCard '+(cashResultThisMonth>=0?'semanticPositive':'semanticNegative')}><span>Resultado de caixa no mês</span><strong>{money(cashResultThisMonth)}</strong><small>recebimentos - pagamentos</small></article>
+            <article className="card financeOverviewCard semanticPositive"><span>Recebido no mês</span><strong>{financeActivityState==='loading'?'Carregando…':financeActivityState==='error'?'Indisponível':money(receivedThisMonth)}</strong><small>líquido de estornos</small></article>
+            <article className="card financeOverviewCard semanticNegative"><span>Pago no mês</span><strong>{financeActivityState==='loading'?'Carregando…':financeActivityState==='error'?'Indisponível':money(paidThisMonth)}</strong><small>líquido de estornos</small></article>
+            <article className={'card financeOverviewCard '+(cashResultThisMonth>=0?'semanticPositive':'semanticNegative')}><span>Resultado de caixa no mês</span><strong>{financeActivityState==='loading'?'Carregando…':financeActivityState==='error'?'Indisponível':money(cashResultThisMonth)}</strong><small>recebimentos - pagamentos</small></article>
             <article className="card financeOverviewCard semanticBlue"><span>Próximos 7 dias</span><strong>{money(dueNext7Receivable-dueNext7Payable)}</strong><small>Receber {money(dueNext7Receivable)} • Pagar {money(dueNext7Payable)}</small></article>
           </div>
 
@@ -3356,7 +3363,7 @@ function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelet
   })
   const toggle=(key:typeof sort extends never?never:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>setSort(s=>({key,dir:s?.key===key&&s.dir==='asc'?'desc':'asc'}))
   const mark=(key:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>sort?.key===key?(sort.dir==='asc'?' ▲':' ▼'):''
-  return <article className="panel tablePanel"><div className="panelHead"><div><h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th><th>Gerenciar</th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{sorted.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr {...recordRow(()=>{if(readOnly){if(!opened)onToggle(p.id)}else{onEdit(p)}},p.descricao)}><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td><button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button></td></tr>{opened&&<tr className="manageRow"><td colSpan={9}><div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={p.descricao}><div className="recordDetailBackdrop" onClick={()=>onToggle(p.id)}/><div className="recordDetailSheet"><div className="recordDetailHeader"><strong>{p.codigo} - {p.descricao}</strong><button type="button" className="recordDetailClose" onClick={()=>onToggle(p.id)}><X size={17}/>Fechar</button></div><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions">{!readOnly&&<button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button>}{!readOnly&&<button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>}{canDelete&&!readOnly&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
+  return <article className="panel tablePanel"><div className="panelHead"><div>{produtos.some(p=>Number(p.estoque_atual)<0)&&<p role="status">Há produtos com saldo negativo. Confira as entradas e saídas e registre a reposição ou um ajuste justificado após a contagem física.</p>}<h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th><th>Gerenciar</th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{sorted.map(p=>{const opened=openId===p.id;const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr {...recordRow(()=>{if(readOnly){if(!opened)onToggle(p.id)}else{onEdit(p)}},p.descricao)}><td>{p.codigo}</td><td>{p.descricao}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td><td><button className="rowMenuBtn" onClick={()=>onToggle(p.id)} title="Opções" aria-label="Abrir opções do produto" aria-expanded={opened}><MoreVertical size={18}/></button></td></tr>{opened&&<tr className="manageRow"><td colSpan={9}><div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={p.descricao}><div className="recordDetailBackdrop" onClick={()=>onToggle(p.id)}/><div className="recordDetailSheet"><div className="recordDetailHeader"><strong>{p.codigo} - {p.descricao}</strong><button type="button" className="recordDetailClose" onClick={()=>onToggle(p.id)}><X size={17}/>Fechar</button></div><div className="actionPanel"><div className="actionMeta"><strong>{p.codigo} - {p.descricao}</strong><span>Estoque: {Number(p.estoque_atual).toLocaleString('pt-BR')} {p.unidade}</span></div><div className="rowActions">{!readOnly&&<button className="ghost" onClick={()=>onEdit(p)}><Pencil size={15}/>Editar</button>}{!readOnly&&<button className="ghost" onClick={()=>onAdjust(p)}><Boxes size={15}/>Ajustar estoque</button>}{canDelete&&!readOnly&&<button className="dangerAction" onClick={()=>void onDelete(p)}><Trash2 size={15}/>Excluir</button>}</div></div></div></div></td></tr>}</Fragment>})}</tbody></table></div></article>
 }
 
 export default App

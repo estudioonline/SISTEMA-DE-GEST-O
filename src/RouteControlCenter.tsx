@@ -26,7 +26,7 @@ function haversine(a:Client,b:Client){
   return 2*r*Math.asin(Math.sqrt(x))
 }
 
-export function RouteControlCenter({canEdit,canOperate,selectedDeliveryIds,onClearSelection,onChanged,onConfirmDelivery,refreshKey}:{canEdit:boolean;canOperate:boolean;selectedDeliveryIds:string[];onClearSelection:()=>void;onChanged:()=>Promise<void>|void;onConfirmDelivery:(deliveryId:string)=>void;refreshKey:number}){
+export function RouteControlCenter({onViewChange,canEdit,canOperate,selectedDeliveryIds,onClearSelection,onChanged,onConfirmDelivery,refreshKey}:{onViewChange:(view:Tab)=>void;canEdit:boolean;canOperate:boolean;selectedDeliveryIds:string[];onClearSelection:()=>void;onChanged:()=>Promise<void>|void;onConfirmDelivery:(deliveryId:string)=>void;refreshKey:number}){
   const [tab,setTab]=useState<Tab>('montagem')
   const [day,setDay]=useState(()=>new URLSearchParams(window.location.search).get('dia')||today())
   const [routes,setRoutes]=useState<RoutePlan[]>([])
@@ -182,7 +182,7 @@ export function RouteControlCenter({canEdit,canOperate,selectedDeliveryIds,onCle
 
   async function release(){
     if(!selectedRoute)return
-    setBusy(true);try{const {error}=await supabase.rpc('logistica_liberar_rota',{p_rota_id:selectedRoute.id});if(error)throw error;setTab('rota');setMsg('Rota liberada com segurança.');await refresh()}catch(e){setMsg((e as Error).message)}finally{setBusy(false)}
+    setBusy(true);try{const {error}=await supabase.rpc('logistica_liberar_rota',{p_rota_id:selectedRoute.id});if(error)throw error;setTab('rota');onViewChange('rota');setMsg('Rota liberada com segurança.');await refresh()}catch(e){setMsg((e as Error).message)}finally{setBusy(false)}
   }
   async function createDriver(){
     if(!driverName.trim())return
@@ -212,9 +212,9 @@ export function RouteControlCenter({canEdit,canOperate,selectedDeliveryIds,onCle
 
   return <section className="routeCenter">
     <div className="routeCenterTabs">
-      <button className={tab==='montagem'?'active':''} onClick={()=>{setTab('montagem');setSelectedRouteId('')}}>Montagem</button>
-      <button className={tab==='rota'?'active':''} onClick={()=>{setTab('rota');setSelectedRouteId('')}}>Em rota</button>
-      <button className={tab==='historico'?'active':''} onClick={()=>{setTab('historico');setSelectedRouteId('')}}>Histórico</button>
+      <button className={tab==='montagem'?'active':''} onClick={()=>{setTab('montagem');onViewChange('montagem');setSelectedRouteId('')}}>Montagem</button>
+      <button className={tab==='rota'?'active':''} onClick={()=>{setTab('rota');onViewChange('rota');setSelectedRouteId('')}}>Em rota</button>
+      <button className={tab==='historico'?'active':''} onClick={()=>{setTab('historico');onViewChange('historico');setSelectedRouteId('')}}>Histórico</button>
       <label>Dia<input type="date" value={day} onChange={e=>{setDay(e.target.value);setSelectedRouteId('');const u=new URL(window.location.href);u.searchParams.set('dia',e.target.value);window.history.replaceState({},'',u)}}/></label>
       <button className="routeSetupBtn" onClick={()=>setShowSetup(v=>!v)}><Users size={15}/>Motoristas / Frota</button>
       <button className="routeRefreshBtn" onClick={()=>void refresh()}><RefreshCw size={15}/></button>
@@ -239,10 +239,10 @@ export function RouteControlCenter({canEdit,canOperate,selectedDeliveryIds,onCle
     <div className="routeCenterBody">
       <aside className="routeCenterSidebar">
         {tab==='montagem'&&canEdit&&<div className="routeQuickCreate"><strong>Nova rota</strong><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Nome da rota"/><select value={newDriverId} onChange={e=>setNewDriverId(e.target.value)}><option value="">Motorista</option>{drivers.filter(d=>d.ativo).map(d=><option key={d.id} value={d.id}>{d.nome}</option>)}</select><select value={newVehicleId} onChange={e=>setNewVehicleId(e.target.value)}><option value="">Veículo</option>{vehicles.filter(v=>v.ativo).map(v=><option key={v.id} value={v.id}>{v.descricao}{v.placa?' - '+v.placa:''}</option>)}</select><button disabled={!newName.trim()||busy} onClick={()=>void createRoute()}><Plus size={15}/>Criar rota</button></div>}
-        <div className="routeCenterList">{displayedRoutes.map(r=>{const count=deliveries.filter(d=>d.rota_logistica_id===r.id).length;return <button key={r.id} className={selectedRoute?.id===r.id?'active':''} onClick={()=>setSelectedRouteId(r.id)}><div><strong>{r.nome}</strong><span>{r.motorista||'Sem motorista'} · {r.veiculo||'Sem veículo'}</span><small>{tab==='rota'&&r.data_rota!==day?'Iniciada em '+new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR'):new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR')}</small></div><em>{count}</em></button>})}{!displayedRoutes.length&&<div className="routePlanEmpty">Nenhuma rota nesta visão.</div>}</div>
+        <div className="routeCenterList">{displayedRoutes.map(r=>{const count=deliveries.filter(d=>d.rota_logistica_id===r.id).length;return <button key={r.id} className={selectedRoute?.id===r.id?'active':''} onClick={()=>setSelectedRouteId(r.id)}><div><strong>{r.nome}</strong><span>{r.motorista||'Sem motorista'} · {r.veiculo||'Sem veículo'}</span><small>{tab==='rota'&&r.data_rota!==day?'Iniciada em '+new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR'):new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR')}</small></div><em>{count}</em></button>})}{!displayedRoutes.length&&<div className="routePlanEmpty">Nenhuma carga planejada nesta visão. A região informada no pedido não cria uma carga automaticamente.</div>}</div>
       </aside>
 
-      <div className="routeCenterWorkspace">
+      <div className={selectedRoute?"routeCenterWorkspace":"routeCenterWorkspace routeCenterWorkspaceEmpty"}>
         {!selectedRoute?<div className="routeWorkspaceEmpty"><Route size={34}/><strong>Nenhuma rota selecionada</strong><span>Crie ou selecione uma rota para continuar.</span></div>:<>
           <div className="routeCenterHeader">
             <div><input className="routeTitleInput" defaultValue={selectedRoute.nome} disabled={!canEdit||selectedRoute.status!=='montagem'} onBlur={e=>void updateRoute('nome',e.target.value)}/><span>{selectedRoute.status==='montagem'?'Em montagem':selectedRoute.status==='liberada'?'Em rota':selectedRoute.status==='concluida'?'Concluída':'Cancelada'} · {selectedRoute.data_rota}</span></div>

@@ -31,6 +31,7 @@ function addressOf(c?:Client){
 }
 
 export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOperate:boolean}){
+  const [view,setView]=useState<'montagem'|'rota'|'historico'>('montagem')
   const [deliveries,setDeliveries]=useState<Delivery[]>([])
   const [sales,setSales]=useState<Sale[]>([])
   const [clients,setClients]=useState<Client[]>([])
@@ -81,7 +82,7 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
   useEffect(()=>{void load()},[load])
 
   const routes=useMemo(()=>Array.from(new Set(deliveries.map(d=>d.rota).filter(Boolean) as string[])).sort((a,b)=>a.localeCompare(b,'pt-BR')),[deliveries])
-  const active=useMemo(()=>deliveries.filter(d=>d.status==='a_entregar'||d.status==='em_transito').filter(d=>!selectedRoutes.length||selectedRoutes.includes(d.rota||'')),[deliveries,selectedRoutes])
+  const active=useMemo(()=>deliveries.filter(d=>view==='montagem'?d.status==='a_entregar':view==='rota'?d.status==='em_transito':false).filter(d=>!selectedRoutes.length||selectedRoutes.includes(d.rota||'')).filter(d=>(!reportDate||d.data_prevista===reportDate)&&(!driverFilter||(d.entregador_nome||'').toLowerCase().includes(driverFilter.toLowerCase()))),[deliveries,selectedRoutes,view,reportDate,driverFilter])
   const history=useMemo(()=>deliveries.filter(d=>d.status==='entregue'||d.status==='reagendamento').sort((a,b)=>b.updated_at.localeCompare(a.updated_at)).slice(0,20),[deliveries])
   const activeRoutes=new Set(active.map(d=>d.rota).filter(Boolean)).size
   const dayPlans=useMemo(()=>routePlans.filter(r=>r.data_rota===routeDay&&r.status!=='cancelada'),[routePlans,routeDay])
@@ -385,7 +386,7 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
     </div>
     {message&&<div className="deliveryNotice" role="status">{message}</div>}
 
-    <RouteControlCenter canEdit={canEdit} canOperate={canOperate} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load} onConfirmDelivery={openDeliveryFromRoute} refreshKey={routeRefreshKey}/>
+    <RouteControlCenter onViewChange={next=>{setView(next);setSelectedDeliveryIds([])}} canEdit={canEdit} canOperate={canOperate} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load} onConfirmDelivery={openDeliveryFromRoute} refreshKey={routeRefreshKey}/>
 
     <div className="deliveryToolbar">
       <div className="deliveryRouteFilter">
@@ -437,9 +438,9 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
       })}
       </div>
     </div>
-    {!active.length&&<div className="deliveryEmpty"><Truck size={34}/><strong>Nenhuma entrega ativa</strong><span>Pedidos com logística “A entregar” ou “Em trânsito” aparecerão aqui.</span></div>}
+    {view!=='historico'&&!active.length&&<div className="deliveryEmpty"><Truck size={34}/><strong>Nenhuma entrega nesta visão</strong><span>Confira a data, o motorista e a visão selecionada.</span></div>}
 
-    {history.length>0&&<section className="deliveryHistory">
+    {view==='historico'&&<section className="deliveryHistory">
       <div className="deliveryHistoryHead"><div><span>HISTÓRICO OPERACIONAL</span><h3>Entregas recentes</h3></div><span>{history.length} registro(s)</span></div>
       <div className="deliveryHistoryList">{history.map(d=>{
         const s=saleFor(d),c=clientFor(d)
