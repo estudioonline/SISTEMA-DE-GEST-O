@@ -4306,3 +4306,21 @@
   .financeTableActions{width:100%;justify-content:flex-start}
   .financeTableActions .search{min-width:0;width:100%}
 }
+
+
+.financeReportBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:12px;
+  padding:12px 14px;
+  border:1px solid var(--ds-border);
+  border-radius:12px;
+  background:var(--ds-surface);
+}
+.financeReportBar>div{display:grid;gap:3px}
+.financeReportBar strong{font-size:13px}
+.financeReportBar span{font-size:11px;color:var(--ds-muted)}
+.financeReportBar.compact{padding:10px 12px}
+@media(max-width:700px){.financeReportBar{align-items:stretch;flex-direction:column}.financeReportBar button{width:100%;justify-content:center}}
