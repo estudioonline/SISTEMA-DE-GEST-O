@@ -3,7 +3,7 @@ import type {FormEvent} from 'react'
 import {supabase,supabasePublishableKey,supabaseUrl} from './lib/supabase'
 
 type Fields=Record<string,string>
-type Draft={destinatario:Fields;itens:Record<string,Fields>;natureza_operacao:string;consumidor_final:string;presenca_comprador:string;forma_pagamento:string}
+type Draft={destinatario:Fields;itens:Record<string,Fields>;natureza_operacao:string;consumidor_final:string;presenca_comprador:string;forma_pagamento:string;modalidade_frete?:number|string;observacao_nfe?:string}
 type Note={id:string;status:string;dados_fiscais:Draft;payload:unknown;retorno:Record<string,unknown>;referencia:string;updated_at:string}
 type Source={venda:{status:string;total:number;forma_pagamento:string;subtotal?:number;desconto?:number;created_at?:string;fatura_numero?:number|null};cliente:{nome:string;documento:string;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;uf?:string|null;cep?:string|null;inscricao_estadual?:string|null}|null;empresa?:Record<string,unknown>|null;itens:{id:string;quantidade:number;valor_unitario:number;desconto:number;total?:number;produto:{descricao:string;codigo:string;unidade?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;cst_icms?:string|null}}[];nota:Note|null}
 async function focus(action:string,body:Record<string,unknown>={}){
@@ -73,6 +73,7 @@ function productMissing(product: FiscalProduct){
 
 export function FocusNfeSale({saleId}:{saleId:string}){
  const [opened,setOpened]=useState(false),[source,setSource]=useState<SaleSource|null>(null),[note,setNote]=useState<Note|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[configured,setConfigured]=useState(false)
+ const [emitModal,setEmitModal]=useState(false),[freightMode,setFreightMode]=useState('9'),[nfeObservation,setNfeObservation]=useState('')
  const load=useCallback(async()=>{
   setBusy(true);setError('')
   try{const r=await focus('sale',{venda_id:saleId});setSource(r.source);setNote(r.source.nota);setConfigured(r.configured)}catch(e){setError((e as Error).message)}finally{setBusy(false)}
@@ -89,7 +90,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
   if(action==='emit'&&!window.confirm('Enviar esta venda para emitir uma NF-e de TESTE, sem valor fiscal?'))return
   setBusy(true);setError('');setMessage('')
   try{
-   const r=await focus(action,{venda_id:saleId,dados_fiscais:{}})
+   const r=await focus(action,{venda_id:saleId,dados_fiscais:action==='emit'?{modalidade_frete:Number(freightMode),observacao_nfe:nfeObservation.trim()}:{}})
    setNote(r.nota??r)
    setMessage(r.message??(action==='emit'?'Solicitação enviada em homologação. Consulte a situação para acompanhar.':'Situação atualizada.'))
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
@@ -153,7 +154,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
       <p>Confirme a venda como <strong>Pedido</strong> ou <strong>Faturado</strong> para liberar a emissão da NF-e de teste.</p>
     </div>}
     <div className="formActions">
-      <button type="button" className="primary" disabled={busy||!configured||!cadastroCompleto||!vendaLiberada} title={!vendaLiberada?'Confirme o pedido antes de emitir a NF-e de teste.':undefined} onClick={()=>void act('emit')}>Emitir NF-e de teste</button>
+      <button type="button" className="primary" disabled={busy||!configured||!cadastroCompleto||!vendaLiberada} title={!vendaLiberada?'Confirme o pedido antes de emitir a NF-e de teste.':undefined} onClick={()=>setEmitModal(true)}>Emitir NF-e de teste</button>
       <button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Recarregar cadastros</button>
       {!!note?.payload&&<button type="button" className="ghost" disabled={busy} onClick={()=>void act('consult')}>Consultar situação</button>}
       <button type="button" className="ghost" disabled={busy||!source} onClick={()=>void previewDanfe()}>Prévia DANFE</button>
@@ -161,6 +162,36 @@ export function FocusNfeSale({saleId}:{saleId:string}){
     </div>
    </>}
    {busy&&<p role="status">Processando…</p>}
+   {emitModal&&<div className="saleModalOverlay nfeEmissionOverlay" role="dialog" aria-modal="true" aria-label="Emitir NF-e de teste">
+    <div className="saleModalShell nfeEmissionShell">
+      <div className="panel nfeEmissionPanel">
+        <div className="formTitle saleModalTitle"><div><h3>Emitir NF-e de teste</h3><p>Confira o frete e informe a observação antes de enviar para homologação.</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>setEmitModal(false)}>×</button></div>
+        <div className="nfeEmissionSummary">
+          <div><span>Cliente</span><strong>{source?.cliente?.nome??'—'}</strong></div>
+          <div><span>Total</span><strong>{Number(source?.venda.total||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>
+          <div><span>Itens</span><strong>{source?.itens.length??0}</strong></div>
+        </div>
+        <label className="fieldLabel">Modelo de frete
+          <select value={freightMode} onChange={e=>setFreightMode(e.target.value)}>
+            <option value="9">9 · Sem frete</option>
+            <option value="0">0 · Por conta do emitente</option>
+            <option value="1">1 · Por conta do destinatário</option>
+            <option value="2">2 · Por conta de terceiros</option>
+            <option value="3">3 · Transporte próprio do emitente</option>
+            <option value="4">4 · Transporte próprio do destinatário</option>
+          </select>
+        </label>
+        <label className="fieldLabel">Observação na NF-e
+          <textarea value={nfeObservation} onChange={e=>setNfeObservation(e.target.value)} maxLength={5000} placeholder="Informações adicionais que devem constar na NF-e"/>
+        </label>
+        <div className="nfeEmissionHint">A observação será enviada como informação adicional do contribuinte.</div>
+        <div className="formActions">
+          <button type="button" className="ghost" onClick={()=>setEmitModal(false)}>Cancelar</button>
+          <button type="button" className="primary" disabled={busy} onClick={()=>{setEmitModal(false);void act('emit')}}>Confirmar emissão</button>
+        </div>
+      </div>
+    </div>
+   </div>}
   </div>}
  </section>
 }
