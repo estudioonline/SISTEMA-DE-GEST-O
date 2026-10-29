@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowLeft,Building2,CheckCircle2,FileUp,Landmark,Link2,List,RefreshCw,Search,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
+import {ArrowLeft,Building2,CheckCircle2,FileUp,Landmark,Link2,List,RefreshCw,Search,Trash2,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {bankBrand,balanceTrend,isPending,sparkPoints} from './lib/bankPresentation'
 import type {CSSProperties} from 'react'
@@ -101,6 +101,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const [accountTx,setAccountTx]=useState<BankTx|null>(null)
  const [reconcileTx,setReconcileTx]=useState<BankTx|null>(null)
  const [reconcileSearch,setReconcileSearch]=useState('')
+ const [selectedTransactions,setSelectedTransactions]=useState<Record<string,boolean>>({})
  const uploadLock=useRef(false)
  const fileRef=useRef<HTMLInputElement|null>(null)
 
@@ -239,6 +240,45 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    setActionMenuTx(null);setMessage('Linha do extrato excluída.');await load()
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
+ async function deleteSelectedTransactions(){
+  if(!canEdit||busy)return
+  const rows=visible.filter(tx=>selectedTransactions[tx.id]&&tx.status!=='conciliado')
+  if(!rows.length){setMessage('Selecione ao menos uma linha não conciliada para excluir.');return}
+  if(!window.confirm(`Excluir ${rows.length} linha(s) selecionada(s) do extrato? Linhas conciliadas não podem ser excluídas.`))return
+  setBusy(true);setMessage('')
+  try{
+   let deleted=0
+   for(const tx of rows){
+    const {error}=await supabase.rpc('excluir_transacao_bancaria',{p_transacao_id:tx.id})
+    if(error)throw error
+    deleted++
+   }
+   setSelectedTransactions({})
+   setMessage(`${deleted} linha(s) do extrato excluída(s).`)
+   await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ function toggleTransactionSelection(tx:BankTx){
+  if(tx.status==='conciliado')return
+  setSelectedTransactions(prev=>({...prev,[tx.id]:!prev[tx.id]}))
+ }
+ function toggleAllVisibleTransactions(){
+  const deletable=visible.filter(tx=>tx.status!=='conciliado')
+  const allSelected=deletable.length>0&&deletable.every(tx=>selectedTransactions[tx.id])
+  if(allSelected){
+   setSelectedTransactions(prev=>{
+    const next={...prev}
+    deletable.forEach(tx=>delete next[tx.id])
+    return next
+   })
+  }else{
+   setSelectedTransactions(prev=>{
+    const next={...prev}
+    deletable.forEach(tx=>{next[tx.id]=true})
+    return next
+   })
+  }
+ }
  async function deleteStatementDay(tx:BankTx){
   if(!canEdit||busy)return
   const dayCount=transactions.filter(row=>row.diario_id===tx.diario_id&&row.data_lancamento===tx.data_lancamento).length
@@ -261,6 +301,18 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago))
   setSelected(prev=>prev[title.id]?Object.fromEntries(Object.entries(prev).filter(([id])=>id!==title.id)):{...prev,[title.id]:balance})
  }
+ const selectedReconcileTotal=Object.values(selected).reduce((sum,value)=>sum+Number(value||0),0)
+ const reconcileBankTotal=reconcileTx?Math.abs(Number(reconcileTx.valor)):0
+ const reconcileAdjustment=Number(adjustValue)||0
+ const reconcileAppliedTotal=selectedReconcileTotal+reconcileAdjustment
+ const reconcileDifference=reconcileBankTotal-reconcileAppliedTotal
+ const reconcileResidual=reconcileDifference>0.009?reconcileDifference:0
+ const reconcileExcess=reconcileDifference<-0.009?Math.abs(reconcileDifference):0
+ const reconcileBalanced=Math.abs(reconcileDifference)<=0.009
+ const selectedTransactionCount=visible.filter(tx=>selectedTransactions[tx.id]&&tx.status!=='conciliado').length
+ const deletableVisible=visible.filter(tx=>tx.status!=='conciliado')
+ const allVisibleSelected=deletableVisible.length>0&&deletableVisible.every(tx=>selectedTransactions[tx.id])
+
  const reconcileCandidates=reconcileTx?titles.filter(t=>{
   const expected=reconcileTx.trntype==='CREDIT'?'receber':'pagar'
   if(t.tipo!==expected||t.status==='cancelado'||Number(t.valor)-Number(t.valor_pago)<=0.009)return false
@@ -315,13 +367,17 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     </div>
   </div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
-  <div className="bankFilterBar bankSearchOnly"><div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div></div>
+  <div className="bankFilterBar bankSearchOnly">
+    <label className="bankBulkSelect"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisibleTransactions} disabled={!canEdit||busy||deletableVisible.length===0}/><span>Selecionar linhas</span></label>
+    <div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div>
+    {selectedTransactionCount>0&&<button className="bankBulkDelete" disabled={!canEdit||busy} onClick={()=>void deleteSelectedTransactions()}><Trash2 size={15}/>Excluir selecionadas ({selectedTransactionCount})</button>}
+  </div>
 
   <div className="bankTxList">{visible.map(tx=>{
    const sugg=suggestions(tx),top=sugg[0],high=(top?.score||0)>=80,partial=(top?.score||0)>=45
    const txJournal=journals.find(j=>j.id===tx.diario_id)
-   return <article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')} key={tx.id}>
-    <div className="bankTxMain"><div className="bankTxDate"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span>{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong><span>{tx.historico||'—'}</span></div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
+   return <article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')+(selectedTransactions[tx.id]?' bankTxSelected':'')} key={tx.id}>
+    <div className="bankTxMain"><label className="bankTxSelect" title={tx.status==='conciliado'?'Desfaça a conciliação antes de excluir':'Selecionar linha para exclusão'}><input type="checkbox" checked={Boolean(selectedTransactions[tx.id])} disabled={!canEdit||busy||tx.status==='conciliado'} onChange={()=>toggleTransactionSelection(tx)}/></label><div className="bankTxDate"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span>{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong><span>{tx.historico||'—'}</span></div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
     {screen==='matching'&&tx.status!=='conciliado'&&<div className="bankMatchArea bankOdooMatch">
       {top?<div className={'bankSuggestion '+(high?'high':partial?'partial':'low')}><div><CheckCircle2 size={16}/><strong>{high?'Correspondência forte':partial?'Correspondência possível':'Sugestão'}</strong><span>{top.score}% · {top.reasons.join(' • ')}</span></div><span className="bankSuggestedTitle">{top.title.descricao} · {money(Math.max(0,Number(top.title.valor)-Number(top.title.valor_pago)))}</span></div>:<div className="bankNoMatch"><XCircle size={16}/><span>Sem correspondência automática.</span></div>}
       <div className="bankOdooActions">
@@ -367,7 +423,16 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       </label>
     })}{reconcileCandidates.length===0&&<div className="bankNoCandidates">Nenhum título em aberto encontrado para esta pesquisa.</div>}</div>
     <div className="bankReconcileAdjust"><label>Ajuste<select value={adjustType} onChange={e=>setAdjustType(e.target.value)}><option value="">Sem ajuste</option><option value="juros_passivos">Juros passivos</option><option value="desconto_concedido">Desconto concedido</option><option value="tarifa">Tarifa bancária</option><option value="outro">Outro</option></select></label>{adjustType&&<label>Valor do ajuste<input type="number" min="0" step="0.01" value={adjustValue} onChange={e=>setAdjustValue(e.target.value)}/></label>}</div>
-    <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(Object.values(selected).reduce((s,v)=>s+Number(v),0))} / Banco {money(Math.abs(Number(reconcileTx.valor)))}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length} onClick={()=>void reconcile(reconcileTx)}>Selecionar e conciliar</button></div></div>
+    <div className={'bankReconcileBalance '+(reconcileExcess?'excess':reconcileResidual?'residual':'balanced')}>
+      <div><span>Valor da linha do extrato</span><strong>{money(reconcileBankTotal)}</strong></div>
+      <div><span>Faturas selecionadas</span><strong>{money(selectedReconcileTotal)}</strong></div>
+      {reconcileAdjustment>0&&<div><span>Ajuste</span><strong>{money(reconcileAdjustment)}</strong></div>}
+      <div className="bankReconcileDifference"><span>{reconcileExcess?'Ultrapassa o extrato':reconcileResidual?'Residual após conciliação':'Conciliação fechada'}</span><strong>{reconcileExcess?'- '+money(reconcileExcess):reconcileResidual?money(reconcileResidual):money(0)}</strong></div>
+      {reconcileExcess>0&&<small>Reduza o valor de uma ou mais faturas selecionadas antes de conciliar.</small>}
+      {reconcileResidual>0&&<small>Este valor continuará sem conciliar na linha do extrato, salvo se você informar um ajuste.</small>}
+      {reconcileBalanced&&<small>A soma selecionada corresponde ao valor da linha do extrato.</small>}
+    </div>
+    <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(selectedReconcileTotal)} / Banco {money(reconcileBankTotal)}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length||reconcileExcess>0} onClick={()=>void reconcile(reconcileTx)}>Selecionar e conciliar</button></div></div>
   </div></div>}
   {partnerTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={savePartner}><div className="bankModalHead"><strong>Definir parceiro</strong><button type="button" onClick={()=>setPartnerTx(null)}><XCircle size={18}/></button></div><p>Associe o movimento bancário a um cliente ou fornecedor, como no fluxo de conciliação do Odoo.</p><label>Parceiro<select name="parceiro" required defaultValue={partnerTx.parceiro_nome?(partnerTx.parceiro_tipo||'outro')+'|'+partnerTx.parceiro_nome:''}><option value="">Selecione</option>{clients.map((p,i)=><option key={'c'+i} value={'cliente|'+p.nome}>Cliente · {p.nome}{p.documento?' · '+p.documento:''}</option>)}{suppliers.map((p,i)=><option key={'f'+i} value={'fornecedor|'+p.nome}>Fornecedor · {p.nome}{p.documento?' · '+p.documento:''}</option>)}</select></label><div className="bankModalActions"><button type="button" onClick={()=>setPartnerTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar parceiro</button></div></form></div>}
   {accountTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={saveAccount}><div className="bankModalHead"><strong>Definir conta</strong><button type="button" onClick={()=>setAccountTx(null)}><XCircle size={18}/></button></div><p>Classifique a transação antes de conciliar ou criar um lançamento.</p><label>Conta<select name="categoria" required defaultValue={accountTx.conta_categoria||''}><option value="">Selecione</option>{reconcileAccounts.map(a=><option key={a.id} value={a.nome}>{a.nome}</option>)}</select></label><label>Centro de custo<input name="centro_custo" defaultValue={accountTx.centro_custo||''} placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAccountTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar conta</button></div></form></div>}
