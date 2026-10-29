@@ -43,6 +43,7 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
   const [newRouteVehicle,setNewRouteVehicle]=useState('')
   const [selectedPlanId,setSelectedPlanId]=useState('')
   const [selectedRoutes,setSelectedRoutes]=useState<string[]>([])
+  const [routeRefreshKey,setRouteRefreshKey]=useState(0)
   const [selectedDeliveryIds,setSelectedDeliveryIds]=useState<string[]>([])
   const [reportDate,setReportDate]=useState(today())
   const [driverFilter,setDriverFilter]=useState('')
@@ -103,6 +104,10 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
   function openModal(d:Delivery,next:Mode){
     setModalDelivery(d);setMode(next);setReceiverName('');setReceiverDoc('');setProofFile(null);setFailReason('cliente_ausente');setFailDetails('')
     requestAnimationFrame(()=>clearSignature())
+  }
+  function openDeliveryFromRoute(deliveryId:string){
+    const delivery=deliveries.find(item=>item.id===deliveryId)
+    if(delivery)openModal(delivery,'entregue')
   }
   function closeModal(){setModalDelivery(null);setMode(null);setProofFile(null)}
 
@@ -172,7 +177,7 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
       }).eq('id',d.id)
       if(error)throw error
       await supabase.from('entrega_eventos').insert({entrega_id:d.id,tipo:'entregue',status_anterior:d.status,status_novo:'entregue',detalhes:[receiverName.trim()&&`Recebido por ${receiverName.trim()}`,receiverDoc.trim()&&`Documento ${receiverDoc.trim()}`].filter(Boolean).join(' · ')||null})
-      closeModal();setMessage('Entrega confirmada com sucesso. Nenhuma movimentação de estoque foi realizada.');await load()
+      closeModal();setMessage('Entrega confirmada com sucesso. Nenhuma movimentação de estoque foi realizada.');await load();setRouteRefreshKey(v=>v+1)
     }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
   }
 
@@ -380,7 +385,7 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
     </div>
     {message&&<div className="deliveryNotice" role="status">{message}</div>}
 
-    <RouteControlCenter canEdit={canEdit} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load}/>
+    <RouteControlCenter canEdit={canEdit} canOperate={canOperate} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load} onConfirmDelivery={openDeliveryFromRoute} refreshKey={routeRefreshKey}/>
 
     <div className="deliveryToolbar">
       <div className="deliveryRouteFilter">
