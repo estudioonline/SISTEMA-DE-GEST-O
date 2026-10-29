@@ -4703,3 +4703,5 @@
 
 .routeCenterList small{font-size:9px;color:#94a3b8}
 .dark .routeCenterList small{color:#64748b}
+
+.deleteRouteButton{background:#fff1f2!important;color:#be123c!important;border-color:#fecdd3!important}.deleteRouteButton:hover{background:#ffe4e6!important}.dark .deleteRouteButton{background:#4c0519!important;color:#fda4af!important;border-color:#881337!important}
