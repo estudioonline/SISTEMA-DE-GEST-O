@@ -34,9 +34,9 @@ type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 type PurchasePaymentMethod='pix'|'cartao'|'boleto'
 type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 
-type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null}
+type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null;latitude?:number|null;longitude?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
@@ -691,6 +691,8 @@ function App(){
       preco_venda:Number(f.get('preco_venda')||0),
       percentual_minimo_custo_venda:Number(f.get('percentual_minimo_custo_venda')??100),
       estoque_minimo:Number(f.get('estoque_minimo')||0),
+      peso_kg:Number(f.get('peso_kg')||0),
+      volume_m3:Number(f.get('volume_m3')||0),
       ncm:onlyDigits(String(f.get('ncm')||''),8)||null,
       cfop_interno:onlyDigits(String(f.get('cfop_interno')||''),4)||null,
       cfop_interestadual:onlyDigits(String(f.get('cfop_interestadual')||''),4)||null,
@@ -2414,6 +2416,12 @@ function App(){
             </label>}
             <label className="fieldLabel">Estoque mínimo
               <input name="estoque_minimo" type="number" min="0" step="0.001" placeholder="0" defaultValue={editingProduct?.estoque_minimo??''}/>
+            </label>
+            <label className="fieldLabel">Peso unitário (kg)
+              <input name="peso_kg" type="number" min="0" step="0.001" placeholder="0,000" defaultValue={editingProduct?.peso_kg??''}/>
+            </label>
+            <label className="fieldLabel">Volume unitário (m³)
+              <input name="volume_m3" type="number" min="0" step="0.0001" placeholder="0,0000" defaultValue={editingProduct?.volume_m3??''}/>
             </label>
             <div className="fiscalCadastroSection productFiscalSection">
               <div className="fiscalCadastroTitle"><strong>Tributação para NF-e</strong><span>Cadastre uma vez no produto. A venda usa estes dados automaticamente.</span></div>
