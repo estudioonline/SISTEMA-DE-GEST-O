@@ -236,6 +236,7 @@ export function RouteControlCenter({onViewChange,canEdit,canOperate,selectedDeli
       <button className="ghostRoute" onClick={onClearSelection}>Cancelar</button>
     </div>}
 
+    {!(tab==='historico'&&!displayedRoutes.length)&&<>
     <div className="routeCenterBody">
       <aside className="routeCenterSidebar">
         {tab==='montagem'&&canEdit&&<div className="routeQuickCreate"><strong>Nova rota</strong><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Nome da rota"/><select value={newDriverId} onChange={e=>setNewDriverId(e.target.value)}><option value="">Motorista</option>{drivers.filter(d=>d.ativo).map(d=><option key={d.id} value={d.id}>{d.nome}</option>)}</select><select value={newVehicleId} onChange={e=>setNewVehicleId(e.target.value)}><option value="">Veículo</option>{vehicles.filter(v=>v.ativo).map(v=><option key={v.id} value={v.id}>{v.descricao}{v.placa?' - '+v.placa:''}</option>)}</select><button disabled={!newName.trim()||busy} onClick={()=>void createRoute()}><Plus size={15}/>Criar rota</button></div>}
@@ -275,5 +276,6 @@ export function RouteControlCenter({onViewChange,canEdit,canOperate,selectedDeli
         </>}
       </div>
     </div>
+    </>}
   </section>
 }
