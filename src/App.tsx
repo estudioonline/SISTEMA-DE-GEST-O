@@ -826,8 +826,17 @@ function App(){
   function historyValue(value:unknown){
     if(value===null||value===undefined||value==='')return '—'
     if(typeof value==='boolean')return value?'Sim':'Não'
-    if(typeof value==='object')return JSON.stringify(value)
+    if(typeof value==='object')return '[detalhes]'
     return String(value)
+  }
+  function historyFieldLabel(key:string){
+    const labels:Record<string,string>={
+      status:'Status',total:'Total',subtotal:'Subtotal',desconto:'Desconto',forma_pagamento:'Pagamento',parcelas:'Parcelas',
+      primeiro_vencimento:'1º vencimento',rota_entrega:'Rota',cliente_id:'Cliente',vendedor_cadastro_id:'Vendedor',
+      quantidade:'Quantidade',valor_unitario:'Valor unitário',valor_pago:'Valor pago',vencimento:'Vencimento',
+      categoria:'Categoria',centro_custo:'Centro de custo',ambiente:'Ambiente',referencia:'Referência'
+    }
+    return labels[key]||key.replaceAll('_',' ')
   }
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
@@ -2867,14 +2876,19 @@ function App(){
               <div className="saleHistoryTimeline">
                 {!saleHistoryBusy&&saleHistory.length===0&&<div className="emptyState">Nenhum evento registrado para esta venda.</div>}
                 {saleHistory.map(event=>{
-                  const changes=historyChanges(event)
-                  return <article key={event.evento_id} className="saleHistoryEvent">
+                  const changes=historyChanges(event).filter(change=>!['payload','dados_fiscais','retorno','detalhes'].includes(change.key))
+                  const visible=changes.slice(0,3)
+                  const technical=changes.length>3||Boolean(event.dados_depois&&Object.keys(event.dados_depois).some(key=>['payload','dados_fiscais','retorno','detalhes'].includes(key)))
+                  return <article key={event.evento_id} className="saleHistoryEvent compactHistoryEvent">
                     <div className="saleHistoryDot"/>
-                    <div className="saleHistoryCard">
-                      <div className="saleHistoryMeta"><strong>{historyLabel(event)}</strong><span>{new Date(event.ocorrido_em).toLocaleString('pt-BR')}</span></div>
-                      <div className="saleHistoryUser"><b>{event.usuario_nome||'Sistema'}</b>{event.usuario_perfil&&<span>{profileLabel(event.usuario_perfil as PerfilRole)}</span>}</div>
-                      {changes.length>0&&<div className="saleHistoryChanges">{changes.map(change=><div key={change.key}><span>{change.key.replaceAll('_',' ')}</span><strong>{historyValue(change.before)} <b>→</b> {historyValue(change.after)}</strong></div>)}</div>}
-                      {changes.length===0&&event.dados_depois&&<div className="saleHistoryChanges compact">{Object.entries(event.dados_depois).filter(([key])=>!['id','created_at','updated_at','venda_id'].includes(key)).slice(0,4).map(([key,value])=><div key={key}><span>{key.replaceAll('_',' ')}</span><strong>{historyValue(value)}</strong></div>)}</div>}
+                    <div className="saleHistoryCard compactHistoryCard">
+                      <div className="saleHistoryMeta compactHistoryMeta">
+                        <div><strong>{event.usuario_nome||'Sistema'}</strong><span>{historyLabel(event)}</span></div>
+                        <time>{new Date(event.ocorrido_em).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</time>
+                      </div>
+                      {visible.length>0&&<div className="saleHistoryInlineChanges">{visible.map(change=><div key={change.key}><span>{historyFieldLabel(change.key)}</span><strong>{historyValue(change.before)} <b>→</b> {historyValue(change.after)}</strong></div>)}</div>}
+                      {visible.length===0&&event.dados_depois&&<div className="saleHistoryInlineChanges">{Object.entries(event.dados_depois).filter(([key])=>!['id','created_at','updated_at','venda_id','payload','dados_fiscais','retorno','detalhes'].includes(key)).slice(0,2).map(([key,value])=><div key={key}><span>{historyFieldLabel(key)}</span><strong>{historyValue(value)}</strong></div>)}</div>}
+                      {technical&&<details className="saleHistoryTechnical"><summary>Ver detalhes</summary><pre>{JSON.stringify({antes:event.dados_antes,depois:event.dados_depois},null,2)}</pre></details>}
                     </div>
                   </article>
                 })}
