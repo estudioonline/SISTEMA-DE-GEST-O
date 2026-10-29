@@ -2187,7 +2187,7 @@ function App(){
       {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
       {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData}/>}
-      {active==='entregas'&&<DeliveryManagement canEdit={canEditModule('entregas')}/>} 
+      {active==='entregas'&&<DeliveryManagement canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
           <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
