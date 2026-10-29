@@ -1911,33 +1911,91 @@ function App(){
     </div>
   }
 
-  async function downloadPayablesReport(rows:Titulo[]){
+  function mapFinanceReportRows(rows:Titulo[]){
+    return rows.map(t=>({
+      descricao:t.descricao,
+      entidade:t.entidade_nome||'—',
+      vencimento:t.vencimento,
+      valor:Number(t.valor),
+      pago:Number(t.valor_pago),
+      saldo:Math.max(0,Number(t.valor)-Number(t.valor_pago)),
+      status:t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'Vencido':financeStatusLabel(t.status),
+      categoria:t.categoria||'—',
+      centro_custo:t.centro_custo||'—',
+      forma_pagamento:t.forma_pagamento||'—',
+      tipo:t.tipo,
+      funcionario_tipo:t.tipo_funcionario||null,
+      competencia:t.competencia||null,
+      vale_descontado_em:t.vale_descontado_em||null
+    }))
+  }
+
+  function filteredFinanceRows(type?:'receber'|'pagar',overdueOnly=false){
+    return titulos
+      .filter(t=>!type||t.tipo===type)
+      .filter(t=>!overdueOnly||(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0))
+      .filter(t=>financeStatusFilter==='todos'||t.status===financeStatusFilter)
+      .filter(t=>!financeStart||t.vencimento>=financeStart)
+      .filter(t=>!financeEnd||t.vencimento<=financeEnd)
+      .filter(t=>financeCategory==='todos'||t.categoria===financeCategory)
+      .filter(t=>financeCenter==='todos'||t.centro_custo===financeCenter)
+  }
+
+  async function downloadFinancePdf(kind:'geral'|'receber'|'pagar'|'vencidos'|'funcionarios'|'vales'){
     try{
-      const reportRows=rows.map(t=>({
-        descricao:t.descricao,
-        fornecedor:t.entidade_nome||'—',
-        vencimento:t.vencimento,
-        valor:Number(t.valor),
-        pago:Number(t.valor_pago),
-        saldo:Math.max(0,Number(t.valor)-Number(t.valor_pago)),
-        status:t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'Vencido':financeStatusLabel(t.status),
-        categoria:t.categoria||'—',
-        centro_custo:t.centro_custo||'—',
-        forma_pagamento:t.forma_pagamento||'—',
-        parcela_numero:t.parcela_numero
-      }))
-      ;(await import('./lib/payablesReportPdf')).generatePayablesReportPdf({
-        inicio:financeStart||undefined,
-        fim:financeEnd||undefined,
-        statusFiltro:financeStatusFilter==='todos'?'Todos':financeStatusLabel(financeStatusFilter),
-        categoriaFiltro:financeCategory==='todos'?'Todas':financeCategory,
-        centroFiltro:financeCenter==='todos'?'Todos':financeCenter,
-        company:empresa,
-        rows:reportRows
-      })
-      setMsg('Relatório de contas a pagar gerado em PDF.')
+      const mod=await import('./lib/financeReportPdf')
+      const filters=[
+        'Status: '+(financeStatusFilter==='todos'?'Todos':financeStatusLabel(financeStatusFilter)),
+        'Categoria: '+(financeCategory==='todos'?'Todas':financeCategory),
+        'Centro: '+(financeCenter==='todos'?'Todos':financeCenter)
+      ]
+      const base={company:empresa,inicio:financeStart||undefined,fim:financeEnd||undefined,filters}
+      if(kind==='geral'){
+        const receivable=filteredFinanceRows('receber')
+        const payable=filteredFinanceRows('pagar')
+        const overdue=filteredFinanceRows(undefined,true)
+        const employees=titulos.filter(t=>t.tipo_funcionario==='gasto')
+        const advances=titulos.filter(t=>t.tipo_funcionario==='vale')
+        mod.generateFinanceReportPdf({
+          ...base,
+          title:'Relatório Financeiro Consolidado',
+          filename:'relatorio-financeiro-consolidado',
+          summary:[
+            {label:'A receber em aberto',value:money(openReceivables)},
+            {label:'A pagar em aberto',value:money(openPayables)},
+            {label:'Total vencido',value:money(overdueReceivables+overduePayables)},
+            {label:'Resultado líquido',value:money(openReceivables-openPayables)}
+          ],
+          sections:[
+            {title:'Contas a receber',rows:mapFinanceReportRows(receivable)},
+            {title:'Contas a pagar',rows:mapFinanceReportRows(payable)},
+            {title:'Vencidos',rows:mapFinanceReportRows(overdue)},
+            {title:'Gastos com funcionários',note:'Detalhamento dos lançamentos de funcionários já refletidos nas contas a pagar.',rows:mapFinanceReportRows(employees)},
+            {title:'Vales de funcionários',note:'Detalhamento dos vales já refletidos nas contas a pagar.',rows:mapFinanceReportRows(advances)}
+          ]
+        })
+      }else if(kind==='receber'){
+        const rows=filteredFinanceRows('receber')
+        mod.generateFinanceReportPdf({...base,title:'Relatório de Contas a Receber',filename:'relatorio-contas-a-receber',sections:[{title:'Contas a receber',rows:mapFinanceReportRows(rows)}]})
+      }else if(kind==='pagar'){
+        const rows=filteredFinanceRows('pagar')
+        mod.generateFinanceReportPdf({...base,title:'Relatório de Contas a Pagar',filename:'relatorio-contas-a-pagar',sections:[{title:'Contas a pagar',rows:mapFinanceReportRows(rows)}]})
+      }else if(kind==='vencidos'){
+        const rows=filteredFinanceRows(undefined,true)
+        mod.generateFinanceReportPdf({...base,title:'Relatório de Contas Vencidas',filename:'relatorio-contas-vencidas',sections:[
+          {title:'Vencidos a receber',rows:mapFinanceReportRows(rows.filter(t=>t.tipo==='receber'))},
+          {title:'Vencidos a pagar',rows:mapFinanceReportRows(rows.filter(t=>t.tipo==='pagar'))}
+        ]})
+      }else if(kind==='funcionarios'){
+        const rows=titulos.filter(t=>t.tipo_funcionario==='gasto')
+        mod.generateFinanceReportPdf({...base,title:'Relatório de Gastos com Funcionários',filename:'relatorio-gastos-funcionarios',sections:[{title:'Gastos com funcionários',rows:mapFinanceReportRows(rows)}]})
+      }else{
+        const rows=titulos.filter(t=>t.tipo_funcionario==='vale')
+        mod.generateFinanceReportPdf({...base,title:'Relatório de Vales de Funcionários',filename:'relatorio-vales-funcionarios',sections:[{title:'Vales de funcionários',rows:mapFinanceReportRows(rows)}]})
+      }
+      setMsg('Relatório financeiro gerado em PDF.')
     }catch{
-      setMsg('Não foi possível gerar o relatório de contas a pagar.')
+      setMsg('Não foi possível gerar o relatório financeiro em PDF.')
     }
   }
 
@@ -1957,7 +2015,7 @@ function App(){
     const groupTitle=overdueOnly?(type==='receber'?'Vencidos a receber':'Vencidos a pagar'):(type==='receber'?'Contas a receber':'Contas a pagar')
     const empty=overdueOnly?(type==='receber'?'Nenhuma conta a receber vencida com estes filtros.':'Nenhuma conta a pagar vencida com estes filtros.'):(type==='receber'?'Nenhuma conta a receber com estes filtros.':'Nenhuma conta a pagar com estes filtros.')
     return <article className={'panel tablePanel financeGroup '+(type==='receber'?'financeReceivableGroup':'financePayableGroup')}>
-      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s) exibido(s)</p></div><div className="financeTableActions">{type==='pagar'&&!overdueOnly&&<button type="button" className="ghost" onClick={()=>void downloadPayablesReport(rows)}><FileDown size={15}/>PDF</button>}<SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div></div>
+      <div className="panelHead"><div><h3>{groupTitle}</h3><p>{rows.length} lançamento(s) exibido(s)</p></div><div className="financeTableActions"><button type="button" className="ghost" onClick={()=>void downloadFinancePdf(overdueOnly?'vencidos':type)}><FileDown size={15}/>PDF</button><SearchField value={tableSearch[searchKey]||''} onChange={v=>setSearch(searchKey,v)} placeholder="Pesquisar em todas as colunas"/></div></div>
       <div className="tableWrap"><table>
         <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'descricao')}>Descrição{sortMark(searchKey,'descricao')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'entidade')}>Cliente / Fornecedor{sortMark(searchKey,'entidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'vencimento')}>Vencimento{sortMark(searchKey,'vencimento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'valor')}>Valor{sortMark(searchKey,'valor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'pago')}>{type==='receber'?'Recebido':'Pago'}{sortMark(searchKey,'pago')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'saldo')}>Saldo{sortMark(searchKey,'saldo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort(searchKey,'status')}>Status{sortMark(searchKey,'status')}</button></th><th>Gerenciar</th></tr></thead>
         <tbody>
@@ -2984,6 +3042,7 @@ function App(){
         </form></div></div>}
 
         {financeSubtab==='geral'&&<>
+          <div className="financeReportBar"><div><strong>Relatório financeiro completo</strong><span>Contas a pagar, receber, vencidos, funcionários e vales em um único PDF.</span></div><button type="button" className="primary" onClick={()=>void downloadFinancePdf('geral')}><FileDown size={15}/>PDF geral</button></div>
           <div className="financeOverviewGrid">
             <article className="card financeOverviewCard semanticPositive"><span>A receber em aberto</span><strong>{money(openReceivables)}</strong><small>{openReceivableCount} título(s)</small></article>
             <article className="card financeOverviewCard semanticNegative"><span>A pagar em aberto</span><strong>{money(openPayables)}</strong><small>{openPayableCount} título(s)</small></article>
@@ -3046,7 +3105,7 @@ function App(){
 
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
-        {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/>}
+        {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<><div className="financeReportBar compact"><div><strong>{financeSubtab==='funcionarios'?'Relatório de funcionários':'Relatório de vales'}</strong><span>Exporta os lançamentos desta área em PDF.</span></div><button type="button" className="ghost" onClick={()=>void downloadFinancePdf(financeSubtab)}><FileDown size={15}/>PDF</button></div><EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/></>}
       </section>}
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
