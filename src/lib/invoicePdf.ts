@@ -87,6 +87,7 @@ const line:[number,number,number]=[196,205,218]
 const brl=(value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value||0)
 const num=(value:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value||0)
 const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
+const saleCode=(value:number|null|undefined)=>`S${String(value||0).padStart(5,'0')}`
 const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='dinheiro'?'DINHEIRO':value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
 const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
 const deliveryRouteLabel=(value:string|null|undefined)=>value==='norte'?'NORTE':value==='sul'?'SUL':value==='leste'?'LESTE':value==='interestadual'?'INTERESTADUAL':value==='retirada'?'RETIRADA':'-'
@@ -178,7 +179,7 @@ function drawBrandHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(18)
-  doc.text(`Pedido nº ${invoiceNo(data.venda_numero)}`,196,52,{align:'right'})
+  doc.text(`Pedido ${saleCode(data.venda_numero)}`,196,52,{align:'right'})
 }
 
 function drawCustomer(doc:jsPDF,data:InvoiceData){
@@ -250,7 +251,7 @@ function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(12)
-  doc.text(`Pedido nº ${invoiceNo(data.venda_numero)} - continuação`,196,16,{align:'right'})
+  doc.text(`Pedido ${saleCode(data.venda_numero)} - continuação`,196,16,{align:'right'})
 }
 
 function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
