@@ -80,7 +80,7 @@
 .bankRecon .bankSearch {display:flex; align-items:center; gap:8px; flex:1 1 250px; min-width:0}
 .bankRecon .bankSearch input {width:100%}
 .bankRecon .bankTxList {display:grid; gap:10px}
-.bankRecon .bankTx {overflow:hidden; border:1px solid var(--bank-border); border-radius:12px; background:var(--card-bg)}
+.bankRecon .bankTx {overflow:visible; position:relative; border:1px solid var(--bank-border); border-radius:12px; background:var(--card-bg)}
 .bankRecon .bankTxMain {display:grid; grid-template-columns:120px minmax(0,1fr) 150px 90px; gap:12px; align-items:center; padding:12px}
 .bankRecon .bankTxDate, .bankRecon .bankTxDesc {display:grid; gap:4px; overflow-wrap:anywhere}
 .bankRecon .bankTxMain strong {font-size:13px; color:var(--bank-text)}
@@ -138,9 +138,9 @@
 .bankRecon .bankOdooActions>button{min-height:32px;padding:6px 10px;font-weight:700}
 .bankRecon .bankReconcileButton{background:#8b3f7f!important;border-color:#8b3f7f!important;color:#fff!important}
 .dark .bankRecon .bankReconcileButton{background:#944987!important;border-color:#a8559b!important}
-.bankRecon .bankMoreWrap{position:relative}
+.bankRecon .bankMoreWrap{position:relative;z-index:60}
 .bankRecon .bankMoreButton{min-width:36px;padding:6px 9px;font-weight:900;letter-spacing:1px}
-.bankRecon .bankMoreMenu{position:absolute;right:0;top:calc(100% + 5px);z-index:30;min-width:190px;padding:5px;background:var(--card-bg);border:1px solid var(--bank-border);border-radius:9px;box-shadow:0 14px 30px rgba(15,23,42,.18);display:grid}
+.bankRecon .bankMoreMenu{position:absolute;right:0;top:calc(100% + 5px);z-index:999;min-width:190px;padding:5px;background:var(--card-bg);border:1px solid var(--bank-border);border-radius:9px;box-shadow:0 14px 30px rgba(15,23,42,.28);display:grid}
 .bankRecon .bankMoreMenu button{justify-content:flex-start;border:0;border-radius:6px;background:transparent;min-height:31px}
 .bankRecon .bankMoreMenu button:hover{background:var(--bank-soft)}
 .bankRecon .bankTxMeta{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bank-border);font-size:11px;color:var(--bank-muted)}
