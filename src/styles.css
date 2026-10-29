@@ -5192,3 +5192,60 @@
     width:145px!important;
   }
 }
+
+
+/* Financeiro: distribuição proporcional para evitar corte de texto/contador */
+.financePage .financeSubTabs{
+  display:grid!important;
+  grid-template-columns:
+    .92fr
+    1.05fr
+    1.12fr
+    .82fr
+    1.48fr
+    .98fr
+    .68fr
+    1.38fr!important;
+  gap:4px!important;
+  overflow:hidden!important;
+}
+.financePage .financeSubTabs .subTab{
+  min-width:0!important;
+  width:100%!important;
+  height:42px!important;
+  padding:0 5px!important;
+  gap:4px!important;
+  font-size:10px!important;
+  letter-spacing:-.08px!important;
+  overflow:visible!important;
+}
+.financePage .financeSubTabs .subTab svg{
+  width:15px!important;
+  height:15px!important;
+}
+.financePage .financeSubTabs .subTabCount{
+  min-width:18px!important;
+  width:auto!important;
+  height:18px!important;
+  padding:0 5px!important;
+  font-size:9px!important;
+  line-height:16px!important;
+}
+@media(max-width:1180px){
+  .financePage .financeSubTabs{
+    display:flex!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    scrollbar-width:thin;
+  }
+  .financePage .financeSubTabs .subTab{
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:126px!important;
+    padding:0 10px!important;
+  }
+  .financePage .financeSubTabs .subTab:nth-child(5),
+  .financePage .financeSubTabs .subTab:nth-child(8){
+    min-width:170px!important;
+  }
+}
