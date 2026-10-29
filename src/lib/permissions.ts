@@ -1,5 +1,5 @@
 export type AccessLevel='nenhum'|'visualizar'|'editar'
-export type PermissionModule='dashboard'|'vendas'|'clientes'|'fornecedores'|'produtos'|'compras'|'comissoes'|'financeiro'|'autorizacoes'|'relatorios'|'config'
+export type PermissionModule='dashboard'|'vendas'|'clientes'|'fornecedores'|'produtos'|'compras'|'comissoes'|'financeiro'|'entregas'|'autorizacoes'|'relatorios'|'config'
 export type PermissionMap=Record<PermissionModule,AccessLevel>
 
 export const permissionModules:{key:PermissionModule;label:string;editable:boolean;description:string}[]=[
@@ -11,6 +11,7 @@ export const permissionModules:{key:PermissionModule;label:string;editable:boole
   {key:'compras',label:'Compras',editable:true,description:'Cotações, pedidos, recebimentos e NF-e'},
   {key:'comissoes',label:'Comissões',editable:true,description:'Vendedores, apuração e fechamentos'},
   {key:'financeiro',label:'Financeiro',editable:true,description:'Contas, pagamentos e comprovantes'},
+  {key:'entregas',label:'Entregas',editable:true,description:'Rotas, entregas, ocorrências e comprovantes'},
   {key:'autorizacoes',label:'Autorizações',editable:true,description:'Solicitações e decisões administrativas'},
   {key:'relatorios',label:'Relatórios',editable:false,description:'Consultas e relatórios gerenciais'},
   {key:'config',label:'Configurações',editable:true,description:'Empresa, usuários e regras do ERP'}
@@ -18,7 +19,7 @@ export const permissionModules:{key:PermissionModule;label:string;editable:boole
 
 const none:PermissionMap={
   dashboard:'nenhum',vendas:'nenhum',clientes:'nenhum',fornecedores:'nenhum',produtos:'nenhum',
-  compras:'nenhum',comissoes:'nenhum',financeiro:'nenhum',autorizacoes:'nenhum',relatorios:'nenhum',config:'nenhum'
+  compras:'nenhum',comissoes:'nenhum',financeiro:'nenhum',entregas:'nenhum',autorizacoes:'nenhum',relatorios:'nenhum',config:'nenhum'
 }
 
 export function defaultPermissionsForRole(role:string):PermissionMap{
