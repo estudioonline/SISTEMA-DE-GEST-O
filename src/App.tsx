@@ -5,8 +5,8 @@ import type { Session } from '@supabase/supabase-js'
 import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
-  Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck
+  Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, Grid2X2,
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -198,6 +198,14 @@ function App(){
   const [saleCreditState,setSaleCreditState]=useState<{em_aberto:number;vencido:number}|null>(null)
   const [savingSale,setSavingSale]=useState(false)
   const [saleRequestId,setSaleRequestId]=useState(()=>crypto.randomUUID())
+  const [salePage,setSalePage]=useState(1)
+  const [salePageSize]=useState(12)
+  const [saleFiltersOpen,setSaleFiltersOpen]=useState(false)
+  const [saleStatusFilter,setSaleStatusFilter]=useState('todos')
+  const [salePaymentFilter,setSalePaymentFilter]=useState('todos')
+  const [salePaymentStateFilter,setSalePaymentStateFilter]=useState('todos')
+  const [saleRouteFilter,setSaleRouteFilter]=useState('todos')
+  const [saleActionMenu,setSaleActionMenu]=useState<string|null>(null)
 
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
   const [purchasePanel,setPurchasePanel]=useState<string|null>(null)
@@ -1505,6 +1513,27 @@ function App(){
     setPaymentDate(today())
     setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))
   }
+  function openSaleFinancialStatement(v:Venda){
+    const related=titulos.filter(t=>t.venda_id===v.id).sort((a,b)=>a.vencimento.localeCompare(b.vencimento))
+    setSaleActionMenu(null)
+    if(!related.length){
+      setMsg(v.status==='orcamento'?'Este orçamento ainda não possui títulos financeiros.':'Não há títulos financeiros vinculados a esta venda.')
+      return
+    }
+    const first=related[0]
+    setActive('financeiro')
+    setFinanceSubtab('receber')
+    setFinanceStatusFilter('todos')
+    setFinanceStart('')
+    setFinanceEnd('')
+    setFinanceCategory('todos')
+    setFinanceCenter('todos')
+    setSearch('financeiro-receber',invoiceNo(v.fatura_numero))
+    setFinancePanel(first.id)
+    setFinancePanelTab('pagamentos')
+    setPaymentDate(today())
+    setPaymentAmount(String(Math.max(0,Number(first.valor)-Number(first.valor_pago)).toFixed(2)))
+  }
 
   async function saveTitle(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
@@ -1988,9 +2017,23 @@ function App(){
   })
   const pendingSaleApproval=(saleId:string)=>saleApprovals.find(a=>a.entidade_id===saleId)
   const saleStatusDisplay=(v:Venda)=>pendingSaleApproval(v.id)&&v.status==='orcamento'?'Orçamento • aguardando aprovação':v.status==='orcamento'?'Orçamento':v.status==='pedido'?'Pedido':v.status==='faturado'?'Faturado':'Cancelado'
-  const visibleSales=sortList('vendas',vendas.filter(v=>{const client=clientes.find(x=>x.id===v.cliente_id);const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id);const ps=salePaymentStatus(v);return searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',saleStatusDisplay(v),deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])}),{
+  const filteredSalesList=sortList('vendas',vendas.filter(v=>{
+    const client=clientes.find(x=>x.id===v.cliente_id)
+    const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
+    const ps=salePaymentStatus(v)
+    return (saleStatusFilter==='todos'||v.status===saleStatusFilter)
+      &&(salePaymentFilter==='todos'||v.forma_pagamento===salePaymentFilter)
+      &&(salePaymentStateFilter==='todos'||ps.key===salePaymentStateFilter)
+      &&(saleRouteFilter==='todos'||v.rota_entrega===saleRouteFilter)
+      &&searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',saleStatusDisplay(v),deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])
+  }),{
     fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,cliente:v=>clientes.find(x=>x.id===v.cliente_id)?.nome||'Consumidor',rota:v=>deliveryRouteLabel(v.rota_entrega),vendedor:v=>vendedores.find(x=>x.id===v.vendedor_cadastro_id)?.nome||'',status:v=>saleStatusDisplay(v),pagamento:v=>paymentLabel(v.forma_pagamento),statuspag:v=>salePaymentStatus(v).label,total:v=>Number(v.total)
   })
+  const saleTotalPages=Math.max(1,Math.ceil(filteredSalesList.length/salePageSize))
+  const safeSalePage=Math.min(salePage,saleTotalPages)
+  const saleStart=(safeSalePage-1)*salePageSize
+  const visibleSales=filteredSalesList.slice(saleStart,saleStart+salePageSize)
+  const salePageNumbers=Array.from({length:saleTotalPages},(_,i)=>i+1).filter(p=>p===1||p===saleTotalPages||Math.abs(p-safeSalePage)<=1)
   const openedSale=salePanel?vendas.find(v=>v.id===salePanel)||null:null
   const visibleSellers=sortList('comissoes',vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])}),{
     vendedor:v=>v.nome,percentual:v=>Number(v.percentual_comissao),recebido:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.total_recebido||0),comissao:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.comissao_apurada||0),recebimentos:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.pagamentos||0),vendas:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.vendas||0),status:v=>v.ativo?'ativo':'inativo'
@@ -2001,17 +2044,24 @@ function App(){
     if(venda.status==='cancelado'||(related.length>0&&related.every(t=>t.status==='cancelado'))){
       return {label:'Cancelado',key:'cancelado'}
     }
-    if(!related.length)return {label:'Sem cobrança',key:'sem-cobranca'}
+    if(!related.length)return venda.status==='orcamento'
+      ? {label:'Não pago',key:'nao-pago'}
+      : {label:'Não pago',key:'nao-pago'}
 
     const valid=related.filter(t=>t.status!=='cancelado')
-    if(!valid.length)return {label:'Cancelado',key:'cancelado'}
+    if(!valid.length)return {label:'Não pago',key:'nao-pago'}
 
     const total=valid.reduce((s,t)=>s+Number(t.valor),0)
     const paid=valid.reduce((s,t)=>s+Number(t.valor_pago),0)
 
     if(total>0&&paid>=total-0.005)return {label:'Pago',key:'pago'}
     if(paid>0)return {label:'Parcial',key:'parcial'}
-    return {label:'Pendente',key:'pendente'}
+    return {label:'Não pago',key:'nao-pago'}
+  }
+  function nameInitials(name:string){
+    const parts=String(name||'').trim().split(/\s+/).filter(Boolean)
+    if(!parts.length)return '?'
+    return (parts[0][0]+(parts.length>1?parts[parts.length-1][0]:'')).toUpperCase()
   }
 
   function proofPanel(kind:'venda'|'compra',id:string){
