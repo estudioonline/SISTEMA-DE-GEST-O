@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -34,6 +34,7 @@ type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
 type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 type PurchasePaymentMethod='pix'|'cartao'|'boleto'
 type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
+type BeforeInstallPromptEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:'accepted'|'dismissed';platform:string}>}
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null;latitude?:number|null;longitude?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
@@ -120,6 +121,9 @@ function App(){
   const [active,setActive]=useState<ModuleKey>('dashboard')
   const {dark,toggleTheme,preference,setPreference}=useTheme()
   const [showApps,setShowApps]=useState(true)
+  const [accountMenuOpen,setAccountMenuOpen]=useState(false)
+  const [installPrompt,setInstallPrompt]=useState<BeforeInstallPromptEvent|null>(null)
+  const [appInstalled,setAppInstalled]=useState(false)
   const [permissionsReady,setPermissionsReady]=useState(false)
   const moduleHeading=useRef<HTMLHeadingElement>(null)
   const [profileRole,setProfileRole]=useState<PerfilRole>('visualizador')
@@ -276,6 +280,22 @@ function App(){
   const visibleMenu=menu.filter(([k])=>canViewModule(k))
 
   useEffect(()=>{if(!showApps)moduleHeading.current?.focus()},[showApps,active])
+
+  useEffect(()=>{
+    const onBeforeInstall=(event:Event)=>{
+      event.preventDefault()
+      setInstallPrompt(event as BeforeInstallPromptEvent)
+    }
+    const onInstalled=()=>{setAppInstalled(true);setInstallPrompt(null);setAccountMenuOpen(false);setMsg('SG Sistema de Gestão instalado com sucesso.')}
+    window.addEventListener('beforeinstallprompt',onBeforeInstall)
+    window.addEventListener('appinstalled',onInstalled)
+    const standalone=window.matchMedia('(display-mode: standalone)').matches
+    setAppInstalled(standalone)
+    return ()=>{
+      window.removeEventListener('beforeinstallprompt',onBeforeInstall)
+      window.removeEventListener('appinstalled',onInstalled)
+    }
+  },[])
 
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
@@ -2334,6 +2354,16 @@ function App(){
     else if(active==='financeiro')startNewTitle()
   }
 
+  async function installDesktopApp(){
+    if(appInstalled){setMsg('O SG já está instalado como aplicativo neste dispositivo.');setAccountMenuOpen(false);return}
+    if(!installPrompt){setMsg('A instalação ainda não foi liberada pelo navegador. No Chrome ou Edge, use o menu do navegador e escolha “Instalar SG Sistema de Gestão”.');setAccountMenuOpen(false);return}
+    await installPrompt.prompt()
+    const choice=await installPrompt.userChoice
+    if(choice.outcome==='accepted')setMsg('Instalação do SG iniciada.')
+    setInstallPrompt(null)
+    setAccountMenuOpen(false)
+  }
+
   function openApp(module:ModuleKey){
     if(!permissionsReady||!canViewModule(module))return
     setActive(module)
@@ -2348,10 +2378,18 @@ function App(){
         <button type="button" className="workspaceHome" onClick={()=>setShowApps(true)} aria-current={showApps?'page':undefined}><Grid2X2 size={18}/><span>Aplicativos</span></button>
       </div>
       <div className="workspaceControls">
-        <div className="workspaceAccount"><span title={session.user.email}>{session.user.email}</span><small>{profileLabel(profileRole)}</small></div>
+        <div className="workspaceAccountMenu">
+          <button type="button" className="workspaceAccount workspaceAccountButton" onClick={()=>setAccountMenuOpen(v=>!v)} aria-expanded={accountMenuOpen}>
+            <span title={session.user.email}>{session.user.email}</span><small>{profileLabel(profileRole)}</small><ChevronDown size={14}/>
+          </button>
+          {accountMenuOpen&&<div className="workspaceAccountDropdown">
+            <button type="button" onClick={()=>void installDesktopApp()} disabled={appInstalled}><MonitorDown size={16}/><span>{appInstalled?'Aplicativo instalado':'Instalar aplicativo'}</span></button>
+            <button type="button" onClick={()=>{setAccountMenuOpen(false);void supabase.auth.signOut()}}><LogOut size={16}/><span>Sair</span></button>
+          </div>}
+        </div>
         <button type="button" className="workspaceIcon" onClick={toggleTheme} title={dark?'Ativar modo claro':'Ativar modo escuro'} aria-label={dark?'Ativar modo claro':'Ativar modo escuro'}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
         <select className="workspaceThemeSelect" aria-label="Tema de aparência" value={preference} onChange={e=>setPreference(e.target.value as 'system'|'light'|'dark')}><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select>
-        <button type="button" className="workspaceIcon" onClick={()=>void supabase.auth.signOut()} title="Sair" aria-label="Sair"><LogOut size={17}/></button>
+        
       </div>
     </header>
     <main className="main">
