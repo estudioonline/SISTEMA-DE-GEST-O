@@ -11,6 +11,7 @@ type Title={venda_id:string|null;valor:number;valor_pago:number;status:string}
 type Driver={id:string;nome:string;telefone:string|null;documento:string|null;ativo:boolean;profile_id:string|null}
 type Vehicle={id:string;placa:string|null;descricao:string;capacidade_entregas:number|null;capacidade_kg:number|null;capacidade_m3:number|null;ativo:boolean}
 type RouteEvent={id:string;rota_id:string;entrega_id:string|null;tipo:string;detalhes:Record<string,unknown>;created_at:string}
+type UserProfile={id:string;nome:string;perfil:string;ativo:boolean}
 type Tab='montagem'|'rota'|'historico'
 
 const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0)
@@ -36,6 +37,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
   const [drivers,setDrivers]=useState<Driver[]>([])
   const [vehicles,setVehicles]=useState<Vehicle[]>([])
   const [events,setEvents]=useState<RouteEvent[]>([])
+  const [profiles,setProfiles]=useState<UserProfile[]>([])
   const [selectedRouteId,setSelectedRouteId]=useState('')
   const [busy,setBusy]=useState(false)
   const [msg,setMsg]=useState('')
@@ -47,6 +49,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
   const [bulkDate,setBulkDate]=useState('')
   const [driverName,setDriverName]=useState('')
   const [driverPhone,setDriverPhone]=useState('')
+  const [driverProfileId,setDriverProfileId]=useState('')
   const [vehicleName,setVehicleName]=useState('')
   const [vehiclePlate,setVehiclePlate]=useState('')
   const [vehicleStops,setVehicleStops]=useState('')
@@ -56,7 +59,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
   const [dragId,setDragId]=useState<string|null>(null)
 
   const load=useCallback(async()=>{
-    const [r,e,s,c,t,d,v,ev]=await Promise.all([
+    const [r,e,s,c,t,d,v,ev,pf]=await Promise.all([
       supabase.from('rotas_logisticas').select('*').order('data_rota',{ascending:false}).order('created_at'),
       supabase.from('entregas').select('id,venda_id,status,data_prevista,rota_logistica_id,ordem_rota,peso_estimado_kg,volume_estimado_m3,entregador_nome,falha_motivo,falha_detalhes,updated_at'),
       supabase.from('vendas').select('id,cliente_id,total,forma_pagamento,fatura_numero'),
@@ -64,12 +67,13 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
       supabase.from('titulos_financeiros').select('venda_id,valor,valor_pago,status').eq('tipo','receber'),
       supabase.from('motoristas_logistica').select('*').order('nome'),
       supabase.from('veiculos_logistica').select('*').order('descricao'),
-      supabase.from('rota_eventos').select('*').order('created_at',{ascending:false}).limit(300)
+      supabase.from('rota_eventos').select('*').order('created_at',{ascending:false}).limit(300),
+      supabase.from('profiles').select('id,nome,perfil,ativo').eq('ativo',true).order('nome')
     ])
-    const error=r.error||e.error||s.error||c.error||t.error||d.error||v.error||ev.error
+    const error=r.error||e.error||s.error||c.error||t.error||d.error||v.error||ev.error||pf.error
     if(error){setMsg(error.message);return}
     setRoutes((r.data||[]) as RoutePlan[]);setDeliveries((e.data||[]) as Delivery[]);setSales((s.data||[]) as Sale[])
-    setClients((c.data||[]) as Client[]);setTitles((t.data||[]) as Title[]);setDrivers((d.data||[]) as Driver[]);setVehicles((v.data||[]) as Vehicle[]);setEvents((ev.data||[]) as RouteEvent[])
+    setClients((c.data||[]) as Client[]);setTitles((t.data||[]) as Title[]);setDrivers((d.data||[]) as Driver[]);setVehicles((v.data||[]) as Vehicle[]);setEvents((ev.data||[]) as RouteEvent[]);setProfiles((pf.data||[]) as UserProfile[])
   },[])
   useEffect(()=>{void load()},[load])
 
@@ -160,7 +164,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
   }
   async function createDriver(){
     if(!driverName.trim())return
-    const {error}=await supabase.from('motoristas_logistica').insert({nome:driverName.trim(),telefone:driverPhone.trim()||null});if(error)setMsg(error.message);else{setDriverName('');setDriverPhone('');await load()}
+    const {error}=await supabase.from('motoristas_logistica').insert({nome:driverName.trim(),telefone:driverPhone.trim()||null,profile_id:driverProfileId||null});if(error)setMsg(error.message);else{setDriverName('');setDriverPhone('');setDriverProfileId('');await load()}
   }
   async function createVehicle(){
     if(!vehicleName.trim())return
@@ -196,7 +200,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
     {msg&&<div className="deliveryNotice">{msg}</div>}
 
     {showSetup&&canEdit&&<div className="routeSetupGrid">
-      <div><strong>Novo motorista</strong><input value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="Nome"/><input value={driverPhone} onChange={e=>setDriverPhone(e.target.value)} placeholder="Telefone"/><button onClick={()=>void createDriver()}><Plus size={14}/>Cadastrar</button></div>
+      <div><strong>Novo motorista</strong><input value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="Nome"/><input value={driverPhone} onChange={e=>setDriverPhone(e.target.value)} placeholder="Telefone"/><select value={driverProfileId} onChange={e=>setDriverProfileId(e.target.value)}><option value="">Usuário do ERP (opcional)</option>{profiles.map(p=><option key={p.id} value={p.id}>{p.nome} · {p.perfil}</option>)}</select><button onClick={()=>void createDriver()}><Plus size={14}/>Cadastrar</button></div>
       <div><strong>Novo veículo</strong><input value={vehicleName} onChange={e=>setVehicleName(e.target.value)} placeholder="Descrição"/><input value={vehiclePlate} onChange={e=>setVehiclePlate(e.target.value)} placeholder="Placa"/><div className="routeCapacityInputs"><input value={vehicleStops} onChange={e=>setVehicleStops(e.target.value)} type="number" min="1" placeholder="Máx. entregas"/><input value={vehicleKg} onChange={e=>setVehicleKg(e.target.value)} type="number" min="0" step="0.001" placeholder="Cap. kg"/><input value={vehicleM3} onChange={e=>setVehicleM3(e.target.value)} type="number" min="0" step="0.0001" placeholder="Cap. m³"/></div><button onClick={()=>void createVehicle()}><Plus size={14}/>Cadastrar</button></div>
       <div className="routeRegistry"><strong>Cadastros ativos</strong><span><Users size={14}/>{drivers.filter(d=>d.ativo).length} motorista(s)</span><span><Car size={14}/>{vehicles.filter(v=>v.ativo).length} veículo(s)</span></div>
     </div>}
