@@ -1204,7 +1204,6 @@ function App(){
     if(!payload)return
     try{
       (await import('./lib/invoicePdf')).generateInvoicePdf(payload)
-      await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',v.id)
     }catch{setMsg('Não foi possível gerar o PDF.')}
   }
   async function printSalePdf(v:Venda){
@@ -1998,9 +1997,9 @@ function App(){
       &&(salePaymentFilter==='todos'||v.forma_pagamento===salePaymentFilter)
       &&(salePaymentStateFilter==='todos'||ps.key===salePaymentStateFilter)
       &&(saleRouteFilter==='todos'||v.rota_entrega===saleRouteFilter)
-      &&searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',saleStatusDisplay(v),deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,ps.label,money(Number(v.total))])
+      &&searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',saleStatusDisplay(v),deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,saleInvoiceStatus(v).label,ps.label,money(Number(v.total))])
   }),{
-    fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,cliente:v=>clientes.find(x=>x.id===v.cliente_id)?.nome||'Consumidor',rota:v=>deliveryRouteLabel(v.rota_entrega),vendedor:v=>vendedores.find(x=>x.id===v.vendedor_cadastro_id)?.nome||'',status:v=>saleStatusDisplay(v),pagamento:v=>paymentLabel(v.forma_pagamento),statuspag:v=>salePaymentStatus(v).label,total:v=>Number(v.total)
+    fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,cliente:v=>clientes.find(x=>x.id===v.cliente_id)?.nome||'Consumidor',rota:v=>deliveryRouteLabel(v.rota_entrega),vendedor:v=>vendedores.find(x=>x.id===v.vendedor_cadastro_id)?.nome||'',status:v=>saleStatusDisplay(v),pagamento:v=>paymentLabel(v.forma_pagamento),faturamento:v=>saleInvoiceStatus(v).label,statuspag:v=>salePaymentStatus(v).label,total:v=>Number(v.total)
   })
   const saleTotalPages=Math.max(1,Math.ceil(filteredSalesList.length/salePageSize))
   const safeSalePage=Math.min(salePage,saleTotalPages)
@@ -3193,13 +3192,14 @@ function App(){
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','faturamento')}>Faturamento{sortMark('vendas','faturamento')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagto{sortMark('vendas','statuspag')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th>
               <th>Ações</th>
             </tr></thead>
             <tbody>
-              {visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa/filtro.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}
+              {visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={11}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa/filtro.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}
               {visibleSales.map(v=>{
                 const client=clientes.find(x=>x.id===v.cliente_id)
                 const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
@@ -3217,6 +3217,7 @@ function App(){
                     ? <span className="salesStatus salesStatusPending">Aguardando aprovação</span>
                     : <span className={'salesStatus salesStatus-'+v.status}>{saleStatusDisplay(v)}</span>}</td>
                   <td><span className="salesPaymentText">{paymentLabel(v.forma_pagamento)}{Number(v.parcelas)>1?' • '+v.parcelas+'x':''}</span></td>
+                  <td><span className={'billingInvoiceBadge billingInvoice-'+saleInvoiceStatus(v).key}>{saleInvoiceStatus(v).label}</span></td>
                   <td><span className={'salesPaymentStatus salesPaymentStatus-'+paymentStatus.key}>{paymentStatus.label}</span></td>
                   <td><span className="salesRoute"><MapPin size={14}/>{deliveryRouteLabel(v.rota_entrega)}</span></td>
                   <td><strong className="salesTotal">{money(Number(v.total))}</strong></td>
