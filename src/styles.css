@@ -5036,3 +5036,84 @@
 .stockMinimumNotice strong{white-space:nowrap}
 .stockMinimumNotice span{font-size:11px}
 .dark .stockMinimumNotice{background:rgba(245,158,11,.12);border-color:#92400e;color:#fbbf24}
+
+
+/* Financeiro: barra de abas estável com 8 opções, sem sobreposição */
+.financePage .financeSubTabs{
+  display:grid!important;
+  grid-template-columns:
+    minmax(112px,.95fr)
+    minmax(130px,1.08fr)
+    minmax(142px,1.15fr)
+    minmax(104px,.86fr)
+    minmax(170px,1.38fr)
+    minmax(118px,.98fr)
+    minmax(86px,.72fr)
+    minmax(168px,1.34fr)!important;
+  gap:6px!important;
+  align-items:stretch!important;
+  width:100%!important;
+  padding:6px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:thin;
+}
+.financePage .financeSubTabs .subTab{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  height:44px!important;
+  margin:0!important;
+  padding:0 9px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  transform:none!important;
+  position:relative!important;
+  inset:auto!important;
+  box-sizing:border-box!important;
+  font-size:11px!important;
+  line-height:1!important;
+}
+.financePage .financeSubTabs .subTab:hover,
+.financePage .financeSubTabs .subTab.active{
+  transform:none!important;
+}
+.financePage .financeSubTabs .subTab svg{
+  flex:0 0 auto!important;
+}
+.financePage .financeSubTabs .subTabCount{
+  flex:0 0 auto!important;
+  margin:0!important;
+}
+@media(max-width:1180px){
+  .financePage .financeSubTabs{
+    grid-template-columns:
+      minmax(112px,.95fr)
+      minmax(130px,1.08fr)
+      minmax(142px,1.15fr)
+      minmax(104px,.86fr)
+      minmax(170px,1.38fr)
+      minmax(118px,.98fr)
+      minmax(86px,.72fr)
+      minmax(168px,1.34fr)!important;
+  }
+}
+@media(max-width:760px){
+  .financePage .financeSubTabs{
+    display:flex!important;
+    gap:6px!important;
+    overflow-x:auto!important;
+    padding:6px!important;
+  }
+  .financePage .financeSubTabs .subTab{
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:118px!important;
+    padding:0 11px!important;
+  }
+}
