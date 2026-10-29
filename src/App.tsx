@@ -999,34 +999,8 @@ function App(){
     }
 
     const saved=(Array.isArray(r.data)?r.data[0]:r.data) as Venda
-    const subtotal=items.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
-    const desconto=items.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
-    const total=Math.max(0,subtotal-desconto)
-
-    try{
-      (await import('./lib/invoicePdf')).generateInvoicePdf({
-        id:saved.id,
-        fatura_numero:saved.fatura_numero,
-        created_at:saved.created_at||new Date().toISOString(),
-        status:saved.status,
-        subtotal,
-        desconto,
-        total,
-        observacoes:saleNotes||null,
-        forma_pagamento:salePayment,
-        parcelas:saleInstallments,
-        primeiro_vencimento:saleInstallmentDates[0]||saleDueDate,
-        rota_entrega:saleRoute||null,
-        vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,
-        cliente:clientes.find(c=>c.id===saleClient)||null,
-        company:empresa||undefined,
-        items:invoiceItems(items)
-      })
-      await supabase.from('vendas').update({fatura_gerada_em:new Date().toISOString()}).eq('id',saved.id)
-      setMsg(editingSale?'Venda atualizada e documento reemitido.':saleStatus==='orcamento'?'Orçamento salvo.':'Venda salva e fatura emitida.')
-    }catch{
-      setMsg('Venda salva. O documento pode ser reemitido pelo painel.')
-    }
+    void saved
+    setMsg(editingSale?'Venda atualizada.':saleStatus==='orcamento'?'Orçamento salvo.':'Venda aprovada. O Financeiro fará o faturamento e definirá os vencimentos.')
 
     setSavingSale(false)
     setShowForm(false)
@@ -2913,12 +2887,11 @@ function App(){
           </div>
 
           <div className={`paymentNotice saleStageNotice saleStage-${saleStatus}`}>
-            <strong>{saleStatus==='orcamento'?'Orçamento — sem cobrança e sem movimentação de estoque':'Pedido — gera cobrança e movimenta estoque'}</strong>
+            <strong>{saleStatus==='orcamento'?'Orçamento — sem cobrança e sem movimentação de estoque':'Pedido aprovado — aguardando faturamento pelo Financeiro'}</strong>
             <span>{saleStatus==='orcamento'
               ? 'Depois de salvo, o orçamento pode ser convertido em Pedido/Venda. Se houver bloqueio, seguirá para aprovação.'
-              : `${paymentLabel(salePayment)} • ${saleInstallments}x • vencimento ${dateBr(saleDueDate)}${saleSeller?' • comissão: '+String(vendedores.find(v=>v.id===saleSeller)?.percentual_comissao||0)+'%':''}`}</span>
+              : paymentLabel(salePayment)+' • '+saleInstallments+'x indicado pelo vendedor. O Financeiro definirá datas e valores das parcelas.'}</span>
           </div>
-
           <div className="saleItemsHead">
             <h3>Itens</h3>
             <button type="button" className="ghost" onClick={()=>setSaleItems(x=>[...x,newSaleItem()])}><Plus size={16}/>Adicionar item</button>
@@ -3070,10 +3043,10 @@ function App(){
               </div>
               <div className="saleInfoGroup">
                 <h4>Faturamento</h4>
-                <div><span>Método de pagamento</span><strong>{paymentLabel(v.forma_pagamento)}</strong></div>
-                <div><span>Parcelas</span><strong>{v.parcelas}x</strong></div>
-                <div><span>Primeiro vencimento</span><strong>{dateBr(v.primeiro_vencimento)}</strong></div>
-                <div><span>Status da cobrança</span><strong>{paymentStatus.label}</strong></div>
+                <div><span>Pagamento indicado</span><strong>{paymentLabel(v.forma_pagamento)}</strong></div>
+                <div><span>Parcelas indicadas</span><strong>{v.parcelas}x</strong></div>
+                <div><span>Status da fatura</span><strong>{saleInvoiceStatus(v).label}</strong></div>
+                <div><span>Status do pagamento</span><strong>{paymentStatus.label}</strong></div>
               </div>
               <div className="saleNotesBox">
                 <h4>Anotações</h4>
