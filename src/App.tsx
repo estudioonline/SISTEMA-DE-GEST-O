@@ -3115,12 +3115,22 @@ function App(){
               </article>
             </div>
           </div>
-        })():<article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable">
-          <div className="panelHead">
-            <div><h3>Orçamentos, vendas e faturas</h3><p>Lista compacta. Dê dois cliques em uma linha para abrir a venda.</p></div>
-            <SearchField value={tableSearch.vendas||''} onChange={v=>setSearch('vendas',v)} placeholder="Pesquisar em todas as colunas"/>
+        })():<article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable salesModernTable">
+          <div className="salesModernHead">
+            <div><h3>Orçamentos, vendas e faturas</h3><p>Lista de Vendas • Clique duplo para abrir</p></div>
+            <div className="salesModernActions">
+              <div className="salesSearchBox"><Search size={16}/><input value={tableSearch.vendas||''} onChange={e=>{setSearch('vendas',e.target.value);setSalePage(1)}} placeholder="Pesquisar em todas as colunas..."/></div>
+              <button type="button" className={saleFiltersOpen?'salesFilterButton active':'salesFilterButton'} onClick={()=>setSaleFiltersOpen(v=>!v)}><SlidersHorizontal size={16}/>Filtros avançados</button>
+            </div>
           </div>
-          <div className="tableWrap"><table className="salesCompactTable">
+          {saleFiltersOpen&&<div className="salesAdvancedFilters">
+            <label>Status<select value={saleStatusFilter} onChange={e=>{setSaleStatusFilter(e.target.value);setSalePage(1)}}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label>
+            <label>Pagamento<select value={salePaymentFilter} onChange={e=>{setSalePaymentFilter(e.target.value);setSalePage(1)}}><option value="todos">Todos</option><option value="pix">PIX</option><option value="boleto">Boleto</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option></select></label>
+            <label>Status pagto<select value={salePaymentStateFilter} onChange={e=>{setSalePaymentStateFilter(e.target.value);setSalePage(1)}}><option value="todos">Todos</option><option value="nao-pago">Não pago</option><option value="parcial">Parcial</option><option value="pago">Pago</option><option value="cancelado">Cancelado</option></select></label>
+            <label>Rota<select value={saleRouteFilter} onChange={e=>{setSaleRouteFilter(e.target.value);setSalePage(1)}}><option value="todos">Todas</option><option value="retirada">Retirada</option><option value="norte">Norte</option><option value="sul">Sul</option><option value="leste">Leste</option><option value="interestadual">Interestadual</option></select></label>
+            <button type="button" className="ghost" onClick={()=>{setSaleStatusFilter('todos');setSalePaymentFilter('todos');setSalePaymentStateFilter('todos');setSaleRouteFilter('todos');setSalePage(1)}}>Limpar filtros</button>
+          </div>}
+          <div className="tableWrap"><table className="salesCompactTable salesUxTable">
             <thead><tr>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','fatura')}>Documento{sortMark('vendas','fatura')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th>
@@ -3128,33 +3138,52 @@ function App(){
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagto{sortMark('vendas','statuspag')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th>
-              <th>Gerenciar</th>
+              <th>Ações</th>
             </tr></thead>
             <tbody>
-              {visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={9}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}
+              {visibleSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={vendas.length===0?'Nenhuma venda cadastrada.':'Nenhuma venda encontrada para esta pesquisa/filtro.'} actionLabel={vendas.length===0&&canManageSales?'+ Adicionar Venda':undefined} onAction={startNewSale}/></td></tr>}
               {visibleSales.map(v=>{
                 const client=clientes.find(x=>x.id===v.cliente_id)
                 const seller=vendedores.find(x=>x.id===v.vendedor_cadastro_id)
+                const clientName=client?.nome||'Consumidor'
+                const sellerName=seller?.nome||'Sem vendedor'
                 const paymentStatus=salePaymentStatus(v)
                 const waiting=Boolean(pendingSaleApproval(v.id)&&v.status==='orcamento')
+                const actionOpen=saleActionMenu===v.id
                 return <tr key={v.id} {...recordRow(()=>void openSaleDetail(v),'venda '+invoiceNo(v.fatura_numero))}>
-                  <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
+                  <td><strong className="salesDocument">#{invoiceNo(v.fatura_numero)}</strong></td>
                   <td>{new Date(v.created_at).toLocaleDateString('pt-BR')}</td>
-                  <td>{client?.nome||'Consumidor'}</td>
-                  <td>{seller?.nome||'—'}</td>
+                  <td><div className="salesIdentity"><span className="salesAvatar">{nameInitials(clientName)}</span><span>{clientName}</span></div></td>
+                  <td><div className="salesIdentity"><span className="salesAvatar sellerAvatar">{nameInitials(sellerName)}</span><span>{seller?.nome||'—'}</span></div></td>
                   <td>{waiting
-                    ? <span className="statusBadge approvalPendingBadge">Aguardando aprovação</span>
-                    : <span className={'statusBadge status-'+v.status}>{saleStatusDisplay(v)}</span>}</td>
-                  <td>{paymentLabel(v.forma_pagamento)}{Number(v.parcelas)>1?' • '+v.parcelas+'x':''}<br/><small>{paymentStatus.label}</small></td>
-                  <td>{deliveryRouteLabel(v.rota_entrega)}</td>
-                  <td><strong>{money(Number(v.total))}</strong></td>
-                  <td><button type="button" className="rowMenuBtn" onClick={()=>void openSaleDetail(v)} title="Abrir venda" aria-label="Abrir venda"><MoreVertical size={18}/></button></td>
+                    ? <span className="salesStatus salesStatusPending">Aguardando aprovação</span>
+                    : <span className={'salesStatus salesStatus-'+v.status}>{saleStatusDisplay(v)}</span>}</td>
+                  <td><span className="salesPaymentText">{paymentLabel(v.forma_pagamento)}{Number(v.parcelas)>1?' • '+v.parcelas+'x':''}</span></td>
+                  <td><span className={'salesPaymentStatus salesPaymentStatus-'+paymentStatus.key}>{paymentStatus.label}</span></td>
+                  <td><span className="salesRoute"><MapPin size={14}/>{deliveryRouteLabel(v.rota_entrega)}</span></td>
+                  <td><strong className="salesTotal">{money(Number(v.total))}</strong></td>
+                  <td className="salesActionsCell"><div className="salesRowMenuWrap"><button type="button" className="rowMenuBtn" onClick={e=>{e.stopPropagation();setSaleActionMenu(actionOpen?null:v.id)}} title="Ações" aria-label="Ações da venda" aria-expanded={actionOpen}><MoreVertical size={18}/></button>
+                    {actionOpen&&<div className="salesRowMenu" onClick={e=>e.stopPropagation()}>
+                      <button type="button" onClick={()=>{setSaleActionMenu(null);void openSaleDetail(v)}}>Abrir venda</button>
+                      <button type="button" onClick={()=>openSaleFinancialStatement(v)}><ReceiptText size={14}/>Abrir Extrato Financeiro</button>
+                      <button type="button" onClick={()=>{setSaleActionMenu(null);void downloadSalePdf(v)}}><FileDown size={14}/>Baixar PDF</button>
+                    </div>}
+                  </div></td>
                 </tr>
               })}
             </tbody>
           </table></div>
+          <div className="salesPagination">
+            <span>{filteredSalesList.length?'Exibindo '+(saleStart+1)+'-'+Math.min(saleStart+visibleSales.length,filteredSalesList.length)+' de '+filteredSalesList.length+' resultados':'Exibindo 0 resultados'}</span>
+            <div className="salesPager">
+              <button type="button" disabled={safeSalePage<=1} onClick={()=>setSalePage(p=>Math.max(1,p-1))}><ChevronLeft size={15}/></button>
+              {salePageNumbers.map((p,index)=><Fragment key={p}>{index>0&&p-salePageNumbers[index-1]>1&&<span className="salesPagerDots">…</span>}<button type="button" className={p===safeSalePage?'active':''} onClick={()=>setSalePage(p)}>{p}</button></Fragment>)}
+              <button type="button" disabled={safeSalePage>=saleTotalPages} onClick={()=>setSalePage(p=>Math.min(saleTotalPages,p+1))}><ChevronRight size={15}/></button>
+            </div>
+          </div>
         </article>}
       </section>}
 
