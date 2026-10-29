@@ -5,7 +5,7 @@ import {bankBrand,balanceTrend,isPending,sparkPoints} from './lib/bankPresentati
 import type {CSSProperties} from 'react'
 
 type Journal={id:string;nome:string;banco:string|null;agencia:string|null;conta:string|null;saldo_inicial:number;saldo_atual:number;ativo:boolean}
-type BankTx={id:string;diario_id:string;fitid:string;trntype:'CREDIT'|'DEBIT';valor:number;data_lancamento:string;nome:string|null;historico:string|null;status:'pendente'|'parcial'|'conciliado'|'ignorado';criado_em:string}
+type BankTx={id:string;diario_id:string;fitid:string;trntype:'CREDIT'|'DEBIT';valor:number;data_lancamento:string;nome:string|null;historico:string|null;status:'pendente'|'parcial'|'conciliado'|'ignorado';criado_em:string;parceiro_nome?:string|null;parceiro_tipo?:'cliente'|'fornecedor'|'outro'|null;conta_categoria?:string|null;centro_custo?:string|null}
 type Title={id:string;tipo:'receber'|'pagar';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:string;categoria:string|null;centro_custo:string|null;forma_pagamento:string|null;venda_id:string|null;compra_id:string|null}
 type Partner={nome:string;documento:string|null}
 type Suggestion={title:Title;score:number;reasons:string[]}
@@ -95,6 +95,11 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const [newJournalOpen,setNewJournalOpen]=useState(false)
  const [periodOpen,setPeriodOpen]=useState(false)
  const [dragJournal,setDragJournal]=useState<string|null>(null)
+ const [actionMenuTx,setActionMenuTx]=useState<string|null>(null)
+ const [partnerTx,setPartnerTx]=useState<BankTx|null>(null)
+ const [accountTx,setAccountTx]=useState<BankTx|null>(null)
+ const [reconcileTx,setReconcileTx]=useState<BankTx|null>(null)
+ const [reconcileSearch,setReconcileSearch]=useState('')
  const uploadLock=useRef(false)
  const fileRef=useRef<HTMLInputElement|null>(null)
 
