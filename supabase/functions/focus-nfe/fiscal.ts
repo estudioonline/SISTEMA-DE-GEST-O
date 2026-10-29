@@ -1,6 +1,6 @@
 export const FOCUS_BASE='https://homologacao.focusnfe.com.br'
 export type Fields=Record<string,string>
-export type FiscalDraft=Record<string,never>
+export type FiscalDraft={modalidade_frete?:number|string;observacao_nfe?:string}
 export type SaleSource={venda:Record<string,unknown>;cliente:Record<string,unknown>|null;empresa:Record<string,unknown>|null;itens:{id:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;produto:Record<string,unknown>}[];source_hash:string;nota?:Record<string,unknown>|null}
 const digits=(v:unknown)=>String(v??'').replace(/\D/g,'')
 const required=(v:unknown,label:string)=>{const s=String(v??'').trim();if(!s)throw Error('Preencha '+label+'.');return s}
@@ -28,7 +28,7 @@ function fiscalExtra(value:unknown,label:string){
  }
  return extra
 }
-export function buildPayload(source:SaleSource,config:Fields,_draft:FiscalDraft={},now=new Date()):Record<string,unknown>{
+export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={},now=new Date()):Record<string,unknown>{
  const c=validateConfig(config),v=source.venda,client=source.cliente
  if(!['pedido','faturado'].includes(String(v.status)))throw Error('Confirme o pedido antes de emitir a NF-e de teste.')
  if(!client)throw Error('Vincule um cliente à venda.')
@@ -61,6 +61,11 @@ export function buildPayload(source:SaleSource,config:Fields,_draft:FiscalDraft=
  const gross=items.reduce((sum,i)=>sum+cash(i.valor_bruto),0),discount=items.reduce((sum,i)=>sum+cash(i.valor_desconto),0),total=cash(Number(v.total))
  if(total<=0||total!==gross-discount)throw Error('O total da venda diverge dos itens e descontos. Revise a venda antes de emitir.')
 
+ const freightMode=Number(draft.modalidade_frete??9)
+ if(![0,1,2,3,4,9].includes(freightMode))throw Error('Modalidade de frete inválida.')
+ const additionalInfo=String(draft.observacao_nfe??'').trim()
+ if(additionalInfo.length>5000)throw Error('A observação da NF-e deve ter no máximo 5000 caracteres.')
+
  const paymentMap:Record<string,string>={dinheiro:'01',cartao:'03',boleto:'15',pix:'20'}
  const fiscalPayment=paymentMap[String(v.forma_pagamento)]||'91'
  const payload:Record<string,unknown>={...c,
@@ -76,8 +81,9 @@ export function buildPayload(source:SaleSource,config:Fields,_draft:FiscalDraft=
   codigo_municipio_destinatario:code(client.codigo_municipio,/^\d{7}$/,'código IBGE no cadastro do cliente'),uf_destinatario:destUf,
   cep_destinatario:code(digits(client.cep),/^\d{8}$/,'CEP no cadastro do cliente'),
   indicador_inscricao_estadual_destinatario:indicadorIe,
-  modalidade_frete:9,valor_produtos:gross/100,valor_desconto:discount/100,valor_total:total/100,itens:items,
+  modalidade_frete:freightMode,valor_produtos:gross/100,valor_desconto:discount/100,valor_total:total/100,itens:items,
   formas_pagamento:[{forma_pagamento:fiscalPayment,indicador_pagamento:Number(v.parcelas)>1?1:0,valor_pagamento:total/100}]}
+ if(additionalInfo)payload.informacoes_adicionais_contribuinte=additionalInfo
  if(indicadorIe==='1')payload.inscricao_estadual_destinatario=required(client.inscricao_estadual,'inscrição estadual no cadastro do cliente')
  for(const item of items)for(const key of ['ipi_valor','icms_valor_st','ii_valor','icms_valor_desonerado'])if(Number((item as Record<string,unknown>)[key]||0)!==0)throw Error('Tributos que alteram o total da nota exigem revisão fiscal específica; este fluxo de teste mantém o total da venda.')
  return payload
