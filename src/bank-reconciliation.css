@@ -172,3 +172,7 @@
   .bankRecon .bankReconcileActions>div{width:100%}
   .bankRecon .bankReconcileActions>div button{flex:1}
 }
+
+.bankRecon .bankMoreDivider{height:1px;background:var(--bank-border);margin:4px 2px}
+.bankRecon .bankMoreMenu .bankDangerMenu{color:#DC2626}
+.dark .bankRecon .bankMoreMenu .bankDangerMenu{color:#FCA5A5}
