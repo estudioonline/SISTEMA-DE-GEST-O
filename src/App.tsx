@@ -24,6 +24,7 @@ import { AppLauncher } from './AppLauncher'
 import { EmployeeFinance } from './EmployeeFinance'
 import { BankReconciliation } from './BankReconciliation'
 import { DeliveryManagement } from './DeliveryManagement'
+import { useTheme } from './lib/useTheme'
 import type { EmployeeTitle } from './EmployeeFinance'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
 import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
@@ -111,7 +112,7 @@ function App(){
   currentSessionUser.current=session?.user.id??null
   const [loading,setLoading]=useState(true)
   const [active,setActive]=useState<ModuleKey>('dashboard')
-  const [dark,setDark]=useState(false)
+  const {dark,toggleTheme,preference,setPreference}=useTheme()
   const [showApps,setShowApps]=useState(true)
   const [permissionsReady,setPermissionsReady]=useState(false)
   const moduleHeading=useRef<HTMLHeadingElement>(null)
@@ -2162,7 +2163,7 @@ function App(){
     closeForms();setMsg('');setShowApps(false)
   }
 
-  return <div className={`app appsWorkspace${dark?' dark':''}${showApps?' launcherWorkspace':''}`}>
+  return <div className={`app appsWorkspace${dark?' dark':' light'}${showApps?' launcherWorkspace':''}`}>
     <header className="workspaceBar">
       <div className="workspaceIdentity">
         <div className="workspaceBrand"><span className="workspaceBrandMark">SG</span><div className="workspaceBrandText"><strong>{empresa?.nome_fantasia||'Sistema de Gestão'}</strong><small>ERP EMPRESARIAL</small></div></div>
@@ -2170,7 +2171,8 @@ function App(){
       </div>
       <div className="workspaceControls">
         <div className="workspaceAccount"><span title={session.user.email}>{session.user.email}</span><small>{profileLabel(profileRole)}</small></div>
-        <button type="button" className="workspaceIcon" onClick={()=>setDark(v=>!v)} title={dark?'Ativar modo claro':'Ativar modo escuro'} aria-label={dark?'Ativar modo claro':'Ativar modo escuro'}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
+        <button type="button" className="workspaceIcon" onClick={toggleTheme} title={dark?'Ativar modo claro':'Ativar modo escuro'} aria-label={dark?'Ativar modo claro':'Ativar modo escuro'}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
+        <select className="workspaceThemeSelect" aria-label="Tema de aparência" value={preference} onChange={e=>setPreference(e.target.value as 'system'|'light'|'dark')}><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></select>
         <button type="button" className="workspaceIcon" onClick={()=>void supabase.auth.signOut()} title="Sair" aria-label="Sair"><LogOut size={17}/></button>
       </div>
     </header>

@@ -1,0 +1,131 @@
+/* Theme tokens are local to reconciliation; the workspace chooses light/dark. */
+.bankRecon {
+  --bg-primary:#F4F6F9; --card-bg:#FFFFFF; --bank-border:#E2E8F0;
+  --bank-text:#1E293B; --bank-muted:#64748B; --bank-balance:#0F172A;
+  --bank-positive:#16A34A; --bank-negative:#B91C1C; --bank-primary:#2563EB;
+  --bank-secondary:#E2E8F0; --bank-secondary-text:#475569;
+  --bank-pending-bg:#FFEDD5; --bank-pending-text:#C2410C;
+  --bank-clear-bg:#DCFCE7; --bank-clear-text:#15803D;
+  --bank-line:#334155; --bank-drop-bg:#EFF6FF; --bank-drop-border:#2563EB;
+  --bank-soft:#F8FAFC; --bank-shadow:0 2px 8px rgba(0,0,0,.06);
+  color-scheme:light;
+  background:var(--bg-primary); color:var(--bank-text);
+  border-radius:16px; padding:20px; min-width:0;
+}
+.dark .bankRecon {
+  --bg-primary:#0F172A; --card-bg:#1E293B; --bank-border:#334155;
+  --bank-text:#F8FAFC; --bank-muted:#94A3B8; --bank-balance:#FFFFFF;
+  --bank-positive:#22C55E; --bank-negative:#FCA5A5; --bank-primary:#3B82F6;
+  --bank-secondary:rgba(147,51,234,.2); --bank-secondary-text:#D8B4FE;
+  --bank-pending-bg:#EA580C; --bank-pending-text:#FFFFFF;
+  --bank-clear-bg:rgba(22,163,74,.2); --bank-clear-text:#86EFAC;
+  --bank-line:#38BDF8; --bank-drop-bg:#1E3A8A; --bank-drop-border:#60A5FA;
+  --bank-soft:#0F172A; --bank-shadow:none;
+  color-scheme:dark;
+}
+.bankRecon *, .bankRecon *::before, .bankRecon *::after {box-sizing:border-box}
+.bankRecon .bankReconTop, .bankRecon .bankReconNav, .bankRecon .bankFilterBar,
+.bankRecon .bankMatchFooter, .bankRecon .bankConciled, .bankRecon .bankModalHead,
+.bankRecon .bankModalActions, .bankRecon .bankActions {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.bankRecon .bankReconTop {flex-wrap:wrap}
+.bankRecon .bankReconTop h3 {margin:4px 0 6px; font-size:22px; color:var(--bank-text); font-weight:800}
+.bankRecon .bankReconTop p, .bankRecon .bankReconTop>div>span,
+.bankRecon .bankReconNav, .bankRecon .bankUploadHint, .bankRecon .bankModal p {color:var(--bank-muted); font-size:12px}
+.bankRecon .bankReconTop p {margin:0; line-height:1.6}
+.bankRecon .bankReconTop>div>span {font-size:10px; letter-spacing:.1em; font-weight:800}
+.bankRecon button {cursor:pointer; font:inherit; font-size:12px; display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; border:1px solid var(--bank-border); border-radius:9px; padding:8px 12px; background:var(--card-bg); color:var(--bank-text)}
+.bankRecon button:disabled {cursor:wait; opacity:.55}
+.bankRecon button:focus-visible, .bankRecon input:focus-visible, .bankRecon select:focus-visible {outline:3px solid var(--bank-drop-border); outline-offset:3px}
+.bankRecon button:not(:disabled):hover {filter:brightness(.95)}
+.bankRecon .bankPrimary, .bankRecon .bankLoadButton {background:var(--bank-primary); color:#fff; border-color:var(--bank-primary); font-weight:700}
+.bankRecon .bankTransactionsButton {background:var(--bank-secondary); color:var(--bank-secondary-text); border-color:var(--bank-border); font-weight:700}
+.bankRecon .bankMessage {margin:12px 0; padding:12px; border:1px solid var(--bank-border); border-radius:10px; background:var(--card-bg); color:var(--bank-text); font-size:13px}
+.bankRecon .bankJournalGrid {display:grid; grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr)); gap:16px; margin-top:20px}
+.bankRecon .bankJournalCard {min-width:0; padding:20px; background:var(--card-bg); border:1px solid var(--bank-border); border-left:4px solid var(--bank-color,#64748B); border-radius:14px; box-shadow:var(--bank-shadow); transition:background-color .15s,border-color .15s}
+.bankRecon .bankJournalTop {display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px}
+.bankRecon .bankJournalIdentity {display:flex; align-items:center; gap:10px; min-width:0; flex:1 1 160px}
+.bankRecon .bankJournalIdentity>div {min-width:0}
+.bankRecon .bankJournalIdentity h4 {font-size:17px; line-height:1.3; margin:0 0 4px; color:var(--bank-text); overflow-wrap:anywhere}
+.bankRecon .bankJournalIdentity span:not(.bankLogo) {font-size:11px; color:var(--bank-muted); overflow-wrap:anywhere}
+.bankRecon .bankLogo {width:40px; height:40px; flex:0 0 40px; border-radius:9px; background:#fff; display:grid; place-items:center; color:var(--bank-color)}
+.bankRecon .bankLogo img {display:block; width:32px; height:32px; object-fit:contain}
+.bankRecon .bankPendingBadge {min-height:28px; padding:4px 8px; font-size:10px; line-height:1.3; border-radius:999px; background:var(--bank-clear-bg); color:var(--bank-clear-text); border-color:var(--bank-clear-text); white-space:nowrap}
+.bankRecon .bankPendingBadge.hasPending {background:var(--bank-pending-bg); color:var(--bank-pending-text); border-color:var(--bank-pending-text)}
+.bankRecon .bankJournalMetrics {display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:22px 0 12px}
+.bankRecon .bankJournalMetrics>div {display:grid; align-content:start; gap:6px; min-width:0}
+.bankRecon .bankJournalMetrics span {color:var(--bank-muted); font-size:11px}
+.bankRecon .bankJournalMetrics strong {font-size:24px; line-height:1.2; color:var(--bank-balance); font-weight:800; overflow-wrap:anywhere; font-variant-numeric:tabular-nums}
+.bankRecon .bankJournalMetrics strong.positive {color:var(--bank-positive)}
+.bankRecon .bankJournalMetrics b {color:var(--bank-text); font-size:16px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere}
+.bankRecon .bankTrend {min-height:80px; display:grid; align-content:center; gap:4px; color:var(--bank-muted)}
+.bankRecon .bankTrend>span {min-height:56px; display:grid; place-items:center; font-size:12px; border-bottom:1px dashed var(--bank-border)}
+.bankRecon .bankTrend small {color:var(--bank-muted); font-size:10px}
+.bankRecon .bankSpark {display:block; width:100%; height:56px; overflow:visible; color:var(--bank-line)}
+.bankRecon .bankSpark polyline {stroke:currentColor; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; fill:none; vector-effect:non-scaling-stroke}
+.dark .bankRecon .bankSpark polyline {filter:drop-shadow(0 0 3px #38bdf880)}
+.bankRecon .bankJournalActions {display:flex; flex-wrap:wrap; gap:8px; margin-top:18px}
+.bankRecon .bankJournalActions button {flex:1 1 120px; min-height:40px}
+.bankRecon .bankDropHint {display:block; color:var(--bank-muted); font-size:10px; text-align:center; margin-top:10px; line-height:1.4}
+.bankRecon .bankJournalCard.isDragging {background:var(--bank-drop-bg); outline:2px dashed var(--bank-drop-border); outline-offset:-2px; border-color:var(--bank-drop-border)}
+.bankRecon .bankEmpty {padding:32px 16px; display:grid; place-items:center; gap:10px; text-align:center; margin-top:16px; background:var(--card-bg); border:1px solid var(--bank-border); border-radius:14px; color:var(--bank-muted)}
+.bankRecon .bankEmpty strong {color:var(--bank-text)}
+.bankRecon .bankEmpty span {font-size:12px}
+.bankRecon .bankReconNav {justify-content:flex-start; flex-wrap:wrap; margin-bottom:12px}
+.bankRecon .bankReconTop.compact {margin-bottom:12px}
+.bankRecon .bankFilterBar {flex-wrap:wrap; padding:12px; margin:12px 0; background:var(--card-bg); border:1px solid var(--bank-border); border-radius:12px}
+.bankRecon .bankFilterBar label {display:flex; align-items:center; gap:8px; min-width:0; font-size:12px}
+.bankRecon input, .bankRecon select {max-width:100%; min-width:0; background:var(--card-bg); color:var(--bank-text); border:1px solid var(--bank-border); border-radius:8px; padding:8px; font:inherit; font-size:13px; color-scheme:inherit}
+.bankRecon .bankSearch {display:flex; align-items:center; gap:8px; flex:1 1 250px; min-width:0}
+.bankRecon .bankSearch input {width:100%}
+.bankRecon .bankTxList {display:grid; gap:10px}
+.bankRecon .bankTx {overflow:hidden; border:1px solid var(--bank-border); border-radius:12px; background:var(--card-bg)}
+.bankRecon .bankTxMain {display:grid; grid-template-columns:120px minmax(0,1fr) 150px 90px; gap:12px; align-items:center; padding:12px}
+.bankRecon .bankTxDate, .bankRecon .bankTxDesc {display:grid; gap:4px; overflow-wrap:anywhere}
+.bankRecon .bankTxMain strong {font-size:13px; color:var(--bank-text)}
+.bankRecon .bankTxMain span {font-size:11px; color:var(--bank-muted)}
+.bankRecon .bankTxAmount {text-align:right; font-variant-numeric:tabular-nums}
+.bankRecon .bankTx.credit .bankTxAmount {color:var(--bank-positive)}
+.bankRecon .bankTx.debit .bankTxAmount {color:var(--bank-negative)}
+.bankRecon .bankStatus {padding:4px 8px; border-radius:999px; text-align:center; background:var(--bank-secondary)}
+.bankRecon .bankStatus.conciliado {background:var(--bank-clear-bg); color:var(--bank-clear-text)}
+.bankRecon .bankStatus.pendente, .bankRecon .bankStatus.parcial {background:var(--bank-pending-bg); color:var(--bank-pending-text)}
+.bankRecon .bankMatchArea {padding:12px; border-top:1px solid var(--bank-border); background:var(--bank-soft)}
+.bankRecon .bankSuggestion {display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px; border-radius:9px; margin-bottom:8px; border:1px solid var(--bank-border)}
+.bankRecon .bankSuggestion>div {display:flex; align-items:center; gap:7px; flex-wrap:wrap; font-size:12px}
+.bankRecon .bankSuggestion.high {background:var(--bank-clear-bg); color:var(--bank-clear-text)}
+.bankRecon .bankSuggestion.partial {background:var(--bank-pending-bg); color:var(--bank-pending-text)}
+.bankRecon .bankSuggestion.low {background:var(--card-bg)}
+.bankRecon .bankNoMatch {display:flex; gap:7px; align-items:center; color:var(--bank-negative); font-size:12px}
+.bankRecon .bankCandidateList {display:grid; gap:6px; margin:10px 0}
+.bankRecon .bankCandidateList label {display:grid; grid-template-columns:auto minmax(0,1fr) auto 120px; gap:9px; align-items:center; padding:8px; border:1px solid var(--bank-border); border-radius:8px; font-size:12px}
+.bankRecon .bankCandidateList label>span {display:grid; overflow-wrap:anywhere}
+.bankRecon .bankCandidateList small {color:var(--bank-muted)}
+.bankRecon .bankAlloc {width:100%}
+.bankRecon .bankMatchFooter {border-top:1px solid var(--bank-border); padding-top:10px; flex-wrap:wrap; font-size:12px}
+.bankRecon .bankAdjust {display:flex; gap:8px; flex-wrap:wrap}
+.bankRecon .bankConciled {padding:10px 12px; border-top:1px solid var(--bank-border); color:var(--bank-clear-text); background:var(--bank-clear-bg); font-size:12px}
+.bankRecon .bankModalBackdrop {position:fixed; inset:0; z-index:6000; background:#020617bb; display:grid; place-items:center; padding:16px}
+.bankRecon .bankModal {width:min(640px,100%); max-height:calc(100dvh - 32px); overflow:auto; padding:20px; display:grid; gap:14px; color:var(--bank-text); background:var(--card-bg); border:1px solid var(--bank-border); border-radius:14px; box-shadow:var(--bank-shadow)}
+.bankRecon .bankModal label {display:grid; gap:6px; font-size:12px}
+.bankRecon .bankModalHead strong {color:var(--bank-text)}
+.bankRecon .bankFormGrid {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.bankRecon .bankUploadHint {display:flex; gap:8px; align-items:center}
+.bankRecon .bankClosedPeriods {margin-top:16px; padding:12px; border:1px solid var(--bank-border); border-radius:12px; background:var(--card-bg); display:grid; gap:8px; font-size:12px}
+.bankRecon .bankClosedPeriods>div {display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px; border:1px solid var(--bank-border); border-radius:8px; background:var(--bank-soft)}
+.bankRecon .bankClosedPeriods span {font-size:11px; color:var(--bank-muted)}
+.workspaceThemeSelect {max-width:92px; min-height:36px; border:1px solid #475569; border-radius:8px; padding:4px 6px; color:#f8fafc; background:#1e293b; font-size:12px; color-scheme:dark}
+@media(max-width:850px) {
+  .bankRecon .bankTxMain {grid-template-columns:1fr 1fr}
+  .bankRecon .bankCandidateList label {grid-template-columns:auto minmax(0,1fr) auto}
+  .bankRecon .bankAlloc {grid-column:2 / -1}
+}
+@media(max-width:420px) {
+  .bankRecon {padding:12px}
+  .bankRecon .bankJournalCard {padding:16px}
+  .bankRecon .bankJournalMetrics {grid-template-columns:1fr}
+  .bankRecon .bankFormGrid {grid-template-columns:1fr}
+  .workspaceThemeSelect {max-width:74px; font-size:11px}
+}
+@media(prefers-reduced-motion:reduce) {.bankRecon .bankJournalCard {transition:none}}
