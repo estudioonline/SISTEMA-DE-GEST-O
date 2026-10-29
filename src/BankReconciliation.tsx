@@ -7,6 +7,7 @@ type BankTx={id:string;diario_id:string;fitid:string;trntype:'CREDIT'|'DEBIT';va
 type Title={id:string;tipo:'receber'|'pagar';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:string;categoria:string|null;centro_custo:string|null;forma_pagamento:string|null;venda_id:string|null;compra_id:string|null}
 type Partner={nome:string;documento:string|null}
 type Suggestion={title:Title;score:number;reasons:string[]}
+type ClosedPeriod={id:string;inicio:string;fim:string;motivo:string;fechado_em:string;reaberto_em:string|null;reabertura_motivo:string|null}
 
 const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0)
 const dateBr=(v:string)=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR')}
@@ -69,11 +70,12 @@ function parseCsv(text:string){
  }).filter(x=>x.data&&Number.isFinite(x.valor)&&x.valor!==0)
 }
 
-export function BankReconciliation({titles,canEdit,onChanged}:{titles:Title[];canEdit:boolean;onChanged:()=>Promise<void>|void}){
+export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged}:{titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
  const [journals,setJournals]=useState<Journal[]>([])
  const [transactions,setTransactions]=useState<BankTx[]>([])
  const [clients,setClients]=useState<Partner[]>([])
  const [suppliers,setSuppliers]=useState<Partner[]>([])
+ const [closedPeriods,setClosedPeriods]=useState<ClosedPeriod[]>([])
  const [activeJournal,setActiveJournal]=useState<string|null>(null)
  const [screen,setScreen]=useState<'dashboard'|'matching'|'transactions'>('dashboard')
  const [search,setSearch]=useState('')
@@ -84,17 +86,19 @@ export function BankReconciliation({titles,canEdit,onChanged}:{titles:Title[];ca
  const [adjustValue,setAdjustValue]=useState('0')
  const [uploadOpen,setUploadOpen]=useState(false)
  const [newJournalOpen,setNewJournalOpen]=useState(false)
+ const [periodOpen,setPeriodOpen]=useState(false)
  const fileRef=useRef<HTMLInputElement|null>(null)
 
  const load=useCallback(async()=>{
-  const [j,t,c,s]=await Promise.all([
+  const [j,t,c,s,p]=await Promise.all([
    supabase.from('diarios_bancarios').select('*').eq('ativo',true).order('nome'),
    supabase.from('transacoes_bancarias').select('*').order('data_lancamento',{ascending:false}).order('criado_em',{ascending:false}).limit(5000),
    supabase.from('clientes').select('nome,documento').eq('ativo',true),
-   supabase.from('fornecedores').select('nome,documento').eq('ativo',true)
+   supabase.from('fornecedores').select('nome,documento').eq('ativo',true),
+   supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50)
   ])
-  if(j.error||t.error){setMessage((j.error||t.error)!.message);return}
-  setJournals((j.data||[]) as Journal[]);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[])
+  if(j.error||t.error||p.error){setMessage((j.error||t.error||p.error)!.message);return}
+  setJournals((j.data||[]) as Journal[]);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setClosedPeriods((p.data||[]) as ClosedPeriod[])
  },[])
  useEffect(()=>{void load()},[load])
 
@@ -120,6 +124,16 @@ export function BankReconciliation({titles,canEdit,onChanged}:{titles:Title[];ca
    if(/boleto/.test(hay)&&pay.includes('boleto'))score+=5
    return {title,score:Math.min(100,score),reasons}
   }).filter(x=>x.score>=20).sort((a,b)=>b.score-a.score).slice(0,8)
+ }
+
+ async function closePeriod(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();if(!canClosePeriods)return;setBusy(true);setMessage('')
+  try{const f=new FormData(e.currentTarget);const {error}=await supabase.rpc('fechar_periodo_financeiro',{p_inicio:f.get('inicio'),p_fim:f.get('fim'),p_motivo:f.get('motivo')});if(error)throw error;setPeriodOpen(false);setMessage('Período financeiro encerrado.');await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function reopenPeriod(id:string){
+  if(!canClosePeriods)return;const motivo=window.prompt('Justificativa para reabrir o período:');if(!motivo)return
+  setBusy(true);setMessage('')
+  try{const {error}=await supabase.rpc('reabrir_periodo_financeiro',{p_id:id,p_motivo:motivo});if(error)throw error;setMessage('Período financeiro reaberto.');await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
 
  async function createJournal(e:React.FormEvent<HTMLFormElement>){
@@ -175,7 +189,7 @@ export function BankReconciliation({titles,canEdit,onChanged}:{titles:Title[];ca
  }
 
  if(screen==='dashboard')return <section className="bankRecon bankReconDark">
-  <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div>{canEdit&&<button className="bankPrimary" onClick={()=>setNewJournalOpen(true)}><Plus size={15}/>Novo diário</button>}</div>
+  <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div><div className="bankActions">{canClosePeriods&&<button onClick={()=>setPeriodOpen(true)}>Fechar período</button>}{canEdit&&<button className="bankPrimary" onClick={()=>setNewJournalOpen(true)}><Plus size={15}/>Novo diário</button>}</div></div>
   {message&&<div className="bankMessage">{message}</div>}
   {journals.length===0&&<div className="bankEmpty"><Landmark size={30}/><strong>Nenhum diário bancário cadastrado</strong><span>Cadastre uma conta para começar a importar OFX.</span></div>}
   <div className="bankJournalGrid">{journals.map(j=>{
@@ -187,7 +201,9 @@ export function BankReconciliation({titles,canEdit,onChanged}:{titles:Title[];ca
     <div className="bankJournalActions"><button onClick={()=>openJournal(j.id,'transactions')}>Transações</button><button onClick={()=>openJournal(j.id,'matching')}><Link2 size={14}/>Conciliar</button></div>
    </article>
   })}</div>
+  {canClosePeriods&&closedPeriods.length>0&&<div className="bankClosedPeriods"><strong>Períodos financeiros</strong>{closedPeriods.slice(0,6).map(p=><div key={p.id}><span>{dateBr(p.inicio)} a {dateBr(p.fim)} · {p.reaberto_em?'Reaberto':'Fechado'}</span>{!p.reaberto_em&&<button disabled={busy} onClick={()=>void reopenPeriod(p.id)}>Reabrir</button>}</div>)}</div>}
   {newJournalOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createJournal}><div className="bankModalHead"><strong>Novo diário bancário</strong><button type="button" onClick={()=>setNewJournalOpen(false)}><XCircle size={18}/></button></div><label>Nome<input name="nome" required placeholder="Ex.: Itaú Supremion"/></label><div className="bankFormGrid"><label>Banco<input name="banco"/></label><label>Agência<input name="agencia"/></label><label>Conta<input name="conta"/></label><label>Saldo inicial<input name="saldo" type="number" step="0.01" defaultValue="0"/></label></div><div className="bankModalActions"><button type="button" onClick={()=>setNewJournalOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Criar diário</button></div></form></div>}
+  {periodOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={closePeriod}><div className="bankModalHead"><strong>Encerrar período financeiro</strong><button type="button" onClick={()=>setPeriodOpen(false)}><XCircle size={18}/></button></div><p>Importações, conciliações e reversões dentro deste período ficarão bloqueadas.</p><div className="bankFormGrid"><label>Início<input name="inicio" type="date" required/></label><label>Fim<input name="fim" type="date" required/></label></div><label>Justificativa<input name="motivo" minLength={5} required/></label><div className="bankModalActions"><button type="button" onClick={()=>setPeriodOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Encerrar período</button></div></form></div>}
  </section>
 
  return <section className="bankRecon bankReconDark">
