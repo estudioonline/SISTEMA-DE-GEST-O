@@ -452,7 +452,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       </div>
       {(tx.parceiro_nome||tx.conta_categoria)&&<div className="bankTxMeta">{tx.parceiro_nome&&<span>Parceiro: <strong>{tx.parceiro_nome}</strong></span>}{tx.conta_categoria&&<span>Conta: <strong>{tx.conta_categoria}</strong></span>}</div>}
     </div>}
-    {tx.status==='conciliado'&&<div className="bankConciled"><CheckCircle2 size={15}/><span>Conciliado</span>{canEdit&&<button disabled={busy} onClick={()=>void undo(tx)}><Undo2 size={14}/>Desfazer</button>}</div>}
+    {tx.status==='conciliado'&&canEdit&&<button className="bankUndoCompact" disabled={busy} onClick={()=>void undo(tx)}><Undo2 size={13}/>Desfazer</button>}
    </article>
   })}</div>
   {visible.length===0&&<div className="bankEmpty"><WalletCards size={30}/><strong>Nenhuma transação encontrada</strong><span>Carregue um arquivo OFX, QFX ou CSV para este diário.</span></div>}
