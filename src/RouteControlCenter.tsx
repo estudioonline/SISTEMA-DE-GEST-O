@@ -78,7 +78,12 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
   useEffect(()=>{void load()},[load])
 
   const dayRoutes=useMemo(()=>routes.filter(r=>r.data_rota===day&&r.status!=='cancelada'),[routes,day])
-  const displayedRoutes=useMemo(()=>tab==='montagem'?dayRoutes.filter(r=>r.status==='montagem'):tab==='rota'?dayRoutes.filter(r=>r.status==='liberada'):routes.filter(r=>r.status==='concluida'||r.status==='cancelada'),[tab,dayRoutes,routes])
+  const displayedRoutes=useMemo(()=>tab==='montagem'
+    ? dayRoutes.filter(r=>r.status==='montagem')
+    : tab==='rota'
+      ? routes.filter(r=>r.status==='liberada')
+      : routes.filter(r=>r.status==='concluida'||r.status==='cancelada')
+  ,[tab,dayRoutes,routes])
   const selectedRoute=displayedRoutes.find(r=>r.id===selectedRouteId)||displayedRoutes[0]||null
   const stops=useMemo(()=>selectedRoute?deliveries.filter(d=>d.rota_logistica_id===selectedRoute.id).sort((a,b)=>Number(a.ordem_rota||9999)-Number(b.ordem_rota||9999)):[],[selectedRoute,deliveries])
   const selectedVehicle=vehicles.find(v=>v.id===selectedRoute?.veiculo_id)
@@ -217,7 +222,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
     <div className="routeCenterBody">
       <aside className="routeCenterSidebar">
         {tab==='montagem'&&canEdit&&<div className="routeQuickCreate"><strong>Nova rota</strong><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Nome da rota"/><select value={newDriverId} onChange={e=>setNewDriverId(e.target.value)}><option value="">Motorista</option>{drivers.filter(d=>d.ativo).map(d=><option key={d.id} value={d.id}>{d.nome}</option>)}</select><select value={newVehicleId} onChange={e=>setNewVehicleId(e.target.value)}><option value="">Veículo</option>{vehicles.filter(v=>v.ativo).map(v=><option key={v.id} value={v.id}>{v.descricao}{v.placa?' - '+v.placa:''}</option>)}</select><button disabled={!newName.trim()||busy} onClick={()=>void createRoute()}><Plus size={15}/>Criar rota</button></div>}
-        <div className="routeCenterList">{displayedRoutes.map(r=>{const count=deliveries.filter(d=>d.rota_logistica_id===r.id).length;return <button key={r.id} className={selectedRoute?.id===r.id?'active':''} onClick={()=>setSelectedRouteId(r.id)}><div><strong>{r.nome}</strong><span>{r.motorista||'Sem motorista'} · {r.veiculo||'Sem veículo'}</span></div><em>{count}</em></button>})}{!displayedRoutes.length&&<div className="routePlanEmpty">Nenhuma rota nesta visão.</div>}</div>
+        <div className="routeCenterList">{displayedRoutes.map(r=>{const count=deliveries.filter(d=>d.rota_logistica_id===r.id).length;return <button key={r.id} className={selectedRoute?.id===r.id?'active':''} onClick={()=>setSelectedRouteId(r.id)}><div><strong>{r.nome}</strong><span>{r.motorista||'Sem motorista'} · {r.veiculo||'Sem veículo'}</span><small>{tab==='rota'&&r.data_rota!==day?'Iniciada em '+new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR'):new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR')}</small></div><em>{count}</em></button>})}{!displayedRoutes.length&&<div className="routePlanEmpty">Nenhuma rota nesta visão.</div>}</div>
       </aside>
 
       <div className="routeCenterWorkspace">
