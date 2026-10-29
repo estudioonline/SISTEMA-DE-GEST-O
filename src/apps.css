@@ -70,3 +70,14 @@
   line-height:1;
   box-shadow:0 4px 10px rgba(15,23,42,.18);
 }
+
+.workspaceAccountMenu{position:relative}
+.workspaceAccountButton{border:0;background:transparent;color:inherit;cursor:pointer;padding:4px 6px;border-radius:8px;grid-template-columns:1fr auto;align-items:center;column-gap:7px}
+.workspaceAccountButton span,.workspaceAccountButton small{grid-column:1;text-align:right}
+.workspaceAccountButton svg{grid-column:2;grid-row:1/3;color:#94a3b8}
+.workspaceAccountButton:hover{background:#1c2940}
+.workspaceAccountDropdown{position:absolute;right:0;top:calc(100% + 9px);z-index:1000;min-width:210px;padding:7px;border:1px solid #334155;border-radius:12px;background:#111827;box-shadow:0 14px 40px rgba(0,0,0,.3)}
+.workspaceAccountDropdown button{width:100%;display:flex;align-items:center;gap:10px;border:0;border-radius:8px;background:transparent;color:#e5e7eb;padding:10px 11px;cursor:pointer;text-align:left;font-size:12px}
+.workspaceAccountDropdown button:hover{background:#1f2937}
+.workspaceAccountDropdown button:disabled{opacity:.55;cursor:default}
+@media(max-width:1000px){.workspaceAccountMenu{display:block}.workspaceAccountButton span,.workspaceAccountButton small{display:none}.workspaceAccountButton{display:grid;place-items:center;width:40px;height:40px;padding:0}.workspaceAccountButton svg{grid-column:1;grid-row:1}.workspaceAccountDropdown{right:0}}
