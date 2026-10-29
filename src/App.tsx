@@ -3117,7 +3117,7 @@ function App(){
           </article>
         </>}
 
-        {financeSubtab!=='geral'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&<div className="panel financeFilterPanel">
+        {financeSubtab!=='geral'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='conciliacao'&&<div className="panel financeFilterPanel">
           <div className="financeQuickRanges">
             <span>Período</span>
             <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('hoje')}>Hoje</button>
