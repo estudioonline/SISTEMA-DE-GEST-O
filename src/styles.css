@@ -4324,3 +4324,93 @@
 .financeReportBar span{font-size:11px;color:var(--ds-muted)}
 .financeReportBar.compact{padding:10px 12px}
 @media(max-width:700px){.financeReportBar{align-items:stretch;flex-direction:column}.financeReportBar button{width:100%;justify-content:center}}
+
+
+/* Histórico compacto de vendas, inspirado em timeline de ERP */
+.compactHistoryEvent{margin:0}
+.compactHistoryCard{
+  padding:8px 10px;
+  gap:5px;
+  border-radius:8px;
+}
+.compactHistoryMeta{
+  align-items:center;
+  gap:8px;
+}
+.compactHistoryMeta>div{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+}
+.compactHistoryMeta strong{
+  font-size:10.5px;
+  white-space:nowrap;
+}
+.compactHistoryMeta span{
+  font-size:10px;
+  color:var(--ds-muted);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.compactHistoryMeta time{
+  margin-left:auto;
+  font-size:9px;
+  color:var(--ds-muted);
+  white-space:nowrap;
+}
+.saleHistoryInlineChanges{
+  display:grid;
+  gap:2px;
+  padding-left:1px;
+}
+.saleHistoryInlineChanges>div{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  min-width:0;
+}
+.saleHistoryInlineChanges span{
+  min-width:92px;
+  font-size:9px;
+  color:var(--ds-muted);
+}
+.saleHistoryInlineChanges strong{
+  font-size:10px;
+  font-weight:600;
+  overflow-wrap:anywhere;
+}
+.saleHistoryInlineChanges strong>b{
+  color:var(--ds-blue);
+}
+.saleHistoryTechnical{
+  margin-top:2px;
+  font-size:9px;
+  color:var(--ds-muted);
+}
+.saleHistoryTechnical summary{
+  cursor:pointer;
+  width:max-content;
+  color:var(--ds-blue);
+}
+.saleHistoryTechnical pre{
+  max-height:180px;
+  overflow:auto;
+  white-space:pre-wrap;
+  word-break:break-word;
+  padding:7px;
+  border:1px solid var(--ds-border);
+  border-radius:7px;
+  background:var(--ds-bg);
+  font-size:8.5px;
+}
+.saleHistoryTimeline{
+  gap:6px;
+}
+.saleHistoryDot{
+  top:11px;
+  width:8px;
+  height:8px;
+  left:-16px;
+}
