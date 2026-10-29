@@ -37,6 +37,7 @@ export type InvoiceCompany = {
 
 export type InvoiceData = {
   id: string
+  venda_numero?: number | null
   fatura_numero?: number | null
   created_at: string
   status: string
@@ -177,7 +178,7 @@ function drawBrandHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(18)
-  doc.text(`Pedido nº ${invoiceNo(data.fatura_numero)}`,196,52,{align:'right'})
+  doc.text(`Pedido nº ${invoiceNo(data.venda_numero)}`,196,52,{align:'right'})
 }
 
 function drawCustomer(doc:jsPDF,data:InvoiceData){
@@ -249,7 +250,7 @@ function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(12)
-  doc.text(`Pedido nº ${invoiceNo(data.fatura_numero)} - continuação`,196,16,{align:'right'})
+  doc.text(`Pedido nº ${invoiceNo(data.venda_numero)} - continuação`,196,16,{align:'right'})
 }
 
 function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
@@ -412,7 +413,7 @@ function addFooters(doc:jsPDF,data:InvoiceData){
 function buildInvoiceDocument(data:InvoiceData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
-    title:`Pedido ${invoiceNo(data.fatura_numero)}`,
+    title:`Pedido ${invoiceNo(data.venda_numero)}`,
     subject:'Pedido / venda',
     author:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
   })
@@ -428,7 +429,7 @@ function buildInvoiceDocument(data:InvoiceData){
 
 export function generateInvoicePdf(data:InvoiceData){
   const doc=buildInvoiceDocument(data)
-  doc.save(`${safeFilePart(data.cliente?.nome||'consumidor')}-${invoiceNo(data.fatura_numero)}.pdf`)
+  doc.save(`${safeFilePart(data.cliente?.nome||'consumidor')}-${invoiceNo(data.venda_numero)}.pdf`)
 }
 
 export function openInvoicePdfForPrint(data:InvoiceData){
