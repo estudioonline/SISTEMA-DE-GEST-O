@@ -2366,7 +2366,7 @@ function App(){
           {active==='compras'&&canManagePurchases&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&canManageClients)||(active==='fornecedores'&&canManageSuppliers)||(active==='compras'&&canManagePurchases))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
           {canManageProducts&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
-          {canManageFinance&&active==='financeiro'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
+          {canManageFinance&&active==='financeiro'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='faturamento'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {canManageCommissions&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
@@ -3330,6 +3330,7 @@ function App(){
           <button className={financeSubtab==='pagar'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('pagar');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><WalletCards size={16}/>Contas a pagar <span className="subTabCount neutralCount">{openPayableCount}</span></button>
           <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount neutralCount">{openReceivableCount}</span></button>
           <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
+          <button className={financeSubtab==='faturamento'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('faturamento');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Faturamento de vendas <span className="subTabCount neutralCount">{billingCounts.naoFaturado}</span></button>
           <button className={financeSubtab==='funcionarios'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('funcionarios');closeForms()}}><Users size={16}/>Funcionários</button>
           <button className={financeSubtab==='vales'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('vales');closeForms()}}><WalletCards size={16}/>Vale</button>
           <button className={financeSubtab==='conciliacao'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('conciliacao');closeForms()}}><Building2 size={16}/>Diários e Conciliação</button>
@@ -3390,7 +3391,7 @@ function App(){
           </article>
         </>}
 
-        {financeSubtab!=='geral'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='conciliacao'&&<div className="panel financeFilterPanel">
+        {financeSubtab!=='geral'&&financeSubtab!=='faturamento'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='conciliacao'&&<div className="panel financeFilterPanel">
           <div className="financeQuickRanges">
             <span>Período</span>
             <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('hoje')}>Hoje</button>
@@ -3420,6 +3421,65 @@ function App(){
           </div>
         </>}
 
+        {financeSubtab==='faturamento'&&<div className="billingSalesPage">
+          <div className="billingSalesHead">
+            <div><h2>Faturamento de vendas</h2><p>Somente vendas aprovadas. O Financeiro define vencimentos e gera os títulos em Contas a Receber.</p></div>
+            <button type="button" className="ghost" onClick={()=>void refreshFinance()}><RefreshCw size={15}/>Atualizar</button>
+          </div>
+          <div className="billingInfoBanner"><ReceiptText size={18}/><span>O vendedor indica a forma de pagamento e a quantidade de parcelas. O Financeiro organiza datas, valores e efetiva o faturamento.</span></div>
+          <div className="billingStatusTabs">
+            <button className={billingStatusFilter==='todos'?'active':''} onClick={()=>setBillingStatusFilter('todos')}>Todos <b>{billingCounts.todos}</b></button>
+            <button className={billingStatusFilter==='nao-faturado'?'active':''} onClick={()=>setBillingStatusFilter('nao-faturado')}>Não faturado <b>{billingCounts.naoFaturado}</b></button>
+            <button className={billingStatusFilter==='faturado'?'active':''} onClick={()=>setBillingStatusFilter('faturado')}>Faturado <b>{billingCounts.faturado}</b></button>
+            <button className={billingStatusFilter==='cancelado'?'active':''} onClick={()=>setBillingStatusFilter('cancelado')}>Cancelado <b>{billingCounts.cancelado}</b></button>
+          </div>
+          <div className="billingSearch"><Search size={16}/><input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Buscar por documento, cliente, vendedor..."/></div>
+          <div className="tableWrap"><table className="billingSalesTable">
+            <thead><tr><th>Documento</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status venda</th><th>Indicação pagamento</th><th>Status da fatura</th><th>Status pagto</th><th>Total</th><th>Ações</th></tr></thead>
+            <tbody>
+              {billingSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message="Nenhuma venda aprovada encontrada com estes filtros."/></td></tr>}
+              {billingSales.map(v=>{
+                const client=clientes.find(c=>c.id===v.cliente_id)?.nome||'Consumidor'
+                const seller=vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||'—'
+                const invoiceState=saleInvoiceStatus(v)
+                const paymentState=salePaymentStatus(v)
+                const activeInvoice=activeInvoiceForSale(v.id)
+                return <tr key={v.id}>
+                  <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
+                  <td>{dateBr(v.created_at)}</td>
+                  <td>{client}</td>
+                  <td>{seller}</td>
+                  <td><span className={'salesStatus salesStatus-'+v.status}>{saleStatusDisplay(v)}</span></td>
+                  <td>{paymentLabel(v.forma_pagamento)}{Number(v.parcelas)>1?' • '+v.parcelas+'x':''}</td>
+                  <td><span className={'billingInvoiceBadge billingInvoice-'+invoiceState.key}>{invoiceState.label}</span></td>
+                  <td><span className={'salesPaymentStatus salesPaymentStatus-'+paymentState.key}>{paymentState.label}</span></td>
+                  <td><strong>{money(Number(v.total))}</strong></td>
+                  <td><div className="billingRowActions">
+                    {invoiceState.key==='nao-faturado'&&canManageFinance&&<button className="primary" onClick={()=>openBillingSale(v)}>Criar fatura</button>}
+                    {activeInvoice&&<button className="ghost" onClick={()=>openSaleFinancialStatement(v)}>Ver fatura</button>}
+                    {activeInvoice&&canManageFinance&&<button className="warningBtn" disabled={billingBusy} onClick={()=>void cancelSaleInvoice(v)}>Cancelar</button>}
+                    {invoiceState.key==='cancelado'&&canManageFinance&&['pedido','faturado'].includes(v.status)&&<button className="primary" onClick={()=>openBillingSale(v)}>Refaturar</button>}
+                  </div></td>
+                </tr>
+              })}
+            </tbody>
+          </table></div>
+        </div>}
+
+        {billingSale&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label="Criar fatura da venda"><div className="saleModalShell billingModalShell"><form className="panel billingInvoiceForm" onSubmit={createSaleInvoice}>
+          <div className="formTitle saleModalTitle"><div><h3>Criar fatura — Venda #{invoiceNo(billingSale.fatura_numero)}</h3><p>Organize as parcelas antes de gerar o Contas a Receber.</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>{setBillingSale(null);setBillingLines([])}}><X size={18}/></button></div>
+          <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>Total da venda</span><strong>{money(Number(billingSale.total))}</strong></div><div><span>Indicação do vendedor</span><strong>{paymentLabel(billingSale.forma_pagamento)} • {billingSale.parcelas}x</strong></div></div>
+          <div className="billingInvoiceControls">
+            <label>Forma de pagamento<select value={billingPayment} onChange={e=>setBillingPayment(e.target.value as PaymentMethod)}><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label>
+            <label>Número de parcelas<select value={billingLines.length} onChange={e=>resizeBillingLines(Number(e.target.value))}>{Array.from({length:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}</select></label>
+          </div>
+          <div className="billingLines">
+            <div className="billingLinesHead"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>
+            {billingLines.map((line,index)=><div className="billingLine" key={line.key}><strong>{index+1}/{billingLines.length}</strong><input type="date" value={line.vencimento} onChange={e=>updateBillingLine(line.key,'vencimento',e.target.value)} required/><input type="number" min="0.01" step="0.01" value={line.valor} onChange={e=>updateBillingLine(line.key,'valor',e.target.value)} required/></div>)}
+          </div>
+          <div className="billingInvoiceTotal"><span>Soma das parcelas</span><strong>{money(billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0))}</strong></div>
+          <div className="formActions"><button type="button" className="ghost" onClick={()=>{setBillingSale(null);setBillingLines([])}}>Cancelar</button><button className="primary" disabled={billingBusy}>{billingBusy?'Gerando...':'Salvar fatura e gerar lançamentos'}</button></div>
+        </form></div></div>}
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
         {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<><div className="financeReportBar compact"><div><strong>{financeSubtab==='funcionarios'?'Relatório de funcionários':'Relatório de vales'}</strong><span>Exporta os lançamentos desta área em PDF.</span></div><button type="button" className="ghost" onClick={()=>void downloadFinancePdf(financeSubtab)}><FileDown size={15}/>PDF</button></div><EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/></>}
