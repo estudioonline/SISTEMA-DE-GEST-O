@@ -15,6 +15,9 @@ import { buildStatement } from './lib/entityStatement'
 import type { StatementKind, StatementWire } from './lib/entityStatement'
 import { readAllRows } from './lib/readAllRows'
 import { readSettings } from './lib/erpSettings'
+import { titlesForSale, validateBilling } from './lib/billing'
+import { sessionExpired } from './lib/sessionPolicy'
+import { IntegrationSettings } from './IntegrationSettings'
 import { AuthorizationCenter } from './AuthorizationCenter'
 import { PaymentHistory } from './PaymentHistory'
 import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
@@ -26,7 +29,7 @@ import { BankReconciliation } from './BankReconciliation'
 import { DeliveryManagement } from './DeliveryManagement'
 import { useTheme } from './lib/useTheme'
 import type { EmployeeTitle } from './EmployeeFinance'
-import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
+import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules, emptyPermissions, parseEffectivePermissions } from './lib/permissions'
 import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
 
 type ModuleKey=PermissionModule
@@ -47,16 +50,16 @@ type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitari
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
-type Titulo=EmployeeTitle&{id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string}
+type Titulo=EmployeeTitle&{id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string;fatura_venda_id?:string|null}
 type SaleApproval={id:string;entidade_id:string|null;status:string;solicitado_em:string;payload:Record<string,unknown>|null}
 type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:number}
 type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
 type FaturaVenda={id:string;numero:number;venda_id:string;status:'ativa'|'cancelada';forma_pagamento:string;parcelas:number;valor_total:number;criada_em:string;criada_por:string|null;cancelada_em:string|null;cancelada_por:string|null;motivo_cancelamento:string|null}
 type FaturaVendaItem={fatura_id:string;venda_id:string;valor_venda:number}
 type InvoiceDraftLine={key:string;vencimento:string;valor:number}
-type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
+type EmpresaConfig={id:number;updated_at?:string;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
-type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean;permissoes:PermissionMap}
+type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean;permissoes:PermissionMap;availablePermissions:PermissionModule[]}
 type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
 type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string}
 type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number;referencia:string|null;created_at:string}
@@ -126,9 +129,15 @@ function App(){
   const [installPrompt,setInstallPrompt]=useState<BeforeInstallPromptEvent|null>(null)
   const [appInstalled,setAppInstalled]=useState(false)
   const [permissionsReady,setPermissionsReady]=useState(false)
+  const [accessError,setAccessError]=useState('')
+  const [loginBusy,setLoginBusy]=useState(false)
+  const [savingCompany,setSavingCompany]=useState(false)
+  const [configSection,setConfigSection]=useState<'empresa'|'usuarios'|'integracoes'|'financeiro'>('empresa')
+  const dataLoadSequence=useRef(0)
+  const accessSignature=useRef('')
   const moduleHeading=useRef<HTMLHeadingElement>(null)
   const [profileRole,setProfileRole]=useState<PerfilRole>('visualizador')
-  const [userPermissions,setUserPermissions]=useState<PermissionMap>(()=>defaultPermissionsForRole('visualizador'))
+  const [userPermissions,setUserPermissions]=useState<PermissionMap>(emptyPermissions)
   const [msg,setMsg]=useState('')
   const [saleNotice,setSaleNotice]=useState('')
   useEffect(()=>{
@@ -254,6 +263,8 @@ function App(){
   const [faturaVendaItens,setFaturaVendaItens]=useState<FaturaVendaItem[]>([])
   const [billingSelectedSales,setBillingSelectedSales]=useState<string[]>([])
   const [billingSale,setBillingSale]=useState<Venda|null>(null)
+  const [billingInvoiceSaleIds,setBillingInvoiceSaleIds]=useState<string[]>([])
+  const [billingError,setBillingError]=useState('')
   const [billingPayment,setBillingPayment]=useState<PaymentMethod>('pix')
   const [billingLines,setBillingLines]=useState<InvoiceDraftLine[]>([])
   const [billingStatusFilter,setBillingStatusFilter]=useState<'todos'|'nao-faturado'|'faturado'|'cancelado'>('todos')
@@ -286,7 +297,7 @@ function App(){
   const canManageCommissions=canEditModule('comissoes')
   const canViewAuthorizations=canViewModule('autorizacoes')
   const canManageAuthorizations=canEditModule('autorizacoes')
-  const canManageConfig=canEditModule('config')
+  const canManageConfig=isAdmin&&canEditModule('config')
   const visibleMenu=menu.filter(([k])=>canViewModule(k))
 
   useEffect(()=>{if(!showApps)moduleHeading.current?.focus()},[showApps,active])
@@ -309,7 +320,7 @@ function App(){
 
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
-    supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false)})
+    supabase.auth.getSession().then(({data,error})=>{if(error)setMsg('Não foi possível recuperar a sessão. Entre novamente.');setSession(data.session);setLoading(false)}).catch(()=>{setMsg('Não foi possível recuperar a sessão.');setLoading(false)})
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s))
     return ()=>subscription.unsubscribe()
   },[])
@@ -401,7 +412,7 @@ function App(){
   },[session?.user.id,permissionsReady])
 
   useEffect(()=>{
-    setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');setShowApps(true);setPermissionsReady(false);closeForms()
+    setProfileRole('visualizador');setUserPermissions(emptyPermissions());setActive('dashboard');setShowApps(true);setPermissionsReady(false);setAccessError('');accessSignature.current='';dataLoadSequence.current++;closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setComissoes([])
     setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setFaturasVendas([]);setFaturaVendaItens([]);setBillingSelectedSales([]);setBillingSale(null);setEmail('');setPassword('')
@@ -441,20 +452,81 @@ function App(){
 
   useEffect(()=>{
     if(!session)return
-    const minutes=Math.max(5,Number(empresa?.sessao_inatividade_minutos||30))
-    let timer=window.setTimeout(async()=>{setMsg('Sessão encerrada por inatividade.');await supabase.auth.signOut()},minutes*60*1000)
-    const reset=()=>{
-      window.clearTimeout(timer)
-      timer=window.setTimeout(async()=>{setMsg('Sessão encerrada por inatividade.');await supabase.auth.signOut()},minutes*60*1000)
+    const key=`sg-erp-activity:${session.user.id}`
+    let lastActivity=Date.now()
+    try{lastActivity=Number(sessionStorage.getItem(key)||Date.now())}catch{/* mantém o controle em memória */}
+    const storeActivity=(value:string|null)=>{try{if(value===null)sessionStorage.removeItem(key);else sessionStorage.setItem(key,value)}catch{/* memória continua sendo verificada */}}
+    let expiring=false
+    const expire=()=>{
+      if(expiring)return
+      expiring=true;setPermissionsReady(false);setUserPermissions(emptyPermissions());closeForms()
+      setMsg('Sessão encerrada por inatividade. Entre novamente para continuar.')
+      storeActivity(null)
+      void supabase.auth.signOut({scope:'local'}).finally(()=>setSession(null))
     }
+    const check=()=>{if(sessionExpired(lastActivity,Date.now(),empresa?.sessao_inatividade_minutos))expire()}
+    const activity=()=>{
+      if(sessionExpired(lastActivity,Date.now(),empresa?.sessao_inatividade_minutos)){expire();return}
+      lastActivity=Date.now();storeActivity(String(lastActivity))
+    }
+    storeActivity(String(lastActivity));check()
+    const timer=window.setInterval(check,1000)
     const events=['pointerdown','keydown','scroll','touchstart'] as const
-    events.forEach(ev=>window.addEventListener(ev,reset,{passive:true}))
-    return ()=>{window.clearTimeout(timer);events.forEach(ev=>window.removeEventListener(ev,reset))}
-  },[session,empresa?.sessao_inatividade_minutos])
+    events.forEach(ev=>window.addEventListener(ev,activity,{passive:true}))
+    window.addEventListener('focus',check)
+    document.addEventListener('visibilitychange',check)
+    return ()=>{window.clearInterval(timer);events.forEach(ev=>window.removeEventListener(ev,activity));window.removeEventListener('focus',check);document.removeEventListener('visibilitychange',check)}
+  },[session?.user.id,empresa?.sessao_inatividade_minutos])
+
+  useEffect(()=>{
+    if(!session)return
+    let cancelled=false,running=false
+    const verify=async()=>{
+      if(document.visibilityState!=='visible'||running)return
+      running=true
+      const sequence=dataLoadSequence.current
+      try{
+        const access=await fetchAccess(session.user.id)
+        if(cancelled||currentSessionUser.current!==session.user.id||sequence!==dataLoadSequence.current)return
+        if(JSON.stringify(access)!==accessSignature.current){setPermissionsReady(false);closeForms();await loadData()}
+      }catch(error){if(!cancelled&&sequence===dataLoadSequence.current)blockAccess(error)}
+      finally{running=false}
+    }
+    const timer=window.setInterval(()=>void verify(),30000)
+    const onFocus=()=>void verify()
+    window.addEventListener('focus',onFocus)
+    document.addEventListener('visibilitychange',onFocus)
+    return()=>{cancelled=true;window.clearInterval(timer);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onFocus)}
+  },[session?.user.id])
+
+  async function fetchAccess(userId:string){
+    const [profile,permissions]=await Promise.all([
+      supabase.from('profiles').select('perfil,ativo').eq('id',userId).maybeSingle(),
+      supabase.rpc('minhas_permissoes_erp')
+    ])
+    if(profile.error||permissions.error)throw new Error('Não foi possível validar seus acessos. Tente novamente.')
+    if(!profile.data?.ativo||!['administrador','financeiro','vendas','estoque','visualizador'].includes(profile.data.perfil))throw new Error('Acesso não liberado. Procure um administrador do sistema.')
+    return {role:profile.data.perfil as PerfilRole,permissions:parseEffectivePermissions(permissions.data)}
+  }
+  function blockAccess(error:unknown){
+    dataLoadSequence.current++
+    setPermissionsReady(false);setUserPermissions(emptyPermissions());closeForms()
+    setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setSaleApprovals([]);setFaturasVendas([]);setFaturaVendaItens([]);setManagedUsers([]);setFinancePayments([]);setFinanceReversals([]);setComissoes([])
+    setAccessError(error instanceof Error?error.message:'Não foi possível validar seus acessos.')
+  }
 
   async function loadData(){
     if(!session)return
-    const [c,f,p,v,cp,t,ec,pr,vd,cv,me,sa,pm]=await Promise.all([
+    const sequence=++dataLoadSequence.current
+    const userId=session.user.id
+    try{
+    const access=await fetchAccess(userId)
+    if(currentSessionUser.current!==userId||sequence!==dataLoadSequence.current)return
+    const signature=JSON.stringify(access)
+    if(accessSignature.current&&accessSignature.current!==signature){setPermissionsReady(false);closeForms();setMsg('Seus acessos foram atualizados. Revise a operação antes de continuar.')}
+    accessSignature.current=signature
+    setProfileRole(access.role);setUserPermissions(access.permissions);setAccessError('')
+    const [c,f,p,v,cp,t,ec,vd,cv,me,sa]=await Promise.all([
       readAllRows((from,to)=>supabase.from('clientes').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('fornecedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('produtos').select('*').order('descricao',{ascending:true}).order('id').range(from,to)),
@@ -462,53 +534,39 @@ function App(){
       readAllRows((from,to)=>supabase.from('compras').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('titulos_financeiros').select('*').order('vencimento',{ascending:true}).order('id').range(from,to)),
       supabase.from('empresa_config').select('*').eq('id',1).maybeSingle(),
-      supabase.from('profiles').select('perfil,ativo').eq('id',session.user.id).maybeSingle(),
       readAllRows((from,to)=>supabase.from('vendedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
-      readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to)),
-      supabase.rpc('minhas_permissoes_erp')
+      readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to))
     ])
     const [pc,fv,fvi]=await Promise.all([
       readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('faturas_vendas').select('*').order('criada_em',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('fatura_venda_itens').select('*').order('created_at').order('venda_id').range(from,to))
     ])
-    if(currentSessionUser.current!==session.user.id)return
-    if(!c.error)setClientes((c.data||[]) as Cliente[])
-    if(!f.error)setFornecedores((f.data||[]) as Fornecedor[])
-    if(!p.error)setProdutos((p.data||[]) as Produto[])
-    if(!v.error)setVendas((v.data||[]) as Venda[])
-    if(!cp.error)setCompras((cp.data||[]) as Compra[])
-    if(!t.error)setTitulos((t.data||[]) as Titulo[])
-    if(!ec.error&&ec.data)setEmpresa(ec.data as EmpresaConfig)
-    if(pr.error||!pr.data?.perfil||!pr.data.ativo){
-      setProfileRole('visualizador')
-      setUserPermissions(defaultPermissionsForRole('visualizador'))
-      setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([])
-      setMsg('Acesso não liberado. Procure um administrador do sistema.')
-      await supabase.auth.signOut()
-      return
-    }
-    if(!pr.error&&pr.data?.perfil){
-      const role=pr.data.perfil as PerfilRole
-      setProfileRole(role)
-      if(!pm.error)setUserPermissions(normalizePermissions(Object.fromEntries(((pm.data||[]) as {modulo:string;nivel:AccessLevel}[]).map(row=>[row.modulo,row.nivel])),role))
-      else setUserPermissions(defaultPermissionsForRole(role))
-      if(pr.data.ativo===false){
-        setMsg('Seu usuário está desativado. Procure um administrador do sistema.')
-        await supabase.auth.signOut()
-        return
-      }
-    }
-    if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
-    if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
-    if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
-    if(!pc.error)setProdutoComponentes((pc.data||[]) as ProdutoComponente[])
-    if(!fv.error)setFaturasVendas((fv.data||[]) as FaturaVenda[])
-    if(!fvi.error)setFaturaVendaItens((fvi.data||[]) as FaturaVendaItem[])
-    if(!sa.error)setSaleApprovals((sa.data||[]) as SaleApproval[])
+    if(currentSessionUser.current!==userId||sequence!==dataLoadSequence.current)return
+    setClientes((c.data||[]) as Cliente[])
+    setFornecedores((f.data||[]) as Fornecedor[])
+    setProdutos((p.data||[]) as Produto[])
+    setVendas((v.data||[]) as Venda[])
+    setCompras((cp.data||[]) as Compra[])
+    setTitulos((t.data||[]) as Titulo[])
+    if(ec.error||!ec.data)throw new Error('Não foi possível carregar as configurações da empresa. Tente novamente.');
+    setEmpresa(ec.data as EmpresaConfig)
+    setVendedores((vd.data||[]) as Vendedor[])
+    setComprovantes((cv.data||[]) as Comprovante[])
+    setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
+    setProdutoComponentes((pc.data||[]) as ProdutoComponente[])
+    setFaturasVendas((fv.data||[]) as FaturaVenda[])
+    setFaturaVendaItens((fvi.data||[]) as FaturaVendaItem[])
+    setSaleApprovals((sa.data||[]) as SaleApproval[])
+    const failed=[c,f,p,v,cp,t,vd,cv,me,sa,pc,fv,fvi].filter(result=>result.error)
+    if(failed.length)throw new Error('Não foi possível carregar todos os vínculos do ERP. Atualize para continuar com os dados completos.')
     setPermissionsReady(true)
+    }catch(error){
+      if(currentSessionUser.current!==userId||sequence!==dataLoadSequence.current)return
+      blockAccess(error)
+    }
   }
 
   async function loadFinanceActivity(){
@@ -673,12 +731,16 @@ function App(){
   }
 
   async function login(e:FormEvent){
-    e.preventDefault();setMsg('')
-    const {error}=await supabase.auth.signInWithPassword({email,password})
-    if(error)setMsg(error.message)
+    e.preventDefault();if(loginBusy)return;setMsg('');setLoginBusy(true)
+    try{
+      const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password})
+      if(error)setMsg('Não foi possível entrar. Verifique e-mail e senha.')
+      else if(data.user){try{sessionStorage.setItem(`sg-erp-activity:${data.user.id}`,String(Date.now()))}catch{/* controle em memória */}}
+    }catch{setMsg('Não foi possível conectar. Tente novamente.')}finally{setLoginBusy(false)}
   }
 
   function closeForms(){
+    setBillingSale(null);setBillingLines([]);setBillingInvoiceSaleIds([]);setBillingError('');setManagedUserCard(null)
     setShowForm(false)
     setEditingClient(null)
     setEditingSupplier(null)
@@ -1184,7 +1246,7 @@ function App(){
       }
       const client=clientes.find(x=>x.id===v.cliente_id)
       const limit=Number(client?.limite_credito||0)
-      const paidTitle=titulos.some(t=>t.venda_id===v.id&&Number(t.valor_pago)>0)
+      const paidTitle=financialTitlesForSale(v.id).some(t=>Number(t.valor_pago)>0)
       const proof=comprovantes.some(p=>p.venda_id===v.id)
       const requiredClient=String(empresa?.campos_obrigatorios?.venda_cliente??'false').toLowerCase()==='true'
       const requiredSeller=String(empresa?.campos_obrigatorios?.venda_vendedor??'false').toLowerCase()==='true'
@@ -1606,7 +1668,8 @@ function App(){
     setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))
   }
   function openSaleFinancialStatement(v:Venda){
-    const related=titulos.filter(t=>t.venda_id===v.id).sort((a,b)=>a.vencimento.localeCompare(b.vencimento))
+    if(!canViewFinance){setMsg('Seu perfil não possui acesso ao Financeiro.');return}
+    const related=financialTitlesForSale(v.id).sort((a,b)=>a.vencimento.localeCompare(b.vencimento))
     setSaleActionMenu(null)
     if(!related.length){
       setMsg(v.status==='orcamento'?'Este orçamento ainda não possui títulos financeiros.':'Não há títulos financeiros vinculados a esta venda.')
@@ -1620,7 +1683,7 @@ function App(){
     setFinanceEnd('')
     setFinanceCategory('todos')
     setFinanceCenter('todos')
-    setSearch('financeiro-receber',saleCode(v.venda_numero))
+    setSearch('financeiro-receber',first.fatura_venda_id?financialInvoiceCode(faturasVendas.find(f=>f.id===first.fatura_venda_id)?.numero):saleCode(v.venda_numero))
     setFinancePanel(first.id)
     setFinancePanelTab('pagamentos')
     setPaymentDate(today())
@@ -1724,7 +1787,7 @@ function App(){
     if(error){setMsg('Não foi possível carregar os usuários: '+error.message);return}
     const rows=((data||[]) as unknown[]).map((raw:unknown)=>{
       const u=raw as Omit<ManagedUser,'permissoes'>&{permissoes?:unknown}
-      return {...u,permissoes:normalizePermissions(u.permissoes,u.perfil)}
+      return {...u,availablePermissions:permissionModules.filter(m=>u.permissoes&&typeof u.permissoes==='object'&&Object.hasOwn(u.permissoes,m.key)).map(m=>m.key),permissoes:normalizePermissions(u.permissoes,u.perfil)}
     }) as ManagedUser[]
     setManagedUsers(rows)
     setUserEdits(Object.fromEntries(rows.map(u=>[u.user_id,{nome:u.nome,perfil:u.perfil,ativo:u.ativo}])))
@@ -1759,12 +1822,14 @@ function App(){
   async function saveUserPermissions(u:ManagedUser){
     if(!canManageConfig){setMsg('Sem permissão para gerenciar acessos.');return}
     if(u.usuario_atual){setMsg('Para sua segurança, suas próprias permissões devem ser alteradas por outro administrador.');return}
+    if((userEdits[u.user_id]?.perfil||u.perfil)!==u.perfil){setMsg('Salve a alteração de perfil antes de personalizar as permissões.');return}
     const draft=userPermissionEdits[u.user_id]||u.permissoes
+    if(u.perfil!=='administrador'&&draft.config==='editar'){setMsg('Somente administradores podem editar Configurações.');return}
     setSavingPermissionUserId(u.user_id)
     setMsg('')
     const {error}=await supabase.rpc('salvar_permissoes_usuario_erp',{
       p_user_id:u.user_id,
-      p_permissoes:draft
+      p_permissoes:Object.fromEntries(u.availablePermissions.map(key=>[key,draft[key]]))
     })
     setSavingPermissionUserId(null)
     if(error){setMsg(error.message);return}
@@ -1773,8 +1838,10 @@ function App(){
   }
 
   async function saveManagedUser(u:ManagedUser){
-    if(!canManageConfig){setMsg('Sem permissão para gerenciar usuários.');return}
+    if(!canManageConfig||savingUserId){setMsg('Aguarde a gravação atual.');return}
     const draft=userEdits[u.user_id]||{nome:u.nome,perfil:u.perfil,ativo:u.ativo}
+    if(!draft.nome.trim()){setMsg('Informe o nome do usuário.');return}
+    if(draft.perfil!==u.perfil&&!window.confirm('Alterar o perfil restaura as permissões padrão deste usuário. Continuar?'))return
     if(!draft.ativo&&u.ativo&&!window.confirm(`Desativar o acesso de "${u.nome}" ao sistema?`))return
 
     setSavingUserId(u.user_id)
@@ -1829,7 +1896,7 @@ function App(){
       return
     }
 
-    if(data.session)await creator.auth.signOut()
+    if(data.session)await creator.auth.signOut({scope:'local'})
 
     setViewerEmail('')
     setViewerPassword('')
@@ -1848,9 +1915,15 @@ function App(){
     let settings
     try{settings=readSettings(f,empresa?.campos_obrigatorios)}catch(error){setMsg((error as Error).message);return}
     const payload={id:1,razao_social:String(f.get('razao_social')||'SUA EMPRESA'),nome_fantasia:String(f.get('nome_fantasia')||'SUA EMPRESA'),cnpj:String(f.get('cnpj')||'')||null,email:String(f.get('email')||'')||null,telefone:String(f.get('telefone')||'')||null,endereco:String(f.get('endereco')||'')||null,cidade:String(f.get('cidade')||'')||null,uf:String(f.get('uf')||'')||null,cep:String(f.get('cep')||'')||null,pix_chave:String(f.get('pix_chave')||'')||null,banco:String(f.get('banco')||'')||null,agencia:String(f.get('agencia')||'')||null,conta:String(f.get('conta')||'')||null,condicoes_gerais:String(f.get('condicoes_gerais')||'')||null,updated_at:new Date().toISOString()}
-    const r=await supabase.from('empresa_config').upsert({...payload,...settings},{onConflict:'id'})
-    setMsg(r.error?r.error.message:'Configurações da empresa salvas.')
-    if(!r.error)await loadData()
+    if(savingCompany||!empresa?.updated_at){setMsg('Atualize as configurações antes de salvar.');return}
+    setSavingCompany(true);setMsg('')
+    try{
+      const r=await supabase.from('empresa_config').update({...payload,...settings}).eq('id',1).eq('updated_at',empresa.updated_at).select('id').maybeSingle()
+      if(r.error)throw r.error
+      if(!r.data){setMsg('As configurações mudaram em outra sessão ou seu acesso foi alterado. Seus campos foram mantidos. Atualize antes de salvar novamente.');return}
+      setMsg('Configurações da empresa salvas.');await loadData()
+    }catch(error){setMsg((error as {message?:string}).message||'Não foi possível salvar. Os campos foram mantidos.')}
+    finally{setSavingCompany(false)}
   }
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
@@ -1869,9 +1942,9 @@ function App(){
       <div className="loginCardIcon"><BarChart3 size={30}/></div>
       <h2>Sistema de Gestão</h2>
       <p>Acesse o ERP</p>
-      <input type="email" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/>
-      <input type="password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/>
-      <button className="primary">Entrar</button>
+      <label className="fieldLabel">E-mail<input type="email" autoComplete="username" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/></label>
+      <label className="fieldLabel">Senha<input type="password" autoComplete="current-password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/></label>
+      <button className="primary" disabled={loginBusy}>{loginBusy?'Entrando...':'Entrar'}</button>
       {msg&&<p className="loginMsg">{msg}</p>}
     </form>
 
@@ -2013,7 +2086,7 @@ function App(){
   const saleMarginPct=saleTotal>0?((saleTotal-saleCostTotal)/saleTotal)*100:0
   const selectedSaleClient=clientes.find(c=>c.id===saleClient)
   const saleClientLimit=Number(selectedSaleClient?.limite_credito||0)
-  const saleHasPaidTitle=Boolean(editingSale&&titulos.some(t=>t.venda_id===editingSale.id&&Number(t.valor_pago)>0))
+  const saleHasPaidTitle=Boolean(editingSale&&financialTitlesForSale(editingSale.id).some(t=>Number(t.valor_pago)>0))
   const saleHasProof=Boolean(editingSale&&comprovantes.some(p=>p.venda_id===editingSale.id))
   const requiredSaleClient=String(empresa?.campos_obrigatorios?.venda_cliente??'false').toLowerCase()==='true'
   const requiredSaleSeller=String(empresa?.campos_obrigatorios?.venda_vendedor??'false').toLowerCase()==='true'
@@ -2146,8 +2219,9 @@ function App(){
     vendedor:v=>v.nome,percentual:v=>Number(v.percentual_comissao),recebido:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.total_recebido||0),comissao:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.comissao_apurada||0),recebimentos:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.pagamentos||0),vendas:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.vendas||0),status:v=>v.ativo?'ativo':'inativo'
   })
 
+  function financialTitlesForSale(id:string){return titlesForSale(id,titulos,faturasVendas,faturaVendaItens)}
   function salePaymentStatus(venda:Venda){
-    const related=titulos.filter(t=>t.venda_id===venda.id)
+    const related=financialTitlesForSale(venda.id)
     if(venda.status==='cancelado'||(related.length>0&&related.every(t=>t.status==='cancelado'))){
       return {label:'Cancelado',key:'cancelado'}
     }
@@ -2198,12 +2272,14 @@ function App(){
     if(!canManageFinance){setMsg('Seu perfil possui somente visualização no Financeiro.');return}
     if(!['pedido','faturado'].includes(venda.status)){setMsg('Somente vendas aprovadas podem ser faturadas.');return}
     if(activeInvoiceForSale(venda.id)){setMsg('Esta venda já possui fatura ativa.');return}
+    setBillingInvoiceSaleIds([venda.id]);setBillingError('')
     setBillingSale(venda)
     setBillingPayment(venda.forma_pagamento||'pix')
-    setBillingLines(buildBillingLines(venda))
+    setBillingLines(buildBillingLines(venda,venda.forma_pagamento==='dinheiro'?1:Math.max(1,Number(venda.parcelas)||1)))
     setMsg('')
   }
   function toggleBillingSale(venda:Venda){
+    if(!canManageFinance||billingBusy||!['pedido','faturado'].includes(venda.status))return
     if(activeInvoiceForSale(venda.id))return
     setBillingSelectedSales(prev=>{
       if(prev.includes(venda.id))return prev.filter(id=>id!==venda.id)
@@ -2223,9 +2299,10 @@ function App(){
     if(new Set(selected.map(v=>v.cliente_id)).size>1){setMsg('Todas as vendas selecionadas devem ser do mesmo cliente.');return}
     const primary=selected[0]
     const total=selected.reduce((sum,v)=>sum+Number(v.total),0)
+    setBillingInvoiceSaleIds(selected.map(v=>v.id));setBillingError('')
     setBillingSale(primary)
     setBillingPayment(primary.forma_pagamento||'boleto')
-    setBillingLines(buildBillingLinesForTotal(total,Math.max(1,Number(primary.parcelas)||1)))
+    setBillingLines(buildBillingLinesForTotal(total,primary.forma_pagamento==='dinheiro'?1:Math.max(1,Number(primary.parcelas)||1)))
     setMsg('')
   }
   function selectedBillingSales(){
@@ -2235,28 +2312,32 @@ function App(){
     return selectedBillingSales().reduce((sum,v)=>sum+Number(v.total),0)
   }
 
+  function invoiceBillingTotal(){return vendas.filter(v=>billingInvoiceSaleIds.includes(v.id)).reduce((sum,v)=>sum+Number(v.total),0)}
+  function closeBilling(){if(billingBusy)return;setBillingSale(null);setBillingLines([]);setBillingInvoiceSaleIds([]);setBillingError('')}
   function resizeBillingLines(count:number){
     if(!billingSale)return
-    const total=billingSelectedSales.length?selectedBillingTotal():Number(billingSale.total)
+    setBillingError('')
+    const total=invoiceBillingTotal()
     setBillingLines(buildBillingLinesForTotal(total,Math.max(1,count)))
   }
   function setBillingTerms306090(){
     if(!billingSale)return
-    const total=billingSelectedSales.length?selectedBillingTotal():Number(billingSale.total)
+    setBillingError('')
+    const total=invoiceBillingTotal()
     setBillingPayment('boleto')
     setBillingLines(buildBillingLinesForTotal(total,3,today(),30))
   }
   function updateBillingLine(key:string,field:'vencimento'|'valor',value:string|number){
+    setBillingError('')
     setBillingLines(lines=>lines.map(line=>line.key===key?{...line,[field]:field==='valor'?Math.max(0,Number(value)||0):String(value)}:line))
   }
   async function createSaleInvoice(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!billingSale||billingBusy||!canManageFinance)return
-    const total=billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0)
-    const selectedIds=billingSelectedSales.length?billingSelectedSales:[billingSale.id]
-    const selectedTotal=vendas.filter(v=>selectedIds.includes(v.id)).reduce((sum,v)=>sum+Number(v.total),0)
-    if(billingLines.some(line=>!line.vencimento||Number(line.valor)<=0)){setMsg('Preencha vencimento e valor de todas as parcelas.');return}
-    if(Math.abs(total-selectedTotal)>0.01){setMsg('A soma das parcelas deve ser igual ao total das vendas selecionadas.');return}
+    const selectedIds=billingInvoiceSaleIds
+    try{validateBilling(selectedIds,vendas,faturasVendas,faturaVendaItens,billingPayment,billingLines)}
+    catch(error){setBillingError((error as Error).message);return}
+    setBillingError('')
     setBillingBusy(true);setMsg('')
     try{
       const {data,error}=await supabase.rpc('criar_fatura_vendas',{
@@ -2265,11 +2346,12 @@ function App(){
         p_parcelas:billingLines.map(line=>({vencimento:line.vencimento,valor:Number(line.valor)}))
       })
       if(error)throw error
-      setBillingSale(null);setBillingLines([]);setBillingSelectedSales([])
+      if(!data?.fatura_id)throw new Error('O servidor não confirmou a fatura. Atualize a lista antes de tentar novamente.')
+      setBillingInvoiceSaleIds([]);setBillingSale(null);setBillingLines([]);setBillingSelectedSales([])
       const paid=Boolean((data as {pago?:boolean}|null)?.pago)
       setMsg(paid?'Fatura criada e recebimento em dinheiro registrado automaticamente no Caixa.':'Fatura criada e parcelas enviadas para Contas a Receber.')
       await refreshFinance()
-    }catch(error){setMsg(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível criar a fatura.')}finally{setBillingBusy(false)}
+    }catch(error){setBillingError(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível criar a fatura.')}finally{setBillingBusy(false)}
   }
   async function cancelSaleInvoice(venda:Venda){
     const invoice=activeInvoiceForSale(venda.id)
@@ -2531,7 +2613,7 @@ function App(){
           </button>
           {accountMenuOpen&&<div className="workspaceAccountDropdown">
             <button type="button" onClick={()=>void installDesktopApp()} disabled={appInstalled}><MonitorDown size={16}/><span>{appInstalled?'Aplicativo instalado':'Instalar aplicativo'}</span></button>
-            <button type="button" onClick={()=>{setAccountMenuOpen(false);void supabase.auth.signOut()}}><LogOut size={16}/><span>Sair</span></button>
+            <button type="button" onClick={()=>{setAccountMenuOpen(false);void supabase.auth.signOut({scope:'local'})}}><LogOut size={16}/><span>Sair</span></button>
           </div>}
         </div>
         <button type="button" className="workspaceIcon" onClick={toggleTheme} title={dark?'Ativar modo claro':'Ativar modo escuro'} aria-label={dark?'Ativar modo claro':'Ativar modo escuro'}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
@@ -2540,7 +2622,8 @@ function App(){
       </div>
     </header>
     <main className="main">
-      {showApps?<>
+      <div className="privateReviewBar"><ShieldCheck size={15}/><span>Revisão privada · conectado aos dados atuais do ERP</span></div>
+      {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Aguarde a conferência das permissões e dos dados do ERP.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sair</button></div>}</section>:showApps?<>
         {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
         <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp} notifications={{autorizacoes:saleApprovals.length}}/>
       </>:permissionsReady&&canViewModule(active)&&<>
@@ -2558,7 +2641,7 @@ function App(){
 
       {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
-      {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData}/>}
+      {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
       {active==='entregas'&&<DeliveryManagement canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
@@ -3663,21 +3746,21 @@ function App(){
         </div>}
 
         {billingSale&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label="Criar fatura da venda"><div className="saleModalShell billingModalShell"><form className="panel billingInvoiceForm" onSubmit={createSaleInvoice}>
-          <div className="formTitle saleModalTitle"><div><h3>{billingSelectedSales.length>1?'Criar fatura consolidada':'Criar fatura — Venda #'+saleCode(billingSale.venda_numero)}</h3><p>{billingSelectedSales.length>1?billingSelectedSales.length+' vendas do mesmo cliente em uma única fatura.':'Organize as parcelas antes de gerar o Contas a Receber.'}</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>{setBillingSale(null);setBillingLines([])}}><X size={18}/></button></div>
-          <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>{billingSelectedSales.length>1?'Total das vendas':'Total da venda'}</span><strong>{money(billingSelectedSales.length?selectedBillingTotal():Number(billingSale.total))}</strong></div><div><span>{billingSelectedSales.length>1?'Vendas incluídas':'Indicação do vendedor'}</span><strong>{billingSelectedSales.length>1?selectedBillingSales().map(v=>saleCode(v.venda_numero)).join(' • '):paymentLabel(billingSale.forma_pagamento)+' • '+billingSale.parcelas+'x'}</strong></div></div>
-          <div className="billingInvoiceControls">
+          <div className="formTitle saleModalTitle"><div><h3>{billingInvoiceSaleIds.length>1?'Criar fatura consolidada':'Criar fatura — Venda #'+saleCode(billingSale.venda_numero)}</h3><p>{billingInvoiceSaleIds.length>1?billingInvoiceSaleIds.length+' vendas do mesmo cliente em uma única fatura.':'Organize as parcelas antes de gerar o Contas a Receber.'}</p></div><button type="button" className="iconBtn saleModalClose" aria-label="Fechar fatura" disabled={billingBusy} onClick={closeBilling}><X size={18}/></button></div>
+          <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>{billingInvoiceSaleIds.length>1?'Total das vendas':'Total da venda'}</span><strong>{money(invoiceBillingTotal())}</strong></div><div><span>{billingInvoiceSaleIds.length>1?'Vendas incluídas':'Indicação do vendedor'}</span><strong>{billingInvoiceSaleIds.length>1?vendas.filter(v=>billingInvoiceSaleIds.includes(v.id)).map(v=>saleCode(v.venda_numero)).join(' • '):paymentLabel(billingSale.forma_pagamento)+' • '+billingSale.parcelas+'x'}</strong></div></div>
+          {billingError&&<p className="billingFormError" role="alert">{billingError}</p>}<fieldset disabled={billingBusy} className="billingFieldset"><div className="billingInvoiceControls">
             <label>Forma de pagamento<select value={billingPayment} onChange={e=>{const method=e.target.value as PaymentMethod;setBillingPayment(method);if(method==='dinheiro')resizeBillingLines(1)}}><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label>
             <label>Número de parcelas<select value={billingLines.length} disabled={billingPayment==='dinheiro'} onChange={e=>resizeBillingLines(Number(e.target.value))}>{Array.from({length:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}</select></label>
             {billingPayment==='boleto'&&<button type="button" className="ghost billingTermsButton" onClick={setBillingTerms306090}>Aplicar 30/60/90</button>}
           </div>
           <div className="billingLines">
             <div className="billingLinesHead"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>
-            {billingLines.map((line,index)=><div className="billingLine" key={line.key}><strong>{index+1}/{billingLines.length}</strong><input type="date" value={line.vencimento} onChange={e=>updateBillingLine(line.key,'vencimento',e.target.value)} required/><input type="number" min="0.01" step="0.01" value={line.valor} onChange={e=>updateBillingLine(line.key,'valor',e.target.value)} required/></div>)}
+            {billingLines.map((line,index)=><div className="billingLine" key={line.key}><strong>{index+1}/{billingLines.length}</strong><input aria-label={`Vencimento da parcela ${index+1}`} type="date" value={line.vencimento} onChange={e=>updateBillingLine(line.key,'vencimento',e.target.value)} required/><input aria-label={`Valor da parcela ${index+1}`} type="number" min="0.01" step="0.01" value={line.valor} onChange={e=>updateBillingLine(line.key,'valor',e.target.value)} required/></div>)}
           </div>
           {billingPayment==='dinheiro'&&<div className="billingCashNotice">Pagamento em dinheiro: ao salvar, a fatura será considerada paga e a entrada será registrada automaticamente no diário Dinheiro.</div>}
           <div className="billingInvoiceTotal"><span>Soma das parcelas</span><strong>{money(billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0))}</strong></div>
-          <div className="formActions"><button type="button" className="ghost" onClick={()=>{setBillingSale(null);setBillingLines([])}}>Cancelar</button><button className="primary" disabled={billingBusy}>{billingBusy?'Gerando...':'Salvar fatura e gerar lançamentos'}</button></div>
-        </form></div></div>}
+          <div className="formActions"><button type="button" className="ghost" onClick={closeBilling}>Cancelar</button><button className="primary" disabled={billingBusy}>{billingBusy?'Gerando...':'Salvar fatura e gerar lançamentos'}</button></div>
+        </fieldset></form></div></div>}
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
         {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<><div className="financeReportBar compact"><div><strong>{financeSubtab==='funcionarios'?'Relatório de funcionários':'Relatório de vales'}</strong><span>Exporta os lançamentos desta área em PDF.</span></div><button type="button" className="ghost" onClick={()=>void downloadFinancePdf(financeSubtab)}><FileDown size={15}/>PDF</button></div><EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/></>}
@@ -3691,9 +3774,13 @@ function App(){
       </section>}
 
       {active==='config'&&<section>
-        {isAdmin&&canManageConfig&&<FocusNfeSettings/>}
-        {canManageConfig&&<FinanceAdministration/>}
-        {canManageConfig&&<form className="panel viewerUserForm" onSubmit={createManagedUserAccount}>
+        <nav className="configNavigation" aria-label="Seções de configurações">
+          {([['empresa','Empresa e regras'],['usuarios','Usuários e acessos'],['integracoes','Interligações'],['financeiro','Cadastros financeiros']] as const).filter(([key])=>key!=='usuarios'&&key!=='financeiro'||canManageConfig).map(([key,label])=><button type="button" key={key} className={configSection===key?'subTab active':'subTab'} onClick={()=>setConfigSection(key)} aria-current={configSection===key?'page':undefined}>{label}</button>)}
+        </nav>
+        {configSection==='integracoes'&&<IntegrationSettings permissions={userPermissions} company={empresa} onOpen={openApp}/>}
+        {configSection==='integracoes'&&isAdmin&&canManageConfig&&<FocusNfeSettings/>}
+        {configSection==='financeiro'&&canManageConfig&&<FinanceAdministration/>}
+        {configSection==='usuarios'&&canManageConfig&&<form className="panel viewerUserForm" onSubmit={createManagedUserAccount}>
           <div className="formTitle"><div><h3>Criar novo usuário</h3><p>O acesso ao ERP passa a ser controlado pelo administrador. Escolha o perfil inicial do usuário.</p></div></div>
           <label className="fieldLabel">Nome do usuário<input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Digite o nome" required/></label>
           <label className="fieldLabel">E-mail<input type="email" value={viewerEmail} onChange={e=>setViewerEmail(e.target.value)} placeholder="usuario@empresa.com" required/></label>
@@ -3710,7 +3797,7 @@ function App(){
           <button className="primary" disabled={creatingViewer}>{creatingViewer?'Criando...':'Criar usuário'}</button>
         </form>}
 
-        {canManageConfig&&<article className="panel userManagementPanel">
+        {configSection==='usuarios'&&canManageConfig&&<article className="panel userManagementPanel">
           <div className="panelHead">
             <div><h3>Gerenciar usuários</h3><p>Altere nome, perfil de acesso e status. Usuários desativados deixam de acessar os dados do ERP.</p></div>
             <button type="button" className="ghost" onClick={()=>void loadManagedUsers()}><RefreshCw size={15}/>Atualizar</button>
@@ -3763,24 +3850,24 @@ function App(){
                       return <div className="permissionRow" key={module.key}>
                         <div className="permissionModuleInfo"><strong>{module.label}</strong><span>{module.description}</span></div>
                         <select
-                          value={level}
-                          disabled={u.usuario_atual}
+                          value={u.availablePermissions.includes(module.key)?level:'preserved'}
+                          disabled={u.usuario_atual||!u.availablePermissions.includes(module.key)||(userEdits[u.user_id]?.perfil||u.perfil)!==u.perfil}
                           onChange={e=>editUserPermission(u.user_id,module.key,e.target.value as AccessLevel)}
                           aria-label={`Permissão de ${module.label}`}
                         >
-                          <option value="nenhum">Sem acesso</option>
+                          <option value="preserved" disabled>Preservado no servidor</option><option value="nenhum">Sem acesso</option>
                           <option value="visualizar">Somente visualizar</option>
-                          {module.editable&&<option value="editar">Editar</option>}
+                          {module.editable&&(module.key!=='config'||u.perfil==='administrador')&&<option value="editar">Editar</option>}
                         </select>
                       </div>
                     })}
                   </div>
                   {!u.usuario_atual&&<div className="permissionActions">
-                    <span>Perfil define o padrão inicial; esta matriz personaliza o acesso deste usuário.</span>
+                    <span>Trocar o perfil restaura os acessos padrão. Salve o perfil antes de personalizar a matriz. Campos não retornados pelo servidor são preservados.</span>
                     <button
                       type="button"
                       className="primary"
-                      disabled={savingPermissionUserId===u.user_id||JSON.stringify(userPermissionEdits[u.user_id]||u.permissoes)===JSON.stringify(u.permissoes)}
+                      disabled={(userEdits[u.user_id]?.perfil||u.perfil)!==u.perfil||savingPermissionUserId===u.user_id||JSON.stringify(userPermissionEdits[u.user_id]||u.permissoes)===JSON.stringify(u.permissoes)}
                       onClick={()=>void saveUserPermissions(u)}
                     >{savingPermissionUserId===u.user_id?'Salvando permissões...':'Salvar permissões'}</button>
                   </div>}
@@ -3792,8 +3879,8 @@ function App(){
           </table></div>
         </article>}
 
-        <form className="panel configForm" onSubmit={saveCompany}>
-          <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!canManageConfig&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!canManageConfig}>
+        {configSection==='empresa'&&<form key={empresa?.updated_at||'initial'} className="panel configForm" onSubmit={saveCompany}>
+          <div className="formTitle"><div><h3>Dados da empresa</h3><p>Esses dados alimentam as faturas e a identificação do ERP.</p></div>{!canManageConfig&&<span className="readOnlyTag">Somente leitura</span>}</div><fieldset className="configFieldset" disabled={!canManageConfig||savingCompany}>
           <label className="fieldLabel">Razão social<input name="razao_social" placeholder="Razão social da empresa" defaultValue={empresa?.razao_social||''} required/></label>
           <label className="fieldLabel">Nome fantasia<input name="nome_fantasia" placeholder="Nome fantasia" defaultValue={empresa?.nome_fantasia||''} required/></label>
           <label className="fieldLabel">CNPJ<input name="cnpj" inputMode="numeric" placeholder="00.000.000/0000-00" defaultValue={maskCnpj(empresa?.cnpj||'')} onInput={e=>{e.currentTarget.value=maskCnpj(e.currentTarget.value)}}/></label>
@@ -3818,9 +3905,9 @@ function App(){
           <label><input type="checkbox" name="venda_cliente" defaultChecked={Boolean(empresa?.campos_obrigatorios?.venda_cliente)}/> Cliente obrigatório na venda</label>
           <label><input type="checkbox" name="venda_vendedor" defaultChecked={Boolean(empresa?.campos_obrigatorios?.venda_vendedor)}/> Vendedor obrigatório na venda</label>
           <label><input type="checkbox" name="compra_fornecedor" defaultChecked={Boolean(empresa?.campos_obrigatorios?.compra_fornecedor)}/> Fornecedor obrigatório na compra</label>
-          <p className="fieldLabelWide">Política de estoque: baixa ao confirmar o pedido, conforme definido pela administração. Compras dão entrada ao receber. Novos usuários aguardam liberação de um administrador.</p>
-          <div className="formActions"><button className="primary">Salvar configurações</button></div></fieldset>
-        </form>
+          <p className="fieldLabelWide">Política de estoque: {empresa?.reservar_estoque_pedido?'baixa ao confirmar o pedido':'baixa no faturamento'}, conforme a configuração atual. Compras dão entrada ao receber. Novos usuários aguardam liberação de um administrador.</p>
+          <div className="formActions"><button className="primary" disabled={savingCompany}>{savingCompany?'Salvando...':'Salvar configurações'}</button></div></fieldset>
+        </form>}
       </section>}
       </>}
     </main>

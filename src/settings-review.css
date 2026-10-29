@@ -1,0 +1,9 @@
+.privateReviewBar{display:flex;align-items:center;gap:8px;color:var(--muted,#64748b);font-size:12px;margin:0 0 16px;padding:8px 12px;border:1px solid #94a3b833;border-radius:8px}
+.configNavigation{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+.integrationGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.integrationCard{padding:18px;border:1px solid #94a3b833;border-radius:12px}
+.integrationCard h4{margin:0 0 12px}.integrationCard strong{font-size:13px;line-height:1.7;display:block}.integrationCard p{font-size:13px;line-height:1.65;min-height:66px}
+.billingFieldset{border:0;padding:0;margin:0;min-width:0}.billingFormError{border:1px solid #ef444455;background:#ef444410;color:#b91c1c;padding:12px;border-radius:8px;margin:12px 0;font-weight:600;line-height:1.6}.dark .billingFormError{color:#fca5a5}
+.authorizationFeedback{background:#10b98112;border:1px solid #10b98166;border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.accessState{max-width:620px;margin:10vh auto}.loginCard .fieldLabel{width:100%}
+@media(max-width:760px){.integrationGrid{grid-template-columns:1fr}.configNavigation>.subTab{flex:1 1 44%;justify-content:center}.integrationCard p{min-height:0}}

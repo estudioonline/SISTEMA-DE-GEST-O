@@ -6,6 +6,7 @@ import './styles.css'
 import './design-system.css'
 import './apps.css'
 import './mobile.css'
+import './settings-review.css'
 import './bank-reconciliation.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

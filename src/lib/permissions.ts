@@ -22,6 +22,23 @@ const none:PermissionMap={
   compras:'nenhum',comissoes:'nenhum',financeiro:'nenhum',entregas:'nenhum',autorizacoes:'nenhum',relatorios:'nenhum',config:'nenhum'
 }
 
+export const emptyPermissions=():PermissionMap=>({...none})
+
+// Effective access must come from a complete server response, never role defaults.
+export function parseEffectivePermissions(rows:unknown):PermissionMap{
+  if(!Array.isArray(rows))throw new Error('Não foi possível validar seus acessos.')
+  const result=emptyPermissions(),seen=new Set<string>()
+  for(const row of rows){
+    if(!row||typeof row!=='object')throw new Error('Resposta de permissões inválida.')
+    const module=permissionModules.find(m=>m.key===row.modulo)
+    if(!module||seen.has(module.key)||!['nenhum','visualizar','editar'].includes(row.nivel))throw new Error('Resposta de permissões incompleta ou inválida.')
+    seen.add(module.key)
+    result[module.key]=module.editable?row.nivel:row.nivel==='nenhum'?'nenhum':'visualizar'
+  }
+  if(seen.size!==permissionModules.length)throw new Error('Resposta de permissões incompleta. Atualize seus acessos para continuar.')
+  return result
+}
+
 export function defaultPermissionsForRole(role:string):PermissionMap{
   const p={...none}
   if(role==='administrador'){
