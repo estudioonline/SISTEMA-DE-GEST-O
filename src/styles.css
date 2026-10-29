@@ -4489,7 +4489,7 @@
 /* Diários e Conciliação Bancária */
 .bankReconDark{background:#0f172a;color:#e5e7eb;border-radius:16px;padding:16px;min-height:520px}
 .bankReconTop,.bankReconNav,.bankFilterBar,.bankJournalHead,.bankJournalMetrics,.bankJournalActions,.bankMatchFooter,.bankConciled,.bankModalHead,.bankModalActions{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.bankReconTop.compact{margin-bottom:10px}.bankReconTop h3{margin:3px 0;font-size:22px;color:#fff;font-weight:800}.bankReconTop p,.bankReconTop span,.bankReconNav,.bankJournalCard span,.bankTx span,.bankModal p{color:#94a3b8;font-size:11px}
+.bankReconTop.compact{margin-bottom:10px}.bankReconTop h3{margin:3px 0;font-size:22px;color:#fff!important;font-weight:800}.bankReconTop p,.bankReconTop span,.bankReconNav,.bankJournalCard span,.bankTx span,.bankModal p{color:#94a3b8;font-size:11px}
 .bankPrimary{background:#2563eb!important;color:white!important;border-color:#2563eb!important}
 .bankMessage{margin:10px 0;padding:10px 12px;border:1px solid #334155;border-radius:10px;background:#111827;color:#cbd5e1}
 .bankJournalGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
