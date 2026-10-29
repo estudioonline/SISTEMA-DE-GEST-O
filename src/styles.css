@@ -4697,3 +4697,90 @@
 .deliveryListRow.assigned{opacity:.78}.deliverySelectCell{position:relative}.deliveryAssignedBadge{position:absolute;left:24px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:8px;font-weight:900;color:#92400e;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:3px 6px}.dark .deliveryAssignedBadge{color:#fdba74;background:#431407;border-color:#9a3412}.deliverySelectCell input:disabled{cursor:not-allowed}
 
 .routeCenterWorkspace.routeCenterWorkspaceEmpty{min-height:0}.routeCenterWorkspaceEmpty .routeWorkspaceEmpty{min-height:90px;padding:12px}
+
+
+/* Vendas - tabela moderna dark/light */
+.salesModernTable{overflow:visible}
+.salesModernHead{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px 18px 14px}
+.salesModernHead h3{margin:0 0 5px;font-size:18px}
+.salesModernHead p{margin:0;font-size:12px;color:#64748b}
+.salesModernActions{display:flex;align-items:center;gap:10px;flex:1;justify-content:flex-end}
+.salesSearchBox{display:flex;align-items:center;gap:8px;width:min(460px,100%);padding:0 12px;border:1px solid #dbe3ee;border-radius:10px;background:#fff}
+.salesSearchBox input{width:100%;height:38px;border:0!important;outline:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
+.salesFilterButton{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 12px;border:1px solid #dbe3ee;border-radius:10px;background:#fff;color:#334155;font-weight:700}
+.salesFilterButton.active{border-color:#3b82f6;color:#2563eb;background:#eff6ff}
+.salesAdvancedFilters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:10px;align-items:end;padding:12px 18px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;background:#f8fafc}
+.salesAdvancedFilters label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#64748b}
+.salesAdvancedFilters select{height:38px}
+.salesUxTable{width:100%;border-collapse:separate;border-spacing:0}
+.salesUxTable th{padding:11px 12px;border-bottom:1px solid #e2e8f0;background:#f8fafc;text-transform:uppercase;font-size:10px;letter-spacing:.05em;color:#64748b;white-space:nowrap}
+.salesUxTable td{padding:12px;border-bottom:1px solid #eef2f7;vertical-align:middle}
+.salesUxTable tbody tr{transition:background .15s ease}
+.salesUxTable tbody tr:hover{background:#f8fafc}
+.salesDocument{color:#2563eb;font-weight:800}
+.salesIdentity{display:flex;align-items:center;gap:9px;min-width:150px}
+.salesAvatar{width:30px;height:30px;flex:0 0 30px;border-radius:999px;display:grid;place-items:center;background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:800}
+.salesAvatar.sellerAvatar{background:#ede9fe;color:#6d28d9}
+.salesStatus,.salesPaymentStatus{display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
+.salesStatus-pedido,.salesStatus-faturado{background:rgba(59,130,246,.14);color:#2563eb}
+.salesStatus-orcamento{background:rgba(100,116,139,.14);color:#64748b}
+.salesStatus-cancelado{background:rgba(239,68,68,.14);color:#dc2626}
+.salesStatusPending{background:rgba(245,158,11,.15);color:#b45309}
+.salesPaymentStatus-nao-pago{background:rgba(239,68,68,.14);color:#dc2626}
+.salesPaymentStatus-parcial{background:rgba(245,158,11,.16);color:#b45309}
+.salesPaymentStatus-pago{background:rgba(16,185,129,.15);color:#047857}
+.salesPaymentStatus-cancelado{background:rgba(100,116,139,.15);color:#64748b}
+.salesPaymentText{font-weight:700;font-size:12px}
+.salesRoute{display:inline-flex;align-items:center;gap:5px;color:#475569;font-size:12px}
+.salesTotal{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.salesActionsCell{position:relative;overflow:visible!important}
+.salesRowMenuWrap{position:relative;display:inline-flex}
+.salesRowMenu{position:absolute;right:0;top:calc(100% + 6px);z-index:120;min-width:220px;padding:6px;border:1px solid #dbe3ee;border-radius:10px;background:#fff;box-shadow:0 18px 38px rgba(15,23,42,.18);display:grid}
+.salesRowMenu button{display:flex;align-items:center;gap:8px;justify-content:flex-start;border:0;background:transparent;padding:9px 10px;border-radius:7px;color:#334155;font-size:12px;text-align:left}
+.salesRowMenu button:hover{background:#f1f5f9}
+.salesPagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-top:1px solid #e2e8f0;color:#64748b;font-size:11px}
+.salesPager{display:flex;align-items:center;gap:5px}
+.salesPager button{min-width:32px;height:32px;border:1px solid #dbe3ee;border-radius:8px;background:#fff;color:#475569;display:grid;place-items:center}
+.salesPager button.active{background:#2563eb;border-color:#2563eb;color:#fff;font-weight:800}
+.salesPager button:disabled{opacity:.45}
+.salesPagerDots{padding:0 3px}
+.dark .salesModernTable{background:#0f172a;border-color:#1e293b}
+.dark .salesModernHead p{color:#94a3b8}
+.dark .salesSearchBox,.dark .salesFilterButton{background:#111827;border-color:#334155;color:#e2e8f0}
+.dark .salesFilterButton.active{background:rgba(37,99,235,.18);border-color:#3b82f6;color:#93c5fd}
+.dark .salesAdvancedFilters{background:#0b1220;border-color:#1e293b}
+.dark .salesAdvancedFilters label{color:#94a3b8}
+.dark .salesAdvancedFilters select{background:#111827;border-color:#334155;color:#e5e7eb}
+.dark .salesUxTable th{background:#0b1220;border-color:#243047;color:#94a3b8}
+.dark .salesUxTable td{border-color:#1e293b;color:#e2e8f0}
+.dark .salesUxTable tbody tr:hover{background:#111c2d}
+.dark .salesDocument{color:#60a5fa}
+.dark .salesAvatar{background:rgba(59,130,246,.18);color:#93c5fd}
+.dark .salesAvatar.sellerAvatar{background:rgba(139,92,246,.18);color:#c4b5fd}
+.dark .salesStatus-pedido,.dark .salesStatus-faturado{background:rgba(59,130,246,.2);color:#60a5fa}
+.dark .salesStatus-orcamento{background:rgba(100,116,139,.2);color:#cbd5e1}
+.dark .salesStatus-cancelado{background:rgba(239,68,68,.2);color:#f87171}
+.dark .salesStatusPending{background:rgba(245,158,11,.18);color:#fbbf24}
+.dark .salesPaymentStatus-nao-pago{background:rgba(239,68,68,.2);color:#f87171}
+.dark .salesPaymentStatus-parcial{background:rgba(245,158,11,.2);color:#fbbf24}
+.dark .salesPaymentStatus-pago{background:rgba(16,185,129,.2);color:#34d399}
+.dark .salesPaymentStatus-cancelado{background:rgba(100,116,139,.2);color:#94a3b8}
+.dark .salesRoute{color:#cbd5e1}
+.dark .salesTotal{color:#fff}
+.dark .salesRowMenu{background:#111827;border-color:#334155;box-shadow:0 18px 38px rgba(0,0,0,.4)}
+.dark .salesRowMenu button{color:#e5e7eb}
+.dark .salesRowMenu button:hover{background:#1e293b}
+.dark .salesPagination{border-color:#1e293b;color:#94a3b8}
+.dark .salesPager button{background:#111827;border-color:#334155;color:#cbd5e1}
+.dark .salesPager button.active{background:#2563eb;border-color:#2563eb;color:#fff}
+@media(max-width:1180px){
+  .salesModernHead{flex-direction:column}
+  .salesModernActions{width:100%;justify-content:stretch}
+  .salesSearchBox{max-width:none;width:100%}
+  .salesAdvancedFilters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+  .salesModernActions{flex-direction:column;align-items:stretch}
+  .salesAdvancedFilters{grid-template-columns:1fr}
+  .salesPagination{align-items:flex-start;flex-direction:column}
+}
