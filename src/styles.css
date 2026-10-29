@@ -4453,3 +4453,34 @@
 @media(max-width:650px){
   .nfeEmissionSummary{grid-template-columns:1fr}
 }
+
+
+.nfeInstallmentsBox{
+  display:grid;
+  gap:8px;
+  padding:10px 12px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:var(--ds-bg);
+}
+.nfeInstallmentsHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.nfeInstallmentsHead strong{font-size:12px}
+.nfeInstallmentsHead span{font-size:10px;color:var(--ds-muted)}
+.nfeInstallmentsList{display:grid;gap:5px}
+.nfeInstallmentsList>div{
+  display:grid;
+  grid-template-columns:54px 1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:6px 8px;
+  border:1px solid var(--ds-border);
+  border-radius:8px;
+  background:var(--ds-surface);
+  font-size:10px;
+}
+.nfeInstallmentsBox p{margin:0;color:var(--ds-muted);font-size:10px}
