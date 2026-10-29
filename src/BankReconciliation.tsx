@@ -180,9 +180,46 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  }
  async function quickCreate(tx:BankTx){
   const description=window.prompt('Descrição do novo lançamento:',tx.historico||tx.nome||'Lançamento bancário');if(!description)return
-  const category=window.prompt('Categoria/Plano de contas (opcional):','Tarifa Bancária')??''
+  const category=window.prompt('Categoria/Plano de contas (opcional):',tx.conta_categoria||'Tarifa Bancária')??''
   setBusy(true);setMessage('')
-  try{const {error}=await supabase.rpc('criar_lancamento_e_conciliar',{p_transacao_id:tx.id,p_descricao:description,p_categoria:category,p_centro_custo:'Financeiro'});if(error)throw error;setMessage('Lançamento criado e conciliado.');await Promise.all([load(),onChanged()])}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  try{const {error}=await supabase.rpc('criar_lancamento_e_conciliar',{p_transacao_id:tx.id,p_descricao:description,p_categoria:category,p_centro_custo:tx.centro_custo||'Financeiro'});if(error)throw error;setMessage('Lançamento criado e conciliado.');setActionMenuTx(null);await Promise.all([load(),onChanged()])}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function quickCreatePreset(tx:BankTx,category:string){
+  if(!canEdit||busy)return
+  setBusy(true);setMessage('')
+  try{
+   const description=tx.historico||tx.nome||category
+   const {error}=await supabase.rpc('criar_lancamento_e_conciliar',{p_transacao_id:tx.id,p_descricao:description,p_categoria:category,p_centro_custo:tx.centro_custo||'Financeiro'})
+   if(error)throw error
+   setActionMenuTx(null);setMessage(category+' lançado e conciliado.')
+   await Promise.all([load(),onChanged()])
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function savePartner(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();if(!partnerTx||!canEdit)return
+  const form=new FormData(e.currentTarget),raw=String(form.get('parceiro')||'')
+  const [tipo,...nameParts]=raw.split('|'),nome=nameParts.join('|')
+  if(!nome){setMessage('Selecione um parceiro.');return}
+  setBusy(true);setMessage('')
+  try{
+   const {error}=await supabase.from('transacoes_bancarias').update({parceiro_nome:nome,parceiro_tipo:tipo}).eq('id',partnerTx.id)
+   if(error)throw error
+   setPartnerTx(null);setMessage('Parceiro definido para a transação.');await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function saveAccount(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();if(!accountTx||!canEdit)return
+  const form=new FormData(e.currentTarget),categoria=String(form.get('categoria')||'').trim(),centro=String(form.get('centro_custo')||'').trim()
+  if(!categoria){setMessage('Informe a conta/categoria.');return}
+  setBusy(true);setMessage('')
+  try{
+   const {error}=await supabase.from('transacoes_bancarias').update({conta_categoria:categoria,centro_custo:centro||null}).eq('id',accountTx.id)
+   if(error)throw error
+   setAccountTx(null);setMessage('Conta/categoria definida para a transação.');await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ function openReconcile(tx:BankTx){
+  setSelected({});setAdjustType('');setAdjustValue('0');setReconcileSearch('');setReconcileTx(tx);setActionMenuTx(null)
  }
  async function undo(tx:BankTx){
   const reason=window.prompt('Motivo da desconciliação:');if(!reason)return
