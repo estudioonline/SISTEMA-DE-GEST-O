@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowDown,ArrowUp,Camera,CheckCircle2,FileDown,MapPin,MessageCircle,Navigation,PenLine,Plus,Route,Truck,XCircle} from 'lucide-react'
+import {ArrowDown,ArrowUp,Camera,CheckCircle2,FileDown,MapPin,MessageCircle,MoreVertical,Navigation,PenLine,Plus,Route,Truck,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {RouteControlCenter} from './RouteControlCenter'
 
@@ -419,9 +419,14 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
           <div className="deliveryValueCell"><strong>{money(Number(s?.total||0))}</strong><span>{due<=0?'Pago':`Cobrar ${money(due)}`}</span><small>{paymentLabel(s?.forma_pagamento||'')}</small></div>
           <div className="deliveryStatusCell"><span className={'deliveryStatus '+d.status}>{d.status==='em_transito'?'Em trânsito':'A entregar'}</span><small><Route size={12}/>{routeLabel(d.rota)}</small></div>
           <div className="deliveryActions compact">
-            {d.status==='a_entregar'&&canEdit&&<button title="Marcar em trânsito" className="deliveryTransit" disabled={busy} onClick={()=>void markTransit(d)}><Navigation size={15}/>Trânsito</button>}
-            <button title="Confirmar entregue" className="deliverySuccess" disabled={!canEdit||busy} onClick={()=>openModal(d,'entregue')}><CheckCircle2 size={15}/>Entregue</button>
-            <button title="Registrar não entrega" className="deliveryFail" disabled={!canEdit||busy} onClick={()=>openModal(d,'falha')}><XCircle size={15}/>Falha</button>
+            <button title="Confirmar entregue" className="deliverySuccess" disabled={!canOperate||busy} onClick={()=>openModal(d,'entregue')}><CheckCircle2 size={15}/>Entregue</button>
+            <details className="deliveryActionMenu">
+              <summary title="Mais ações" aria-label="Mais ações"><MoreVertical size={16}/></summary>
+              <div>
+                {d.status==='a_entregar'&&canOperate&&<button type="button" disabled={busy} onClick={()=>void markTransit(d)}><Navigation size={14}/>Em trânsito</button>}
+                <button type="button" disabled={!canOperate||busy} onClick={()=>openModal(d,'falha')}><XCircle size={14}/>Não entregue</button>
+              </div>
+            </details>
           </div>
         </article>
       })}
