@@ -9,6 +9,7 @@ export type AppMenu = ReadonlyArray<readonly [AppModule, string, LucideIcon]>
 
 const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
 const descriptions: Partial<Record<AppModule, string>> = {
+  documentos: 'Arquivos e comprovantes armazenados na nuvem',
   financeiro: 'Contas, pagamentos e conciliação',
   rh: 'Recursos Humanos, funcionários, salários, FGTS, décimo terceiro e vales',
 }
