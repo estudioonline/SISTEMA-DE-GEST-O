@@ -30,7 +30,7 @@ function addressOf(c?:Client){
   return [[c.logradouro,c.numero].filter(Boolean).join(', '),c.bairro,c.municipio,c.uf,c.cep].filter(Boolean).join(' - ')
 }
 
-export function DeliveryManagement({canEdit}:{canEdit:boolean}){
+export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOperate:boolean}){
   const [deliveries,setDeliveries]=useState<Delivery[]>([])
   const [sales,setSales]=useState<Sale[]>([])
   const [clients,setClients]=useState<Client[]>([])
@@ -111,7 +111,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
     return {x:(e.clientX-rect.left)*(canvas.width/rect.width),y:(e.clientY-rect.top)*(canvas.height/rect.height)}
   }
   function startDraw(e:React.PointerEvent<HTMLCanvasElement>){
-    if(!canEdit)return
+    if(!canOperate)return
     drawing.current=true;e.currentTarget.setPointerCapture(e.pointerId)
     const p=canvasPoint(e),ctx=e.currentTarget.getContext('2d');if(!ctx)return
     ctx.beginPath();ctx.moveTo(p.x,p.y)
@@ -143,7 +143,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   }
 
   async function markTransit(d:Delivery){
-    if(!canEdit||busy)return
+    if(!canOperate||busy)return
     setBusy(true);setMessage('')
     try{
       const previous=d.status
@@ -155,7 +155,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   }
 
   async function saveDelivered(){
-    const d=modalDelivery;if(!d||!canEdit||busy)return
+    const d=modalDelivery;if(!d||!canOperate||busy)return
     setBusy(true);setMessage('')
     try{
       let proofPath:string|null=d.comprovante_path,signaturePath:string|null=d.assinatura_path
@@ -177,7 +177,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   }
 
   async function saveFailure(){
-    const d=modalDelivery;if(!d||!canEdit||busy)return
+    const d=modalDelivery;if(!d||!canOperate||busy)return
     if(!failReason){setMessage('Selecione o motivo da não entrega.');return}
     if(failReason==='outro'&&!failDetails.trim()){setMessage('Detalhe o motivo da não entrega.');return}
     setBusy(true);setMessage('')
