@@ -4489,7 +4489,7 @@
 /* Diários e Conciliação Bancária */
 .bankReconDark{background:#0f172a;color:#e5e7eb;border-radius:16px;padding:16px;min-height:520px}
 .bankReconTop,.bankReconNav,.bankFilterBar,.bankJournalHead,.bankJournalMetrics,.bankJournalActions,.bankMatchFooter,.bankConciled,.bankModalHead,.bankModalActions{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.bankReconTop.compact{margin-bottom:10px}.bankReconTop h3{margin:3px 0;font-size:22px}.bankReconTop p,.bankReconTop span,.bankReconNav,.bankJournalCard span,.bankTx span,.bankModal p{color:#94a3b8;font-size:11px}
+.bankReconTop.compact{margin-bottom:10px}.bankReconTop h3{margin:3px 0;font-size:22px;color:#fff;font-weight:800}.bankReconTop p,.bankReconTop span,.bankReconNav,.bankJournalCard span,.bankTx span,.bankModal p{color:#94a3b8;font-size:11px}
 .bankPrimary{background:#2563eb!important;color:white!important;border-color:#2563eb!important}
 .bankMessage{margin:10px 0;padding:10px 12px;border:1px solid #334155;border-radius:10px;background:#111827;color:#cbd5e1}
 .bankJournalGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
@@ -4543,8 +4543,9 @@
   min-width:0;
 }
 .bankJournalIdentity strong{
-  color:#22d3ee;
+  color:#fff;
   font-size:12px;
+  font-weight:800;
 }
 .bankJournalIdentity span{
   font-size:9px;
@@ -4585,6 +4586,19 @@
   font-size:9px;
   background:#7a356f;
   border-color:#7a356f;
+}
+.bankJournalActions.compact .bankLoadButton{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  background:#2563eb!important;
+  color:#fff!important;
+  border-color:#2563eb!important;
+  font-weight:800;
+}
+.bankJournalActions.compact .bankLoadButton:hover{
+  background:#1d4ed8!important;
+  border-color:#1d4ed8!important;
 }
 .bankJournalActions.compact .bankPending{
   background:#34384a!important;
