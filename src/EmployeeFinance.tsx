@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react'
 import type {FormEvent} from 'react'
-import {Plus,Users,WalletCards} from 'lucide-react'
+import {Pencil,Plus,Users,WalletCards,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {readAllRows} from './lib/readAllRows'
 
@@ -14,19 +14,39 @@ const categories=['Salário','Bônus','13º salário','Férias','Encargos','Bene
 export function EmployeeFinance<T extends EmployeeTitle>({kind,titles,canEdit,onChanged,onOpen}:{kind:'gasto'|'vale';titles:T[];canEdit:boolean;onChanged:()=>Promise<void>;onOpen:(title:T)=>void}){
  const [employees,setEmployees]=useState<Employee[]>([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false)
  const [month,setMonth]=useState(()=>today().slice(0,7)),[employee,setEmployee]=useState(''),[search,setSearch]=useState(''),[status,setStatus]=useState('todos')
- const [form,setForm]=useState(false),[employeeForm,setEmployeeForm]=useState(false)
+ const [form,setForm]=useState(false),[employeeForm,setEmployeeForm]=useState(false),[manageEmployees,setManageEmployees]=useState(false),[editingEmployee,setEditingEmployee]=useState<Employee|null>(null)
  async function load(){
   const r=await readAllRows<Employee>((from,to)=>supabase.from('funcionarios').select('*').order('nome').order('id').range(from,to))
   if(r.error)setError(r.error.message);else setEmployees(r.data||[])
  }
  useEffect(()=>{void load()},[])
- useEffect(()=>{setForm(false);setEmployeeForm(false);setError('');setNotice('');setStatus('todos')},[kind])
+ useEffect(()=>{setForm(false);setEmployeeForm(false);setManageEmployees(false);setEditingEmployee(null);setError('');setNotice('');setStatus('todos')},[kind])
  async function createEmployee(e:FormEvent<HTMLFormElement>){
   e.preventDefault();if(!canEdit||busy)return
   const f=new FormData(e.currentTarget),nome=String(f.get('nome')||'').trim()
   if(!nome){setError('Informe o nome do funcionário.');return}
   setBusy(true);setError('');setNotice('')
   try{const r=await supabase.from('funcionarios').insert({nome,cargo:String(f.get('cargo')||'').trim()||null}).select().single();if(r.error)throw r.error;await load();setEmployee(r.data.id);setEmployeeForm(false);setNotice('Funcionário cadastrado.')}catch(e){setError(e instanceof Error?e.message:(e as {message:string}).message)}finally{setBusy(false)}
+ }
+ async function updateEmployee(e:FormEvent<HTMLFormElement>){
+  e.preventDefault();if(!canEdit||busy||!editingEmployee)return
+  const f=new FormData(e.currentTarget)
+  const nome=String(f.get('nome')||'').trim(),cargo=String(f.get('cargo')||'').trim()||null,ativo=String(f.get('ativo')||'true')==='true'
+  if(!nome){setError('Informe o nome do funcionário.');return}
+  setBusy(true);setError('');setNotice('')
+  try{
+   const oldName=editingEmployee.nome
+   const r=await supabase.from('funcionarios').update({nome,cargo,ativo}).eq('id',editingEmployee.id).select('id').single()
+   if(r.error)throw r.error
+   if(nome!==oldName){
+    const titles=await supabase.from('titulos_financeiros').update({entidade_nome:nome}).eq('funcionario_id',editingEmployee.id)
+    if(titles.error)throw titles.error
+   }
+   await load()
+   await onChanged()
+   setEditingEmployee(null)
+   setNotice('Funcionário atualizado.')
+  }catch(e){setError((e as {message:string}).message)}finally{setBusy(false)}
  }
  async function save(e:FormEvent<HTMLFormElement>){
   e.preventDefault();if(!canEdit||busy)return
@@ -48,9 +68,12 @@ export function EmployeeFinance<T extends EmployeeTitle>({kind,titles,canEdit,on
  const rows=titles.filter(t=>t.tipo_funcionario===kind).filter(t=>!month||t.competencia?.slice(0,7)===month).filter(t=>!employee||t.funcionario_id===employee).filter(t=>status==='todos'||(status==='descontado'?!!t.vale_descontado_em:status==='a_descontar'?t.status==='pago'&&!t.vale_descontado_em:t.status===status)).filter(t=>`${employees.find(p=>p.id===t.funcionario_id)?.nome||''} ${t.descricao} ${t.categoria||''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
  const valid=rows.filter(t=>t.status!=='cancelado'),total=valid.reduce((s,t)=>s+Number(t.valor),0),paid=valid.reduce((s,t)=>s+Number(t.valor_pago),0),undiscounted=valid.filter(t=>!t.vale_descontado_em).reduce((s,t)=>s+Number(t.valor_pago),0)
  return <div className="employeeFinance">
-  <div className="panelHead"><div><h2>{kind==='gasto'?'Gastos com funcionários':'Vales de funcionários'}</h2><p>{kind==='gasto'?'Controle salários, bônus, férias, 13º e demais despesas por funcionário.':'Acompanhe os adiantamentos pagos e o desconto na folha.'}</p></div>{canEdit&&<div className="rowActions"><button className="ghost" onClick={()=>setEmployeeForm(v=>!v)}><Users size={16}/>Cadastrar funcionário</button><button className="primary" onClick={()=>setForm(v=>!v)}><Plus size={16}/>{kind==='gasto'?'Novo gasto':'Novo vale'}</button></div>}</div>
+  <div className="panelHead"><div><h2>{kind==='gasto'?'Gastos com funcionários':'Vales de funcionários'}</h2><p>{kind==='gasto'?'Controle salários, bônus, férias, 13º e demais despesas por funcionário.':'Acompanhe os adiantamentos pagos e o desconto na folha.'}</p></div>{canEdit&&<div className="rowActions"><button className="ghost" onClick={()=>setManageEmployees(v=>!v)}><Users size={16}/>Gerenciar funcionários</button><button className="ghost" onClick={()=>setEmployeeForm(v=>!v)}><Plus size={16}/>Cadastrar funcionário</button><button className="primary" onClick={()=>setForm(v=>!v)}><Plus size={16}/>{kind==='gasto'?'Novo gasto':'Novo vale'}</button></div>}</div>
   {error&&<div className="panel noticePanel" role="alert">{error}</div>}{notice&&<div className="panel noticePanel" role="status">{notice}</div>}
   {employeeForm&&canEdit&&<form className="panel employeeForm" onSubmit={e=>void createEmployee(e)}><h3>Cadastrar funcionário</h3><label>Nome<input name="nome" required maxLength={120}/></label><label>Cargo<input name="cargo" maxLength={100}/></label><div className="formActions"><button className="ghost" type="button" onClick={()=>setEmployeeForm(false)}>Cancelar</button><button className="primary" disabled={busy}>Salvar funcionário</button></div></form>}
+  {manageEmployees&&canEdit&&<section className="panel employeeManager"><div className="panelHead"><div><h3>Gerenciar funcionários</h3><p>Edite nome, cargo e situação de cada funcionário.</p></div><button className="ghost" onClick={()=>setManageEmployees(false)}><XCircle size={15}/>Fechar</button></div><div className="employeeManagerList">{employees.map(p=><div className="employeeManagerRow" key={p.id}><div><strong>{p.nome}</strong><small>{p.cargo||'Sem cargo'} · {p.ativo?'Ativo':'Inativo'}</small></div><button className="ghost" onClick={()=>setEditingEmployee(p)}><Pencil size={15}/>Editar</button></div>)}{!employees.length&&<p>Nenhum funcionário cadastrado.</p>}</div></section>}
+  {editingEmployee&&canEdit&&<div className="employeeEditBackdrop"><form className="panel employeeEditModal" onSubmit={e=>void updateEmployee(e)}><div className="panelHead"><div><h3>Editar funcionário</h3><p>{editingEmployee.nome}</p></div><button type="button" className="ghost" onClick={()=>setEditingEmployee(null)}><XCircle size={16}/></button></div><label>Nome<input name="nome" required maxLength={120} defaultValue={editingEmployee.nome}/></label><label>Cargo<input name="cargo" maxLength={100} defaultValue={editingEmployee.cargo||''}/></label><label>Situação<select name="ativo" defaultValue={editingEmployee.ativo?'true':'false'}><option value="true">Ativo</option><option value="false">Inativo</option></select></label><div className="formActions"><button type="button" className="ghost" onClick={()=>setEditingEmployee(null)}>Cancelar</button><button className="primary" disabled={busy}>{busy?'Salvando…':'Salvar alterações'}</button></div></form></div>}
+
   {form&&canEdit&&<form key={kind} className="panel employeeForm" onSubmit={e=>void save(e)}><h3>{kind==='gasto'?'Novo gasto com funcionário':'Novo vale de funcionário'}</h3><label>Funcionário<select name="funcionario_id" required defaultValue={employee}><option value="">Selecione</option>{employees.filter(p=>p.ativo).map(p=><option key={p.id} value={p.id}>{p.nome}{p.cargo?' · '+p.cargo:''}</option>)}</select></label>{!employees.length&&<p>Cadastre um funcionário para começar.</p>}
    {kind==='gasto'&&<label>Categoria<select name="categoria">{categories.map(c=><option key={c}>{c}</option>)}</select></label>}
    <label>Descrição<input name="descricao" required maxLength={200} placeholder={kind==='vale'?'Ex.: Adiantamento salarial':'Ex.: Salário líquido de novembro'}/></label><label>Competência<input type="month" name="competencia" required defaultValue={month||today().slice(0,7)}/></label><label>Vencimento / data prevista<input type="date" name="vencimento" required defaultValue={today()}/></label><label>Valor (R$)<input name="valor" type="number" min="0.01" step="0.01" max="999999999" required/></label>
