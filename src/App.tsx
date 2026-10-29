@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -28,6 +28,7 @@ import { HumanResources } from './HumanResources'
 import { appPermission } from './lib/hr'
 import type { AppModule } from './lib/hr'
 import { BankReconciliation } from './BankReconciliation'
+import { DocumentsLibrary } from './DocumentsLibrary'
 import { DeliveryManagement } from './DeliveryManagement'
 import { useTheme } from './lib/useTheme'
 import type { EmployeeTitle } from './EmployeeFinance'
@@ -70,7 +71,7 @@ type SaleHistoryEvent={evento_id:string;fonte:string;acao:string;usuario_id:stri
 const menu=[
   ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['rh','RH',Users],['entregas','Entregas',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
+  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['documentos','Documentos',FolderOpen],['rh','RH',Users],['entregas','Entregas',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
@@ -2646,6 +2647,7 @@ function App(){
       {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
       {active==='rh'&&<HumanResources titles={titulos} canEdit={canEditModule('rh')} company={empresa} onChanged={refreshFinance} onOpen={t=>{closeForms();setActive('financeiro');setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');setFinancePanel(t.id);setFinancePanelTab('pagamentos');setPaymentDate(today());setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))}}/>}
       {active==='entregas'&&<DeliveryManagement canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
+      {active==='documentos'&&<DocumentsLibrary/>}
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
           <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
