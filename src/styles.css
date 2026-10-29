@@ -4708,3 +4708,5 @@
 
 .routeStopDeliver{height:34px;border:1px solid #059669;border-radius:8px;background:#059669;color:#fff;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:10px;font-weight:800;cursor:pointer}.routeStopDeliver:hover{background:#047857}.routeStopDeliver:disabled{opacity:.5;cursor:not-allowed}
 .routeStops.advanced article:has(.routeStopDeliver){grid-template-columns:70px minmax(260px,1fr) 125px 130px auto}
+
+.deliveryListRow.assigned{opacity:.78}.deliverySelectCell{position:relative}.deliveryAssignedBadge{position:absolute;left:24px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:8px;font-weight:900;color:#92400e;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:3px 6px}.dark .deliveryAssignedBadge{color:#fdba74;background:#431407;border-color:#9a3412}.deliverySelectCell input:disabled{cursor:not-allowed}
