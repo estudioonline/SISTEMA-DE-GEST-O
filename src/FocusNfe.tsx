@@ -51,7 +51,7 @@ export function FocusNfeSettings(){
 const labels:Record<string,string>={rascunho:'Rascunho',enviando:'Enviando',processando_autorizacao:'Aguardando autorização',autorizado:'Autorizada em teste',erro_autorizacao:'Erro de autorização',rejeitado:'Rejeitada',incerto:'Resposta não confirmada',nao_encontrado:'Não localizada na Focus',cancelado:'Cancelada',denegado:'Denegada'}
 type FiscalClient={nome:string;documento:string;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null}
 type FiscalProduct={descricao:string;codigo:string;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null}
-type SaleSource={venda:{status:string;total:number;forma_pagamento:string;subtotal?:number;desconto?:number;created_at?:string;fatura_numero?:number|null};cliente: FiscalClient|null;empresa?:Record<string,unknown>|null;itens:{id:string;quantidade:number;valor_unitario:number;desconto:number;total?:number;produto: FiscalProduct&{unidade?:string|null}}[];nota:Note|null}
+type SaleSource={venda:{status:string;total:number;forma_pagamento:string;subtotal?:number;desconto?:number;created_at?:string;fatura_numero?:number|null};cliente: FiscalClient|null;empresa?:Record<string,unknown>|null;itens:{id:string;quantidade:number;valor_unitario:number;desconto:number;total?:number;produto: FiscalProduct&{unidade?:string|null}}[];parcelas?:{id:string;numero:number;vencimento:string;valor:number;status:string}[];nota:Note|null}
 
 function clientMissing(client: FiscalClient|null){
  if(!client)return ['cliente vinculado']
@@ -170,6 +170,10 @@ export function FocusNfeSale({saleId}:{saleId:string}){
           <div><span>Cliente</span><strong>{source?.cliente?.nome??'—'}</strong></div>
           <div><span>Total</span><strong>{Number(source?.venda.total||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>
           <div><span>Itens</span><strong>{source?.itens.length??0}</strong></div>
+        </div>
+        <div className="nfeInstallmentsBox">
+          <div className="nfeInstallmentsHead"><strong>Parcelas da fatura</strong><span>{source?.parcelas?.length||0} parcela(s)</span></div>
+          {(source?.parcelas?.length||0)>0?<div className="nfeInstallmentsList">{source?.parcelas?.map((p,index)=><div key={p.id}><span>{String(index+1).padStart(3,'0')}</span><span>{new Date(p.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span><strong>{Number(p.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>)}</div>:<p>Nenhuma parcela financeira encontrada para esta venda.</p>}
         </div>
         <label className="fieldLabel">Modelo de frete
           <select value={freightMode} onChange={e=>setFreightMode(e.target.value)}>
