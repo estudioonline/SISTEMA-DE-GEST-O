@@ -2498,7 +2498,7 @@ function App(){
           {active==='compras'&&canManagePurchases&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&canManageClients)||(active==='fornecedores'&&canManageSuppliers)||(active==='compras'&&canManagePurchases))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
           {canManageProducts&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
-          {canManageFinance&&active==='financeiro'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='faturamento'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
+          {canManageFinance&&active==='financeiro'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='faturamento'&&financeSubtab!=='conciliacao'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {canManageCommissions&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
