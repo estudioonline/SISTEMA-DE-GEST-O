@@ -211,6 +211,121 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
     }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
   }
 
+
+  async function createRoutePlan(){
+    if(!canEdit||busy||!newRouteName.trim())return
+    setBusy(true);setMessage('')
+    try{
+      const {data,error}=await supabase.from('rotas_logisticas').insert({
+        data_rota:routeDay,
+        nome:newRouteName.trim(),
+        motorista:newRouteDriver.trim()||null,
+        veiculo:newRouteVehicle.trim()||null
+      }).select('*').single()
+      if(error)throw error
+      const plan=data as RoutePlan
+      setNewRouteName('');setNewRouteDriver('');setNewRouteVehicle('');setSelectedPlanId(plan.id)
+      setMessage('Rota criada. Selecione as entregas e adicione à carga.')
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  }
+
+  async function assignSelectedToPlan(){
+    if(!canEdit||busy||!selectedPlan||!selectedDeliveryIds.length)return
+    const ids=[...selectedDeliveryIds]
+    setBusy(true);setMessage('')
+    try{
+      const existing=deliveries.filter(d=>d.rota_logistica_id===selectedPlan.id)
+      let order=Math.max(0,...existing.map(d=>Number(d.ordem_rota||0)))
+      for(const id of ids){
+        order+=1
+        const {error}=await supabase.from('entregas').update({
+          rota_logistica_id:selectedPlan.id,
+          ordem_rota:order,
+          data_prevista:selectedPlan.data_rota,
+          entregador_nome:selectedPlan.motorista||null,
+          updated_at:new Date().toISOString()
+        }).eq('id',id)
+        if(error)throw error
+      }
+      setSelectedDeliveryIds([])
+      setMessage(ids.length+' entrega(s) adicionada(s) à rota '+selectedPlan.nome+'.')
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  }
+
+  async function removeFromPlan(d:Delivery){
+    if(!canEdit||busy)return
+    setBusy(true)
+    try{
+      const {error}=await supabase.from('entregas').update({rota_logistica_id:null,ordem_rota:null,updated_at:new Date().toISOString()}).eq('id',d.id)
+      if(error)throw error
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  }
+
+  async function movePlanned(d:Delivery,direction:-1|1){
+    if(!selectedPlan||busy)return
+    const current=plannedDeliveries.findIndex(x=>x.id===d.id)
+    const target=current+direction
+    if(current<0||target<0||target>=plannedDeliveries.length)return
+    const other=plannedDeliveries[target]
+    const a=Number(d.ordem_rota||current+1),b=Number(other.ordem_rota||target+1)
+    setBusy(true)
+    try{
+      const r1=await supabase.from('entregas').update({ordem_rota:b}).eq('id',d.id)
+      if(r1.error)throw r1.error
+      const r2=await supabase.from('entregas').update({ordem_rota:a}).eq('id',other.id)
+      if(r2.error)throw r2.error
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  }
+
+  async function updateRoutePlan(field:'motorista'|'veiculo'|'nome',value:string){
+    if(!selectedPlan||!canEdit||busy)return
+    setBusy(true)
+    try{
+      const {error}=await supabase.from('rotas_logisticas').update({[field]:value.trim()||null,updated_at:new Date().toISOString()}).eq('id',selectedPlan.id)
+      if(error)throw error
+      if(field==='motorista'){
+        const ids=plannedDeliveries.map(d=>d.id)
+        if(ids.length){
+          const r=await supabase.from('entregas').update({entregador_nome:value.trim()||null}).in('id',ids)
+          if(r.error)throw r.error
+        }
+      }
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  }
+
+  async function releaseRoute(){
+    if(!selectedPlan||!canEdit||busy)return
+    setBusy(true)
+    try{
+      const {error}=await supabase.from('rotas_logisticas').update({status:'liberada',updated_at:new Date().toISOString()}).eq('id',selectedPlan.id)
+      if(error)throw error
+      const ids=plannedDeliveries.filter(d=>d.status==='a_entregar').map(d=>d.id)
+      if(ids.length){
+        const r=await supabase.from('entregas').update({status:'em_transito',em_transito_em:new Date().toISOString()}).in('id',ids)
+        if(r.error)throw r.error
+      }
+      setMessage('Rota '+selectedPlan.nome+' liberada com '+plannedDeliveries.length+' parada(s).')
+      await load()
+    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+  }
+
+  function openRouteInMaps(){
+    if(!plannedDeliveries.length)return
+    const addresses=plannedDeliveries.map(d=>addressOf(clientFor(d))).filter(Boolean)
+    if(!addresses.length)return
+    const origin=addresses[0]
+    const destination=addresses[addresses.length-1]
+    const waypoints=addresses.slice(1,-1).join('|')
+    const params=new URLSearchParams({api:'1',origin,destination,travelmode:'driving'})
+    if(waypoints)params.set('waypoints',waypoints)
+    window.open('https://www.google.com/maps/dir/?'+params.toString(),'_blank','noopener,noreferrer')
+  }
+
   async function generatePdf(){
     const {jsPDF}=await import('jspdf')
     const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'})
