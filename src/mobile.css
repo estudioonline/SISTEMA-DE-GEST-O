@@ -430,6 +430,10 @@
     padding: 10px !important;
   }
 
+  .deliveryHistory .deliveryToolbar {
+    padding: 0 !important;
+  }
+
   .deliveryReportFilters {
     display: grid !important;
     grid-template-columns: 1fr !important;

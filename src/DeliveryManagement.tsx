@@ -379,15 +379,7 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
     doc.save(`manifesto-entregas-${reportDate}.pdf`)
   }
 
-  return <section className="deliveryApp">
-    <div className="deliveryHero">
-      <div><span>OPERAÇÃO LOGÍSTICA</span><h2>Gerenciamento de Entregas</h2><p>Status de transporte separado do estoque e do faturamento.</p></div>
-      <button className="deliveryPdfButton" onClick={()=>void generatePdf()}><FileDown size={18}/>Gerar PDF de Entregas do Dia</button>
-    </div>
-    {message&&<div className="deliveryNotice" role="status">{message}</div>}
-
-    <RouteControlCenter onViewChange={next=>{setView(next);setSelectedDeliveryIds([])}} canEdit={canEdit} canOperate={canOperate} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load} onConfirmDelivery={openDeliveryFromRoute} refreshKey={routeRefreshKey}/>
-
+  const deliveryFilters = (
     <div className="deliveryToolbar">
       <div className="deliveryRouteFilter">
         <strong>Filtrar por rota</strong>
@@ -399,7 +391,19 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
         <label>Motorista / Entregador<input value={driverFilter} onChange={e=>setDriverFilter(e.target.value)} placeholder="Todos"/></label>
       </div>
     </div>
+  )
 
+  return <section className="deliveryApp">
+    <div className="deliveryHero">
+      <div><span>OPERAÇÃO LOGÍSTICA</span><h2>Gerenciamento de Entregas</h2><p>Status de transporte separado do estoque e do faturamento.</p></div>
+      <button className="deliveryPdfButton" onClick={()=>void generatePdf()}><FileDown size={18}/>Gerar PDF de Entregas do Dia</button>
+    </div>
+    {message&&<div className="deliveryNotice" role="status">{message}</div>}
+
+    <RouteControlCenter onViewChange={next=>{setView(next);setSelectedDeliveryIds([])}} canEdit={canEdit} canOperate={canOperate} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load} onConfirmDelivery={openDeliveryFromRoute} refreshKey={routeRefreshKey}/>
+
+    {view!=='historico'&&<>
+    {deliveryFilters}
     <div className="deliverySummary"><Truck size={18}/><strong>{active.length} entrega(s)</strong><span>{selectedRoutes.length?`em ${activeRoutes} rota(s) selecionada(s)`:'em todas as rotas'}</span></div>
 
     {active.length>0&&<div className="deliveryBulkBar">
@@ -438,10 +442,12 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
       })}
       </div>
     </div>
-    {view!=='historico'&&!active.length&&<div className="deliveryEmpty"><Truck size={34}/><strong>Nenhuma entrega nesta visão</strong><span>Confira a data, o motorista e a visão selecionada.</span></div>}
+    {!active.length&&<div className="deliveryEmpty"><Truck size={34}/><strong>Nenhuma entrega nesta visão</strong><span>Confira a data, o motorista e a visão selecionada.</span></div>}
+    </>}
 
     {view==='historico'&&<section className="deliveryHistory">
       <div className="deliveryHistoryHead"><div><span>HISTÓRICO OPERACIONAL</span><h3>Entregas recentes</h3></div><span>{history.length} registro(s)</span></div>
+      {deliveryFilters}
       <div className="deliveryHistoryList">{history.map(d=>{
         const s=saleFor(d),c=clientFor(d)
         return <article key={d.id}>
