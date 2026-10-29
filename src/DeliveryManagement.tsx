@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {Camera,CheckCircle2,Clock3,FileDown,MapPin,MessageCircle,Navigation,PenLine,Route,Truck,XCircle} from 'lucide-react'
+import {ArrowDown,ArrowUp,Camera,CheckCircle2,FileDown,MapPin,MessageCircle,Navigation,PenLine,Plus,Route,Truck,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
 type DeliveryStatus='a_entregar'|'em_transito'|'entregue'|'reagendamento'|'cancelado'
@@ -7,8 +7,9 @@ type Delivery={
   id:string;venda_id:string;status:DeliveryStatus;rota:string|null;rota_manual:boolean;data_prevista:string;entregador_nome:string|null;
   cobrar_na_entrega:boolean;valor_cobrar:number;observacoes_entrega:string|null;recebedor_nome:string|null;recebedor_documento:string|null;
   comprovante_path:string|null;assinatura_path:string|null;falha_motivo:string|null;falha_detalhes:string|null;em_transito_em:string|null;
-  entregue_em:string|null;falha_em:string|null;created_at:string;updated_at:string
+  entregue_em:string|null;falha_em:string|null;rota_logistica_id?:string|null;ordem_rota?:number|null;created_at:string;updated_at:string
 }
+type RoutePlan={id:string;data_rota:string;nome:string;motorista:string|null;veiculo:string|null;status:'montagem'|'liberada'|'concluida'|'cancelada';observacoes:string|null;created_at:string;updated_at:string}
 type Sale={id:string;cliente_id:string|null;status:string;total:number;observacoes:string|null;rota_entrega:string|null;forma_pagamento:string;fatura_numero:number|null;created_at:string}
 type Client={id:string;nome:string;telefone:string|null;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;uf?:string|null;cep?:string|null}
 type Title={venda_id:string|null;tipo:'receber'|'pagar';valor:number;valor_pago:number;status:string}
@@ -34,6 +35,12 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   const [clients,setClients]=useState<Client[]>([])
   const [titles,setTitles]=useState<Title[]>([])
   const [company,setCompany]=useState<Company|null>(null)
+  const [routePlans,setRoutePlans]=useState<RoutePlan[]>([])
+  const [routeDay,setRouteDay]=useState(today())
+  const [newRouteName,setNewRouteName]=useState('')
+  const [newRouteDriver,setNewRouteDriver]=useState('')
+  const [newRouteVehicle,setNewRouteVehicle]=useState('')
+  const [selectedPlanId,setSelectedPlanId]=useState('')
   const [selectedRoutes,setSelectedRoutes]=useState<string[]>([])
   const [selectedDeliveryIds,setSelectedDeliveryIds]=useState<string[]>([])
   const [reportDate,setReportDate]=useState(today())
@@ -51,20 +58,22 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   const drawing=useRef(false)
 
   const load=useCallback(async()=>{
-    const [e,v,c,t,ec]=await Promise.all([
+    const [e,v,c,t,ec,rp]=await Promise.all([
       supabase.from('entregas').select('*').order('data_prevista').order('created_at'),
       supabase.from('vendas').select('id,cliente_id,status,total,observacoes,rota_entrega,forma_pagamento,fatura_numero,created_at').order('created_at',{ascending:false}),
       supabase.from('clientes').select('id,nome,telefone,logradouro,numero,bairro,municipio,uf,cep').order('nome'),
       supabase.from('titulos_financeiros').select('venda_id,tipo,valor,valor_pago,status').eq('tipo','receber'),
-      supabase.from('empresa_config').select('nome_fantasia,razao_social').eq('id',1).maybeSingle()
+      supabase.from('empresa_config').select('nome_fantasia,razao_social').eq('id',1).maybeSingle(),
+      supabase.from('rotas_logisticas').select('*').order('data_rota',{ascending:false}).order('created_at')
     ])
-    const error=e.error||v.error||c.error||t.error||ec.error
+    const error=e.error||v.error||c.error||t.error||ec.error||rp.error
     if(error){setMessage(error.message);return}
     setDeliveries((e.data||[]) as Delivery[])
     setSales((v.data||[]) as Sale[])
     setClients((c.data||[]) as Client[])
     setTitles((t.data||[]) as Title[])
     if(ec.data)setCompany(ec.data as Company)
+    setRoutePlans((rp.data||[]) as RoutePlan[])
   },[])
 
   useEffect(()=>{void load()},[load])
@@ -73,6 +82,9 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   const active=useMemo(()=>deliveries.filter(d=>d.status==='a_entregar'||d.status==='em_transito').filter(d=>!selectedRoutes.length||selectedRoutes.includes(d.rota||'')),[deliveries,selectedRoutes])
   const history=useMemo(()=>deliveries.filter(d=>d.status==='entregue'||d.status==='reagendamento').sort((a,b)=>b.updated_at.localeCompare(a.updated_at)).slice(0,20),[deliveries])
   const activeRoutes=new Set(active.map(d=>d.rota).filter(Boolean)).size
+  const dayPlans=useMemo(()=>routePlans.filter(r=>r.data_rota===routeDay&&r.status!=='cancelada'),[routePlans,routeDay])
+  const selectedPlan=dayPlans.find(r=>r.id===selectedPlanId)||dayPlans[0]||null
+  const plannedDeliveries=useMemo(()=>selectedPlan?deliveries.filter(d=>d.rota_logistica_id===selectedPlan.id).sort((a,b)=>Number(a.ordem_rota||9999)-Number(b.ordem_rota||9999)):[],[deliveries,selectedPlan])
 
   function saleFor(d:Delivery){return sales.find(s=>s.id===d.venda_id)}
   function clientFor(d:Delivery){return clients.find(c=>c.id===saleFor(d)?.cliente_id)}
