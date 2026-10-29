@@ -198,16 +198,12 @@
   .bankRecon .bankTopControls{width:100%;justify-content:stretch}
   .bankRecon .bankJournalSelector{width:100%}
   .bankRecon .bankActions{width:100%}
-}
-
-
-/* Seleção em massa de linhas do extrato */
-.bankFilterBar.bankSearchOnly{
+}/* Seleção em massa de linhas do extrato */
+.bankRecon .bankFilterBar.bankSearchOnly{
   display:flex;
   align-items:center;
   gap:10px;
-}
-.bankBulkSelect{
+}.bankRecon .bankBulkSelect{
   display:inline-flex;
   align-items:center;
   gap:7px;
@@ -215,14 +211,12 @@
   font-weight:700;
   color:#64748b;
   white-space:nowrap;
-}
-.bankBulkSelect input,
-.bankTxSelect input{
+}.bankRecon .bankBulkSelect input,
+.bankRecon .bankTxSelect input{
   width:16px;
   height:16px;
   accent-color:#2563eb;
-}
-.bankBulkDelete{
+}.bankRecon .bankBulkDelete{
   display:inline-flex;
   align-items:center;
   gap:7px;
@@ -234,18 +228,14 @@
   color:#b91c1c;
   font-weight:800;
   font-size:11px;
-}
-.bankBulkDelete:hover{background:#ffe4e6}
-.bankTxMain{
+}.bankRecon .bankBulkDelete:hover{background:#ffe4e6}.bankRecon .bankTxMain{
   grid-template-columns:auto 140px minmax(0,1fr) 130px 100px!important;
-}
-.bankTxSelect{
+}.bankRecon .bankTxSelect{
   display:grid;
   place-items:center;
   align-self:stretch;
   padding:0 2px;
-}
-.bankTxSelected{
+}.bankRecon .bankTxSelected{
   outline:2px solid rgba(37,99,235,.45);
   outline-offset:-2px;
 }
@@ -303,51 +293,34 @@
 .bankReconcileBalance.balanced .bankReconcileDifference strong,
 .bankReconcileBalance.balanced small{
   color:#047857;
-}
-.dark .bankBulkSelect{color:#94a3b8}
-.dark .bankBulkDelete{background:#2b1719;border-color:#63313a;color:#fca5a5}
-.dark .bankBulkDelete:hover{background:#3a1b20}
+}.dark .bankRecon .bankBulkSelect{color:#94a3b8}.dark .bankRecon .bankBulkDelete{background:#2b1719;border-color:#63313a;color:#fca5a5}.dark .bankRecon .bankBulkDelete:hover{background:#3a1b20}
 .dark .bankReconcileBalance{background:#111827;border-color:#334155}
 .dark .bankReconcileBalance span{color:#94a3b8}
 .dark .bankReconcileBalance.residual{background:#2a2111;border-color:#6b4f1d}
 .dark .bankReconcileBalance.excess{background:#2b1719;border-color:#63313a}
 .dark .bankReconcileBalance.balanced{background:#10251b;border-color:#245b3d}
-@media(max-width:900px){
-  .bankFilterBar.bankSearchOnly{flex-wrap:wrap}
-  .bankFilterBar.bankSearchOnly .bankSearch{order:1;width:100%}
-  .bankBulkSelect{order:2}
-  .bankBulkDelete{order:3}
+@media(max-width:900px){.bankRecon .bankFilterBar.bankSearchOnly{flex-wrap:wrap}.bankRecon .bankFilterBar.bankSearchOnly .bankSearch{order:1;width:100%}.bankRecon .bankBulkSelect{order:2}.bankRecon .bankBulkDelete{order:3}
   .bankReconcileBalance{grid-template-columns:1fr 1fr}
 }
-@media(max-width:620px){
-  .bankTxMain{grid-template-columns:auto 110px minmax(0,1fr)!important}
-  .bankTxAmount,.bankStatus{grid-column:auto}
+@media(max-width:620px){.bankRecon .bankTxMain{grid-template-columns:auto 110px minmax(0,1fr)!important}.bankRecon .bankTxAmount,
+.bankRecon .bankStatus{grid-column:auto}
   .bankReconcileBalance{grid-template-columns:1fr}
-}
-
-
-/* Diários especiais: Dinheiro e Ajustes */
-.bankLogoCash{
+}/* Diários especiais: Dinheiro e Ajustes */
+.bankRecon .bankLogoCash{
   background:linear-gradient(145deg,#16a34a,#15803d)!important;
   color:#fff!important;
-}
-.bankLogoAdjust{
+}.bankRecon .bankLogoAdjust{
   background:linear-gradient(145deg,#7c3aed,#5b21b6)!important;
   color:#fff!important;
-}
-.bankJournalMetrics.cashMetrics{
+}.bankRecon .bankJournalMetrics.cashMetrics{
   grid-template-columns:repeat(3,minmax(0,1fr));
-}
-.bankJournalMetrics .negative{
+}.bankRecon .bankJournalMetrics .negative{
   color:#f87171;
-}
-.bankJournalActions.singleAction{
+}.bankRecon .bankJournalActions.singleAction{
   grid-template-columns:1fr!important;
-}
-.bankJournalActions.singleAction .bankTransactionsButton{
+}.bankRecon .bankJournalActions.singleAction .bankTransactionsButton{
   width:100%;
-}
-.billingCashNotice{
+}.bankRecon .billingCashNotice{
   padding:10px 12px;
   border:1px solid #86efac;
   border-radius:10px;
@@ -355,20 +328,13 @@
   color:#166534;
   font-size:11px;
   font-weight:700;
-}
-.dark .billingCashNotice{
+}.dark .bankRecon .billingCashNotice{
   background:#10251b;
   border-color:#245b3d;
   color:#86efac;
 }
-@media(max-width:700px){
-  .bankJournalMetrics.cashMetrics{grid-template-columns:1fr 1fr}
-  .bankJournalMetrics.cashMetrics>div:first-child{grid-column:1/-1}
-}
-
-
-.bankTx{position:relative}
-.bankUndoCompact{
+@media(max-width:700px){.bankRecon .bankJournalMetrics.cashMetrics{grid-template-columns:1fr 1fr}.bankRecon .bankJournalMetrics.cashMetrics>div:first-child{grid-column:1/-1}
+}.bankRecon .bankTx{position:relative}.bankRecon .bankUndoCompact{
   position:static;
   display:flex;
   width:max-content;
@@ -383,8 +349,187 @@
   color:#cbd5e1;
   font-size:10px;
   font-weight:700;
-}
-.bankUndoCompact:hover{
+}.bankRecon .bankUndoCompact:hover{
   background:rgba(148,163,184,.08);
   border-color:#475569;
 }
+
+
+/* ERP design-system alignment: Diários and Conciliação */
+.bankRecon {
+  --card-bg:var(--ds-surface,#fff);
+  --bank-border:var(--ds-border,#e2e8f0);
+  --bank-text:var(--ds-text,#0f172a);
+  --bank-muted:var(--ds-muted,#64748b);
+  --bank-balance:var(--ds-text,#0f172a);
+  --bank-positive:var(--ds-success-text,#047857);
+  --bank-negative:var(--ds-danger-text,#be123c);
+  --bank-primary:var(--ds-blue,#2563eb);
+  --bank-secondary:var(--ds-surface-soft,#f1f5f9);
+  --bank-secondary-text:var(--ds-text-soft,#334155);
+  --bank-pending-bg:var(--ds-warning-bg,#fef3c7);
+  --bank-pending-text:var(--ds-warning-text,#b45309);
+  --bank-clear-bg:var(--ds-success-bg,#d1fae5);
+  --bank-clear-text:var(--ds-success-text,#047857);
+  --bank-line:var(--ds-blue,#2563eb);
+  --bank-drop-bg:var(--ds-blue-soft,#dbeafe);
+  --bank-drop-border:var(--ds-blue,#2563eb);
+  --bank-soft:var(--ds-surface-soft,#f1f5f9);
+  --bank-shadow:var(--ds-shadow-sm,0 4px 14px rgba(15,23,42,.06));
+  background:transparent;
+  color:var(--ds-text,#0f172a);
+  border-radius:var(--ds-radius-lg,16px);
+  padding:0;
+  font-family:var(--ds-font,Inter,ui-sans-serif,system-ui,sans-serif);
+}
+.dark .bankRecon {
+  --bank-positive:#34d399;
+  --bank-negative:#fda4af;
+  --bank-secondary:var(--ds-surface-muted,#1f2937);
+  --bank-secondary-text:var(--ds-text-soft,#dbe4f0);
+  --bank-pending-bg:rgba(245,158,11,.16);
+  --bank-pending-text:#fcd34d;
+  --bank-clear-bg:rgba(16,185,129,.16);
+  --bank-clear-text:#6ee7b7;
+  --bank-drop-bg:rgba(37,99,235,.18);
+  --bank-drop-border:#60a5fa;
+  --bank-soft:var(--ds-surface-soft,#172033);
+  --bank-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+.bankRecon button {
+  border-radius:var(--ds-radius-sm,8px);
+  transition:background var(--ds-transition,160ms ease),border-color var(--ds-transition,160ms ease),color var(--ds-transition,160ms ease),box-shadow var(--ds-transition,160ms ease),transform var(--ds-transition,160ms ease);
+}
+.bankRecon .bankPrimary,
+.bankRecon .bankLoadButton {
+  background:linear-gradient(135deg,var(--ds-blue,#2563eb),var(--ds-indigo,#4f46e5));
+  border-color:var(--ds-blue,#2563eb);
+  box-shadow:var(--ds-shadow-blue,0 8px 22px rgba(37,99,235,.2));
+}
+.bankRecon .bankPrimary:not(:disabled):hover,
+.bankRecon .bankLoadButton:not(:disabled):hover {
+  filter:none;
+  box-shadow:var(--ds-shadow-md,0 10px 30px rgba(15,23,42,.09));
+  transform:translateY(-1px);
+}
+.bankRecon .bankJournalCard {
+  border-radius:var(--ds-radius-lg,16px);
+  box-shadow:var(--bank-shadow);
+  transition:border-color var(--ds-transition,160ms ease),box-shadow var(--ds-transition,160ms ease),transform var(--ds-transition,160ms ease);
+}
+.bankRecon .bankJournalCard:hover {
+  border-color:var(--ds-border-strong,var(--bank-border));
+  box-shadow:var(--ds-shadow-md,var(--bank-shadow));
+  transform:translateY(-1px);
+}
+.bankRecon .bankEmpty {
+  border-radius:var(--ds-radius-lg,16px);
+  box-shadow:var(--bank-shadow);
+}
+.bankRecon .bankFilterBar {
+  border-radius:var(--ds-radius,12px);
+  box-shadow:var(--ds-shadow-xs,0 1px 2px rgba(15,23,42,.04));
+}
+.bankRecon .bankTx { border-radius:var(--ds-radius,12px); }
+.bankRecon .bankReconcileButton {
+  background:linear-gradient(135deg,var(--ds-blue,#2563eb),var(--ds-indigo,#4f46e5))!important;
+  border-color:var(--ds-blue,#2563eb)!important;
+  color:#fff!important;
+}
+.dark .bankRecon .bankReconcileButton {
+  background:linear-gradient(135deg,var(--ds-blue,#2563eb),var(--ds-indigo,#4f46e5))!important;
+  border-color:var(--ds-blue,#2563eb)!important;
+}
+.bankRecon .bankLogoAdjust {
+  background:linear-gradient(145deg,var(--ds-indigo,#4f46e5),var(--ds-blue-strong,#1d4ed8))!important;
+}
+.bankRecon .bankBulkSelect { color:var(--ds-muted,#64748b); }
+.bankRecon .bankBulkSelect input,
+.bankRecon .bankTxSelect input { accent-color:var(--ds-blue,#2563eb); }
+.bankRecon .bankBulkDelete {
+  border:1px solid var(--ds-danger-border,#fecdd3);
+  border-radius:var(--ds-radius-sm,8px);
+  background:var(--ds-danger-bg,#ffe4e6);
+  color:var(--ds-danger-text,#be123c);
+}
+.bankRecon .bankBulkDelete:hover {
+  background:var(--ds-danger-bg,#ffe4e6);
+  border-color:var(--ds-danger-border,#fecdd3);
+}
+.dark .bankRecon .bankBulkDelete {
+  background:rgba(244,63,94,.12);
+  border-color:rgba(251,113,133,.34);
+  color:#fda4af;
+}
+.dark .bankRecon .bankBulkDelete:hover { background:rgba(244,63,94,.18); }
+.bankRecon .bankReconcileBalance {
+  border:1px solid var(--ds-border,#e2e8f0);
+  border-radius:var(--ds-radius,12px);
+  background:var(--ds-surface-soft,#f1f5f9);
+}
+.bankRecon .bankReconcileBalance.residual {
+  background:var(--ds-warning-bg,#fef3c7);
+  border-color:var(--ds-warning-border,#fde68a);
+}
+.bankRecon .bankReconcileBalance.residual .bankReconcileDifference strong,
+.bankRecon .bankReconcileBalance.residual small { color:var(--ds-warning-text,#b45309); }
+.bankRecon .bankReconcileBalance.excess {
+  background:var(--ds-danger-bg,#ffe4e6);
+  border-color:var(--ds-danger-border,#fecdd3);
+}
+.bankRecon .bankReconcileBalance.excess .bankReconcileDifference strong,
+.bankRecon .bankReconcileBalance.excess small { color:var(--ds-danger-text,#be123c); }
+.bankRecon .bankReconcileBalance.balanced {
+  background:var(--ds-success-bg,#d1fae5);
+  border-color:var(--ds-success-border,#a7f3d0);
+}
+.bankRecon .bankReconcileBalance.balanced .bankReconcileDifference strong,
+.bankRecon .bankReconcileBalance.balanced small { color:var(--ds-success-text,#047857); }
+.dark .bankRecon .bankReconcileBalance {
+  background:var(--ds-surface,#111827);
+  border-color:var(--ds-border,#273449);
+}
+.dark .bankRecon .bankReconcileBalance.residual {
+  background:rgba(245,158,11,.10);
+  border-color:rgba(251,191,36,.32);
+}
+.dark .bankRecon .bankReconcileBalance.residual .bankReconcileDifference strong,
+.dark .bankRecon .bankReconcileBalance.residual small { color:#fcd34d; }
+.dark .bankRecon .bankReconcileBalance.excess {
+  background:rgba(244,63,94,.10);
+  border-color:rgba(251,113,133,.32);
+}
+.dark .bankRecon .bankReconcileBalance.excess .bankReconcileDifference strong,
+.dark .bankRecon .bankReconcileBalance.excess small { color:#fda4af; }
+.dark .bankRecon .bankReconcileBalance.balanced {
+  background:rgba(16,185,129,.10);
+  border-color:rgba(52,211,153,.30);
+}
+.dark .bankRecon .bankReconcileBalance.balanced .bankReconcileDifference strong,
+.dark .bankRecon .bankReconcileBalance.balanced small { color:#6ee7b7; }
+.bankRecon .bankJournalMetrics .negative { color:var(--bank-negative); }
+.bankRecon .billingCashNotice {
+  border-color:var(--ds-success-border,#a7f3d0);
+  border-radius:var(--ds-radius,12px);
+  background:var(--ds-success-bg,#d1fae5);
+  color:var(--ds-success-text,#047857);
+}
+.dark .bankRecon .billingCashNotice {
+  border-color:rgba(52,211,153,.30);
+  background:rgba(16,185,129,.10);
+  color:#6ee7b7;
+}
+.bankRecon .bankUndoCompact {
+  border:1px solid var(--bank-border);
+  border-radius:var(--ds-radius-sm,8px);
+  background:var(--card-bg);
+  color:var(--bank-muted);
+}
+.bankRecon .bankUndoCompact:hover {
+  background:var(--bank-soft);
+  border-color:var(--ds-border-strong,var(--bank-border));
+  color:var(--bank-text);
+}
+.dark .financePage:has(.bankRecon),
+.dark .semanticPage.financePage:has(.bankRecon) { background:var(--ds-bg,#0b1120); }
+@media(prefers-reduced-motion:reduce) { .bankRecon .bankJournalCard { transition:none; } }
