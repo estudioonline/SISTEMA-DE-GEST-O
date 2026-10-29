@@ -94,9 +94,9 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
     return titles.filter(t=>t.venda_id===vendaId&&t.status!=='cancelado').reduce((sum,t)=>sum+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   }
   function toggleRoute(route:string){setSelectedRoutes(prev=>prev.includes(route)?prev.filter(x=>x!==route):[...prev,route])}
-  function toggleDelivery(id:string){setSelectedDeliveryIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])}
+  function toggleDelivery(id:string){const item=deliveries.find(d=>d.id===id);if(item?.rota_logistica_id)return;setSelectedDeliveryIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])}
   function toggleAllVisible(){
-    const ids=active.map(d=>d.id)
+    const ids=active.filter(d=>!d.rota_logistica_id).map(d=>d.id)
     const allSelected=ids.length>0&&ids.every(id=>selectedDeliveryIds.includes(id))
     setSelectedDeliveryIds(prev=>allSelected?prev.filter(id=>!ids.includes(id)):Array.from(new Set([...prev,...ids])))
   }
@@ -402,7 +402,7 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
     <div className="deliverySummary"><Truck size={18}/><strong>{active.length} entrega(s)</strong><span>{selectedRoutes.length?`em ${activeRoutes} rota(s) selecionada(s)`:'em todas as rotas'}</span></div>
 
     {active.length>0&&<div className="deliveryBulkBar">
-      <label><input type="checkbox" checked={active.every(d=>selectedDeliveryIds.includes(d.id))} onChange={toggleAllVisible}/><span>Selecionar todas as entregas visíveis</span></label>
+      <label><input type="checkbox" checked={active.filter(d=>!d.rota_logistica_id).length>0&&active.filter(d=>!d.rota_logistica_id).every(d=>selectedDeliveryIds.includes(d.id))} onChange={toggleAllVisible}/><span>Selecionar todas as entregas disponíveis</span></label>
       <div><strong>{selectedDeliveryIds.length} selecionada(s)</strong>{selectedDeliveryIds.length>1&&<span>Altere rota, motorista ou data em qualquer linha selecionada para replicar nas demais.</span>}</div>
       {selectedDeliveryIds.length>0&&<button type="button" onClick={()=>setSelectedDeliveryIds([])}>Limpar seleção</button>}
     </div>}
@@ -413,9 +413,9 @@ export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOper
       </div>}
       <div className="deliveryList">
       {active.map(d=>{
-        const s=saleFor(d),c=clientFor(d),address=addressOf(c),phone=cleanPhone(c?.telefone||null),due=openAmount(d.venda_id),selected=selectedDeliveryIds.includes(d.id)
-        return <article className={'deliveryListRow'+(selected?' selected':'')} key={d.id}>
-          <label className="deliverySelectCell" title="Selecionar para alteração em lote"><input type="checkbox" checked={selected} onChange={()=>toggleDelivery(d.id)}/></label>
+        const s=saleFor(d),c=clientFor(d),address=addressOf(c),phone=cleanPhone(c?.telefone||null),due=openAmount(d.venda_id),selected=selectedDeliveryIds.includes(d.id),alreadyInRoute=Boolean(d.rota_logistica_id)
+        return <article className={'deliveryListRow'+(selected?' selected':'')+(alreadyInRoute?' assigned':'')} key={d.id}>
+          <label className="deliverySelectCell" title={alreadyInRoute?'Esta venda já pertence a uma rota':'Selecionar para alteração em lote'}><input type="checkbox" checked={selected} disabled={alreadyInRoute} onChange={()=>toggleDelivery(d.id)}/>{alreadyInRoute&&<span className="deliveryAssignedBadge">Já em rota</span>}</label>
           <div className="deliveryOrderCell"><strong>#{String(s?.fatura_numero||0).padStart(7,'0')}</strong><span>{c?.nome||'Cliente não identificado'}</span>{c?.telefone&&<a href={`https://wa.me/55${phone}`} target="_blank" rel="noreferrer"><MessageCircle size={14}/>{c.telefone}</a>}</div>
           <div className="deliveryAddressCell"><strong>{address||'Endereço não cadastrado'}</strong>{address&&<div><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer">Maps</a><a href={`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`} target="_blank" rel="noreferrer">Waze</a></div>}{(d.observacoes_entrega||s?.observacoes)&&<small title={d.observacoes_entrega||s?.observacoes||''}>Obs.: {d.observacoes_entrega||s?.observacoes}</small>}</div>
           <div className="deliveryInlineField"><input key={`route-${d.id}-${d.rota||''}`} defaultValue={d.rota||''} placeholder="Rota" aria-label="Rota" disabled={!canEdit||busy} onBlur={e=>void updateLogisticsField(d,'rota',e.target.value)}/></div>
