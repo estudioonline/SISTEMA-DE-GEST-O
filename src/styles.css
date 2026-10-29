@@ -4928,3 +4928,19 @@
 .app:not(.dark) .salesPaymentStatus{
   font-weight:800!important;
 }
+
+
+/* Modo claro: contorno externo forte de cada registro/lista */
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow):not(.emptyTableRow) td{
+  border-top:2px solid #111827!important;
+  border-bottom:2px solid #111827!important;
+}
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow):not(.emptyTableRow) td:first-child{
+  border-left:2px solid #111827!important;
+}
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow):not(.emptyTableRow) td:last-child{
+  border-right:2px solid #111827!important;
+}
+.app:not(.dark) .tableWrap tbody tr:not(.manageRow):not(.emptyTableRow):hover td{
+  border-color:#000000!important;
+}
