@@ -302,7 +302,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   <div className="bankFilterBar"><label>Diário<select value={activeJournal||''} onChange={e=>setActiveJournal(e.target.value)}>{journals.map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</select></label><div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div></div>
 
   <div className="bankTxList">{visible.map(tx=>{
-   const sugg=suggestions(tx),top=sugg[0],high=(top?.score||0)>=80,partial=(top?.score||0)>=45,selectedTotal=Object.values(selected).reduce((s,v)=>s+Number(v),0),target=Math.abs(Number(tx.valor))
+   const sugg=suggestions(tx),top=sugg[0],high=(top?.score||0)>=80,partial=(top?.score||0)>=45
    return <article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')} key={tx.id}>
     <div className="bankTxMain"><div className="bankTxDate"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span></div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong><span>{tx.historico||'—'}</span></div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
     {screen==='matching'&&tx.status!=='conciliado'&&<div className="bankMatchArea bankOdooMatch">
