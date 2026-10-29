@@ -5117,3 +5117,78 @@
     padding:0 11px!important;
   }
 }
+
+
+/* Ajuste final da barra financeira: abas iguais e Vencidos sem fundo vermelho */
+.financePage .financeSubTabs{
+  grid-template-columns:repeat(8,minmax(0,1fr))!important;
+  gap:6px!important;
+  overflow:visible!important;
+}
+.financePage .financeSubTabs .subTab{
+  min-width:0!important;
+  width:100%!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  color:inherit!important;
+}
+.financePage .financeSubTabs .subTab:hover{
+  background:rgba(148,163,184,.08)!important;
+  border-color:rgba(148,163,184,.18)!important;
+}
+.financePage .financeSubTabs .subTab.active{
+  background:linear-gradient(180deg,#2563eb 0%,#1d4ed8 100%)!important;
+  border-color:#3b82f6!important;
+  color:#fff!important;
+}
+.financePage .financeSubTabs .overdueTab{
+  background:transparent!important;
+  color:inherit!important;
+  border-color:transparent!important;
+}
+.financePage .financeSubTabs .overdueTab:hover{
+  background:rgba(148,163,184,.08)!important;
+  color:inherit!important;
+  border-color:rgba(148,163,184,.18)!important;
+}
+.financePage .financeSubTabs .overdueTab.active{
+  background:linear-gradient(180deg,#2563eb 0%,#1d4ed8 100%)!important;
+  color:#fff!important;
+  border-color:#3b82f6!important;
+  box-shadow:0 7px 18px rgba(37,99,235,.28)!important;
+}
+.financePage .financeSubTabs .overdueTab .subTabCount{
+  background:#fee2e2!important;
+  color:#b91c1c!important;
+  border-color:#fecaca!important;
+}
+.financePage .financeSubTabs .overdueTab.active .subTabCount{
+  background:rgba(255,255,255,.18)!important;
+  color:#fff!important;
+  border-color:rgba(255,255,255,.22)!important;
+}
+.dark .financePage .financeSubTabs .subTab,
+.dark .financePage .financeSubTabs .overdueTab{
+  background:transparent!important;
+  color:#cbd5e1!important;
+}
+.dark .financePage .financeSubTabs .subTab:hover,
+.dark .financePage .financeSubTabs .overdueTab:hover{
+  background:#1b2738!important;
+  color:#eaf1fa!important;
+}
+.dark .financePage .financeSubTabs .subTab.active,
+.dark .financePage .financeSubTabs .overdueTab.active{
+  background:linear-gradient(180deg,#2563eb 0%,#1d4ed8 100%)!important;
+  color:#fff!important;
+}
+@media(max-width:1180px){
+  .financePage .financeSubTabs{
+    display:flex!important;
+    overflow-x:auto!important;
+  }
+  .financePage .financeSubTabs .subTab{
+    flex:0 0 145px!important;
+    width:145px!important;
+  }
+}
