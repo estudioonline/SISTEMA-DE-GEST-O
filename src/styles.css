@@ -5295,3 +5295,38 @@
   .billingBulkBar{flex-wrap:wrap}
   .billingBulkBar>div{width:100%}
 }
+
+
+.employeeManager{display:grid;gap:12px}
+.employeeManagerList{display:grid;gap:8px}
+.employeeManagerRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--panel);
+}
+.employeeManagerRow>div{display:grid;gap:3px;min-width:0}
+.employeeManagerRow strong{font-size:13px}
+.employeeManagerRow small{font-size:11px;color:var(--muted)}
+.employeeEditBackdrop{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:rgba(2,6,23,.62);
+  backdrop-filter:blur(4px);
+}
+.employeeEditModal{
+  width:min(520px,100%);
+  display:grid;
+  gap:12px;
+  box-shadow:0 24px 70px rgba(0,0,0,.28);
+}
+.employeeEditModal label{display:grid;gap:6px}
+.employeeEditModal input,.employeeEditModal select{width:100%}
