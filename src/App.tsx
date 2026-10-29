@@ -22,6 +22,7 @@ import { NfeImportModal } from './NfeImportModal'
 import { FocusNfeSettings, FocusNfeSale } from './FocusNfe'
 import { AppLauncher } from './AppLauncher'
 import { EmployeeFinance } from './EmployeeFinance'
+import { BankReconciliation } from './BankReconciliation'
 import type { EmployeeTitle } from './EmployeeFinance'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
 import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
@@ -206,7 +207,7 @@ function App(){
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
-  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'funcionarios'|'vales'>('geral')
+  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'funcionarios'|'vales'|'conciliacao'>('geral')
   const [financeStatusFilter,setFinanceStatusFilter]=useState<'todos'|'aberto'|'parcial'|'pago'|'cancelado'>('todos')
   const [financeStart,setFinanceStart]=useState('')
   const [financeEnd,setFinanceEnd]=useState('')
@@ -3058,6 +3059,7 @@ function App(){
           <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
           <button className={financeSubtab==='funcionarios'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('funcionarios');closeForms()}}><Users size={16}/>Funcionários</button>
           <button className={financeSubtab==='vales'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('vales');closeForms()}}><WalletCards size={16}/>Vale</button>
+          <button className={financeSubtab==='conciliacao'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('conciliacao');closeForms()}}><Building2 size={16}/>Diários e Conciliação</button>
         </div>
 
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingTitle?'Editar fatura':'Nova fatura'}><div className="saleModalShell financeModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveTitle}>
@@ -3148,6 +3150,8 @@ function App(){
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
         {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<><div className="financeReportBar compact"><div><strong>{financeSubtab==='funcionarios'?'Relatório de funcionários':'Relatório de vales'}</strong><span>Exporta os lançamentos desta área em PDF.</span></div><button type="button" className="ghost" onClick={()=>void downloadFinancePdf(financeSubtab)}><FileDown size={15}/>PDF</button></div><EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/></>}
+        {financeSubtab==='conciliacao'&&<BankReconciliation titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance}/>}
+
       </section>}
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
