@@ -37,7 +37,9 @@ type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null;latitude?:number|null;longitude?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
+type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual:number}
+type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number;perda_percentual:number}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
@@ -142,6 +144,7 @@ function App(){
   const [commissionsLoading,setCommissionsLoading]=useState(true)
   const [comissoes,setComissoes]=useState<ComissaoResumo[]>([])
   const [movimentosEstoque,setMovimentosEstoque]=useState<MovimentoEstoque[]>([])
+  const [produtoComponentes,setProdutoComponentes]=useState<ProdutoComponente[]>([])
 
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
@@ -166,6 +169,8 @@ function App(){
   const [statementBusy,setStatementBusy]=useState<string|null>(null)
 
   const [editingProduct,setEditingProduct]=useState<Produto|null>(null)
+  const [productType,setProductType]=useState<'insumo'|'produto_final'>('insumo')
+  const [productComponentDrafts,setProductComponentDrafts]=useState<ProdutoComponenteDraft[]>([])
   const [productPanel,setProductPanel]=useState<string|null>(null)
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
@@ -263,7 +268,7 @@ function App(){
   useEffect(()=>{
     setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');setShowApps(true);setPermissionsReady(false);closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
-    setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setComissoes([])
+    setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setComissoes([])
     setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setEmail('');setPassword('')
   },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
@@ -329,6 +334,7 @@ function App(){
       readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to)),
       supabase.rpc('minhas_permissoes_erp')
     ])
+    const pc=await readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to))
     if(currentSessionUser.current!==session.user.id)return
     if(!c.error)setClientes((c.data||[]) as Cliente[])
     if(!f.error)setFornecedores((f.data||[]) as Fornecedor[])
@@ -359,6 +365,7 @@ function App(){
     if(!vd.error)setVendedores((vd.data||[]) as Vendedor[])
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
     if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
+    if(!pc.error)setProdutoComponentes((pc.data||[]) as ProdutoComponente[])
     if(!sa.error)setSaleApprovals((sa.data||[]) as SaleApproval[])
     setPermissionsReady(true)
   }
