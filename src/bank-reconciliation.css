@@ -199,3 +199,128 @@
   .bankRecon .bankJournalSelector{width:100%}
   .bankRecon .bankActions{width:100%}
 }
+
+
+/* Seleção em massa de linhas do extrato */
+.bankFilterBar.bankSearchOnly{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.bankBulkSelect{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  font-size:11px;
+  font-weight:700;
+  color:#64748b;
+  white-space:nowrap;
+}
+.bankBulkSelect input,
+.bankTxSelect input{
+  width:16px;
+  height:16px;
+  accent-color:#2563eb;
+}
+.bankBulkDelete{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:38px;
+  padding:0 11px;
+  border:1px solid #fecaca;
+  border-radius:9px;
+  background:#fff1f2;
+  color:#b91c1c;
+  font-weight:800;
+  font-size:11px;
+}
+.bankBulkDelete:hover{background:#ffe4e6}
+.bankTxMain{
+  grid-template-columns:auto 140px minmax(0,1fr) 130px 100px!important;
+}
+.bankTxSelect{
+  display:grid;
+  place-items:center;
+  align-self:stretch;
+  padding:0 2px;
+}
+.bankTxSelected{
+  outline:2px solid rgba(37,99,235,.45);
+  outline-offset:-2px;
+}
+
+/* Resumo financeiro da conciliação múltipla */
+.bankReconcileBalance{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-top:12px;
+  padding:11px;
+  border:1px solid #dbe3ee;
+  border-radius:11px;
+  background:#f8fafc;
+}
+.bankReconcileBalance>div{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+.bankReconcileBalance span{
+  font-size:10px;
+  color:#64748b;
+  font-weight:700;
+}
+.bankReconcileBalance strong{
+  font-size:13px;
+  font-variant-numeric:tabular-nums;
+}
+.bankReconcileBalance small{
+  grid-column:1/-1;
+  font-size:10px;
+  line-height:1.35;
+}
+.bankReconcileBalance.residual{
+  background:#fffbeb;
+  border-color:#fde68a;
+}
+.bankReconcileBalance.residual .bankReconcileDifference strong,
+.bankReconcileBalance.residual small{
+  color:#b45309;
+}
+.bankReconcileBalance.excess{
+  background:#fef2f2;
+  border-color:#fecaca;
+}
+.bankReconcileBalance.excess .bankReconcileDifference strong,
+.bankReconcileBalance.excess small{
+  color:#b91c1c;
+}
+.bankReconcileBalance.balanced{
+  background:#ecfdf5;
+  border-color:#a7f3d0;
+}
+.bankReconcileBalance.balanced .bankReconcileDifference strong,
+.bankReconcileBalance.balanced small{
+  color:#047857;
+}
+.dark .bankBulkSelect{color:#94a3b8}
+.dark .bankBulkDelete{background:#2b1719;border-color:#63313a;color:#fca5a5}
+.dark .bankBulkDelete:hover{background:#3a1b20}
+.dark .bankReconcileBalance{background:#111827;border-color:#334155}
+.dark .bankReconcileBalance span{color:#94a3b8}
+.dark .bankReconcileBalance.residual{background:#2a2111;border-color:#6b4f1d}
+.dark .bankReconcileBalance.excess{background:#2b1719;border-color:#63313a}
+.dark .bankReconcileBalance.balanced{background:#10251b;border-color:#245b3d}
+@media(max-width:900px){
+  .bankFilterBar.bankSearchOnly{flex-wrap:wrap}
+  .bankFilterBar.bankSearchOnly .bankSearch{order:1;width:100%}
+  .bankBulkSelect{order:2}
+  .bankBulkDelete{order:3}
+  .bankReconcileBalance{grid-template-columns:1fr 1fr}
+}
+@media(max-width:620px){
+  .bankTxMain{grid-template-columns:auto 110px minmax(0,1fr)!important}
+  .bankTxAmount,.bankStatus{grid-column:auto}
+  .bankReconcileBalance{grid-template-columns:1fr}
+}
