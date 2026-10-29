@@ -4857,3 +4857,74 @@
   .salesModernTable .salesDocument{font-size:10px}
   .salesModernTable .salesModernActions{gap:6px}
 }
+
+
+/* Modo claro: listas e tabelas com bordas mais escuras e tipografia mais forte */
+.app:not(.dark) .tableWrap,
+.app:not(.dark) .tablePanel,
+.app:not(.dark) .panel.tablePanel,
+.app:not(.dark) .bankTx,
+.app:not(.dark) .bankFilterBar,
+.app:not(.dark) .bankRecon .bankTx,
+.app:not(.dark) .bankRecon .bankFilterBar,
+.app:not(.dark) .recordDetailSheet,
+.app:not(.dark) .financeGroups .panel,
+.app:not(.dark) .financeSingleList .panel{
+  border-color:#111827!important;
+}
+
+.app:not(.dark) table{
+  border-color:#111827!important;
+}
+
+.app:not(.dark) table thead th{
+  border-bottom-color:#111827!important;
+  color:#111827!important;
+  font-weight:800!important;
+}
+
+.app:not(.dark) table tbody td{
+  border-bottom-color:#374151!important;
+  color:#111827!important;
+  font-weight:600;
+}
+
+.app:not(.dark) table tbody tr:last-child td{
+  border-bottom-color:#111827!important;
+}
+
+.app:not(.dark) .bankRecon .bankTxMain,
+.app:not(.dark) .bankRecon .bankMatchArea,
+.app:not(.dark) .bankRecon .bankConciled{
+  border-color:#111827!important;
+}
+
+.app:not(.dark) .bankRecon .bankTxMain strong,
+.app:not(.dark) .bankRecon .bankTxDesc strong,
+.app:not(.dark) .bankRecon .bankTxDate strong,
+.app:not(.dark) .bankRecon .bankSuggestion strong,
+.app:not(.dark) .bankRecon .bankReconcileList strong{
+  font-weight:800!important;
+  color:#111827!important;
+}
+
+.app:not(.dark) .salesUxTable th{
+  border-bottom-color:#111827!important;
+}
+
+.app:not(.dark) .salesUxTable td{
+  border-bottom-color:#374151!important;
+  font-weight:600;
+}
+
+.app:not(.dark) .salesModernTable,
+.app:not(.dark) .salesAdvancedFilters,
+.app:not(.dark) .salesPagination{
+  border-color:#111827!important;
+}
+
+.app:not(.dark) .statusBadge,
+.app:not(.dark) .salesStatus,
+.app:not(.dark) .salesPaymentStatus{
+  font-weight:800!important;
+}
