@@ -947,18 +947,9 @@ function App(){
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
   function removeSaleItem(key:string){setSaleItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
   function resizeSaleDates(count:number){
-    const base=saleInstallmentDates[0]||saleDueDate||today()
-    setSaleInstallments(count)
-    setSaleDueDate(base)
-    setSaleInstallmentDates(prev=>Array.from({length:count},(_,i)=>prev[i]||addMonthsIso(base,i)))
-  }
-  function changeSaleInstallmentDate(index:number,value:string){
-    setSaleInstallmentDates(prev=>{
-      const next=[...prev]
-      next[index]=value
-      if(index===0)setSaleDueDate(value)
-      return next
-    })
+    const next=Math.max(1,count)
+    setSaleInstallments(next)
+    setSaleInstallmentDates(buildInstallmentDates(today(),next))
   }
   function changePayment(v:PaymentMethod){
     setSalePayment(v)
@@ -979,11 +970,6 @@ function App(){
       return
     }
 
-    if(saleInstallmentDates.length!==saleInstallments||saleInstallmentDates.some(v=>!v)){
-      setMsg('Informe a data de vencimento de cada parcela.')
-      return
-    }
-
     if(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker){
       setMsg('Esta venda possui bloqueios que exigem autorização: '+saleApprovalBlockers.map(b=>b.label).join(', ')+'. Use o botão destacado “Solicitar autorização”.')
       return
@@ -996,8 +982,8 @@ function App(){
       p_status:saleStatus,
       p_forma_pagamento:salePayment,
       p_parcelas:saleInstallments,
-      p_primeiro_vencimento:saleInstallmentDates[0]||saleDueDate,
-      p_vencimentos:saleInstallmentDates,
+      p_primeiro_vencimento:today(),
+      p_vencimentos:buildInstallmentDates(today(),saleInstallments),
       p_observacoes:saleNotes,
       p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto}))
     }
@@ -2921,9 +2907,6 @@ function App(){
                 {Array.from({length:salePayment==='pix'||salePayment==='dinheiro'?1:salePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n}>{n}</option>)}
               </select>
             </label>
-            {saleInstallmentDates.map((due,index)=><label key={index}>{index+1}º vencimento
-              <input type="date" value={due} onChange={e=>changeSaleInstallmentDate(index,e.target.value)} required/>
-            </label>)}
             <label className="saleNotes">Observações
               <input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)}/>
             </label>
