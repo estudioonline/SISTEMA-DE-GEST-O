@@ -620,6 +620,8 @@ function App(){
       inscricao_estadual:String(f.get('inscricao_estadual')||'').trim()||null,
       consumidor_final:String(f.get('consumidor_final')||'true')==='true',
       presenca_comprador:Number(f.get('presenca_comprador')||0)||null,
+      latitude:String(f.get('latitude')||'').trim()===''?null:Number(f.get('latitude')),
+      longitude:String(f.get('longitude')||'').trim()===''?null:Number(f.get('longitude')),
       ativo:String(f.get('ativo')||'true')==='true'
     }
     const r=editingClient?await supabase.from('clientes').update(payload).eq('id',editingClient.id):await supabase.from('clientes').insert(payload)
@@ -2274,6 +2276,8 @@ function App(){
             <label className="fieldLabel">Código IBGE<input name="codigo_municipio" inputMode="numeric" maxLength={7} defaultValue={editingClient?.codigo_municipio||''} placeholder="7 dígitos"/></label>
             <label className="fieldLabel">UF<input name="uf" maxLength={2} defaultValue={editingClient?.uf||''} placeholder="SP"/></label>
             <label className="fieldLabel">CEP<input name="cep" inputMode="numeric" defaultValue={maskCep(editingClient?.cep||'')} onInput={e=>{e.currentTarget.value=maskCep(e.currentTarget.value)}} placeholder="00000-000"/></label>
+            <label className="fieldLabel">Latitude (rotas)<input name="latitude" type="number" step="0.0000001" min="-90" max="90" defaultValue={editingClient?.latitude??''} placeholder="-15.0000000"/></label>
+            <label className="fieldLabel">Longitude (rotas)<input name="longitude" type="number" step="0.0000001" min="-180" max="180" defaultValue={editingClient?.longitude??''} placeholder="-47.0000000"/></label>
             <label className="fieldLabel">Inscrição estadual
               <select name="indicador_ie" defaultValue={editingClient?.indicador_ie||'9'}>
                 <option value="1">Contribuinte com IE</option>
@@ -2312,6 +2316,8 @@ function App(){
   <div><span>Código IBGE</span><strong>{c.codigo_municipio||'—'}</strong></div>
   <div><span>UF</span><strong>{c.uf||'—'}</strong></div>
   <div><span>CEP</span><strong>{c.cep?maskCep(c.cep):'—'}</strong></div>
+  <div><span>Latitude</span><strong>{c.latitude??'—'}</strong></div>
+  <div><span>Longitude</span><strong>{c.longitude??'—'}</strong></div>
   <div><span>Inscrição estadual</span><strong>{c.indicador_ie==='1'?'Contribuinte com IE':c.indicador_ie==='2'?'Contribuinte isento':'Não contribuinte'}</strong></div>
   <div><span>Nº inscrição estadual</span><strong>{c.inscricao_estadual||'—'}</strong></div>
   <div><span>Consumidor final</span><strong>{c.consumidor_final===false?'Não':'Sim'}</strong></div>
