@@ -35,7 +35,7 @@ type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null}
-type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
+type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
@@ -183,6 +183,7 @@ function App(){
   const [salePayment,setSalePayment]=useState<PaymentMethod>('pix')
   const [saleInstallments,setSaleInstallments]=useState(1)
   const [saleDueDate,setSaleDueDate]=useState(today())
+  const [saleInstallmentDates,setSaleInstallmentDates]=useState<string[]>([today()])
   const [saleItems,setSaleItems]=useState<SaleItemDraft[]>([newSaleItem()])
   const [originalSaleItems,setOriginalSaleItems]=useState<VendaItem[]>([])
   const [saleCreditState,setSaleCreditState]=useState<{em_aberto:number;vencido:number}|null>(null)
@@ -779,7 +780,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()])}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}setSalePanel(null);setSaleDetailItems([]);resetSaleForm();setShowForm(true);setMsg('')}
   async function openSaleDetail(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
@@ -847,14 +848,33 @@ function App(){
     const items=(data||[]) as VendaItem[]
     setSaleRequestId(crypto.randomUUID())
     setOriginalSaleItems(items)
-    setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(Number(v.parcelas)||1);setSaleDueDate(v.primeiro_vencimento||today())
+    const saleCount=Number(v.parcelas)||1;const saleBase=v.primeiro_vencimento||today();const saleDates=Array.isArray(v.vencimentos_parcelas)&&v.vencimentos_parcelas.length===saleCount?v.vencimentos_parcelas:buildInstallmentDates(saleBase,saleCount);setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(saleCount);setSaleDueDate(saleDates[0]||saleBase);setSaleInstallmentDates(saleDates)
     setSaleItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)})))
     setSalePanel(null);setSaleDetailItems([]);setShowForm(true);setMsg('')
   }
   function chooseProduct(key:string,id:string){const p=produtos.find(x=>x.id===id);setSaleItems(items=>items.map(i=>i.key===key?{...i,produto_id:id,valor_unitario:p?Number(p.preco_venda):0}:i))}
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
   function removeSaleItem(key:string){setSaleItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
-  function changePayment(v:PaymentMethod){setSalePayment(v);if(v==='dinheiro'){setSaleInstallments(1);setSaleDueDate(today())}if(v==='pix')setSaleInstallments(1);if(v==='cartao')setSaleInstallments(x=>Math.min(Math.max(x,1),12));if(v==='boleto')setSaleInstallments(x=>Math.min(Math.max(x,1),24))}
+  function resizeSaleDates(count:number){
+    const base=saleInstallmentDates[0]||saleDueDate||today()
+    setSaleInstallments(count)
+    setSaleDueDate(base)
+    setSaleInstallmentDates(prev=>Array.from({length:count},(_,i)=>prev[i]||addMonthsIso(base,i)))
+  }
+  function changeSaleInstallmentDate(index:number,value:string){
+    setSaleInstallmentDates(prev=>{
+      const next=[...prev]
+      next[index]=value
+      if(index===0)setSaleDueDate(value)
+      return next
+    })
+  }
+  function changePayment(v:PaymentMethod){
+    setSalePayment(v)
+    if(v==='dinheiro'||v==='pix')resizeSaleDates(1)
+    if(v==='cartao')resizeSaleDates(Math.min(Math.max(saleInstallments,1),12))
+    if(v==='boleto')resizeSaleDates(Math.min(Math.max(saleInstallments,1),24))
+  }
   function invoiceItems(items:SaleItemDraft[]){return items.map(i=>{const p=produtos.find(x=>x.id===i.produto_id);const d=Math.min(i.desconto,i.quantidade*i.valor_unitario);return{codigo:p?.codigo,descricao:p?.descricao||'Produto',unidade:p?.unidade||'UN',quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:d,total:Math.max(0,i.quantidade*i.valor_unitario-d)}})}
   async function saveSale(e:FormEvent<HTMLFormElement>){
     e.preventDefault();if(!session)return
@@ -865,6 +885,11 @@ function App(){
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
     if(!items.length||saleHasStructuralError){
       setMsg('Corrija os itens da venda antes de continuar: produto ativo, quantidade maior que zero e preço válido.')
+      return
+    }
+
+    if(saleInstallmentDates.length!==saleInstallments||saleInstallmentDates.some(v=>!v)){
+      setMsg('Informe a data de vencimento de cada parcela.')
       return
     }
 
@@ -880,7 +905,8 @@ function App(){
       p_status:saleStatus,
       p_forma_pagamento:salePayment,
       p_parcelas:saleInstallments,
-      p_primeiro_vencimento:saleDueDate,
+      p_primeiro_vencimento:saleInstallmentDates[0]||saleDueDate,
+      p_vencimentos:saleInstallmentDates,
       p_observacoes:saleNotes,
       p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto}))
     }
@@ -912,7 +938,7 @@ function App(){
         observacoes:saleNotes||null,
         forma_pagamento:salePayment,
         parcelas:saleInstallments,
-        primeiro_vencimento:saleDueDate,
+        primeiro_vencimento:saleInstallmentDates[0]||saleDueDate,
         rota_entrega:saleRoute||null,
         vendedor_nome:vendedores.find(v=>v.id===saleSeller)?.nome||null,
         cliente:clientes.find(c=>c.id===saleClient)||null,
@@ -1014,6 +1040,7 @@ function App(){
         p_forma_pagamento:v.forma_pagamento||'pix',
         p_parcelas:Number(v.parcelas)||1,
         p_primeiro_vencimento:v.primeiro_vencimento||today(),
+        p_vencimentos:Array.isArray(v.vencimentos_parcelas)&&v.vencimentos_parcelas.length===Number(v.parcelas)?v.vencimentos_parcelas:buildInstallmentDates(v.primeiro_vencimento||today(),Number(v.parcelas)||1),
         p_observacoes:v.observacoes||'',
         p_rota_entrega:v.rota_entrega||null,
         p_itens:items
@@ -1075,7 +1102,8 @@ function App(){
           p_status:saleStatus,
           p_forma_pagamento:salePayment,
           p_parcelas:saleInstallments,
-          p_primeiro_vencimento:saleDueDate,
+          p_primeiro_vencimento:saleInstallmentDates[0]||saleDueDate,
+          p_vencimentos:saleInstallmentDates,
           p_observacoes:saleNotes,
           p_rota_entrega:saleRoute||null,
           p_bloqueios:saleApprovalBlockers,
@@ -2696,13 +2724,13 @@ function App(){
               </select>
             </label>
             <label>Parcelas
-              <select value={saleInstallments} onChange={e=>setSaleInstallments(Number(e.target.value))} disabled={salePayment==='pix'||salePayment==='dinheiro'}>
+              <select value={saleInstallments} onChange={e=>resizeSaleDates(Number(e.target.value))} disabled={salePayment==='pix'||salePayment==='dinheiro'}>
                 {Array.from({length:salePayment==='pix'||salePayment==='dinheiro'?1:salePayment==='cartao'?12:24},(_,i)=>i+1).map(n=><option key={n}>{n}</option>)}
               </select>
             </label>
-            <label>1º vencimento
-              <input type="date" value={saleDueDate} onChange={e=>setSaleDueDate(e.target.value)} required/>
-            </label>
+            {saleInstallmentDates.map((due,index)=><label key={index}>{index+1}º vencimento
+              <input type="date" value={due} onChange={e=>changeSaleInstallmentDate(index,e.target.value)} required/>
+            </label>)}
             <label className="saleNotes">Observações
               <input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)}/>
             </label>
