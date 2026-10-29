@@ -324,3 +324,44 @@
   .bankTxAmount,.bankStatus{grid-column:auto}
   .bankReconcileBalance{grid-template-columns:1fr}
 }
+
+
+/* Diários especiais: Dinheiro e Ajustes */
+.bankLogoCash{
+  background:linear-gradient(145deg,#16a34a,#15803d)!important;
+  color:#fff!important;
+}
+.bankLogoAdjust{
+  background:linear-gradient(145deg,#7c3aed,#5b21b6)!important;
+  color:#fff!important;
+}
+.bankJournalMetrics.cashMetrics{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.bankJournalMetrics .negative{
+  color:#f87171;
+}
+.bankJournalActions.singleAction{
+  grid-template-columns:1fr!important;
+}
+.bankJournalActions.singleAction .bankTransactionsButton{
+  width:100%;
+}
+.billingCashNotice{
+  padding:10px 12px;
+  border:1px solid #86efac;
+  border-radius:10px;
+  background:#f0fdf4;
+  color:#166534;
+  font-size:11px;
+  font-weight:700;
+}
+.dark .billingCashNotice{
+  background:#10251b;
+  border-color:#245b3d;
+  color:#86efac;
+}
+@media(max-width:700px){
+  .bankJournalMetrics.cashMetrics{grid-template-columns:1fr 1fr}
+  .bankJournalMetrics.cashMetrics>div:first-child{grid-column:1/-1}
+}
