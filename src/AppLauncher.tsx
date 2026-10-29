@@ -26,14 +26,10 @@ export function AppLauncher({ menu, company, ready, canEdit, onOpen, notificatio
   useEffect(() => { heading.current?.focus() }, [])
   const apps = menu.filter(([key, label]) => normalize(`${label} ${descriptions[key] || permissionModules.find(m => m.key === appPermission(key))?.description || ''}`).includes(normalize(query)))
 
-  return <section className="appLauncher" aria-labelledby="apps-heading">
-    <div className="launcherIntro">
-      <span className="launcherEyebrow">SEU ESPAÇO DE TRABALHO</span>
-      <h1 id="apps-heading" ref={heading} tabIndex={-1}>Aplicativos</h1>
-      <p>Acesse os módulos de {company === 'Sistema de Gestão' ? 'sua empresa' : company}.</p>
-    </div>
+  return <section className="appLauncher" aria-labelledby="apps-heading" aria-describedby="apps-description">
+    <h1 id="apps-heading" className="launcherSrOnly" ref={heading} tabIndex={-1}>Aplicativos</h1>
+    <p id="apps-description" className="launcherSrOnly">Acesse os módulos de {company === 'Sistema de Gestão' ? 'sua empresa' : company}. {ready ? `${apps.length} ${apps.length === 1 ? 'disponível' : 'disponíveis'} para você` : 'Carregando seus acessos…'}</p>
     <div className="launcherToolbar">
-      <div><h2>Aplicativos</h2><span aria-live="polite">{ready ? `${apps.length} ${apps.length === 1 ? 'disponível' : 'disponíveis'} para você` : 'Carregando seus acessos…'}</span></div>
       <div className="launcherSearch">
         <Search size={19} aria-hidden="true"/>
         <input aria-label="Buscar aplicativo" type="search" placeholder="Buscar aplicativo…" value={query} onChange={event => setQuery(event.target.value)} disabled={!ready}/>
@@ -46,12 +42,12 @@ export function AppLauncher({ menu, company, ready, canEdit, onOpen, notificatio
           const meta = permissionModules.find(module => module.key === appPermission(key))
           const readOnly = Boolean(meta?.editable && !canEdit(key))
           return <button type="button" key={key} className={`launcherApp appColor-${key}${readOnly?' readOnly':''}`} onClick={() => onOpen(key)} aria-label={`${readOnly?'Abrir em modo somente leitura':'Abrir'} ${label}`} title={readOnly?`${label} · somente leitura`:label}>
-            <span className="launcherIcon"><Icon size={30} strokeWidth={1.8} aria-hidden="true"/>{Number(notifications[key]||0)>0&&<span className="launcherNotification" aria-label={`${notifications[key]} pendente(s)`}>{Number(notifications[key])>99?'99+':notifications[key]}</span>}</span>
+            <span className="launcherIcon"><Icon size={36} strokeWidth={1.8} aria-hidden="true"/>{Number(notifications[key]||0)>0&&<span className="launcherNotification" aria-label={`${notifications[key]} pendente(s)`}>{Number(notifications[key])>99?'99+':notifications[key]}</span>}</span>
             <strong>{label}</strong>
             {readOnly&&<span className="launcherReadOnly">Somente leitura</span>}
           </button>
         })}
       </nav> : <div className="launcherEmpty" role="status"><strong>{menu.length ? 'Nenhum aplicativo encontrado' : 'Nenhum aplicativo liberado'}</strong><p>{menu.length ? 'Tente buscar pelo nome ou pela função do aplicativo.' : 'Solicite ao administrador a liberação dos seus acessos.'}</p>{query && <button type="button" className="ghost" onClick={() => setQuery('')}>Limpar busca</button>}</div>}
-    <p className="launcherFootnote"><ShieldCheck size={16} aria-hidden="true"/> Seus aplicativos seguem as permissões da sua conta.</p>
+    <p className="launcherFootnote launcherSrOnly"><ShieldCheck size={16} aria-hidden="true"/> Seus aplicativos seguem as permissões da sua conta.</p>
   </section>
 }
