@@ -38,8 +38,8 @@ type DeliveryRoute='norte'|'sul'|'leste'|'interestadual'|'retirada'
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null;latitude?:number|null;longitude?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
-type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual:number}
-type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number;perda_percentual:number}
+type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
+type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
@@ -686,8 +686,7 @@ function App(){
     return produtoComponentes.filter(row=>row.produto_final_id===productId).map(row=>({
       key:row.id,
       componente_id:row.componente_id,
-      quantidade:Number(row.quantidade),
-      perda_percentual:Number(row.perda_percentual||0)
+      quantidade:Number(row.quantidade)
     }))
   }
   function startNewProduct(){
@@ -699,9 +698,9 @@ function App(){
     setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function addProductComponent(){
-    setProductComponentDrafts(rows=>[...rows,{key:crypto.randomUUID(),componente_id:'',quantidade:1,perda_percentual:0}])
+    setProductComponentDrafts(rows=>[...rows,{key:crypto.randomUUID(),componente_id:'',quantidade:1}])
   }
-  function updateProductComponent(key:string,field:'componente_id'|'quantidade'|'perda_percentual',value:string|number){
+  function updateProductComponent(key:string,field:'componente_id'|'quantidade',value:string|number){
     setProductComponentDrafts(rows=>rows.map(row=>row.key===key?{...row,[field]:field==='componente_id'?String(value):Math.max(0,Number(value)||0)}:row))
   }
   function removeProductComponent(key:string){
@@ -763,7 +762,7 @@ function App(){
       const composition=productComponentDrafts.map(row=>({
         componente_id:row.componente_id,
         quantidade:Number(row.quantidade),
-        perda_percentual:Number(row.perda_percentual||0)
+        perda_percentual:0
       }))
       const savedComposition=await supabase.rpc('salvar_ficha_tecnica_produto',{p_produto_final_id:productId,p_componentes:composition})
       if(savedComposition.error){setMsg('Produto salvo, mas houve erro na ficha técnica: '+savedComposition.error.message);await loadData();return}
@@ -1921,8 +1920,8 @@ function App(){
       .map(row=>{
         const componente=produtos.find(p=>p.id===row.componente_id)
         const base=Number(row.quantidade)*Number(item.quantidade||0)
-        const total=base*(1+Number(row.perda_percentual||0)/100)
-        return {componente,quantidade:total,perda:Number(row.perda_percentual||0)}
+        const total=base
+        return {componente,quantidade:total}
       })
       .filter(row=>row.componente)
   }
@@ -2532,9 +2531,6 @@ function App(){
                   <label className="fieldLabel">Quantidade por unidade
                     <input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateProductComponent(row.key,'quantidade',e.target.value)} required/>
                   </label>
-                  <label className="fieldLabel">Perda (%)
-                    <input type="number" min="0" max="100" step="0.01" value={row.perda_percentual} onChange={e=>updateProductComponent(row.key,'perda_percentual',e.target.value)}/>
-                  </label>
                   <button type="button" className="iconBtn dangerBtn productionRecipeRemove" onClick={()=>removeProductComponent(row.key)} title="Remover material"><Trash2 size={16}/></button>
                 </div>)}
               </div>
@@ -2542,7 +2538,7 @@ function App(){
                 <span>Custo calculado dos materiais</span>
                 <strong>{money(productComponentDrafts.reduce((sum,row)=>{
                   const material=produtos.find(p=>p.id===row.componente_id)
-                  return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0)*(1+Number(row.perda_percentual||0)/100))
+                  return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0))
                 },0))}</strong>
               </div>}
             </div>}
@@ -2900,7 +2896,7 @@ function App(){
                   {productionMaterials.map(row=><div key={row.componente!.id} className={Number(row.componente!.estoque_atual)<row.quantidade?'productionMaterialShort':''}>
                     <span>{row.componente!.codigo} — {row.componente!.descricao}</span>
                     <strong>{row.quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {row.componente!.unidade}</strong>
-                    <small>Estoque: {Number(row.componente!.estoque_atual).toLocaleString('pt-BR')} {row.componente!.unidade}{row.perda>0?' • perda '+row.perda.toLocaleString('pt-BR')+'%':''}</small>
+                    <small>Estoque: {Number(row.componente!.estoque_atual).toLocaleString('pt-BR')} {row.componente!.unidade}</small>
                   </div>)}
                 </div>
               </div>}
