@@ -52,6 +52,7 @@ type SaleApproval={id:string;entidade_id:string|null;status:string;solicitado_em
 type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:number}
 type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
 type FaturaVenda={id:string;numero:number;venda_id:string;status:'ativa'|'cancelada';forma_pagamento:string;parcelas:number;valor_total:number;criada_em:string;criada_por:string|null;cancelada_em:string|null;cancelada_por:string|null;motivo_cancelamento:string|null}
+type FaturaVendaItem={fatura_id:string;venda_id:string;valor_venda:number}
 type InvoiceDraftLine={key:string;vencimento:string;valor:number}
 type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
@@ -250,6 +251,8 @@ function App(){
   const [financePayments,setFinancePayments]=useState<FinancePayment[]>([])
   const [financeReversals,setFinanceReversals]=useState<FinanceReversal[]>([])
   const [faturasVendas,setFaturasVendas]=useState<FaturaVenda[]>([])
+  const [faturaVendaItens,setFaturaVendaItens]=useState<FaturaVendaItem[]>([])
+  const [billingSelectedSales,setBillingSelectedSales]=useState<string[]>([])
   const [billingSale,setBillingSale]=useState<Venda|null>(null)
   const [billingPayment,setBillingPayment]=useState<PaymentMethod>('pix')
   const [billingLines,setBillingLines]=useState<InvoiceDraftLine[]>([])
@@ -401,7 +404,7 @@ function App(){
     setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');setShowApps(true);setPermissionsReady(false);closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setComissoes([])
-    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setFaturasVendas([]);setBillingSale(null);setEmail('');setPassword('')
+    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setFaturasVendas([]);setFaturaVendaItens([]);setBillingSelectedSales([]);setBillingSale(null);setEmail('');setPassword('')
   },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
   useEffect(()=>{
@@ -466,9 +469,10 @@ function App(){
       readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to)),
       supabase.rpc('minhas_permissoes_erp')
     ])
-    const [pc,fv]=await Promise.all([
+    const [pc,fv,fvi]=await Promise.all([
       readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to)),
-      readAllRows((from,to)=>supabase.from('faturas_vendas').select('*').order('criada_em',{ascending:false}).order('id').range(from,to))
+      readAllRows((from,to)=>supabase.from('faturas_vendas').select('*').order('criada_em',{ascending:false}).order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('fatura_venda_itens').select('*').order('created_at').order('venda_id').range(from,to))
     ])
     if(currentSessionUser.current!==session.user.id)return
     if(!c.error)setClientes((c.data||[]) as Cliente[])
@@ -502,6 +506,7 @@ function App(){
     if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
     if(!pc.error)setProdutoComponentes((pc.data||[]) as ProdutoComponente[])
     if(!fv.error)setFaturasVendas((fv.data||[]) as FaturaVenda[])
+    if(!fvi.error)setFaturaVendaItens((fvi.data||[]) as FaturaVendaItem[])
     if(!sa.error)setSaleApprovals((sa.data||[]) as SaleApproval[])
     setPermissionsReady(true)
   }
@@ -2160,11 +2165,15 @@ function App(){
     if(paid>0)return {label:'Parcial',key:'parcial'}
     return {label:'Não pago',key:'nao-pago'}
   }
+  function invoicesForSale(vendaId:string){
+    const linkedIds=faturaVendaItens.filter(i=>i.venda_id===vendaId).map(i=>i.fatura_id)
+    return faturasVendas.filter(f=>f.venda_id===vendaId||linkedIds.includes(f.id))
+  }
   function activeInvoiceForSale(vendaId:string){
-    return faturasVendas.find(f=>f.venda_id===vendaId&&f.status==='ativa')||null
+    return invoicesForSale(vendaId).find(f=>f.status==='ativa')||null
   }
   function lastCancelledInvoiceForSale(vendaId:string){
-    return faturasVendas.filter(f=>f.venda_id===vendaId&&f.status==='cancelada').sort((a,b)=>b.criada_em.localeCompare(a.criada_em))[0]||null
+    return invoicesForSale(vendaId).filter(f=>f.status==='cancelada').sort((a,b)=>b.criada_em.localeCompare(a.criada_em))[0]||null
   }
   function saleInvoiceStatus(venda:Venda){
     const activeInvoice=activeInvoiceForSale(venda.id)
@@ -2173,14 +2182,17 @@ function App(){
     if(cancelled)return {label:'Fatura cancelada',key:'cancelado',invoice:cancelled}
     return {label:'Não faturado',key:'nao-faturado',invoice:null}
   }
-  function buildBillingLines(venda:Venda,count=Math.max(1,Number(venda.parcelas)||1)){
-    const totalCents=Math.round(Number(venda.total)*100)
+  function buildBillingLinesForTotal(total:number,count:number,firstDate=today(),intervalDays?:number){
+    const totalCents=Math.round(total*100)
     const base=Math.floor(totalCents/count)
     return Array.from({length:count},(_,index)=>({
       key:crypto.randomUUID(),
-      vencimento:addMonthsIso(today(),index),
+      vencimento:intervalDays?addDaysIso(firstDate,intervalDays*(index+1)):addMonthsIso(firstDate,index),
       valor:(index===count-1?totalCents-base*(count-1):base)/100
     }))
+  }
+  function buildBillingLines(venda:Venda,count=Math.max(1,Number(venda.parcelas)||1)){
+    return buildBillingLinesForTotal(Number(venda.total),count)
   }
   function openBillingSale(venda:Venda){
     if(!canManageFinance){setMsg('Seu perfil possui somente visualização no Financeiro.');return}
@@ -2191,9 +2203,48 @@ function App(){
     setBillingLines(buildBillingLines(venda))
     setMsg('')
   }
+  function toggleBillingSale(venda:Venda){
+    if(activeInvoiceForSale(venda.id))return
+    setBillingSelectedSales(prev=>{
+      if(prev.includes(venda.id))return prev.filter(id=>id!==venda.id)
+      const selected=vendas.filter(v=>prev.includes(v.id))
+      if(selected.length&&selected[0].cliente_id!==venda.cliente_id){
+        setMsg('Selecione apenas vendas do mesmo cliente para gerar uma fatura única.')
+        return prev
+      }
+      return [...prev,venda.id]
+    })
+  }
+  function openSelectedBillingSales(){
+    if(!canManageFinance||!billingSelectedSales.length)return
+    const selected=vendas.filter(v=>billingSelectedSales.includes(v.id))
+    if(!selected.length)return
+    if(selected.some(v=>activeInvoiceForSale(v.id))){setMsg('Uma das vendas selecionadas já possui fatura ativa.');return}
+    if(new Set(selected.map(v=>v.cliente_id)).size>1){setMsg('Todas as vendas selecionadas devem ser do mesmo cliente.');return}
+    const primary=selected[0]
+    const total=selected.reduce((sum,v)=>sum+Number(v.total),0)
+    setBillingSale(primary)
+    setBillingPayment(primary.forma_pagamento||'boleto')
+    setBillingLines(buildBillingLinesForTotal(total,Math.max(1,Number(primary.parcelas)||1)))
+    setMsg('')
+  }
+  function selectedBillingSales(){
+    return vendas.filter(v=>billingSelectedSales.includes(v.id))
+  }
+  function selectedBillingTotal(){
+    return selectedBillingSales().reduce((sum,v)=>sum+Number(v.total),0)
+  }
+
   function resizeBillingLines(count:number){
     if(!billingSale)return
-    setBillingLines(buildBillingLines(billingSale,Math.max(1,count)))
+    const total=billingSelectedSales.length?selectedBillingTotal():Number(billingSale.total)
+    setBillingLines(buildBillingLinesForTotal(total,Math.max(1,count)))
+  }
+  function setBillingTerms306090(){
+    if(!billingSale)return
+    const total=billingSelectedSales.length?selectedBillingTotal():Number(billingSale.total)
+    setBillingPayment('boleto')
+    setBillingLines(buildBillingLinesForTotal(total,3,today(),30))
   }
   function updateBillingLine(key:string,field:'vencimento'|'valor',value:string|number){
     setBillingLines(lines=>lines.map(line=>line.key===key?{...line,[field]:field==='valor'?Math.max(0,Number(value)||0):String(value)}:line))
@@ -2202,17 +2253,19 @@ function App(){
     e.preventDefault()
     if(!billingSale||billingBusy||!canManageFinance)return
     const total=billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0)
+    const selectedIds=billingSelectedSales.length?billingSelectedSales:[billingSale.id]
+    const selectedTotal=vendas.filter(v=>selectedIds.includes(v.id)).reduce((sum,v)=>sum+Number(v.total),0)
     if(billingLines.some(line=>!line.vencimento||Number(line.valor)<=0)){setMsg('Preencha vencimento e valor de todas as parcelas.');return}
-    if(Math.abs(total-Number(billingSale.total))>0.01){setMsg('A soma das parcelas deve ser igual ao total da venda.');return}
+    if(Math.abs(total-selectedTotal)>0.01){setMsg('A soma das parcelas deve ser igual ao total das vendas selecionadas.');return}
     setBillingBusy(true);setMsg('')
     try{
-      const {data,error}=await supabase.rpc('criar_fatura_venda',{
-        p_venda_id:billingSale.id,
+      const {data,error}=await supabase.rpc('criar_fatura_vendas',{
+        p_venda_ids:selectedIds,
         p_forma_pagamento:billingPayment,
         p_parcelas:billingLines.map(line=>({vencimento:line.vencimento,valor:Number(line.valor)}))
       })
       if(error)throw error
-      setBillingSale(null);setBillingLines([])
+      setBillingSale(null);setBillingLines([]);setBillingSelectedSales([])
       const paid=Boolean((data as {pago?:boolean}|null)?.pago)
       setMsg(paid?'Fatura criada e recebimento em dinheiro registrado automaticamente no Caixa.':'Fatura criada e parcelas enviadas para Contas a Receber.')
       await refreshFinance()
@@ -3573,17 +3626,20 @@ function App(){
             <button className={billingStatusFilter==='cancelado'?'active':''} onClick={()=>setBillingStatusFilter('cancelado')}>Cancelado <b>{billingCounts.cancelado}</b></button>
           </div>
           <div className="billingSearch"><Search size={16}/><input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Buscar por documento, cliente, vendedor..."/></div>
+          {billingSelectedSales.length>0&&<div className="billingBulkBar"><div><strong>{billingSelectedSales.length} venda(s) selecionada(s)</strong><span>{clientes.find(c=>c.id===selectedBillingSales()[0]?.cliente_id)?.nome||'Cliente'} • Total {money(selectedBillingTotal())}</span></div><button type="button" className="ghost" onClick={()=>setBillingSelectedSales([])}>Limpar</button><button type="button" className="primary" onClick={openSelectedBillingSales}>Gerar fatura única</button></div>}
           <div className="tableWrap"><table className="billingSalesTable">
-            <thead><tr><th>Venda</th><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status venda</th><th>Indicação pagamento</th><th>Status da fatura</th><th>Status pagto</th><th>Total</th><th>Ações</th></tr></thead>
+            <thead><tr><th className="billingSelectCol">Sel.</th><th>Venda</th><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status venda</th><th>Indicação pagamento</th><th>Status da fatura</th><th>Status pagto</th><th>Total</th><th>Ações</th></tr></thead>
             <tbody>
-              {billingSales.length===0&&<tr className="emptyTableRow"><td colSpan={11}><EmptyState message="Nenhuma venda aprovada encontrada com estes filtros."/></td></tr>}
+              {billingSales.length===0&&<tr className="emptyTableRow"><td colSpan={12}><EmptyState message="Nenhuma venda aprovada encontrada com estes filtros."/></td></tr>}
               {billingSales.map(v=>{
                 const client=clientes.find(c=>c.id===v.cliente_id)?.nome||'Consumidor'
                 const seller=vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||'—'
                 const invoiceState=saleInvoiceStatus(v)
                 const paymentState=salePaymentStatus(v)
                 const activeInvoice=activeInvoiceForSale(v.id)
-                return <tr key={v.id}>
+                const selectable=invoiceState.key==='nao-faturado'&&['pedido','faturado'].includes(v.status)
+                return <tr key={v.id} className={billingSelectedSales.includes(v.id)?'billingSelectedRow':''}>
+                  <td className="billingSelectCol"><input type="checkbox" checked={billingSelectedSales.includes(v.id)} disabled={!selectable||!canManageFinance} onChange={()=>toggleBillingSale(v)} aria-label={'Selecionar '+saleCode(v.venda_numero)}/></td>
                   <td><strong>#{saleCode(v.venda_numero)}</strong></td>
                   <td><strong>{invoiceState.invoice?financialInvoiceCode(invoiceState.invoice.numero):'—'}</strong></td>
                   <td>{dateBr(v.created_at)}</td>
@@ -3607,11 +3663,12 @@ function App(){
         </div>}
 
         {billingSale&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label="Criar fatura da venda"><div className="saleModalShell billingModalShell"><form className="panel billingInvoiceForm" onSubmit={createSaleInvoice}>
-          <div className="formTitle saleModalTitle"><div><h3>Criar fatura — Venda #{saleCode(billingSale.venda_numero)}</h3><p>Organize as parcelas antes de gerar o Contas a Receber.</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>{setBillingSale(null);setBillingLines([])}}><X size={18}/></button></div>
-          <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>Total da venda</span><strong>{money(Number(billingSale.total))}</strong></div><div><span>Indicação do vendedor</span><strong>{paymentLabel(billingSale.forma_pagamento)} • {billingSale.parcelas}x</strong></div></div>
+          <div className="formTitle saleModalTitle"><div><h3>{billingSelectedSales.length>1?'Criar fatura consolidada':'Criar fatura — Venda #'+saleCode(billingSale.venda_numero)}</h3><p>{billingSelectedSales.length>1?billingSelectedSales.length+' vendas do mesmo cliente em uma única fatura.':'Organize as parcelas antes de gerar o Contas a Receber.'}</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>{setBillingSale(null);setBillingLines([])}}><X size={18}/></button></div>
+          <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>{billingSelectedSales.length>1?'Total das vendas':'Total da venda'}</span><strong>{money(billingSelectedSales.length?selectedBillingTotal():Number(billingSale.total))}</strong></div><div><span>{billingSelectedSales.length>1?'Vendas incluídas':'Indicação do vendedor'}</span><strong>{billingSelectedSales.length>1?selectedBillingSales().map(v=>saleCode(v.venda_numero)).join(' • '):paymentLabel(billingSale.forma_pagamento)+' • '+billingSale.parcelas+'x'}</strong></div></div>
           <div className="billingInvoiceControls">
             <label>Forma de pagamento<select value={billingPayment} onChange={e=>{const method=e.target.value as PaymentMethod;setBillingPayment(method);if(method==='dinheiro')resizeBillingLines(1)}}><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label>
             <label>Número de parcelas<select value={billingLines.length} disabled={billingPayment==='dinheiro'} onChange={e=>resizeBillingLines(Number(e.target.value))}>{Array.from({length:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}</select></label>
+            {billingPayment==='boleto'&&<button type="button" className="ghost billingTermsButton" onClick={setBillingTerms306090}>Aplicar 30/60/90</button>}
           </div>
           <div className="billingLines">
             <div className="billingLinesHead"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>
