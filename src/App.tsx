@@ -682,8 +682,31 @@ function App(){
   }
 
   // PRODUTOS / ESTOQUE
-  function startNewProduct(){if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}setEditingProduct(null);setAdjustingProduct(null);setShowForm(true);setMsg('')}
-  function startEditProduct(p:Produto){if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}setEditingProduct(p);setAdjustingProduct(null);setShowForm(true);setMsg('')}
+  function componentDraftsForProduct(productId:string):ProdutoComponenteDraft[]{
+    return produtoComponentes.filter(row=>row.produto_final_id===productId).map(row=>({
+      key:row.id,
+      componente_id:row.componente_id,
+      quantidade:Number(row.quantidade),
+      perda_percentual:Number(row.perda_percentual||0)
+    }))
+  }
+  function startNewProduct(){
+    if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
+    setEditingProduct(null);setProductType('insumo');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
+  }
+  function startEditProduct(p:Produto){
+    if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
+    setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
+  }
+  function addProductComponent(){
+    setProductComponentDrafts(rows=>[...rows,{key:crypto.randomUUID(),componente_id:'',quantidade:1,perda_percentual:0}])
+  }
+  function updateProductComponent(key:string,field:'componente_id'|'quantidade'|'perda_percentual',value:string|number){
+    setProductComponentDrafts(rows=>rows.map(row=>row.key===key?{...row,[field]:field==='componente_id'?String(value):Math.max(0,Number(value)||0)}:row))
+  }
+  function removeProductComponent(key:string){
+    setProductComponentDrafts(rows=>rows.filter(row=>row.key!==key))
+  }
   async function saveProduct(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return}
