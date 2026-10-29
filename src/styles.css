@@ -5249,3 +5249,49 @@
     min-width:170px!important;
   }
 }
+
+
+/* Faturamento consolidado: seleção de várias vendas */
+.billingSelectCol{
+  width:42px!important;
+  text-align:center!important;
+}
+.billingSelectCol input{
+  width:16px;
+  height:16px;
+  accent-color:#2563eb;
+}
+.billingSelectedRow{
+  outline:2px solid rgba(37,99,235,.35);
+  outline-offset:-2px;
+}
+.billingBulkBar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  margin:10px 0 12px;
+  border:1px solid #60a5fa;
+  border-radius:10px;
+  background:rgba(37,99,235,.08);
+}
+.billingBulkBar>div{
+  display:grid;
+  gap:2px;
+  margin-right:auto;
+}
+.billingBulkBar strong{font-size:12px}
+.billingBulkBar span{font-size:10px;color:#64748b}
+.billingTermsButton{
+  align-self:end;
+  min-height:38px;
+}
+.dark .billingBulkBar{
+  background:rgba(37,99,235,.13);
+  border-color:#3b82f6;
+}
+.dark .billingBulkBar span{color:#94a3b8}
+@media(max-width:760px){
+  .billingBulkBar{flex-wrap:wrap}
+  .billingBulkBar>div{width:100%}
+}
