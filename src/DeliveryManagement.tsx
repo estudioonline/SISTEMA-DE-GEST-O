@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
 import {ArrowDown,ArrowUp,Camera,CheckCircle2,FileDown,MapPin,MessageCircle,Navigation,PenLine,Plus,Route,Truck,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
+import {RouteControlCenter} from './RouteControlCenter'
 
 type DeliveryStatus='a_entregar'|'em_transito'|'entregue'|'reagendamento'|'cancelado'
 type Delivery={
@@ -191,22 +192,16 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
 
   async function updateLogisticsField(d:Delivery,field:'rota'|'entregador_nome'|'data_prevista',value:string){
     if(!canEdit||busy)return
-    const selected=selectedDeliveryIds.includes(d.id)&&selectedDeliveryIds.length>1
-    const ids=selected?selectedDeliveryIds:[d.id]
     const current=field==='rota'?(d.rota||''):field==='entregador_nome'?(d.entregador_nome||''):d.data_prevista
-    if(value===current&&!selected)return
+    if(value===current)return
     setBusy(true);setMessage('')
     try{
-      const stamp=new Date().toISOString()
-      const patch:Record<string,unknown>={[field]:field==='rota'?(value.trim()||null):field==='entregador_nome'?(value.trim()||null):value,updated_at:stamp}
+      const patch:Record<string,unknown>={[field]:field==='rota'?(value.trim()||null):field==='entregador_nome'?(value.trim()||null):value,updated_at:new Date().toISOString()}
       if(field==='rota')patch.rota_manual=true
-      const {error}=await supabase.from('entregas').update(patch).in('id',ids)
+      const {error}=await supabase.from('entregas').update(patch).eq('id',d.id)
       if(error)throw error
-      const rows=deliveries.filter(x=>ids.includes(x.id))
-      const label=field==='rota'?'Rota':field==='entregador_nome'?'Motorista / entregador':'Data prevista'
-      const events=rows.map(row=>({entrega_id:row.id,tipo:'organizacao',status_anterior:row.status,status_novo:row.status,detalhes:`${label} alterado para ${value||'não informado'}${selected?` em lote (${ids.length} entregas)`:''}`}))
-      if(events.length)await supabase.from('entrega_eventos').insert(events)
-      setMessage(selected?`${label} aplicado a ${ids.length} entregas selecionadas.`:`${label} atualizado.`)
+      await supabase.from('entrega_eventos').insert({entrega_id:d.id,tipo:'organizacao',status_anterior:d.status,status_novo:d.status,detalhes:`${field} alterado para ${value||'não informado'}`})
+      setMessage('Entrega atualizada. Para alterações múltiplas, use a barra de operação em lote.')
       await load()
     }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
   }
@@ -370,67 +365,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
     </div>
     {message&&<div className="deliveryNotice" role="status">{message}</div>}
 
-    <section className="routeBuilder">
-      <div className="routeBuilderHead">
-        <div><span>MONTAGEM DE ROTAS</span><h3>Planejamento do dia</h3><p>Separe as entregas em cargas, defina motorista e ordene as paradas.</p></div>
-        <label>Dia<input type="date" value={routeDay} onChange={e=>{const day=e.target.value;setRouteDay(day);setSelectedPlanId('');const url=new URL(window.location.href);url.searchParams.set('dia',day);window.history.replaceState({},'',url)}}/></label>
-      </div>
-      <div className="routeBuilderBody">
-        <aside className="routePlanSidebar">
-          <div className="routeCreateBox">
-            <strong>Nova rota</strong>
-            <input value={newRouteName} onChange={e=>setNewRouteName(e.target.value)} placeholder="Ex.: Rota Águas Claras"/>
-            <input value={newRouteDriver} onChange={e=>setNewRouteDriver(e.target.value)} placeholder="Motorista"/>
-            <input value={newRouteVehicle} onChange={e=>setNewRouteVehicle(e.target.value)} placeholder="Veículo / placa"/>
-            <button disabled={!canEdit||busy||!newRouteName.trim()} onClick={()=>void createRoutePlan()}><Plus size={16}/>Criar rota</button>
-          </div>
-          <div className="routePlanList">
-            {dayPlans.map(r=>{
-              const count=deliveries.filter(d=>d.rota_logistica_id===r.id).length
-              return <button key={r.id} className={selectedPlan?.id===r.id?'active':''} onClick={()=>setSelectedPlanId(r.id)}>
-                <div><strong>{r.nome}</strong><span>{r.motorista||'Sem motorista'} · {r.veiculo||'Sem veículo'}</span></div>
-                <em>{count}</em>
-              </button>
-            })}
-            {!dayPlans.length&&<div className="routePlanEmpty">Nenhuma rota criada para este dia.</div>}
-          </div>
-        </aside>
-        <div className="routePlanWorkspace">
-          {selectedPlan?<>
-            <div className="routePlanTop">
-              <div className="routePlanIdentity">
-                <input defaultValue={selectedPlan.nome} onBlur={e=>void updateRoutePlan('nome',e.target.value)} disabled={!canEdit||busy}/>
-                <span>{plannedDeliveries.length} parada(s) · {selectedPlan.status==='liberada'?'Liberada':'Em montagem'}</span>
-              </div>
-              <div className="routePlanMeta">
-                <input defaultValue={selectedPlan.motorista||''} onBlur={e=>void updateRoutePlan('motorista',e.target.value)} placeholder="Motorista" disabled={!canEdit||busy}/>
-                <input defaultValue={selectedPlan.veiculo||''} onBlur={e=>void updateRoutePlan('veiculo',e.target.value)} placeholder="Veículo / placa" disabled={!canEdit||busy}/>
-              </div>
-              <div className="routePlanActions">
-                <button className="ghostRoute" disabled={!plannedDeliveries.length} onClick={openRouteInMaps}><MapPin size={16}/>Abrir trajeto</button>
-                <button className="releaseRoute" disabled={!canEdit||busy||!plannedDeliveries.length} onClick={()=>void releaseRoute()}><Truck size={16}/>Liberar rota</button>
-              </div>
-            </div>
-            <div className="routeAssignBar">
-              <div><strong>{selectedDeliveryIds.length} entrega(s) selecionada(s)</strong><span>Use a lista abaixo para selecionar pedidos e adicionar à carga.</span></div>
-              <button disabled={!canEdit||busy||!selectedDeliveryIds.length} onClick={()=>void assignSelectedToPlan()}><Plus size={16}/>Adicionar selecionadas à rota</button>
-            </div>
-            <div className="routeStops">
-              {plannedDeliveries.map((d,index)=>{
-                const s=saleFor(d),cl=clientFor(d)
-                return <article key={d.id}>
-                  <div className="routeStopOrder"><strong>{index+1}</strong><div><button disabled={index===0||busy} onClick={()=>void movePlanned(d,-1)}><ArrowUp size={13}/></button><button disabled={index===plannedDeliveries.length-1||busy} onClick={()=>void movePlanned(d,1)}><ArrowDown size={13}/></button></div></div>
-                  <div className="routeStopInfo"><strong>#{String(s?.fatura_numero||0).padStart(7,'0')} · {cl?.nome||'Cliente'}</strong><span>{addressOf(cl)||'Endereço não cadastrado'}</span></div>
-                  <div className="routeStopValue"><strong>{money(Number(s?.total||0))}</strong><span>{openAmount(d.venda_id)>0?'Cobrar '+money(openAmount(d.venda_id)):'Pago'}</span></div>
-                  <button className="routeStopRemove" disabled={!canEdit||busy} onClick={()=>void removeFromPlan(d)}><XCircle size={16}/>Remover</button>
-                </article>
-              })}
-              {!plannedDeliveries.length&&<div className="routeStopsEmpty">Selecione entregas na lista e adicione à rota para começar a montar a sequência.</div>}
-            </div>
-          </>:<div className="routeWorkspaceEmpty"><Route size={32}/><strong>Selecione ou crie uma rota</strong><span>Depois escolha as entregas da lista para montar a carga.</span></div>}
-        </div>
-      </div>
-    </section>
+    <RouteControlCenter canEdit={canEdit} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load}/>
 
     <div className="deliveryToolbar">
       <div className="deliveryRouteFilter">
