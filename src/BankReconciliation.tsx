@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowLeft,Building2,CheckCircle2,FileUp,Landmark,Link2,List,RefreshCw,Search,Trash2,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
+import {ArrowLeft,Banknote,Building2,CheckCircle2,FileUp,Landmark,Link2,List,RefreshCw,Search,SlidersHorizontal,Trash2,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {bankBrand,balanceTrend,isPending,sparkPoints} from './lib/bankPresentation'
 import type {CSSProperties} from 'react'
@@ -74,7 +74,14 @@ function parseCsv(text:string){
 
 function BankLogo({name,src}:{name:string;src:string|null}){
  const [failed,setFailed]=useState(false)
+ const key=normalize(name)
+ if(key==='dinheiro'||key==='caixa')return <span className="bankLogo bankLogoCash"><Banknote size={25} aria-label="Dinheiro"/></span>
+ if(key==='ajustes')return <span className="bankLogo bankLogoAdjust"><SlidersHorizontal size={25} aria-label="Ajustes"/></span>
  return <span className="bankLogo" style={{background:name==='Itaú'||name==='Bradesco'?'var(--bank-color)':'#fff'}}>{src&&!failed?<img src={src} alt={'Logo '+name} referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:<Landmark size={24} aria-label={name}/>}</span>
+}
+function isManualJournal(j:Pick<Journal,'nome'|'banco'>){
+ const key=normalize((j.nome||'')+' '+(j.banco||''))
+ return key.includes('dinheiro')||key.includes('caixa')||key.includes('ajustes')
 }
 
 export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged}:{titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
@@ -115,7 +122,11 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50)
   ])
   if(j.error||t.error||a.error||p.error){setMessage((j.error||t.error||a.error||p.error)!.message);return}
-  setJournals((j.data||[]) as Journal[]);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[])
+  const journalRows=((j.data||[]) as Journal[]).sort((a,b)=>{
+   const rank=(row:Journal)=>normalize(row.nome)==='dinheiro'?0:normalize(row.nome)==='ajustes'?2:1
+   return rank(a)-rank(b)||a.nome.localeCompare(b.nome,'pt-BR')
+  })
+  setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[])
  },[])
  useEffect(()=>{void load()},[load])
 
@@ -123,6 +134,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const showingAllJournals=activeJournal==='all'
  const journalTx=useMemo(()=>showingAllJournals?transactions:transactions.filter(t=>t.diario_id===activeJournal),[transactions,activeJournal,showingAllJournals])
  const pending=journalTx.filter(isPending)
+ const journalSupportsOfx=Boolean(journal&&!isManualJournal(journal))
  const visible=journalTx.filter(t=>!search||normalize([t.fitid,t.nome||'',t.historico||'',String(t.valor),dateBr(t.data_lancamento)].join(' ')).includes(normalize(search)))
 
  function partnerDoc(entity:string|null){
@@ -159,6 +171,8 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   try{const f=new FormData(e.currentTarget);const {error}=await supabase.rpc('criar_diario_bancario',{p_nome:f.get('nome'),p_banco:f.get('banco'),p_agencia:f.get('agencia'),p_conta:f.get('conta'),p_saldo_inicial:Number(f.get('saldo')||0)});if(error)throw error;setNewJournalOpen(false);await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
  async function upload(file:File,journalId=activeJournal){
+  const targetJournal=journals.find(j=>j.id===journalId)
+  if(targetJournal&&isManualJournal(targetJournal)){setMessage('Os diários Dinheiro e Ajustes são alimentados pelo próprio ERP e não recebem OFX.');return}
   if(!canEdit||!journalId||uploadLock.current)return
   if(!/\.(ofx|qfx|csv)$/i.test(file.name)){setMessage('Escolha um arquivo OFX, QFX ou CSV.');return}
   uploadLock.current=true;setBusy(true);setMessage('')
@@ -295,6 +309,8 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  }
  function openUploadForJournal(id:string){
   if(!canEdit||busy)return
+  const target=journals.find(j=>j.id===id)
+  if(target&&isManualJournal(target)){setMessage('Este diário é alimentado pelo próprio ERP e não usa OFX.');return}
   setActiveJournal(id);setUploadOpen(true);setMessage('')
  }
  function toggleTitle(title:Title){
@@ -328,22 +344,25 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   {journals.length===0&&<div className="bankEmpty"><Landmark size={30}/><strong>Nenhum diário bancário cadastrado</strong><span>Cadastre uma conta para começar a importar OFX.</span></div>}
   <div className="bankJournalGrid">{journals.map(j=>{
    const rows=transactions.filter(t=>t.diario_id===j.id),pendingRows=rows.filter(isPending),pendingPayments=pendingRows.filter(t=>t.trntype==='DEBIT').reduce((s,t)=>s+Math.abs(Number(t.valor)),0)
+   const manual=isManualJournal(j),cash=normalize(j.nome)==='dinheiro'
+   const cashEntries=rows.filter(t=>t.trntype==='CREDIT').reduce((s,t)=>s+Math.abs(Number(t.valor)),0)
+   const cashOutflows=rows.filter(t=>t.trntype==='DEBIT').reduce((s,t)=>s+Math.abs(Number(t.valor)),0)
    const brand=bankBrand(j.banco,j.nome),trend=balanceTrend(Number(j.saldo_atual),rows),points=sparkPoints(trend),gradientId='bank-trend-'+j.id
    return <article className={'bankJournalCard'+(dragJournal===j.id?' isDragging':'')} key={j.id} style={{'--bank-color':brand.color} as CSSProperties} aria-label={'Conta '+j.nome} aria-busy={busy}
-    onDragOver={e=>{if(!canEdit||busy||!e.dataTransfer.types.includes('Files'))return;e.preventDefault();e.dataTransfer.dropEffect='copy';setDragJournal(j.id)}}
+    onDragOver={e=>{if(manual||!canEdit||busy||!e.dataTransfer.types.includes('Files'))return;e.preventDefault();e.dataTransfer.dropEffect='copy';setDragJournal(j.id)}}
     onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))setDragJournal(null)}}
-    onDrop={e=>{e.preventDefault();setDragJournal(null);if(!canEdit||busy)return;const files=e.dataTransfer.files;if(files.length!==1){setMessage('Arraste apenas um arquivo por vez.');return}void upload(files[0],j.id)}}>
+    onDrop={e=>{e.preventDefault();setDragJournal(null);if(manual||!canEdit||busy)return;const files=e.dataTransfer.files;if(files.length!==1){setMessage('Arraste apenas um arquivo por vez.');return}void upload(files[0],j.id)}}>
     <div className="bankJournalTop">
       <div className="bankJournalIdentity"><BankLogo name={brand.name} src={brand.logo}/><div><h4>{j.nome}</h4><span>{[j.banco,j.agencia,j.conta].filter(Boolean).join(' · ')||'Conta bancária'}</span></div></div>
       <button type="button" className={'bankPendingBadge'+(pendingRows.length?' hasPending':'')} onClick={()=>openJournal(j.id,'matching')} aria-label={j.nome+': '+(pendingRows.length?pendingRows.length+' a conciliar':'Sem pendências')}><span aria-live="polite" aria-atomic="true">{pendingRows.length?pendingRows.length+' a conciliar':'Sem pendências'}</span></button>
     </div>
-    <div className="bankJournalMetrics"><div><span>Saldo</span><strong className={Number(j.saldo_atual)>0?'positive':''}>{money(Number(j.saldo_atual))}</strong></div><div><span>Pagamentos a conciliar</span><b>{money(pendingPayments)}</b></div></div>
+    <div className={'bankJournalMetrics'+(cash?' cashMetrics':'')}><div><span>Saldo</span><strong className={Number(j.saldo_atual)>0?'positive':''}>{money(Number(j.saldo_atual))}</strong></div>{cash?<><div><span>Entradas</span><b className="positive">{money(cashEntries)}</b></div><div><span>Saídas</span><b className="negative">{money(cashOutflows)}</b></div></>:<div><span>{manual?'Movimentos':'Pagamentos a conciliar'}</span><b>{manual?rows.length:money(pendingPayments)}</b></div>}</div>
     <div className="bankTrend">{points?<svg className="bankSpark" viewBox="0 0 300 56" preserveAspectRatio="none" role="img" aria-label={'Evolução do saldo nos últimos lançamentos importados de '+j.nome}><defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity="0.22"/><stop offset="100%" stopColor="currentColor" stopOpacity="0"/></linearGradient></defs><polygon points={'0,56 '+points+' 300,56'} fill={'url(#'+gradientId+')'}/><polyline points={points}/></svg>:<span>Sem movimentações importadas</span>}<small>Últimos lançamentos importados</small></div>
-    <div className="bankJournalActions">
-      <button className="bankTransactionsButton" onClick={()=>openJournal(j.id,'transactions')}><List size={17}/>Transações</button>
-      {canEdit&&<button className="bankLoadButton" disabled={busy} onClick={()=>openUploadForJournal(j.id)}><Upload size={17}/>{busy?'Importando…':'Carregar OFX'}</button>}
+    <div className={'bankJournalActions'+(manual?' singleAction':'')}>
+      <button className="bankTransactionsButton" onClick={()=>openJournal(j.id,'transactions')}><List size={17}/>{cash?'Movimentações':'Transações'}</button>
+      {canEdit&&!manual&&<button className="bankLoadButton" disabled={busy} onClick={()=>openUploadForJournal(j.id)}><Upload size={17}/>{busy?'Importando…':'Carregar OFX'}</button>}
     </div>
-    {canEdit&&<small className="bankDropHint">{dragJournal===j.id?'Solte o arquivo para importar nesta conta':'Arraste um arquivo OFX para esta conta'}</small>}
+    {canEdit&&!manual&&<small className="bankDropHint">{dragJournal===j.id?'Solte o arquivo para importar nesta conta':'Arraste um arquivo OFX para esta conta'}</small>}
    </article>
   })}</div>
   {uploadOpen&&<div className="bankModalBackdrop"><div className="bankModal" role="dialog" aria-modal="true" aria-label="Carregar extrato"><div className="bankModalHead"><strong>Carregar extrato</strong><button onClick={()=>setUploadOpen(false)}><XCircle size={18}/></button></div>{showingAllJournals?<p>Selecione um diário específico antes de carregar um extrato.</p>:<><p>O arquivo será atribuído automaticamente ao diário <strong>{journal?.nome}</strong>. FITIDs já importados serão descartados.</p><input ref={fileRef} type="file" disabled={busy} accept=".ofx,.qfx,.csv" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file)}}/><div className="bankUploadHint"><FileUp size={18}/><span>Formatos aceitos: OFX, QFX e CSV.</span></div></>}</div></div>}
@@ -363,7 +382,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       <label className="bankJournalSelector">Diário
         <select value={activeJournal||''} onChange={e=>{setActiveJournal(e.target.value);setSearch('')}}><option value="all">Todos</option>{journals.map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</select>
       </label>
-      <div className="bankActions">{canEdit&&<button className="bankPrimary" disabled={showingAllJournals} onClick={()=>setUploadOpen(true)}><Upload size={14}/>Carregar extrato</button>}<button onClick={()=>void load()}><RefreshCw size={14}/></button></div>
+      <div className="bankActions">{canEdit&&journalSupportsOfx&&<button className="bankPrimary" disabled={showingAllJournals} onClick={()=>setUploadOpen(true)}><Upload size={14}/>Carregar extrato</button>}<button onClick={()=>void load()}><RefreshCw size={14}/></button></div>
     </div>
   </div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
