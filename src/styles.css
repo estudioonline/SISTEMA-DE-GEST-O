@@ -4516,111 +4516,111 @@
 .bankClosedPeriods button{background:#182235;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:6px 9px}
 
 
-/* Cards compactos de diários no padrão Bank Matching */
+/* Cards de diários no padrão do mockup aprovado */
 .bankJournalGrid{
-  grid-template-columns:repeat(auto-fit,minmax(245px,1fr));
-  gap:10px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:22px;
+  margin-top:28px;
 }
 .compactJournalCard{
   position:relative;
-  min-height:150px;
-  padding:10px 11px 0;
-  border-radius:0;
+  min-height:220px;
+  padding:28px 26px 26px;
+  border-radius:14px;
   overflow:hidden;
-  background:#222636;
+  background:linear-gradient(180deg,#152238,#111b2e);
+  border:1px solid #334155;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
 }
 .bankJournalTop{
   display:grid;
   grid-template-columns:1fr auto;
-  gap:10px;
+  gap:28px;
   align-items:start;
-  position:relative;
-  z-index:2;
 }
 .bankJournalIdentity{
   display:grid;
-  gap:2px;
+  gap:8px;
   min-width:0;
 }
 .bankJournalIdentity strong{
   color:#fff;
-  font-size:12px;
+  font-size:22px;
+  line-height:1.15;
   font-weight:800;
 }
 .bankJournalIdentity span{
-  font-size:9px;
+  color:#cbd5e1!important;
+  font-size:14px!important;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
 .bankJournalMetrics.compact{
   display:grid;
-  gap:2px;
+  gap:10px;
   margin:0;
+  min-width:180px;
 }
 .bankJournalMetrics.compact>div{
   display:grid;
-  grid-template-columns:58px auto;
-  gap:8px;
+  grid-template-columns:86px auto;
+  gap:16px;
   align-items:center;
 }
 .bankJournalMetrics.compact span{
-  color:#22d3ee;
-  font-size:9px;
+  color:#22d3ee!important;
+  font-size:13px!important;
 }
 .bankJournalMetrics.compact strong{
-  font-size:10px;
+  font-size:15px;
   color:#fff;
   text-align:right;
-}
-.bankJournalActions.compact{
-  justify-content:flex-start;
-  gap:5px;
-  margin-top:8px;
-  position:relative;
-  z-index:2;
-}
-.bankJournalActions.compact button{
-  padding:5px 8px;
-  border-radius:3px;
-  font-size:9px;
-  background:#7a356f;
-  border-color:#7a356f;
-}
-.bankJournalActions.compact .bankLoadButton{
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  background:#2563eb!important;
-  color:#fff!important;
-  border-color:#2563eb!important;
   font-weight:800;
 }
-.bankJournalActions.compact .bankLoadButton:hover{
-  background:#1d4ed8!important;
-  border-color:#1d4ed8!important;
+.bankJournalActions.compact{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  gap:16px;
+  margin-top:34px;
 }
-.bankJournalActions.compact .bankPending{
-  background:#34384a!important;
+.bankJournalActions.compact button{
+  min-height:52px;
+  padding:0 22px;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:800;
+  border:1px solid transparent;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+}
+.bankJournalActions.compact .bankTransactionsButton{
+  background:linear-gradient(180deg,#9b3f98,#7b2f78)!important;
   color:#fff!important;
-  border-color:#34384a!important;
+  border-color:#a855a4!important;
 }
-.bankSpark.compact{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  width:100%;
-  height:76px;
-  z-index:1;
+.bankJournalActions.compact .bankTransactionsButton:hover{
+  background:linear-gradient(180deg,#a94aa6,#843581)!important;
 }
-.bankSpark.compact polygon{
-  fill:#7a356f22;
+.bankJournalActions.compact .bankLoadButton{
+  background:linear-gradient(180deg,#2f80ed,#1d6fe8)!important;
+  color:#fff!important;
+  border-color:#3b82f6!important;
 }
-.bankSpark.compact polyline{
-  stroke:#a84c92;
-  stroke-width:1.4;
+.bankJournalActions.compact .bankLoadButton:hover{
+  background:linear-gradient(180deg,#3b82f6,#2563eb)!important;
 }
-@media(min-width:1200px){
-  .bankJournalGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:1180px){
+  .bankJournalGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .bankJournalGrid{grid-template-columns:1fr;gap:14px}
+  .compactJournalCard{padding:20px;min-height:0}
+  .bankJournalTop{grid-template-columns:1fr}
+  .bankJournalMetrics.compact{min-width:0}
+  .bankJournalActions.compact{flex-wrap:wrap;margin-top:22px}
+  .bankJournalActions.compact button{flex:1;justify-content:center}
+}
 }
