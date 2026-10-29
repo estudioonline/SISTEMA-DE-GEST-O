@@ -3150,7 +3150,7 @@ function App(){
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
         {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<><div className="financeReportBar compact"><div><strong>{financeSubtab==='funcionarios'?'Relatório de funcionários':'Relatório de vales'}</strong><span>Exporta os lançamentos desta área em PDF.</span></div><button type="button" className="ghost" onClick={()=>void downloadFinancePdf(financeSubtab)}><FileDown size={15}/>PDF</button></div><EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/></>}
-        {financeSubtab==='conciliacao'&&<BankReconciliation titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance}/>}
+        {financeSubtab==='conciliacao'&&<BankReconciliation titles={titulos} canEdit={canManageFinance} canClosePeriods={canManageConfig} onChanged={refreshFinance}/>}
 
       </section>}
       {active==='relatorios'&&<section className="semanticPage reportsPage">
