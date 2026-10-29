@@ -2031,6 +2031,76 @@ function App(){
     if(paid>0)return {label:'Parcial',key:'parcial'}
     return {label:'Não pago',key:'nao-pago'}
   }
+  function activeInvoiceForSale(vendaId:string){
+    return faturasVendas.find(f=>f.venda_id===vendaId&&f.status==='ativa')||null
+  }
+  function lastCancelledInvoiceForSale(vendaId:string){
+    return faturasVendas.filter(f=>f.venda_id===vendaId&&f.status==='cancelada').sort((a,b)=>b.criada_em.localeCompare(a.criada_em))[0]||null
+  }
+  function saleInvoiceStatus(venda:Venda){
+    const activeInvoice=activeInvoiceForSale(venda.id)
+    if(activeInvoice)return {label:'Faturado',key:'faturado',invoice:activeInvoice}
+    const cancelled=lastCancelledInvoiceForSale(venda.id)
+    if(cancelled)return {label:'Fatura cancelada',key:'cancelado',invoice:cancelled}
+    return {label:'Não faturado',key:'nao-faturado',invoice:null}
+  }
+  function buildBillingLines(venda:Venda,count=Math.max(1,Number(venda.parcelas)||1)){
+    const totalCents=Math.round(Number(venda.total)*100)
+    const base=Math.floor(totalCents/count)
+    return Array.from({length:count},(_,index)=>({
+      key:crypto.randomUUID(),
+      vencimento:addMonthsIso(today(),index),
+      valor:(index===count-1?totalCents-base*(count-1):base)/100
+    }))
+  }
+  function openBillingSale(venda:Venda){
+    if(!canManageFinance){setMsg('Seu perfil possui somente visualização no Financeiro.');return}
+    if(!['pedido','faturado'].includes(venda.status)){setMsg('Somente vendas aprovadas podem ser faturadas.');return}
+    if(activeInvoiceForSale(venda.id)){setMsg('Esta venda já possui fatura ativa.');return}
+    setBillingSale(venda)
+    setBillingPayment(venda.forma_pagamento||'pix')
+    setBillingLines(buildBillingLines(venda))
+    setMsg('')
+  }
+  function resizeBillingLines(count:number){
+    if(!billingSale)return
+    setBillingLines(buildBillingLines(billingSale,Math.max(1,count)))
+  }
+  function updateBillingLine(key:string,field:'vencimento'|'valor',value:string|number){
+    setBillingLines(lines=>lines.map(line=>line.key===key?{...line,[field]:field==='valor'?Math.max(0,Number(value)||0):String(value)}:line))
+  }
+  async function createSaleInvoice(e:FormEvent<HTMLFormElement>){
+    e.preventDefault()
+    if(!billingSale||billingBusy||!canManageFinance)return
+    const total=billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0)
+    if(billingLines.some(line=>!line.vencimento||Number(line.valor)<=0)){setMsg('Preencha vencimento e valor de todas as parcelas.');return}
+    if(Math.abs(total-Number(billingSale.total))>0.01){setMsg('A soma das parcelas deve ser igual ao total da venda.');return}
+    setBillingBusy(true);setMsg('')
+    try{
+      const {error}=await supabase.rpc('criar_fatura_venda',{
+        p_venda_id:billingSale.id,
+        p_forma_pagamento:billingPayment,
+        p_parcelas:billingLines.map(line=>({vencimento:line.vencimento,valor:Number(line.valor)}))
+      })
+      if(error)throw error
+      setBillingSale(null);setBillingLines([])
+      setMsg('Fatura criada e parcelas enviadas para Contas a Receber.')
+      await refreshFinance()
+    }catch(error){setMsg(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível criar a fatura.')}finally{setBillingBusy(false)}
+  }
+  async function cancelSaleInvoice(venda:Venda){
+    const invoice=activeInvoiceForSale(venda.id)
+    if(!invoice||!canManageFinance)return
+    const motivo=window.prompt('Motivo do cancelamento da fatura:')
+    if(motivo===null)return
+    setBillingBusy(true);setMsg('')
+    try{
+      const {error}=await supabase.rpc('cancelar_fatura_venda',{p_fatura_id:invoice.id,p_motivo:motivo})
+      if(error)throw error
+      setMsg('Fatura cancelada. O histórico foi preservado.')
+      await refreshFinance()
+    }catch(error){setMsg(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível cancelar a fatura.')}finally{setBillingBusy(false)}
+  }
   function nameInitials(name:string){
     const parts=String(name||'').trim().split(/\s+/).filter(Boolean)
     if(!parts.length)return '?'
