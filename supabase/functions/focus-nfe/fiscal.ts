@@ -1,7 +1,7 @@
 export const FOCUS_BASE='https://homologacao.focusnfe.com.br'
 export type Fields=Record<string,string>
 export type FiscalDraft={modalidade_frete?:number|string;observacao_nfe?:string}
-export type SaleSource={venda:Record<string,unknown>;cliente:Record<string,unknown>|null;empresa:Record<string,unknown>|null;itens:{id:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;produto:Record<string,unknown>}[];source_hash:string;nota?:Record<string,unknown>|null}
+export type SaleSource={venda:Record<string,unknown>;cliente:Record<string,unknown>|null;empresa:Record<string,unknown>|null;itens:{id:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;produto:Record<string,unknown>}[];parcelas?:{id:string;numero:number;vencimento:string;valor:number;status:string}[];source_hash:string;nota?:Record<string,unknown>|null}
 const digits=(v:unknown)=>String(v??'').replace(/\D/g,'')
 const required=(v:unknown,label:string)=>{const s=String(v??'').trim();if(!s)throw Error('Preencha '+label+'.');return s}
 const code=(v:unknown,pattern:RegExp,label:string)=>{const s=required(v,label);if(!pattern.test(s))throw Error(label+' inválido.');return s}
@@ -66,8 +66,15 @@ export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={
  const additionalInfo=String(draft.observacao_nfe??'').trim()
  if(additionalInfo.length>5000)throw Error('A observação da NF-e deve ter no máximo 5000 caracteres.')
 
+ const parcelas=(source.parcelas||[]).filter(p=>Number(p.valor)>0)
+ const parcelasTotal=parcelas.reduce((sum,p)=>sum+cash(Number(p.valor)),0)
+ if(parcelas.length&&parcelasTotal!==total)throw Error('A soma das parcelas da fatura diverge do total da venda. Revise o financeiro antes de emitir.')
+
  const paymentMap:Record<string,string>={dinheiro:'01',cartao:'03',boleto:'15',pix:'20'}
  const fiscalPayment=paymentMap[String(v.forma_pagamento)]||'91'
+ const formasPagamento=parcelas.length
+  ?parcelas.map(p=>({forma_pagamento:fiscalPayment,indicador_pagamento:1,valor_pagamento:Number(p.valor)}))
+  :[{forma_pagamento:fiscalPayment,indicador_pagamento:Number(v.parcelas)>1?1:0,valor_pagamento:total/100}]
  const payload:Record<string,unknown>={...c,
   nome_emitente:required(source.empresa?.razao_social,'razão social nas configurações da empresa'),
   natureza_operacao:'Venda de mercadoria',data_emissao:now.toISOString(),tipo_documento:1,
@@ -82,7 +89,18 @@ export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={
   cep_destinatario:code(digits(client.cep),/^\d{8}$/,'CEP no cadastro do cliente'),
   indicador_inscricao_estadual_destinatario:indicadorIe,
   modalidade_frete:freightMode,valor_produtos:gross/100,valor_desconto:discount/100,valor_total:total/100,itens:items,
-  formas_pagamento:[{forma_pagamento:fiscalPayment,indicador_pagamento:Number(v.parcelas)>1?1:0,valor_pagamento:total/100}]}
+  formas_pagamento:formasPagamento}
+ if(parcelas.length){
+  payload.numero_fatura=String(v.fatura_numero??source.venda.id??'').slice(0,60)
+  payload.valor_original_fatura=total/100
+  payload.valor_desconto_fatura=0
+  payload.valor_liquido_fatura=total/100
+  payload.duplicatas=parcelas.map((p,index)=>({
+   numero:String(index+1).padStart(3,'0'),
+   data_vencimento:required(p.vencimento,'vencimento da parcela '+(index+1)),
+   valor:Number(p.valor)
+  }))
+ }
  if(additionalInfo)payload.informacoes_adicionais_contribuinte=additionalInfo
  if(indicadorIe==='1')payload.inscricao_estadual_destinatario=required(client.inscricao_estadual,'inscrição estadual no cadastro do cliente')
  for(const item of items)for(const key of ['ipi_valor','icms_valor_st','ii_valor','icms_valor_desonerado'])if(Number((item as Record<string,unknown>)[key]||0)!==0)throw Error('Tributos que alteram o total da nota exigem revisão fiscal específica; este fluxo de teste mantém o total da venda.')
