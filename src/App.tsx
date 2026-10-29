@@ -2461,7 +2461,7 @@ function App(){
                 <h3>{editingProduct?'Editar produto':'Novo produto'}</h3>
                 <p>Preencha os dados do produto. O estoque de produtos já cadastrados é alterado pela opção “Ajustar estoque”.</p>
               </div>
-              <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de produto" onClick={()=>{setShowForm(false);setEditingProduct(null)}}><X size={18}/></button>
+              <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de produto" onClick={()=>{setShowForm(false);setEditingProduct(null);setProductComponentDrafts([])}}><X size={18}/></button>
             </div>
 
             <label className="fieldLabel">Código
@@ -2469,6 +2469,13 @@ function App(){
             </label>
             <label className="fieldLabel">Produto / Descrição
               <input name="descricao" placeholder="Nome do produto" required defaultValue={editingProduct?.descricao||''}/>
+            </label>
+            <label className="fieldLabel">Tipo de produto
+              <select name="tipo_produto" value={productType} onChange={e=>{const next=e.target.value as 'insumo'|'produto_final';setProductType(next);if(next==='insumo')setProductComponentDrafts([])}}>
+                <option value="insumo">Insumo / material</option>
+                <option value="produto_final">Produto final (produção)</option>
+              </select>
+              <small>Produto final possui uma ficha técnica com os materiais necessários para produção.</small>
             </label>
             <label className="fieldLabel">Unidade
               <input name="unidade" placeholder="Ex.: UN" defaultValue={editingProduct?.unidade||'UN'}/>
@@ -2495,6 +2502,37 @@ function App(){
             <label className="fieldLabel">Volume unitário (m³)
               <input name="volume_m3" type="number" min="0" step="0.0001" placeholder="0,0000" defaultValue={editingProduct?.volume_m3??''}/>
             </label>
+            {productType==='produto_final'&&<div className="productionRecipeSection">
+              <div className="productionRecipeHead">
+                <div><strong>Ficha técnica de produção</strong><span>Materiais consumidos para produzir 1 unidade deste produto.</span></div>
+                <button type="button" className="ghost" onClick={addProductComponent}><Plus size={15}/>Adicionar material</button>
+              </div>
+              {productComponentDrafts.length===0&&<div className="productionRecipeEmpty">Nenhum material configurado. Adicione os insumos usados na produção.</div>}
+              <div className="productionRecipeRows">
+                {productComponentDrafts.map(row=><div className="productionRecipeRow" key={row.key}>
+                  <label className="fieldLabel">Material
+                    <select value={row.componente_id} onChange={e=>updateProductComponent(row.key,'componente_id',e.target.value)} required>
+                      <option value="">Selecione um material</option>
+                      {produtos.filter(p=>p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} ({p.unidade})</option>)}
+                    </select>
+                  </label>
+                  <label className="fieldLabel">Quantidade por unidade
+                    <input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateProductComponent(row.key,'quantidade',e.target.value)} required/>
+                  </label>
+                  <label className="fieldLabel">Perda (%)
+                    <input type="number" min="0" max="100" step="0.01" value={row.perda_percentual} onChange={e=>updateProductComponent(row.key,'perda_percentual',e.target.value)}/>
+                  </label>
+                  <button type="button" className="iconBtn dangerBtn productionRecipeRemove" onClick={()=>removeProductComponent(row.key)} title="Remover material"><Trash2 size={16}/></button>
+                </div>)}
+              </div>
+              {productComponentDrafts.length>0&&<div className="productionRecipeCost">
+                <span>Custo calculado dos materiais</span>
+                <strong>{money(productComponentDrafts.reduce((sum,row)=>{
+                  const material=produtos.find(p=>p.id===row.componente_id)
+                  return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0)*(1+Number(row.perda_percentual||0)/100))
+                },0))}</strong>
+              </div>}
+            </div>}
             <div className="fiscalCadastroSection productFiscalSection">
               <div className="fiscalCadastroTitle"><strong>Tributação para NF-e</strong><span>Cadastre uma vez no produto. A venda usa estes dados automaticamente.</span></div>
               <label className="fieldLabel">NCM<input name="ncm" inputMode="numeric" maxLength={8} defaultValue={editingProduct?.ncm||''} placeholder="8 dígitos"/></label>
@@ -2521,7 +2559,7 @@ function App(){
             </label>
 
             <div className="formActions">
-              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null)}}>Cancelar</button>
+              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null);setProductComponentDrafts([])}}>Cancelar</button>
               <button className="primary">{editingProduct?'Salvar alterações':'Cadastrar produto'}</button>
             </div>
           </form></div></div>}
