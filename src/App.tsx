@@ -2007,6 +2007,22 @@ function App(){
   const saleStart=(safeSalePage-1)*salePageSize
   const visibleSales=filteredSalesList.slice(saleStart,saleStart+salePageSize)
   const salePageNumbers=Array.from({length:saleTotalPages},(_,i)=>i+1).filter(p=>p===1||p===saleTotalPages||Math.abs(p-safeSalePage)<=1)
+  const approvedBillingSales=vendas.filter(v=>['pedido','faturado'].includes(v.status)||faturasVendas.some(f=>f.venda_id===v.id))
+  const billingSales=approvedBillingSales.filter(v=>{
+    const invoiceState=saleInvoiceStatus(v)
+    const client=clientes.find(c=>c.id===v.cliente_id)?.nome||'Consumidor'
+    const seller=vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||''
+    const matchStatus=billingStatusFilter==='todos'||invoiceState.key===billingStatusFilter
+    const q=billingSearch.trim().toLowerCase()
+    const matchSearch=!q||[invoiceNo(v.fatura_numero),client,seller,paymentLabel(v.forma_pagamento),invoiceState.label,money(Number(v.total))].join(' ').toLowerCase().includes(q)
+    return matchStatus&&matchSearch
+  })
+  const billingCounts={
+    todos:approvedBillingSales.length,
+    naoFaturado:approvedBillingSales.filter(v=>saleInvoiceStatus(v).key==='nao-faturado').length,
+    faturado:approvedBillingSales.filter(v=>saleInvoiceStatus(v).key==='faturado').length,
+    cancelado:approvedBillingSales.filter(v=>saleInvoiceStatus(v).key==='cancelado').length
+  }
   const openedSale=salePanel?vendas.find(v=>v.id===salePanel)||null:null
   const visibleSellers=sortList('comissoes',vendedores.filter(v=>{const summary=comissoes.find(c=>c.vendedor_id===v.id);return searchMatches('comissoes',[v.nome,v.email||'',v.telefone||'',v.percentual_comissao,money(Number(summary?.total_recebido||0)),money(Number(summary?.comissao_apurada||0)),summary?.pagamentos||0,summary?.vendas||0,v.ativo?'ativo':'inativo'])}),{
     vendedor:v=>v.nome,percentual:v=>Number(v.percentual_comissao),recebido:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.total_recebido||0),comissao:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.comissao_apurada||0),recebimentos:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.pagamentos||0),vendas:v=>Number(comissoes.find(c=>c.vendedor_id===v.id)?.vendas||0),status:v=>v.ativo?'ativo':'inativo'
