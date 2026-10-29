@@ -175,7 +175,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   try{
    const {error}=await supabase.rpc('conciliar_transacao_bancaria',{p_transacao_id:tx.id,p_vinculos:links,p_tipo_ajuste:adjustType||null,p_valor_ajuste:Number(adjustValue)||0,p_categoria_ajuste:null,p_centro_custo_ajuste:null})
    if(error)throw error
-   setSelected({});setAdjustType('');setAdjustValue('0');setMessage('Transação conciliada com sucesso.');await Promise.all([load(),onChanged()])
+   setSelected({});setAdjustType('');setAdjustValue('0');setReconcileTx(null);setMessage('Transação conciliada com sucesso.');await Promise.all([load(),onChanged()])
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
  async function quickCreate(tx:BankTx){
@@ -237,6 +237,15 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago))
   setSelected(prev=>prev[title.id]?Object.fromEntries(Object.entries(prev).filter(([id])=>id!==title.id)):{...prev,[title.id]:balance})
  }
+ const reconcileCandidates=reconcileTx?titles.filter(t=>{
+  const expected=reconcileTx.trntype==='CREDIT'?'receber':'pagar'
+  if(t.tipo!==expected||t.status==='cancelado'||Number(t.valor)-Number(t.valor_pago)<=0.009)return false
+  const q=normalize(reconcileSearch)
+  return !q||normalize([t.descricao,t.entidade_nome||'',t.vencimento,String(t.valor),t.categoria||'',t.forma_pagamento||''].join(' ')).includes(q)
+ }).sort((a,b)=>{
+  const scores=new Map(suggestions(reconcileTx).map(s=>[s.title.id,s.score]))
+  return Number(scores.get(b.id)||0)-Number(scores.get(a.id)||0)
+ }):[]
  if(screen==='dashboard')return <section className="bankRecon">
   <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div></div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
@@ -261,6 +270,25 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     {canEdit&&<small className="bankDropHint">{dragJournal===j.id?'Solte o arquivo para importar nesta conta':'Arraste um arquivo OFX para esta conta'}</small>}
    </article>
   })}</div>
+  {reconcileTx&&<div className="bankModalBackdrop"><div className="bankModal bankReconcileModal" role="dialog" aria-modal="true" aria-label="Pesquisar itens a reconciliar">
+    <div className="bankModalHead"><div><strong>Pesquisar itens a reconciliar</strong><small>{reconcileTx.nome||reconcileTx.historico||'Transação'} · {money(Math.abs(Number(reconcileTx.valor)))}</small></div><button onClick={()=>{setReconcileTx(null);setSelected({})}}><XCircle size={18}/></button></div>
+    <div className="bankSearch bankReconcileSearch"><Search size={15}/><input autoFocus value={reconcileSearch} onChange={e=>setReconcileSearch(e.target.value)} placeholder="Buscar parceiro, fatura, descrição, vencimento, valor..."/></div>
+    <div className="bankReconcileSummary"><span>{reconcileTx.trntype==='CREDIT'?'Contas a receber':'Contas a pagar'}</span><strong>{reconcileCandidates.length} título(s) disponível(is)</strong></div>
+    <div className="bankReconcileList">{reconcileCandidates.map(title=>{
+      const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago))
+      const suggestion=suggestions(reconcileTx).find(s=>s.title.id===title.id)
+      return <label key={title.id} className={selected[title.id]!=null?'selected':''}>
+        <input type="checkbox" checked={selected[title.id]!=null} onChange={()=>toggleTitle(title)}/>
+        <span><strong>{title.descricao}</strong><small>{title.entidade_nome||'Sem parceiro'} · venc. {dateBr(title.vencimento)} · saldo {money(balance)}</small></span>
+        {suggestion?<b>{suggestion.score}%</b>:<b>—</b>}
+        {selected[title.id]!=null&&<input className="bankAlloc" type="number" min="0.01" max={balance} step="0.01" value={selected[title.id]} onChange={e=>setSelected(prev=>({...prev,[title.id]:Math.max(0,Math.min(balance,Number(e.target.value)||0))}))}/>}
+      </label>
+    })}{reconcileCandidates.length===0&&<div className="bankNoCandidates">Nenhum título em aberto encontrado para esta pesquisa.</div>}</div>
+    <div className="bankReconcileAdjust"><label>Ajuste<select value={adjustType} onChange={e=>setAdjustType(e.target.value)}><option value="">Sem ajuste</option><option value="juros_passivos">Juros passivos</option><option value="desconto_concedido">Desconto concedido</option><option value="tarifa">Tarifa bancária</option><option value="outro">Outro</option></select></label>{adjustType&&<label>Valor do ajuste<input type="number" min="0" step="0.01" value={adjustValue} onChange={e=>setAdjustValue(e.target.value)}/></label>}</div>
+    <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(Object.values(selected).reduce((s,v)=>s+Number(v),0))} / Banco {money(Math.abs(Number(reconcileTx.valor)))}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length} onClick={()=>void reconcile(reconcileTx)}>Selecionar e conciliar</button></div></div>
+  </div></div>}
+  {partnerTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={savePartner}><div className="bankModalHead"><strong>Definir parceiro</strong><button type="button" onClick={()=>setPartnerTx(null)}><XCircle size={18}/></button></div><p>Associe o movimento bancário a um cliente ou fornecedor, como no fluxo de conciliação do Odoo.</p><label>Parceiro<select name="parceiro" required defaultValue={partnerTx.parceiro_nome?(partnerTx.parceiro_tipo||'outro')+'|'+partnerTx.parceiro_nome:''}><option value="">Selecione</option>{clients.map((p,i)=><option key={'c'+i} value={'cliente|'+p.nome}>Cliente · {p.nome}{p.documento?' · '+p.documento:''}</option>)}{suppliers.map((p,i)=><option key={'f'+i} value={'fornecedor|'+p.nome}>Fornecedor · {p.nome}{p.documento?' · '+p.documento:''}</option>)}</select></label><div className="bankModalActions"><button type="button" onClick={()=>setPartnerTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar parceiro</button></div></form></div>}
+  {accountTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={saveAccount}><div className="bankModalHead"><strong>Definir conta</strong><button type="button" onClick={()=>setAccountTx(null)}><XCircle size={18}/></button></div><p>Classifique a transação antes de conciliar ou criar um lançamento.</p><label>Conta / categoria<input name="categoria" required defaultValue={accountTx.conta_categoria||''} placeholder="Ex.: Taxas bancárias, Frete, Energia, Receita operacional"/></label><label>Centro de custo<input name="centro_custo" defaultValue={accountTx.centro_custo||''} placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAccountTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar conta</button></div></form></div>}
   {uploadOpen&&<div className="bankModalBackdrop"><div className="bankModal" role="dialog" aria-modal="true" aria-label="Carregar extrato"><div className="bankModalHead"><strong>Carregar extrato</strong><button onClick={()=>setUploadOpen(false)}><XCircle size={18}/></button></div><p>O arquivo será atribuído automaticamente ao diário <strong>{journal?.nome}</strong>. FITIDs já importados serão descartados.</p><input ref={fileRef} type="file" disabled={busy} accept=".ofx,.qfx,.csv" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file)}}/><div className="bankUploadHint"><FileUp size={18}/><span>Formatos aceitos: OFX, QFX e CSV.</span></div></div></div>}
   {canClosePeriods&&closedPeriods.length>0&&<div className="bankClosedPeriods"><strong>Períodos financeiros</strong>{closedPeriods.slice(0,6).map(p=><div key={p.id}><span>{dateBr(p.inicio)} a {dateBr(p.fim)} · {p.reaberto_em?'Reaberto':'Fechado'}</span>{!p.reaberto_em&&<button disabled={busy} onClick={()=>void reopenPeriod(p.id)}>Reabrir</button>}</div>)}</div>}
   {newJournalOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createJournal}><div className="bankModalHead"><strong>Novo diário bancário</strong><button type="button" onClick={()=>setNewJournalOpen(false)}><XCircle size={18}/></button></div><label>Nome<input name="nome" required placeholder="Ex.: Itaú Supremion"/></label><div className="bankFormGrid"><label>Banco<input name="banco"/></label><label>Agência<input name="agencia"/></label><label>Conta<input name="conta"/></label><label>Saldo inicial<input name="saldo" type="number" step="0.01" defaultValue="0"/></label></div><div className="bankModalActions"><button type="button" onClick={()=>setNewJournalOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Criar diário</button></div></form></div>}
@@ -277,10 +305,27 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    const sugg=suggestions(tx),top=sugg[0],high=(top?.score||0)>=80,partial=(top?.score||0)>=45,selectedTotal=Object.values(selected).reduce((s,v)=>s+Number(v),0),target=Math.abs(Number(tx.valor))
    return <article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')} key={tx.id}>
     <div className="bankTxMain"><div className="bankTxDate"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span></div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong><span>{tx.historico||'—'}</span></div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
-    {screen==='matching'&&tx.status!=='conciliado'&&<div className="bankMatchArea">
-      {top?<div className={'bankSuggestion '+(high?'high':partial?'partial':'low')}><div><CheckCircle2 size={16}/><strong>{high?'Match forte':partial?'Match parcial':'Sugestão'}</strong><span>{top.score}% · {top.reasons.join(' • ')}</span></div><button onClick={()=>toggleTitle(top.title)}>{selected[top.title.id]?'Remover':'Selecionar'} · {top.title.descricao}</button></div>:<div className="bankNoMatch"><XCircle size={16}/><span>Sem correspondência automática.</span></div>}
-      {sugg.length>0&&<div className="bankCandidateList">{sugg.map(s=><label key={s.title.id}><input type="checkbox" checked={Boolean(selected[s.title.id])} onChange={()=>toggleTitle(s.title)}/><span><strong>{s.title.descricao}</strong><small>{s.title.entidade_nome||'—'} · venc. {dateBr(s.title.vencimento)} · saldo {money(Math.max(0,Number(s.title.valor)-Number(s.title.valor_pago)))}</small></span><b>{s.score}%</b>{selected[s.title.id]!=null&&<input className="bankAlloc" type="number" min="0.01" step="0.01" value={selected[s.title.id]} onChange={e=>setSelected(p=>({...p,[s.title.id]:Number(e.target.value)}))}/>}</label>)}</div>}
-      <div className="bankMatchFooter"><div className="bankAdjust"><select value={adjustType} onChange={e=>setAdjustType(e.target.value)}><option value="">Sem ajuste</option><option value="juros_passivos">Juros passivos</option><option value="desconto_concedido">Desconto concedido</option><option value="tarifa">Tarifa</option><option value="outro">Outro</option></select>{adjustType&&<input type="number" min="0" step="0.01" value={adjustValue} onChange={e=>setAdjustValue(e.target.value)} placeholder="Valor ajuste"/>}</div><span>Selecionado {money(selectedTotal)} / Banco {money(target)}</span><div><button disabled={!canEdit||busy} onClick={()=>void quickCreate(tx)}>Lançamento rápido</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length} onClick={()=>void reconcile(tx,top?.score)}>Conciliar</button></div></div>
+    {screen==='matching'&&tx.status!=='conciliado'&&<div className="bankMatchArea bankOdooMatch">
+      {top?<div className={'bankSuggestion '+(high?'high':partial?'partial':'low')}><div><CheckCircle2 size={16}/><strong>{high?'Correspondência forte':partial?'Correspondência possível':'Sugestão'}</strong><span>{top.score}% · {top.reasons.join(' • ')}</span></div><span className="bankSuggestedTitle">{top.title.descricao} · {money(Math.max(0,Number(top.title.valor)-Number(top.title.valor_pago)))}</span></div>:<div className="bankNoMatch"><XCircle size={16}/><span>Sem correspondência automática.</span></div>}
+      <div className="bankOdooActions">
+        {top?<button className="bankReconcileButton" disabled={!canEdit||busy} onClick={()=>openReconcile(tx)}><Link2 size={15}/>Reconciliar</button>:<>
+          <button disabled={!canEdit||busy} onClick={()=>setPartnerTx(tx)}><Building2 size={15}/>Definir parceiro</button>
+          <button disabled={!canEdit||busy} onClick={()=>setAccountTx(tx)}><Landmark size={15}/>Definir conta</button>
+        </>}
+        <button disabled={!canEdit||busy} onClick={()=>void quickCreatePreset(tx,tx.trntype==='CREDIT'?'A receber':'A pagar')}>{tx.trntype==='CREDIT'?'A receber':'A pagar'}</button>
+        {!top&&<button className="bankReconcileButton" disabled={!canEdit||busy} onClick={()=>openReconcile(tx)}><Link2 size={15}/>Reconciliar</button>}
+        <div className="bankMoreWrap">
+          <button type="button" className="bankMoreButton" onClick={()=>setActionMenuTx(actionMenuTx===tx.id?null:tx.id)} aria-expanded={actionMenuTx===tx.id}>•••</button>
+          {actionMenuTx===tx.id&&<div className="bankMoreMenu">
+            <button onClick={()=>{setActionMenuTx(null);setPartnerTx(tx)}}>Definir parceiro</button>
+            <button onClick={()=>{setActionMenuTx(null);setAccountTx(tx)}}>Definir conta</button>
+            <button onClick={()=>void quickCreatePreset(tx,'Taxas bancárias')}>Taxas bancárias</button>
+            <button onClick={()=>void quickCreatePreset(tx,'Outros gastos')}>Outros gastos</button>
+            <button onClick={()=>void quickCreate(tx)}>Lançamento rápido</button>
+          </div>}
+        </div>
+      </div>
+      {(tx.parceiro_nome||tx.conta_categoria)&&<div className="bankTxMeta">{tx.parceiro_nome&&<span>Parceiro: <strong>{tx.parceiro_nome}</strong></span>}{tx.conta_categoria&&<span>Conta: <strong>{tx.conta_categoria}</strong></span>}</div>}
     </div>}
     {tx.status==='conciliado'&&<div className="bankConciled"><CheckCircle2 size={15}/><span>Conciliado</span>{canEdit&&<button disabled={busy} onClick={()=>void undo(tx)}><Undo2 size={14}/>Desfazer</button>}</div>}
    </article>
