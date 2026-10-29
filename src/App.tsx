@@ -741,11 +741,38 @@ function App(){
       cst_pis:onlyDigits(String(f.get('cst_pis')||''),2)||null,
       cst_cofins:onlyDigits(String(f.get('cst_cofins')||''),2)||null,
       complemento_tributario:complemento,
+      tipo_produto:productType,
       ativo:String(f.get('ativo')||'true')==='true'
     }
-    const r=editingProduct?await supabase.from('produtos').update(base).eq('id',editingProduct.id):await supabase.from('produtos').insert({...base,estoque_atual:Number(f.get('estoque_atual')||0)})
-    setMsg(r.error?r.error.message:editingProduct?'Produto atualizado.':'Produto cadastrado.')
-    if(!r.error){setEditingProduct(null);setShowForm(false);await loadData()}
+    if(productType==='produto_final'&&productComponentDrafts.some(row=>!row.componente_id||Number(row.quantidade)<=0)){
+      setMsg('Preencha produto e quantidade de todos os componentes da ficha técnica.')
+      return
+    }
+    const componentIds=productComponentDrafts.filter(row=>row.componente_id).map(row=>row.componente_id)
+    if(new Set(componentIds).size!==componentIds.length){
+      setMsg('A ficha técnica possui o mesmo material mais de uma vez. Una as quantidades em uma única linha.')
+      return
+    }
+    const r=editingProduct
+      ? await supabase.from('produtos').update(base).eq('id',editingProduct.id).select('id').single()
+      : await supabase.from('produtos').insert({...base,estoque_atual:Number(f.get('estoque_atual')||0)}).select('id').single()
+    if(r.error){setMsg(r.error.message);return}
+    const productId=editingProduct?.id||String(r.data?.id||'')
+    if(!productId){setMsg('Produto salvo, mas não foi possível identificar o cadastro para gravar a ficha técnica.');await loadData();return}
+    if(productType==='produto_final'){
+      const composition=productComponentDrafts.map(row=>({
+        componente_id:row.componente_id,
+        quantidade:Number(row.quantidade),
+        perda_percentual:Number(row.perda_percentual||0)
+      }))
+      const savedComposition=await supabase.rpc('salvar_ficha_tecnica_produto',{p_produto_final_id:productId,p_componentes:composition})
+      if(savedComposition.error){setMsg('Produto salvo, mas houve erro na ficha técnica: '+savedComposition.error.message);await loadData();return}
+    }else{
+      const clearComposition=await supabase.from('produto_componentes').delete().eq('produto_final_id',productId)
+      if(clearComposition.error){setMsg('Produto salvo, mas não foi possível limpar a ficha técnica antiga: '+clearComposition.error.message);await loadData();return}
+    }
+    setMsg(editingProduct?'Produto atualizado.':'Produto cadastrado.')
+    setEditingProduct(null);setProductComponentDrafts([]);setShowForm(false);await loadData()
   }
   function startAdjustStock(p:Produto){if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setShowForm(false);setMsg('')}
   async function adjustStock(e:FormEvent<HTMLFormElement>){
