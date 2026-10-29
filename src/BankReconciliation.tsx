@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowLeft,Building2,CheckCircle2,FileUp,Landmark,Link2,List,Plus,RefreshCw,Search,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
+import {ArrowLeft,Building2,CheckCircle2,FileUp,Landmark,Link2,List,RefreshCw,Search,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {bankBrand,balanceTrend,isPending,sparkPoints} from './lib/bankPresentation'
 import type {CSSProperties} from 'react'
@@ -301,9 +301,20 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
 
  return <section className="bankRecon">
   <div className="bankReconNav"><button onClick={()=>setScreen('dashboard')}><ArrowLeft size={15}/>Painel</button><span>/</span><strong>{screen==='matching'?'Bank Matching':'Transações'} · {journal?.nome}</strong></div>
-  <div className="bankReconTop compact"><div><h3>{screen==='matching'?'Conciliação bancária':'Extrato bancário'}</h3><p>{journal?.nome} · {pending.length} pendência(s)</p></div><div className="bankActions">{canEdit&&<button onClick={()=>setNewJournalOpen(true)}><Plus size={14}/>Novo</button>}{canEdit&&<button className="bankPrimary" onClick={()=>setUploadOpen(true)}><Upload size={14}/>Carregar</button>}<button onClick={()=>void load()}><RefreshCw size={14}/></button></div></div>
+  <div className="bankReconTop compact">
+    <div>
+      <h3>{screen==='matching'?'Conciliação bancária':'Extrato bancário'}</h3>
+      <p>{journal?.nome} · {pending.length} pendência(s)</p>
+    </div>
+    <div className="bankTopControls">
+      <label className="bankJournalSelector">Diário
+        <select value={activeJournal||''} onChange={e=>{setActiveJournal(e.target.value);setSearch('')}}>{journals.map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</select>
+      </label>
+      <div className="bankActions">{canEdit&&<button className="bankPrimary" onClick={()=>setUploadOpen(true)}><Upload size={14}/>Carregar extrato</button>}<button onClick={()=>void load()}><RefreshCw size={14}/></button></div>
+    </div>
+  </div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
-  <div className="bankFilterBar"><label>Diário<select value={activeJournal||''} onChange={e=>setActiveJournal(e.target.value)}>{journals.map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</select></label><div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div></div>
+  <div className="bankFilterBar bankSearchOnly"><div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div></div>
 
   <div className="bankTxList">{visible.map(tx=>{
    const sugg=suggestions(tx),top=sugg[0],high=(top?.score||0)>=80,partial=(top?.score||0)>=45
