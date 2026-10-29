@@ -26,7 +26,7 @@ function haversine(a:Client,b:Client){
   return 2*r*Math.asin(Math.sqrt(x))
 }
 
-export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection,onChanged}:{canEdit:boolean;selectedDeliveryIds:string[];onClearSelection:()=>void;onChanged:()=>Promise<void>|void}){
+export function RouteControlCenter({canEdit,canOperate,selectedDeliveryIds,onClearSelection,onChanged,onConfirmDelivery,refreshKey}:{canEdit:boolean;canOperate:boolean;selectedDeliveryIds:string[];onClearSelection:()=>void;onChanged:()=>Promise<void>|void;onConfirmDelivery:(deliveryId:string)=>void;refreshKey:number}){
   const [tab,setTab]=useState<Tab>('montagem')
   const [day,setDay]=useState(()=>new URLSearchParams(window.location.search).get('dia')||today())
   const [routes,setRoutes]=useState<RoutePlan[]>([])
@@ -75,7 +75,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
     setRoutes((r.data||[]) as RoutePlan[]);setDeliveries((e.data||[]) as Delivery[]);setSales((s.data||[]) as Sale[])
     setClients((c.data||[]) as Client[]);setTitles((t.data||[]) as Title[]);setDrivers((d.data||[]) as Driver[]);setVehicles((v.data||[]) as Vehicle[]);setEvents((ev.data||[]) as RouteEvent[]);setProfiles((pf.data||[]) as UserProfile[])
   },[canEdit])
-  useEffect(()=>{void load()},[load])
+  useEffect(()=>{void load()},[load,refreshKey])
 
   const dayRoutes=useMemo(()=>routes.filter(r=>r.data_rota===day&&r.status!=='cancelada'),[routes,day])
   const displayedRoutes=useMemo(()=>tab==='montagem'
@@ -268,6 +268,7 @@ export function RouteControlCenter({canEdit,selectedDeliveryIds,onClearSelection
             <div className="routeStopValue"><strong>{money(Number(s?.total||0))}</strong><span>{due>0?'Cobrar '+money(due):'Pago'}</span></div>
             <div className="routeStopStatus"><span className={'deliveryStatus '+d.status}>{d.status.replace(/_/g,' ')}</span><small>{Number(d.peso_estimado_kg||0).toLocaleString('pt-BR')} kg · {Number(d.volume_estimado_m3||0).toLocaleString('pt-BR')} m³</small></div>
             {selectedRoute.status==='montagem'&&canEdit&&<button className="routeStopRemove" onClick={()=>void removeStop(d.id)}><XCircle size={15}/>Remover</button>}
+            {selectedRoute.status==='liberada'&&d.status==='em_transito'&&canOperate&&<button className="routeStopDeliver" disabled={busy} onClick={()=>onConfirmDelivery(d.id)}><CheckCircle2 size={15}/>Entregar</button>}
           </article>})}{!stops.length&&<div className="routeStopsEmpty">Nenhuma parada nesta rota.</div>}</div>
 
           {routeEvents.length>0&&<details className="routeAudit"><summary>Auditoria da rota ({routeEvents.length})</summary><div>{routeEvents.map(e=><article key={e.id}><strong>{e.tipo.replace(/_/g,' ')}</strong><span>{dt(e.created_at)}</span><small>{Object.entries(e.detalhes||{}).map(([k,v])=>k+': '+String(v??'')).join(' · ')}</small></article>)}</div></details>}
