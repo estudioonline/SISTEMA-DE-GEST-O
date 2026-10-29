@@ -4508,3 +4508,9 @@
 .bankEmpty{padding:34px;display:grid;place-items:center;gap:8px;text-align:center;margin-top:12px}
 .bankModalBackdrop{position:fixed;inset:0;z-index:6000;background:#020617cc;display:grid;place-items:center;padding:20px}.bankModal{width:min(640px,100%);padding:16px;display:grid;gap:12px}.bankModal label{display:grid;gap:5px}.bankFormGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bankUploadHint{display:flex;gap:8px;align-items:center;color:#94a3b8}
 @media(max-width:850px){.bankTxMain{grid-template-columns:1fr 1fr}.bankCandidateList label{grid-template-columns:auto 1fr}.bankAlloc{grid-column:2}.bankFilterBar,.bankReconTop{align-items:stretch;flex-direction:column}.bankFormGrid{grid-template-columns:1fr}}
+
+.bankClosedPeriods{margin-top:14px;padding:12px;border:1px solid #263244;border-radius:12px;background:#111827;display:grid;gap:7px}
+.bankClosedPeriods>strong{font-size:12px}
+.bankClosedPeriods>div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 8px;border:1px solid #263244;border-radius:8px;background:#0b1220}
+.bankClosedPeriods span{font-size:10px;color:#94a3b8}
+.bankClosedPeriods button{background:#182235;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:6px 9px}
