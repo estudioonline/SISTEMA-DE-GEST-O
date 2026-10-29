@@ -18,7 +18,7 @@ type CloudDocument = {
 }
 type DocumentFilter = 'todos' | 'vendas' | 'compras' | 'pdf' | 'imagens' | 'outros'
 
-const normalize = (value: string) => value.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
+const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
 const extensionOf = (file: CloudDocument) => (file.nome_arquivo.split('.').pop() || '').toLowerCase()
 const isPdf = (file: CloudDocument) => file.mime_type?.toLowerCase().includes('pdf') || extensionOf(file) === 'pdf'
 const isImage = (file: CloudDocument) => file.mime_type?.toLowerCase().startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp','svg'].includes(extensionOf(file))
@@ -86,17 +86,25 @@ export function DocumentsLibrary() {
   }, [documents, search, filter])
 
   async function openDocument(file: CloudDocument) {
+    const tab = window.open('about:blank', '_blank')
+    if (!tab) {
+      setError('O navegador bloqueou a nova janela. Permita pop-ups para abrir o documento.')
+      return
+    }
+    tab.opener = null
     setOpeningId(file.id)
     setError('')
     try {
       const { data, error: storageError } = await supabase.storage
         .from('comprovantes-pagamento').createSignedUrl(file.storage_path, 300)
       if (storageError || !data?.signedUrl) {
+        tab.close()
         setError('Não foi possível abrir este arquivo. Verifique se ele ainda existe na nuvem.')
         return
       }
-      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+      tab.location.href = data.signedUrl
     } catch {
+      tab.close()
       setError('Não foi possível abrir este arquivo. Tente novamente.')
     } finally {
       setOpeningId(null)
