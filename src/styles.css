@@ -4705,3 +4705,6 @@
 .dark .routeCenterList small{color:#64748b}
 
 .deleteRouteButton{background:#fff1f2!important;color:#be123c!important;border-color:#fecdd3!important}.deleteRouteButton:hover{background:#ffe4e6!important}.dark .deleteRouteButton{background:#4c0519!important;color:#fda4af!important;border-color:#881337!important}
+
+.routeStopDeliver{height:34px;border:1px solid #059669;border-radius:8px;background:#059669;color:#fff;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:10px;font-weight:800;cursor:pointer}.routeStopDeliver:hover{background:#047857}.routeStopDeliver:disabled{opacity:.5;cursor:not-allowed}
+.routeStops.advanced article:has(.routeStopDeliver){grid-template-columns:70px minmax(260px,1fr) 125px 130px auto}
