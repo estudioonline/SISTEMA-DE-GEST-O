@@ -286,3 +286,65 @@
   .documentsTable thead th,.documentsTable tbody td { padding:11px 12px; }
 }
 @media(prefers-reduced-motion:reduce) { .documentsSpin { animation:none; } }
+
+
+/* Documentos: categorias, upload e feedbacks da biblioteca da empresa. */
+.documentsFileInput { display:none!important; }
+.documentsUploadButton { display:inline-flex; align-items:center; justify-content:center; gap:8px; flex-shrink:0; min-height:40px; padding:0 13px; white-space:nowrap; }
+.documentsUploadOptions {
+  display:flex; align-items:center; flex-wrap:wrap; gap:14px;
+  padding:14px 16px; background:var(--ds-surface); border:1px solid var(--ds-border);
+  border-radius:var(--ds-radius-lg); box-shadow:var(--ds-shadow-xs);
+}
+.documentsUploadIntro { display:grid; gap:4px; margin-right:auto; }
+.documentsUploadIntro strong { color:var(--ds-text); font-size:12px; }
+.documentsUploadIntro span,.documentsUploadLimit { color:var(--ds-muted); font-size:10px; line-height:1.5; }
+.documentsCategoryChoice {
+  display:flex; align-items:center; gap:8px; color:var(--ds-text-soft); font-size:11px; font-weight:700;
+}
+.documentsCategoryChoice svg { color:var(--ds-blue); }
+.documentsCategoryChoice select {
+  min-height:38px; max-width:200px; padding:0 10px; color:var(--ds-text);
+  background:var(--ds-surface); border:1px solid var(--ds-border); border-radius:var(--ds-radius-sm); font:inherit;
+}
+.documentsUploadLimit { flex-basis:100%; }
+.documentsUploadProgress { display:flex; align-items:center; gap:7px; color:var(--ds-blue); font-size:11px; font-weight:700; }
+.documentsWarning,.documentsSuccess {
+  display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border-radius:var(--ds-radius);
+  font-size:12px; line-height:1.55;
+}
+.documentsWarning { color:var(--ds-warning-text); background:var(--ds-warning-bg); border:1px solid var(--ds-warning-border); }
+.documentsSuccess { color:var(--ds-success-text); background:var(--ds-success-bg); border:1px solid var(--ds-success-border); }
+.documentsWarning svg,.documentsSuccess svg { flex:0 0 auto; margin-top:1px; }
+.documentsError { position:relative; padding-right:38px; }
+.documentsDismiss { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:25px; height:25px; padding:0; border:0; border-radius:6px; background:transparent; color:inherit; cursor:pointer; }
+.documentsDismiss:hover { background:rgba(127,127,127,.12); }
+.documentsFolderHeading { display:grid; gap:12px; }
+.documentsFolderHeading>div:first-child { display:grid; gap:4px; }
+.documentsFolderHeading h2 { margin:0; color:var(--ds-text); font-size:15px; }
+.documentsFolderHeading p { margin:0; color:var(--ds-muted); font-size:11px; }
+.documentsFolderChips { display:flex; flex-wrap:wrap; gap:8px; }
+.documentsFolderChips button {
+  display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:0 10px;
+  border:1px solid var(--ds-border); border-radius:999px; background:var(--ds-surface);
+  color:var(--ds-text-soft); font:inherit; font-size:11px; font-weight:700; cursor:pointer;
+}
+.documentsFolderChips button:hover { border-color:var(--ds-border-strong); background:var(--ds-surface-soft); }
+.documentsFolderChips button.active { background:var(--ds-blue-soft); border-color:var(--ds-blue); color:var(--ds-blue-strong); }
+.documentsFolderChips button span { display:grid; place-items:center; min-width:17px; height:17px; padding:0 4px; border-radius:999px; background:var(--ds-blue); color:#fff; font-size:9px; }
+.dark .documentsFolderChips button.active { background:rgba(59,130,246,.17); border-color:#3b82f6; color:#bfdbfe; }
+.dark .documentsWarning { background:rgba(245,158,11,.12); border-color:rgba(251,191,36,.28); color:#fcd34d; }
+.dark .documentsSuccess { background:rgba(16,185,129,.12); border-color:rgba(52,211,153,.28); color:#6ee7b7; }
+@media(max-width:900px) {
+  .documentsUploadOptions { align-items:flex-start; }
+  .documentsUploadIntro { flex-basis:100%; }
+}
+@media(max-width:700px) {
+  .documentsUploadButton { min-height:36px; padding:0 10px; font-size:11px; }
+  .documentsCloudBanner { gap:10px; }
+  .documentsUploadOptions { gap:10px; padding:12px; }
+  .documentsCategoryChoice { width:100%; justify-content:space-between; }
+  .documentsCategoryChoice select { flex:1; max-width:none; }
+  .documentsFolderChips { gap:6px; }
+  .documentsFolderChips button { min-height:31px; padding:0 8px; font-size:10px; }
+}
