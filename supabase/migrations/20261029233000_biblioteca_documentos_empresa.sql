@@ -111,7 +111,19 @@ with check (
   and (storage.foldername(name))[1] in (
     'fiscal','financeiro','contratos','clientes','fornecedores','rh','vendas','compras','geral'
   )
-  and lower(storage.filename(name)) ~ '[.](pdf|doc|docx|xls|xlsx|csv|xml|jpg|jpeg|png|webp|txt|zip)$'
+  and name ~* '[.](pdf|doc|docx|xls|xlsx|csv|xml|jpg|jpeg|png|webp|txt|zip)
+);
+
+drop policy if exists documentos_empresa_storage_delete on storage.objects;
+create policy documentos_empresa_storage_delete
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'documentos-empresa'
+  and private.usuario_pode('financeiro', 'editar')
+);
+
+commit;
+
 );
 
 drop policy if exists documentos_empresa_storage_delete on storage.objects;
