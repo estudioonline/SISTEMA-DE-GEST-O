@@ -82,6 +82,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const [transactions,setTransactions]=useState<BankTx[]>([])
  const [clients,setClients]=useState<Partner[]>([])
  const [suppliers,setSuppliers]=useState<Partner[]>([])
+ const [reconcileAccounts,setReconcileAccounts]=useState<{id:string;nome:string}[]>([])
  const [closedPeriods,setClosedPeriods]=useState<ClosedPeriod[]>([])
  const [activeJournal,setActiveJournal]=useState<string|null>(null)
  const [screen,setScreen]=useState<'dashboard'|'matching'|'transactions'>('dashboard')
@@ -104,15 +105,16 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const fileRef=useRef<HTMLInputElement|null>(null)
 
  const load=useCallback(async()=>{
-  const [j,t,c,s,p]=await Promise.all([
+  const [j,t,c,s,a,p]=await Promise.all([
    supabase.from('diarios_bancarios').select('*').eq('ativo',true).order('nome'),
    supabase.from('transacoes_bancarias').select('*').order('data_lancamento',{ascending:false}).order('criado_em',{ascending:false}).limit(5000),
    supabase.from('clientes').select('nome,documento').eq('ativo',true),
    supabase.from('fornecedores').select('nome,documento').eq('ativo',true),
+   supabase.from('contas_conciliacao_bancaria').select('id,nome').eq('ativo',true).order('nome'),
    supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50)
   ])
-  if(j.error||t.error||p.error){setMessage((j.error||t.error||p.error)!.message);return}
-  setJournals((j.data||[]) as Journal[]);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setClosedPeriods((p.data||[]) as ClosedPeriod[])
+  if(j.error||t.error||a.error||p.error){setMessage((j.error||t.error||a.error||p.error)!.message);return}
+  setJournals((j.data||[]) as Journal[]);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[])
  },[])
  useEffect(()=>{void load()},[load])
 
@@ -210,12 +212,12 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  async function saveAccount(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();if(!accountTx||!canEdit)return
   const form=new FormData(e.currentTarget),categoria=String(form.get('categoria')||'').trim(),centro=String(form.get('centro_custo')||'').trim()
-  if(!categoria){setMessage('Informe a conta/categoria.');return}
+  if(!categoria){setMessage('Selecione uma conta.');return}
   setBusy(true);setMessage('')
   try{
-   const {error}=await supabase.from('transacoes_bancarias').update({conta_categoria:categoria,centro_custo:centro||null}).eq('id',accountTx.id)
+   const {error}=await supabase.rpc('classificar_transacao_bancaria',{p_transacao_id:accountTx.id,p_conta_categoria:categoria,p_centro_custo:centro||null})
    if(error)throw error
-   setAccountTx(null);setMessage('Conta/categoria definida para a transação.');await load()
+   setAccountTx(null);setMessage('Conta definida e transação conciliada.');await Promise.all([load(),onChanged()])
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
  function openReconcile(tx:BankTx){
@@ -331,7 +333,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(Object.values(selected).reduce((s,v)=>s+Number(v),0))} / Banco {money(Math.abs(Number(reconcileTx.valor)))}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length} onClick={()=>void reconcile(reconcileTx)}>Selecionar e conciliar</button></div></div>
   </div></div>}
   {partnerTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={savePartner}><div className="bankModalHead"><strong>Definir parceiro</strong><button type="button" onClick={()=>setPartnerTx(null)}><XCircle size={18}/></button></div><p>Associe o movimento bancário a um cliente ou fornecedor, como no fluxo de conciliação do Odoo.</p><label>Parceiro<select name="parceiro" required defaultValue={partnerTx.parceiro_nome?(partnerTx.parceiro_tipo||'outro')+'|'+partnerTx.parceiro_nome:''}><option value="">Selecione</option>{clients.map((p,i)=><option key={'c'+i} value={'cliente|'+p.nome}>Cliente · {p.nome}{p.documento?' · '+p.documento:''}</option>)}{suppliers.map((p,i)=><option key={'f'+i} value={'fornecedor|'+p.nome}>Fornecedor · {p.nome}{p.documento?' · '+p.documento:''}</option>)}</select></label><div className="bankModalActions"><button type="button" onClick={()=>setPartnerTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar parceiro</button></div></form></div>}
-  {accountTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={saveAccount}><div className="bankModalHead"><strong>Definir conta</strong><button type="button" onClick={()=>setAccountTx(null)}><XCircle size={18}/></button></div><p>Classifique a transação antes de conciliar ou criar um lançamento.</p><label>Conta / categoria<input name="categoria" required defaultValue={accountTx.conta_categoria||''} placeholder="Ex.: Taxas bancárias, Frete, Energia, Receita operacional"/></label><label>Centro de custo<input name="centro_custo" defaultValue={accountTx.centro_custo||''} placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAccountTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar conta</button></div></form></div>}
+  {accountTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={saveAccount}><div className="bankModalHead"><strong>Definir conta</strong><button type="button" onClick={()=>setAccountTx(null)}><XCircle size={18}/></button></div><p>Classifique a transação antes de conciliar ou criar um lançamento.</p><label>Conta<select name="categoria" required defaultValue={accountTx.conta_categoria||''}><option value="">Selecione</option>{reconcileAccounts.map(a=><option key={a.id} value={a.nome}>{a.nome}</option>)}</select></label><label>Centro de custo<input name="centro_custo" defaultValue={accountTx.centro_custo||''} placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAccountTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar conta</button></div></form></div>}
   {uploadOpen&&<div className="bankModalBackdrop"><div className="bankModal" role="dialog" aria-modal="true" aria-label="Carregar extrato"><div className="bankModalHead"><strong>Carregar extrato</strong><button onClick={()=>setUploadOpen(false)}><XCircle size={18}/></button></div><p>O arquivo será atribuído automaticamente ao diário <strong>{journal?.nome}</strong>. FITIDs já importados serão descartados.</p><input ref={fileRef} type="file" disabled={busy} accept=".ofx,.qfx,.csv" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file)}}/><div className="bankUploadHint"><FileUp size={18}/><span>Formatos aceitos: OFX, QFX e CSV.</span></div></div></div>}
   {newJournalOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createJournal}><div className="bankModalHead"><strong>Novo diário bancário</strong><button type="button" onClick={()=>setNewJournalOpen(false)}><XCircle size={18}/></button></div><label>Nome<input name="nome" required/></label><div className="bankFormGrid"><label>Banco<input name="banco"/></label><label>Agência<input name="agencia"/></label><label>Conta<input name="conta"/></label><label>Saldo inicial<input name="saldo" type="number" step="0.01" defaultValue="0"/></label></div><div className="bankModalActions"><button type="button" onClick={()=>setNewJournalOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Criar diário</button></div></form></div>}
  </section>
