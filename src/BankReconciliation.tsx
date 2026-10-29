@@ -228,6 +228,27 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   setBusy(true);setMessage('')
   try{const {error}=await supabase.rpc('desfazer_conciliacao_bancaria',{p_transacao_id:tx.id,p_motivo:reason});if(error)throw error;setMessage('Conciliação desfeita.');await Promise.all([load(),onChanged()])}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
+ async function deleteTransaction(tx:BankTx){
+  if(!canEdit||busy)return
+  if(!window.confirm(`Excluir esta linha do extrato de ${dateBr(tx.data_lancamento)} no valor de ${money(Math.abs(Number(tx.valor)))}?`))return
+  setBusy(true);setMessage('')
+  try{
+   const {error}=await supabase.rpc('excluir_transacao_bancaria',{p_transacao_id:tx.id})
+   if(error)throw error
+   setActionMenuTx(null);setMessage('Linha do extrato excluída.');await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function deleteStatementDay(tx:BankTx){
+  if(!canEdit||busy)return
+  const dayCount=transactions.filter(row=>row.diario_id===tx.diario_id&&row.data_lancamento===tx.data_lancamento).length
+  if(!window.confirm(`Excluir todo o extrato de ${dateBr(tx.data_lancamento)}? Serão removidas ${dayCount} linha(s) ainda não conciliadas.`))return
+  setBusy(true);setMessage('')
+  try{
+   const {data,error}=await supabase.rpc('excluir_extrato_bancario_dia',{p_diario_id:tx.diario_id,p_data:tx.data_lancamento})
+   if(error)throw error
+   setActionMenuTx(null);setMessage(`Extrato de ${dateBr(tx.data_lancamento)} excluído: ${Number(data?.excluidas||0)} linha(s).`);await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
  function openJournal(id:string,target:'matching'|'transactions'){
   setActiveJournal(id);setScreen(target);setSearch('');setSelected({});setMessage('')
  }
@@ -305,6 +326,9 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
             <button onClick={()=>void quickCreatePreset(tx,'Taxas bancárias')}>Taxas bancárias</button>
             <button onClick={()=>void quickCreatePreset(tx,'Outros gastos')}>Outros gastos</button>
             <button onClick={()=>void quickCreate(tx)}>Lançamento rápido</button>
+            <div className="bankMoreDivider"/>
+            <button className="bankDangerMenu" onClick={()=>void deleteTransaction(tx)}>Excluir esta linha</button>
+            <button className="bankDangerMenu" onClick={()=>void deleteStatementDay(tx)}>Excluir extrato deste dia</button>
           </div>}
         </div>
       </div>
