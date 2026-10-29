@@ -129,3 +129,46 @@
   .workspaceThemeSelect {max-width:74px; font-size:11px}
 }
 @media(prefers-reduced-motion:reduce) {.bankRecon .bankJournalCard {transition:none}}
+
+
+/* Conciliação estilo Odoo: ações por lançamento e busca modal de títulos */
+.bankRecon .bankOdooMatch{padding:10px 12px}
+.bankRecon .bankSuggestedTitle{font-size:11px;color:var(--bank-muted);font-weight:700}
+.bankRecon .bankOdooActions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.bankRecon .bankOdooActions>button{min-height:32px;padding:6px 10px;font-weight:700}
+.bankRecon .bankReconcileButton{background:#8b3f7f!important;border-color:#8b3f7f!important;color:#fff!important}
+.dark .bankRecon .bankReconcileButton{background:#944987!important;border-color:#a8559b!important}
+.bankRecon .bankMoreWrap{position:relative}
+.bankRecon .bankMoreButton{min-width:36px;padding:6px 9px;font-weight:900;letter-spacing:1px}
+.bankRecon .bankMoreMenu{position:absolute;right:0;top:calc(100% + 5px);z-index:30;min-width:190px;padding:5px;background:var(--card-bg);border:1px solid var(--bank-border);border-radius:9px;box-shadow:0 14px 30px rgba(15,23,42,.18);display:grid}
+.bankRecon .bankMoreMenu button{justify-content:flex-start;border:0;border-radius:6px;background:transparent;min-height:31px}
+.bankRecon .bankMoreMenu button:hover{background:var(--bank-soft)}
+.bankRecon .bankTxMeta{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bank-border);font-size:11px;color:var(--bank-muted)}
+.bankRecon .bankTxMeta strong{color:var(--bank-text)}
+.bankRecon .bankReconcileModal{width:min(910px,100%)}
+.bankRecon .bankReconcileModal .bankModalHead>div{display:grid;gap:3px}
+.bankRecon .bankReconcileModal .bankModalHead small{font-size:11px;color:var(--bank-muted)}
+.bankRecon .bankReconcileSearch{padding:9px 11px;border:1px solid var(--bank-border);border-radius:9px;background:var(--bank-soft)}
+.bankRecon .bankReconcileSearch input{border:0;background:transparent;padding:3px;width:100%}
+.bankRecon .bankReconcileSummary{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:var(--bank-muted)}
+.bankRecon .bankReconcileSummary strong{color:var(--bank-text)}
+.bankRecon .bankReconcileList{display:grid;gap:6px;max-height:390px;overflow:auto;padding-right:2px}
+.bankRecon .bankReconcileList>label{display:grid;grid-template-columns:auto minmax(0,1fr) 54px 118px;gap:10px;align-items:center;padding:10px;border:1px solid var(--bank-border);border-radius:8px;background:var(--card-bg);cursor:pointer}
+.bankRecon .bankReconcileList>label.selected{border-color:var(--bank-primary);background:var(--bank-drop-bg)}
+.bankRecon .bankReconcileList>label>span{display:grid;gap:3px;min-width:0}
+.bankRecon .bankReconcileList>label>span strong{font-size:12px;color:var(--bank-text)}
+.bankRecon .bankReconcileList>label>span small{font-size:10px;color:var(--bank-muted);overflow-wrap:anywhere}
+.bankRecon .bankReconcileList>label>b{text-align:right;font-size:11px;color:var(--bank-primary)}
+.bankRecon .bankNoCandidates{padding:24px;text-align:center;color:var(--bank-muted);border:1px dashed var(--bank-border);border-radius:9px}
+.bankRecon .bankReconcileAdjust{display:flex;gap:10px;flex-wrap:wrap;padding:10px;border:1px solid var(--bank-border);border-radius:9px;background:var(--bank-soft)}
+.bankRecon .bankReconcileAdjust label{display:grid;gap:5px;min-width:190px;font-size:11px}
+.bankRecon .bankReconcileActions{border-top:1px solid var(--bank-border);padding-top:12px}
+.bankRecon .bankReconcileActions>span{font-size:11px;color:var(--bank-muted)}
+.bankRecon .bankReconcileActions>div{display:flex;gap:8px}
+@media(max-width:760px){
+  .bankRecon .bankReconcileList>label{grid-template-columns:auto minmax(0,1fr) 48px}
+  .bankRecon .bankReconcileList .bankAlloc{grid-column:2/-1}
+  .bankRecon .bankReconcileActions{align-items:stretch;flex-direction:column}
+  .bankRecon .bankReconcileActions>div{width:100%}
+  .bankRecon .bankReconcileActions>div button{flex:1}
+}
