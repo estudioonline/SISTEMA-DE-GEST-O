@@ -365,3 +365,26 @@
   .bankJournalMetrics.cashMetrics{grid-template-columns:1fr 1fr}
   .bankJournalMetrics.cashMetrics>div:first-child{grid-column:1/-1}
 }
+
+
+.bankTx{position:relative}
+.bankUndoCompact{
+  position:absolute;
+  right:12px;
+  bottom:10px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:30px;
+  padding:0 10px;
+  border:1px solid #334155;
+  border-radius:8px;
+  background:transparent;
+  color:#cbd5e1;
+  font-size:10px;
+  font-weight:700;
+}
+.bankUndoCompact:hover{
+  background:rgba(148,163,184,.08);
+  border-color:#475569;
+}
