@@ -51,6 +51,21 @@ Deno.serve(async(req:Request)=>{
   }
   if(!/^[a-f0-9-]{36}$/i.test(String(body.venda_id)))throw Error('Venda inválida.')
   const source=await rpc('sale',{venda_id:body.venda_id}) as SaleSource
+  const installments=await db.from('titulos_financeiros')
+    .select('id,parcela_numero,vencimento,valor,status')
+    .eq('venda_id',body.venda_id)
+    .eq('tipo','receber')
+    .neq('status','cancelado')
+    .order('parcela_numero',{ascending:true})
+    .order('vencimento',{ascending:true})
+  if(installments.error)throw Error('Não foi possível carregar as parcelas financeiras da venda.')
+  source.parcelas=(installments.data||[]).map((row:any)=>({
+    id:String(row.id),
+    numero:Number(row.parcela_numero||0),
+    vencimento:String(row.vencimento),
+    valor:Number(row.valor),
+    status:String(row.status)
+  }))
   if(body.action==='sale')return json({source,config:credentials.config,configured:!!token},200,cors)
   const draft=(body.dados_fiscais??{}) as FiscalDraft
   if(body.action==='draft'){
