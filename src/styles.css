@@ -5031,3 +5031,8 @@
   .billingLinesHead,.billingLine{grid-template-columns:60px 1fr}
   .billingLinesHead span:last-child,.billingLine input:last-child{grid-column:2}
 }
+
+.stockMinimumNotice{display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border:1px solid #f59e0b;border-radius:10px;background:#fffbeb;color:#92400e}
+.stockMinimumNotice strong{white-space:nowrap}
+.stockMinimumNotice span{font-size:11px}
+.dark .stockMinimumNotice{background:rgba(245,158,11,.12);border-color:#92400e;color:#fbbf24}
