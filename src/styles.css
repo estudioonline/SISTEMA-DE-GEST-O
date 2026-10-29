@@ -4784,3 +4784,76 @@
   .salesAdvancedFilters{grid-template-columns:1fr}
   .salesPagination{align-items:flex-start;flex-direction:column}
 }
+
+
+/* Vendas: versão compacta para caber em notebooks sem scroll horizontal */
+.salesModernTable .tableWrap{overflow-x:hidden}
+.salesModernTable .salesUxTable{table-layout:fixed;width:100%;min-width:0}
+.salesModernTable .salesUxTable th,
+.salesModernTable .salesUxTable td{padding:10px 8px}
+.salesModernTable .salesUxTable th:nth-child(1),
+.salesModernTable .salesUxTable td:nth-child(1){width:9%}
+.salesModernTable .salesUxTable th:nth-child(2),
+.salesModernTable .salesUxTable td:nth-child(2){width:8%}
+.salesModernTable .salesUxTable th:nth-child(3),
+.salesModernTable .salesUxTable td:nth-child(3){width:20%}
+.salesModernTable .salesUxTable th:nth-child(4),
+.salesModernTable .salesUxTable td:nth-child(4){width:12%}
+.salesModernTable .salesUxTable th:nth-child(5),
+.salesModernTable .salesUxTable td:nth-child(5){width:9%}
+.salesModernTable .salesUxTable th:nth-child(6),
+.salesModernTable .salesUxTable td:nth-child(6){width:10%}
+.salesModernTable .salesUxTable th:nth-child(7),
+.salesModernTable .salesUxTable td:nth-child(7){width:9%}
+.salesModernTable .salesUxTable th:nth-child(8),
+.salesModernTable .salesUxTable td:nth-child(8){width:8%}
+.salesModernTable .salesUxTable th:nth-child(9),
+.salesModernTable .salesUxTable td:nth-child(9){width:10%}
+.salesModernTable .salesUxTable th:nth-child(10),
+.salesModernTable .salesUxTable td:nth-child(10){width:5%}
+.salesModernTable .salesUxTable td{font-size:11px}
+.salesModernTable .salesUxTable .tableSortBtn{font-size:10px;padding:4px 6px}
+.salesModernTable .salesIdentity{min-width:0;gap:6px}
+.salesModernTable .salesIdentity>span:last-child{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.salesModernTable .salesAvatar{width:26px;height:26px;flex-basis:26px;font-size:9px}
+.salesModernTable .salesStatus,
+.salesModernTable .salesPaymentStatus{font-size:9px;padding:3px 7px;min-height:22px}
+.salesModernTable .salesPaymentText,
+.salesModernTable .salesRoute{font-size:10px}
+.salesModernTable .salesRoute{gap:3px}
+.salesModernTable .salesRoute svg{width:12px;height:12px}
+.salesModernTable .salesTotal{font-size:11px}
+.salesModernTable .rowMenuBtn{width:30px;height:30px;padding:0}
+.salesModernTable .salesModernHead{padding:14px}
+.salesModernTable .salesModernHead h3{font-size:16px}
+.salesModernTable .salesModernHead p{font-size:11px}
+.salesModernTable .salesSearchBox{width:min(380px,100%)}
+.salesModernTable .salesFilterButton{padding:0 10px;font-size:11px}
+.salesModernTable .salesPagination{padding:10px 14px}
+@media(max-width:1280px){
+  .salesModernTable .salesUxTable th:nth-child(4),
+  .salesModernTable .salesUxTable td:nth-child(4){width:10%}
+  .salesModernTable .salesUxTable th:nth-child(6),
+  .salesModernTable .salesUxTable td:nth-child(6){width:9%}
+  .salesModernTable .salesUxTable th:nth-child(8),
+  .salesModernTable .salesUxTable td:nth-child(8){width:7%}
+  .salesModernTable .salesUxTable td{font-size:10px}
+  .salesModernTable .salesPaymentText,
+  .salesModernTable .salesRoute{font-size:9px}
+}
+@media(max-width:1100px){
+  .salesModernTable .salesUxTable th,
+  .salesModernTable .salesUxTable td{padding:8px 6px}
+  .salesModernTable .salesAvatar{display:none}
+  .salesModernTable .salesIdentity{gap:0}
+  .salesModernTable .salesStatus,
+  .salesModernTable .salesPaymentStatus{font-size:8px;padding:3px 5px}
+  .salesModernTable .salesDocument{font-size:10px}
+  .salesModernTable .salesModernActions{gap:6px}
+}
