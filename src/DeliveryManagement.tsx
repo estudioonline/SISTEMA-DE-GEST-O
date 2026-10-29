@@ -36,7 +36,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
   const [titles,setTitles]=useState<Title[]>([])
   const [company,setCompany]=useState<Company|null>(null)
   const [routePlans,setRoutePlans]=useState<RoutePlan[]>([])
-  const [routeDay,setRouteDay]=useState(today())
+  const [routeDay,setRouteDay]=useState(()=>new URLSearchParams(window.location.search).get('dia')||today())
   const [newRouteName,setNewRouteName]=useState('')
   const [newRouteDriver,setNewRouteDriver]=useState('')
   const [newRouteVehicle,setNewRouteVehicle]=useState('')
@@ -373,7 +373,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
     <section className="routeBuilder">
       <div className="routeBuilderHead">
         <div><span>MONTAGEM DE ROTAS</span><h3>Planejamento do dia</h3><p>Separe as entregas em cargas, defina motorista e ordene as paradas.</p></div>
-        <label>Dia<input type="date" value={routeDay} onChange={e=>{setRouteDay(e.target.value);setSelectedPlanId('')}}/></label>
+        <label>Dia<input type="date" value={routeDay} onChange={e=>{const day=e.target.value;setRouteDay(day);setSelectedPlanId('');const url=new URL(window.location.href);url.searchParams.set('dia',day);window.history.replaceState({},'',url)}}/></label>
       </div>
       <div className="routeBuilderBody">
         <aside className="routePlanSidebar">
