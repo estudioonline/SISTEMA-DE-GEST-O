@@ -12,7 +12,14 @@ const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency
 const dateBr=(v:string)=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR')}
 const normalize=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
 const digits=(s:string)=>s.replace(/\D/g,'')
-const dayDiff=(a:string,b:string)=>Math.round(Math.abs(new Date(a+'T12:00:00').getTime()-new Date(b+'T12:00:00').getTime())/86400000)
+const businessDayDiff=(a:string,b:string)=>{
+ const start=new Date(a+'T12:00:00'),end=new Date(b+'T12:00:00')
+ if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime()))return 999
+ const from=start<=end?start:end,to=start<=end?end:start
+ let count=0,cursor=new Date(from)
+ while(cursor<to){cursor.setDate(cursor.getDate()+1);const day=cursor.getDay();if(day!==0&&day!==6)count++}
+ return count
+}
 const tokens=(s:string)=>new Set(normalize(s).split(/\s+/).filter(x=>x.length>2))
 function similarity(a:string,b:string){
  const A=tokens(a),B=tokens(b);if(!A.size||!B.size)return 0
@@ -105,7 +112,7 @@ export function BankReconciliation({titles,canEdit,onChanged}:{titles:Title[];ca
    const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago)),reasons:string[]=[];let score=0
    if(Math.abs(balance-Math.abs(Number(tx.valor)))<0.01){score+=55;reasons.push('valor exato')}
    else if(Math.abs(balance-Math.abs(Number(tx.valor)))<=Math.max(2,Math.abs(Number(tx.valor))*.02)){score+=25;reasons.push('valor próximo')}
-   const diff=dayDiff(tx.data_lancamento,title.vencimento);if(diff<=3){score+=20;reasons.push('data ±3 dias')}else if(diff<=7){score+=8;reasons.push('data próxima')}
+   const diff=businessDayDiff(tx.data_lancamento,title.vencimento);if(diff<=3){score+=20;reasons.push('data ±3 dias úteis')}else if(diff<=7){score+=8;reasons.push('data próxima')}
    const doc=partnerDoc(title.entidade_nome);if(doc.length>=11&&hayDigits.includes(doc)){score+=15;reasons.push('CPF/CNPJ')}
    const sim=similarity(hay,(title.entidade_nome||'')+' '+title.descricao);if(sim>=.6){score+=10;reasons.push('nome')}else if(sim>=.3){score+=5;reasons.push('texto')}
    const pay=normalize(title.forma_pagamento||'');if(pay&&hay.includes(pay)){score+=5;reasons.push('pagamento')}
