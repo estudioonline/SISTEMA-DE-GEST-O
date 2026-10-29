@@ -15,3 +15,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </React.StrictMode>
 )
+
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/SISTEMA-DE-GEST-O/sw.js').catch(()=>undefined)
+  })
+}
