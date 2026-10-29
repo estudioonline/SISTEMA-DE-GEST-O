@@ -315,7 +315,15 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  }
  function toggleTitle(title:Title){
   const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago))
-  setSelected(prev=>prev[title.id]?Object.fromEntries(Object.entries(prev).filter(([id])=>id!==title.id)):{...prev,[title.id]:balance})
+  setSelected(prev=>{
+   if(prev[title.id]!=null)return Object.fromEntries(Object.entries(prev).filter(([id])=>id!==title.id))
+   const bankTotal=reconcileTx?Math.abs(Number(reconcileTx.valor)):0
+   const adjustment=Number(adjustValue)||0
+   const alreadySelected=Object.values(prev).reduce((sum,value)=>sum+Number(value||0),0)
+   const available=Math.max(0,bankTotal-adjustment-alreadySelected)
+   if(available<=0){setMessage('O valor da linha do extrato já foi totalmente distribuído.');return prev}
+   return {...prev,[title.id]:Math.min(balance,available)}
+  })
  }
  const selectedReconcileTotal=Object.values(selected).reduce((sum,value)=>sum+Number(value||0),0)
  const reconcileBankTotal=reconcileTx?Math.abs(Number(reconcileTx.valor)):0
@@ -438,7 +446,12 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
         <input type="checkbox" checked={selected[title.id]!=null} onChange={()=>toggleTitle(title)}/>
         <span><strong>{title.descricao}</strong><small>{title.entidade_nome||'Sem parceiro'} · venc. {dateBr(title.vencimento)} · saldo {money(balance)}</small></span>
         {suggestion?<b>{suggestion.score}%</b>:<b>—</b>}
-        {selected[title.id]!=null&&<input className="bankAlloc" type="number" min="0.01" max={balance} step="0.01" value={selected[title.id]} onChange={e=>setSelected(prev=>({...prev,[title.id]:Math.max(0,Math.min(balance,Number(e.target.value)||0))}))}/>}
+        {selected[title.id]!=null&&<input className="bankAlloc" type="number" min="0.01" max={balance} step="0.01" value={selected[title.id]} onChange={e=>setSelected(prev=>{
+          const otherTotal=Object.entries(prev).filter(([id])=>id!==title.id).reduce((sum,[,value])=>sum+Number(value||0),0)
+          const bankTotal=reconcileTx?Math.abs(Number(reconcileTx.valor)):0
+          const available=Math.max(0,bankTotal-(Number(adjustValue)||0)-otherTotal)
+          return {...prev,[title.id]:Math.max(0,Math.min(balance,available,Number(e.target.value)||0))}
+        })}/>}
       </label>
     })}{reconcileCandidates.length===0&&<div className="bankNoCandidates">Nenhum título em aberto encontrado para esta pesquisa.</div>}</div>
     <div className="bankReconcileAdjust"><label>Ajuste<select value={adjustType} onChange={e=>setAdjustType(e.target.value)}><option value="">Sem ajuste</option><option value="juros_passivos">Juros passivos</option><option value="desconto_concedido">Desconto concedido</option><option value="tarifa">Tarifa bancária</option><option value="outro">Outro</option></select></label>{adjustType&&<label>Valor do ajuste<input type="number" min="0" step="0.01" value={adjustValue} onChange={e=>setAdjustValue(e.target.value)}/></label>}</div>
@@ -446,12 +459,12 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       <div><span>Valor da linha do extrato</span><strong>{money(reconcileBankTotal)}</strong></div>
       <div><span>Faturas selecionadas</span><strong>{money(selectedReconcileTotal)}</strong></div>
       {reconcileAdjustment>0&&<div><span>Ajuste</span><strong>{money(reconcileAdjustment)}</strong></div>}
-      <div className="bankReconcileDifference"><span>{reconcileExcess?'Ultrapassa o extrato':reconcileResidual?'Residual após conciliação':'Conciliação fechada'}</span><strong>{reconcileExcess?'- '+money(reconcileExcess):reconcileResidual?money(reconcileResidual):money(0)}</strong></div>
-      {reconcileExcess>0&&<small>Reduza o valor de uma ou mais faturas selecionadas antes de conciliar.</small>}
-      {reconcileResidual>0&&<small>Este valor continuará sem conciliar na linha do extrato, salvo se você informar um ajuste.</small>}
-      {reconcileBalanced&&<small>A soma selecionada corresponde ao valor da linha do extrato.</small>}
+      <div className="bankReconcileDifference"><span>{reconcileExcess?'Excedente ajustado':reconcileResidual?'Residual da linha':'Conciliação fechada'}</span><strong>{reconcileExcess?money(0):reconcileResidual?money(reconcileResidual):money(0)}</strong></div>
+      {reconcileExcess>0&&<small>O sistema limita automaticamente a última fatura selecionada para não ultrapassar o valor do extrato.</small>}
+      {reconcileResidual>0&&<small>Ainda falta distribuir este valor entre as faturas selecionadas ou informar um ajuste.</small>}
+      {reconcileBalanced&&<small>O valor do extrato foi totalmente distribuído. A última fatura pode ficar parcialmente paga.</small>}
     </div>
-    <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(selectedReconcileTotal)} / Banco {money(reconcileBankTotal)}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length||reconcileExcess>0} onClick={()=>void reconcile(reconcileTx)}>Selecionar e conciliar</button></div></div>
+    <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(selectedReconcileTotal)} / Banco {money(reconcileBankTotal)}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length||reconcileResidual>0.009} onClick={()=>void reconcile(reconcileTx)}>Selecionar e conciliar</button></div></div>
   </div></div>}
   {partnerTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={savePartner}><div className="bankModalHead"><strong>Definir parceiro</strong><button type="button" onClick={()=>setPartnerTx(null)}><XCircle size={18}/></button></div><p>Associe o movimento bancário a um cliente ou fornecedor, como no fluxo de conciliação do Odoo.</p><label>Parceiro<select name="parceiro" required defaultValue={partnerTx.parceiro_nome?(partnerTx.parceiro_tipo||'outro')+'|'+partnerTx.parceiro_nome:''}><option value="">Selecione</option>{clients.map((p,i)=><option key={'c'+i} value={'cliente|'+p.nome}>Cliente · {p.nome}{p.documento?' · '+p.documento:''}</option>)}{suppliers.map((p,i)=><option key={'f'+i} value={'fornecedor|'+p.nome}>Fornecedor · {p.nome}{p.documento?' · '+p.documento:''}</option>)}</select></label><div className="bankModalActions"><button type="button" onClick={()=>setPartnerTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar parceiro</button></div></form></div>}
   {accountTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={saveAccount}><div className="bankModalHead"><strong>Definir conta</strong><button type="button" onClick={()=>setAccountTx(null)}><XCircle size={18}/></button></div><p>Classifique a transação antes de conciliar ou criar um lançamento.</p><label>Conta<select name="categoria" required defaultValue={accountTx.conta_categoria||''}><option value="">Selecione</option>{reconcileAccounts.map(a=><option key={a.id} value={a.nome}>{a.nome}</option>)}</select></label><label>Centro de custo<input name="centro_custo" defaultValue={accountTx.centro_custo||''} placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAccountTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar conta</button></div></form></div>}
