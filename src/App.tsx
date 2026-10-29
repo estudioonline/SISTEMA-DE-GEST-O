@@ -1080,7 +1080,6 @@ function App(){
         ...((empresa?.bloquear_cliente_inadimplente??true)&&credit.vencido>0?[{tipo:'inadimplencia',label:'Cliente inadimplente',detalhe:`${money(credit.vencido)} em títulos vencidos.`}]:[]),
         ...((empresa?.exigir_aprovacao_limite_credito??true)&&limit>0&&credit.em_aberto+total>limit?[{tipo:'limite_credito',label:'Limite de crédito excedido',detalhe:`Excesso de ${money(credit.em_aberto+total-limit)}.`}]:[]),
         ...(shortages.length?[{tipo:'estoque_negativo',label:'Estoque insuficiente',detalhe:shortages.map(x=>`${x.product.descricao}: faltam ${x.missing.toLocaleString('pt-BR')} ${x.product.unidade}`).join(' • ')}]:[]),
-        ...(!shortages.length&&belowMinimum.length?[{tipo:'estoque_minimo',label:'Estoque ficará abaixo do mínimo',detalhe:belowMinimum.map(x=>`${x.product.descricao}: saldo ${x.projected.toLocaleString('pt-BR')} / mínimo ${x.minimum.toLocaleString('pt-BR')}`).join(' • ')}]:[]),
         ...(paidTitle?[{tipo:'fatura_paga',label:'Fatura com pagamento registrado',detalhe:'A aprovação avançará o status preservando itens, valores e histórico financeiro já liquidados.'}]:[]),
         ...(proof?[{tipo:'comprovante_anexado',label:'Comprovante já anexado',detalhe:'A aprovação preservará o comprovante existente.'}]:[])
       ]
@@ -1910,7 +1909,6 @@ function App(){
     ...((empresa?.bloquear_cliente_inadimplente??true)&&Number(saleCreditState?.vencido||0)>0?[{tipo:'inadimplencia',label:'Cliente inadimplente',detalhe:`${money(Number(saleCreditState?.vencido||0))} em títulos vencidos.`}]:[]),
     ...((empresa?.exigir_aprovacao_limite_credito??true)&&saleClientLimit>0&&Number(saleCreditState?.em_aberto||0)+saleTotal>saleClientLimit?[{tipo:'limite_credito',label:'Limite de crédito excedido',detalhe:`Excesso de ${money(Number(saleCreditState?.em_aberto||0)+saleTotal-saleClientLimit)}.`}]:[]),
     ...(saleStockShortages.length?[{tipo:'estoque_negativo',label:'Estoque insuficiente',detalhe:saleStockShortages.map(x=>`${x.produto.descricao}: faltam ${x.missing.toLocaleString('pt-BR')} ${x.produto.unidade}`).join(' • ')}]:[]),
-    ...(!saleStockShortages.length&&saleBelowStockMinimum.length?[{tipo:'estoque_minimo',label:'Estoque ficará abaixo do mínimo',detalhe:saleBelowStockMinimum.map(x=>`${x.produto.descricao}: saldo ${x.projected.toLocaleString('pt-BR')} / mínimo ${x.minimum.toLocaleString('pt-BR')}`).join(' • ')}]:[]),
     ...(saleHasPaidTitle?[{tipo:'fatura_paga',label:'Fatura com pagamento registrado',detalhe:'A aprovação avançará o status preservando itens, valores e histórico financeiro já liquidados.'}]:[]),
     ...(saleHasProof?[{tipo:'comprovante_anexado',label:'Comprovante já anexado',detalhe:'A aprovação preservará o comprovante existente.'}]:[])
   ]
@@ -3015,6 +3013,11 @@ function App(){
             <div><span>Desconto</span><strong>{money(saleDiscount)}</strong></div>
             <div className="grandTotal"><span>Total</span><strong>{money(saleTotal)}</strong></div>
           </div>
+
+          {saleStatus!=='orcamento'&&saleBelowStockMinimum.length>0&&saleStockShortages.length===0&&<div className="stockMinimumNotice">
+            <strong>Aviso de estoque mínimo</strong>
+            <span>Esta venda pode ser concluída normalmente. Alguns itens ficarão abaixo do estoque mínimo configurado após a saída.</span>
+          </div>}
 
           {saleHasAuthorizationBlocker&&<div className="saleAuthorizationBlockers" role="alert">
             <div className="saleAuthorizationBlockersHead">
