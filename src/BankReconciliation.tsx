@@ -108,6 +108,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const [accountTx,setAccountTx]=useState<BankTx|null>(null)
  const [reconcileTx,setReconcileTx]=useState<BankTx|null>(null)
  const [reconcileSearch,setReconcileSearch]=useState('')
+ const [adjustmentOpen,setAdjustmentOpen]=useState(false)
  const [selectedTransactions,setSelectedTransactions]=useState<Record<string,boolean>>({})
  const uploadLock=useRef(false)
  const fileRef=useRef<HTMLInputElement|null>(null)
@@ -166,6 +167,26 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   try{const {error}=await supabase.rpc('reabrir_periodo_financeiro',{p_id:id,p_motivo:motivo});if(error)throw error;setMessage('Período financeiro reaberto.');await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
 
+ async function createAdjustment(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault()
+  if(!canEdit)return
+  const form=new FormData(e.currentTarget)
+  setBusy(true);setMessage('')
+  try{
+   const {error}=await supabase.rpc('criar_lancamento_ajuste',{
+    p_tipo:String(form.get('tipo')||'entrada'),
+    p_valor:Number(form.get('valor')||0),
+    p_data:String(form.get('data')||''),
+    p_descricao:String(form.get('descricao')||''),
+    p_categoria:String(form.get('categoria')||'')||null,
+    p_centro_custo:String(form.get('centro_custo')||'')||null
+   })
+   if(error)throw error
+   setAdjustmentOpen(false)
+   setMessage('Ajuste financeiro criado.')
+   await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
  async function createJournal(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();if(!canEdit)return;setBusy(true);setMessage('')
   try{const f=new FormData(e.currentTarget);const {error}=await supabase.rpc('criar_diario_bancario',{p_nome:f.get('nome'),p_banco:f.get('banco'),p_agencia:f.get('agencia'),p_conta:f.get('conta'),p_saldo_inicial:Number(f.get('saldo')||0)});if(error)throw error;setNewJournalOpen(false);await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
@@ -373,6 +394,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     {canEdit&&!manual&&<small className="bankDropHint">{dragJournal===j.id?'Solte o arquivo para importar nesta conta':'Arraste um arquivo OFX para esta conta'}</small>}
    </article>
   })}</div>
+  {adjustmentOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createAdjustment}><div className="bankModalHead"><strong>Novo ajuste</strong><button type="button" onClick={()=>setAdjustmentOpen(false)}><XCircle size={18}/></button></div><p>Crie uma entrada ou saída manual exclusivamente no diário Ajustes.</p><div className="bankFormGrid"><label>Tipo<select name="tipo" defaultValue="entrada"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label><label>Data<input name="data" type="date" required defaultValue={new Date().toISOString().slice(0,10)}/></label><label>Valor<input name="valor" type="number" min="0.01" step="0.01" required/></label><label>Categoria<input name="categoria" placeholder="Opcional"/></label></div><label>Descrição<input name="descricao" minLength={3} required placeholder="Motivo do ajuste"/></label><label>Centro de custo<input name="centro_custo" placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAdjustmentOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar ajuste</button></div></form></div>}
   {uploadOpen&&<div className="bankModalBackdrop"><div className="bankModal" role="dialog" aria-modal="true" aria-label="Carregar extrato"><div className="bankModalHead"><strong>Carregar extrato</strong><button onClick={()=>setUploadOpen(false)}><XCircle size={18}/></button></div>{showingAllJournals?<p>Selecione um diário específico antes de carregar um extrato.</p>:<><p>O arquivo será atribuído automaticamente ao diário <strong>{journal?.nome}</strong>. FITIDs já importados serão descartados.</p><input ref={fileRef} type="file" disabled={busy} accept=".ofx,.qfx,.csv" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file)}}/><div className="bankUploadHint"><FileUp size={18}/><span>Formatos aceitos: OFX, QFX e CSV.</span></div></>}</div></div>}
   {canClosePeriods&&closedPeriods.length>0&&<div className="bankClosedPeriods"><strong>Períodos financeiros</strong>{closedPeriods.slice(0,6).map(p=><div key={p.id}><span>{dateBr(p.inicio)} a {dateBr(p.fim)} · {p.reaberto_em?'Reaberto':'Fechado'}</span>{!p.reaberto_em&&<button disabled={busy} onClick={()=>void reopenPeriod(p.id)}>Reabrir</button>}</div>)}</div>}
   {newJournalOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createJournal}><div className="bankModalHead"><strong>Novo diário bancário</strong><button type="button" onClick={()=>setNewJournalOpen(false)}><XCircle size={18}/></button></div><label>Nome<input name="nome" required placeholder="Ex.: Itaú Supremion"/></label><div className="bankFormGrid"><label>Banco<input name="banco"/></label><label>Agência<input name="agencia"/></label><label>Conta<input name="conta"/></label><label>Saldo inicial<input name="saldo" type="number" step="0.01" defaultValue="0"/></label></div><div className="bankModalActions"><button type="button" onClick={()=>setNewJournalOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Criar diário</button></div></form></div>}
@@ -390,7 +412,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       <label className="bankJournalSelector">Diário
         <select value={activeJournal||''} onChange={e=>{setActiveJournal(e.target.value);setSearch('')}}><option value="all">Todos</option>{journals.map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</select>
       </label>
-      <div className="bankActions">{canEdit&&journalSupportsOfx&&<button className="bankPrimary" disabled={showingAllJournals} onClick={()=>setUploadOpen(true)}><Upload size={14}/>Carregar extrato</button>}<button onClick={()=>void load()}><RefreshCw size={14}/></button></div>
+      <div className="bankActions">{canEdit&&normalize(journal?.nome||'')==='ajustes'&&<button className="bankPrimary" onClick={()=>setAdjustmentOpen(true)}><SlidersHorizontal size={14}/>Novo ajuste</button>}{canEdit&&journalSupportsOfx&&<button className="bankPrimary" disabled={showingAllJournals} onClick={()=>setUploadOpen(true)}><Upload size={14}/>Carregar extrato</button>}<button onClick={()=>void load()}><RefreshCw size={14}/></button></div>
     </div>
   </div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
