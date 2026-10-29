@@ -1407,9 +1407,19 @@
   border-color:#314158;
 }
 .dark .financeSubTabs .subTab.active{
-  background:linear-gradient(180deg,#2563EB 0%,#1D4ED8 100%);
-  border-color:#2563EB;
+  background:linear-gradient(180deg,#1D4ED8 0%,#123B8F 100%)!important;
+  border-color:#3B82F6!important;
   color:#FFFFFF!important;
+  box-shadow:0 7px 18px rgba(37,99,235,.34), inset 0 0 0 1px rgba(255,255,255,.08)!important;
+}
+.dark .financeSubTabs .subTab.active svg{
+  color:#FFFFFF!important;
+  opacity:1!important;
+}
+.dark .financeSubTabs .subTab.active .subTabCount{
+  background:rgba(255,255,255,.16)!important;
+  color:#FFFFFF!important;
+  border-color:rgba(255,255,255,.24)!important;
 }
 .dark .financeSubTabs .overdueTab{
   background:#321D25;
