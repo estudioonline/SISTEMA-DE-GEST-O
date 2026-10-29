@@ -4944,3 +4944,90 @@
 .app:not(.dark) .tableWrap tbody tr:not(.manageRow):not(.emptyTableRow):hover td{
   border-color:#000000!important;
 }
+
+
+/* Faturamento de vendas */
+.financeSubTabs{grid-template-columns:repeat(8,minmax(0,1fr))}
+.billingSalesPage{display:grid;gap:14px}
+.billingSalesHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.billingSalesHead h2{margin:0 0 4px;font-size:22px}
+.billingSalesHead p{margin:0;color:#64748b;font-size:12px}
+.billingInfoBanner{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid #bfdbfe;border-radius:11px;background:#eff6ff;color:#1d4ed8;font-size:12px}
+.billingStatusTabs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.billingStatusTabs button{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 12px;border:1px solid #dbe3ee;border-radius:10px;background:#fff;color:#475569;font-weight:700}
+.billingStatusTabs button b{min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;background:#eef2f7;font-size:10px}
+.billingStatusTabs button.active{background:#2563eb;border-color:#2563eb;color:#fff}
+.billingStatusTabs button.active b{background:rgba(255,255,255,.2);color:#fff}
+.billingSearch{display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid #dbe3ee;border-radius:10px;background:#fff}
+.billingSearch input{width:100%;height:40px;border:0!important;outline:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
+.billingSalesTable{width:100%;border-collapse:separate;border-spacing:0 8px}
+.billingSalesTable th{padding:7px 9px;font-size:10px;text-transform:uppercase;color:#64748b;white-space:nowrap}
+.billingSalesTable td{padding:11px 9px;font-size:11px;vertical-align:middle}
+.billingInvoiceBadge{display:inline-flex;align-items:center;justify-content:center;min-height:23px;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:800;white-space:nowrap}
+.billingInvoice-nao-faturado{background:#fee2e2;color:#b91c1c}
+.billingInvoice-faturado{background:#d1fae5;color:#047857}
+.billingInvoice-cancelado{background:#fee2e2;color:#dc2626}
+.billingRowActions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.billingRowActions button{min-height:31px;padding:6px 9px;font-size:10px}
+.billingModalShell{width:min(880px,96vw)}
+.billingInvoiceForm{display:grid;gap:14px}
+.billingInvoiceSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.billingInvoiceSummary>div{display:grid;gap:4px;padding:11px;border:1px solid #dbe3ee;border-radius:10px;background:#f8fafc}
+.billingInvoiceSummary span{font-size:10px;color:#64748b}
+.billingInvoiceSummary strong{font-size:13px}
+.billingInvoiceControls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.billingInvoiceControls label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#64748b}
+.billingLines{display:grid;gap:6px}
+.billingLinesHead,.billingLine{display:grid;grid-template-columns:90px 1fr 1fr;gap:8px;align-items:center}
+.billingLinesHead{padding:0 8px;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase}
+.billingLine{padding:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
+.billingLine input{height:38px}
+.billingInvoiceTotal{display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:12px 0;border-top:1px solid #e2e8f0}
+.billingInvoiceTotal strong{font-size:18px}
+.dark .billingSalesHead p{color:#94a3b8}
+.dark .billingInfoBanner{background:#172554;border-color:#27427c;color:#93c5fd}
+.dark .billingStatusTabs button,.dark .billingSearch{background:#111827;border-color:#334155;color:#e5e7eb}
+.dark .billingStatusTabs button b{background:#1e293b;color:#cbd5e1}
+.dark .billingStatusTabs button.active{background:#2563eb;border-color:#3b82f6;color:#fff}
+.dark .billingSalesTable th{color:#94a3b8}
+.dark .billingInvoice-nao-faturado{background:rgba(239,68,68,.2);color:#f87171}
+.dark .billingInvoice-faturado{background:rgba(16,185,129,.2);color:#34d399}
+.dark .billingInvoice-cancelado{background:rgba(239,68,68,.2);color:#fca5a5}
+.dark .billingInvoiceSummary>div,.dark .billingLine{background:#111827;border-color:#334155}
+.dark .billingInvoiceSummary span,.dark .billingInvoiceControls label,.dark .billingLinesHead{color:#94a3b8}
+.dark .billingInvoiceTotal{border-color:#334155}
+
+/* Vendas com coluna adicional de faturamento */
+.salesModernTable .salesUxTable th:nth-child(1),
+.salesModernTable .salesUxTable td:nth-child(1){width:8%}
+.salesModernTable .salesUxTable th:nth-child(2),
+.salesModernTable .salesUxTable td:nth-child(2){width:7%}
+.salesModernTable .salesUxTable th:nth-child(3),
+.salesModernTable .salesUxTable td:nth-child(3){width:18%}
+.salesModernTable .salesUxTable th:nth-child(4),
+.salesModernTable .salesUxTable td:nth-child(4){width:10%}
+.salesModernTable .salesUxTable th:nth-child(5),
+.salesModernTable .salesUxTable td:nth-child(5){width:8%}
+.salesModernTable .salesUxTable th:nth-child(6),
+.salesModernTable .salesUxTable td:nth-child(6){width:9%}
+.salesModernTable .salesUxTable th:nth-child(7),
+.salesModernTable .salesUxTable td:nth-child(7){width:10%}
+.salesModernTable .salesUxTable th:nth-child(8),
+.salesModernTable .salesUxTable td:nth-child(8){width:9%}
+.salesModernTable .salesUxTable th:nth-child(9),
+.salesModernTable .salesUxTable td:nth-child(9){width:7%}
+.salesModernTable .salesUxTable th:nth-child(10),
+.salesModernTable .salesUxTable td:nth-child(10){width:9%}
+.salesModernTable .salesUxTable th:nth-child(11),
+.salesModernTable .salesUxTable td:nth-child(11){width:5%}
+@media(max-width:1180px){
+  .financeSubTabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .billingSalesTable{min-width:980px}
+}
+@media(max-width:760px){
+  .billingSalesHead{flex-direction:column}
+  .billingInvoiceSummary{grid-template-columns:1fr}
+  .billingInvoiceControls{grid-template-columns:1fr}
+  .billingLinesHead,.billingLine{grid-template-columns:60px 1fr}
+  .billingLinesHead span:last-child,.billingLine input:last-child{grid-column:2}
+}
