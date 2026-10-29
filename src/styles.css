@@ -4700,3 +4700,6 @@
   .deliveryListWrap{overflow:auto}.deliveryListHead,.deliveryListRow{min-width:980px}
 }
 .dark .deliveryActionMenu summary,.dark .deliveryActionMenu[open]>div{background:#111827;color:#e5e7eb;border-color:#475569}.dark .deliveryActionMenu button{background:#0f172a;color:#e5e7eb}.dark .deliveryActionMenu button:hover{background:#1e293b}
+
+.routeCenterList small{font-size:9px;color:#94a3b8}
+.dark .routeCenterList small{color:#64748b}
