@@ -2607,7 +2607,7 @@ function App(){
     <header className="workspaceBar">
       <div className="workspaceIdentity">
         <div className="workspaceBrand"><span className="workspaceBrandMark">SG</span><div className="workspaceBrandText"><strong>{empresa?.nome_fantasia||'Sistema de Gestão'}</strong><small>ERP EMPRESARIAL</small></div></div>
-        <button type="button" className="workspaceHome" onClick={()=>setShowApps(true)} aria-current={showApps?'page':undefined}><Grid2X2 size={18}/><span>Aplicativos</span></button>
+        {!showApps&&<button type="button" className="workspaceHome" onClick={()=>setShowApps(true)}><Grid2X2 size={18}/><span>Aplicativos</span></button>}
       </div>
       <div className="workspaceControls">
         <div className="workspaceAccountMenu">
