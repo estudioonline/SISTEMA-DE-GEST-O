@@ -2206,14 +2206,15 @@ function App(){
     if(Math.abs(total-Number(billingSale.total))>0.01){setMsg('A soma das parcelas deve ser igual ao total da venda.');return}
     setBillingBusy(true);setMsg('')
     try{
-      const {error}=await supabase.rpc('criar_fatura_venda',{
+      const {data,error}=await supabase.rpc('criar_fatura_venda',{
         p_venda_id:billingSale.id,
         p_forma_pagamento:billingPayment,
         p_parcelas:billingLines.map(line=>({vencimento:line.vencimento,valor:Number(line.valor)}))
       })
       if(error)throw error
       setBillingSale(null);setBillingLines([])
-      setMsg('Fatura criada e parcelas enviadas para Contas a Receber.')
+      const paid=Boolean((data as {pago?:boolean}|null)?.pago)
+      setMsg(paid?'Fatura criada e recebimento em dinheiro registrado automaticamente no Caixa.':'Fatura criada e parcelas enviadas para Contas a Receber.')
       await refreshFinance()
     }catch(error){setMsg(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível criar a fatura.')}finally{setBillingBusy(false)}
   }
@@ -3609,13 +3610,14 @@ function App(){
           <div className="formTitle saleModalTitle"><div><h3>Criar fatura — Venda #{saleCode(billingSale.venda_numero)}</h3><p>Organize as parcelas antes de gerar o Contas a Receber.</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>{setBillingSale(null);setBillingLines([])}}><X size={18}/></button></div>
           <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>Total da venda</span><strong>{money(Number(billingSale.total))}</strong></div><div><span>Indicação do vendedor</span><strong>{paymentLabel(billingSale.forma_pagamento)} • {billingSale.parcelas}x</strong></div></div>
           <div className="billingInvoiceControls">
-            <label>Forma de pagamento<select value={billingPayment} onChange={e=>setBillingPayment(e.target.value as PaymentMethod)}><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label>
-            <label>Número de parcelas<select value={billingLines.length} onChange={e=>resizeBillingLines(Number(e.target.value))}>{Array.from({length:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}</select></label>
+            <label>Forma de pagamento<select value={billingPayment} onChange={e=>{const method=e.target.value as PaymentMethod;setBillingPayment(method);if(method==='dinheiro')resizeBillingLines(1)}}><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label>
+            <label>Número de parcelas<select value={billingLines.length} disabled={billingPayment==='dinheiro'} onChange={e=>resizeBillingLines(Number(e.target.value))}>{Array.from({length:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}</select></label>
           </div>
           <div className="billingLines">
             <div className="billingLinesHead"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>
             {billingLines.map((line,index)=><div className="billingLine" key={line.key}><strong>{index+1}/{billingLines.length}</strong><input type="date" value={line.vencimento} onChange={e=>updateBillingLine(line.key,'vencimento',e.target.value)} required/><input type="number" min="0.01" step="0.01" value={line.valor} onChange={e=>updateBillingLine(line.key,'valor',e.target.value)} required/></div>)}
           </div>
+          {billingPayment==='dinheiro'&&<div className="billingCashNotice">Pagamento em dinheiro: ao salvar, a fatura será considerada paga e a entrada será registrada automaticamente no diário Dinheiro.</div>}
           <div className="billingInvoiceTotal"><span>Soma das parcelas</span><strong>{money(billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0))}</strong></div>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setBillingSale(null);setBillingLines([])}}>Cancelar</button><button className="primary" disabled={billingBusy}>{billingBusy?'Gerando...':'Salvar fatura e gerar lançamentos'}</button></div>
         </form></div></div>}
