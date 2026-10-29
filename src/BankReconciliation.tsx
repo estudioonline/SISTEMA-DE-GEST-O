@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowLeft,Building2,CheckCircle2,FileUp,Landmark,Link2,Plus,RefreshCw,Search,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
+import {ArrowLeft,Building2,CheckCircle2,FileUp,Landmark,Link2,List,Plus,RefreshCw,Search,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
 type Journal={id:string;nome:string;banco:string|null;agencia:string|null;conta:string|null;saldo_inicial:number;saldo_atual:number;ativo:boolean}
@@ -183,28 +183,21 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago))
   setSelected(prev=>prev[title.id]?Object.fromEntries(Object.entries(prev).filter(([id])=>id!==title.id)):{...prev,[title.id]:balance})
  }
- function sparkline(journalId:string){
-  const rows=transactions.filter(t=>t.diario_id===journalId).sort((a,b)=>a.data_lancamento.localeCompare(b.data_lancamento)).slice(-30)
-  if(rows.length<2)return''
-  let balance=Number(journals.find(j=>j.id===journalId)?.saldo_inicial||0);const points=rows.map(t=>{balance+=Number(t.valor);return balance})
-  const min=Math.min(...points),max=Math.max(...points),range=max-min||1
-  return points.map((p,i)=>`${(i/(points.length-1))*100},${30-((p-min)/range)*26}`).join(' ')
- }
-
  if(screen==='dashboard')return <section className="bankRecon bankReconDark">
   <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div></div>
   {message&&<div className="bankMessage">{message}</div>}
   {journals.length===0&&<div className="bankEmpty"><Landmark size={30}/><strong>Nenhum diário bancário cadastrado</strong><span>Cadastre uma conta para começar a importar OFX.</span></div>}
   <div className="bankJournalGrid">{journals.map(j=>{
-   const rows=transactions.filter(t=>t.diario_id===j.id),pendingRows=rows.filter(t=>t.status!=='conciliado'),pendingPayments=pendingRows.filter(t=>t.trntype==='DEBIT').reduce((s,t)=>s+Math.abs(Number(t.valor)),0),line=sparkline(j.id)
-   const area=line?line+' 100,32 0,32':''
+   const rows=transactions.filter(t=>t.diario_id===j.id),pendingRows=rows.filter(t=>t.status!=='conciliado'),pendingPayments=pendingRows.filter(t=>t.trntype==='DEBIT').reduce((s,t)=>s+Math.abs(Number(t.valor)),0)
    return <article className="bankJournalCard compactJournalCard" key={j.id}>
     <div className="bankJournalTop">
-      <div className="bankJournalIdentity"><strong>{j.nome}</strong><span>{[j.banco,j.agencia,j.conta].filter(Boolean).join(' • ')||'Conta bancária'}</span></div>
+      <div className="bankJournalIdentity"><strong>{j.nome}</strong><span>{[j.banco,j.agencia,j.conta].filter(Boolean).join(' - ')||'Conta bancária'}</span></div>
       <div className="bankJournalMetrics compact"><div><span>Saldo</span><strong>{money(Number(j.saldo_atual))}</strong></div><div><span>Pagamentos</span><strong>{money(pendingPayments)}</strong></div></div>
     </div>
-    <div className="bankJournalActions compact"><button onClick={()=>openJournal(j.id,'transactions')}>Transações</button>{canEdit&&<button className="bankLoadButton" onClick={()=>openUploadForJournal(j.id)}><Upload size={13}/>Carregar (OFX)</button>}{pendingRows.length>0&&<button className="bankPending" onClick={()=>openJournal(j.id,'matching')}>{pendingRows.length} a conciliar</button>}</div>
-    <svg className="bankSpark compact" viewBox="0 0 100 32" preserveAspectRatio="none">{area&&<polygon points={area}/>} {line&&<polyline points={line} fill="none" vectorEffect="non-scaling-stroke"/>}</svg>
+    <div className="bankJournalActions compact">
+      <button className="bankTransactionsButton" onClick={()=>openJournal(j.id,'transactions')}><List size={20}/>Transações</button>
+      {canEdit&&<button className="bankLoadButton" onClick={()=>openUploadForJournal(j.id)}><Upload size={20}/>Carregar (OFX)</button>}
+    </div>
    </article>
   })}</div>
   {uploadOpen&&<div className="bankModalBackdrop"><div className="bankModal"><div className="bankModalHead"><strong>Carregar extrato</strong><button onClick={()=>setUploadOpen(false)}><XCircle size={18}/></button></div><p>O arquivo será atribuído automaticamente ao diário <strong>{journal?.nome}</strong>. FITIDs já importados serão descartados.</p><input ref={fileRef} type="file" accept=".ofx,.qfx,.csv" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file)}}/><div className="bankUploadHint"><FileUp size={18}/><span>Formatos aceitos: OFX, QFX e CSV.</span></div></div></div>}
