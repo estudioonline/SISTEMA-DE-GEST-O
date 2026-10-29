@@ -74,3 +74,11 @@ As sete migrações desta entrega foram aplicadas incrementalmente, sem limpeza,
 - Os cards de clientes e fornecedores oferecem **PDF de faturas em aberto** para administrador e financeiro. O financeiro pode consultar esses cadastros sem ganhar permissão de edição.
 - O relatório consulta todas as parcelas vinculadas ao ID do cadastro e separa vencidas de a vencer, incluindo hoje neste último grupo. Mostra valor original, pago, saldo e subtotais; exclui faturas pagas, canceladas, orçamentos e cotações. Pagamentos parciais reduzem o saldo apresentado.
 - O PDF carrega sob demanda, repete cabeçalho e identificação em cada página e informa a data da posição. Não há alterações no banco ou nas faturas ao emitir o relatório.
+
+### Aplicativo RH
+- RH possui um cartão próprio em Aplicativos, com Visão geral, Funcionários, Folha salarial, FGTS, 13º salário e Vales. As antigas abas Funcionários e Vale foram retiradas do Financeiro. O acesso ao RH segue exatamente a permissão de visualizar/editar Financeiro; acesso a Relatórios sozinho não libera os dados de folha, inclusive pela API.
+- Cadastros e lançamentos existentes são reutilizados. Não há cópia de títulos nem pagamento automático: o salário líquido, o FGTS e os vales continuam nas mesmas contas a pagar. O botão Pagamentos / detalhes abre o registro financeiro correspondente.
+- Salário e 13º aceitam bruto, outros descontos e vales abatidos. O líquido é calculado em centavos e validado também no banco. O bruto é referência e não é somado ao valor financeiro. Registros antigos sem bruto conhecido mostram essa informação como ausente.
+- FGTS e demais obrigações recebem os valores conferidos da guia/folha. INSS, IRRF e alíquotas não são calculados automaticamente. Vales pagos continuam com marcação manual de desconto, sem gerar outro pagamento ou recalcular salários já gravados.
+- Somente lançamentos em aberto e sem pagamentos podem ser editados no RH. Referências de uma folha com pagamento são protegidas no banco; pagamentos, estornos e auditoria permanecem nos fluxos existentes.
+- Validação: 26 testes automatizados, TypeScript, build de produção, cenários no navegador com dados fictícios e testes SQL com rollback. As migrações são aditivas e os registros existentes foram conferidos antes/depois.

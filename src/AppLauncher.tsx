@@ -2,27 +2,29 @@ import { useEffect, useRef, useState } from 'react'
 import { Search, ShieldCheck, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { permissionModules } from './lib/permissions'
-import type { PermissionModule } from './lib/permissions'
+import { appPermission } from './lib/hr'
+import type { AppModule } from './lib/hr'
 
-export type AppMenu = ReadonlyArray<readonly [PermissionModule, string, LucideIcon]>
+export type AppMenu = ReadonlyArray<readonly [AppModule, string, LucideIcon]>
 
 const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
-const descriptions: Partial<Record<PermissionModule, string>> = {
-  financeiro: 'Contas, pagamentos, gastos e vales de funcionários',
+const descriptions: Partial<Record<AppModule, string>> = {
+  financeiro: 'Contas, pagamentos e conciliação',
+  rh: 'Recursos Humanos, funcionários, salários, FGTS, décimo terceiro e vales',
 }
 
 export function AppLauncher({ menu, company, ready, canEdit, onOpen, notifications = {} }: {
   menu: AppMenu
   company: string
   ready: boolean
-  canEdit: (module: PermissionModule) => boolean
-  onOpen: (module: PermissionModule) => void
-  notifications?: Partial<Record<PermissionModule, number>>
+  canEdit: (module: AppModule) => boolean
+  onOpen: (module: AppModule) => void
+  notifications?: Partial<Record<AppModule, number>>
 }) {
   const [query, setQuery] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [])
-  const apps = menu.filter(([key, label]) => normalize(`${label} ${descriptions[key] || permissionModules.find(m => m.key === key)?.description || ''}`).includes(normalize(query)))
+  const apps = menu.filter(([key, label]) => normalize(`${label} ${descriptions[key] || permissionModules.find(m => m.key === appPermission(key))?.description || ''}`).includes(normalize(query)))
 
   return <section className="appLauncher" aria-labelledby="apps-heading">
     <div className="launcherIntro">
@@ -41,7 +43,7 @@ export function AppLauncher({ menu, company, ready, canEdit, onOpen, notificatio
     {!ready ? <div className="launcherEmpty" role="status">Preparando seus aplicativos…</div> :
       apps.length ? <nav className="launcherGrid" aria-label="Aplicativos disponíveis">
         {apps.map(([key, label, Icon]) => {
-          const meta = permissionModules.find(module => module.key === key)
+          const meta = permissionModules.find(module => module.key === appPermission(key))
           const readOnly = Boolean(meta?.editable && !canEdit(key))
           return <button type="button" key={key} className={`launcherApp appColor-${key}${readOnly?' readOnly':''}`} onClick={() => onOpen(key)} aria-label={`${readOnly?'Abrir em modo somente leitura':'Abrir'} ${label}`} title={readOnly?`${label} · somente leitura`:label}>
             <span className="launcherIcon"><Icon size={30} strokeWidth={1.8} aria-hidden="true"/>{Number(notifications[key]||0)>0&&<span className="launcherNotification" aria-label={`${notifications[key]} pendente(s)`}>{Number(notifications[key])>99?'99+':notifications[key]}</span>}</span>

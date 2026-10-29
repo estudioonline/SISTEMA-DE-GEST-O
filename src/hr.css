@@ -1,0 +1,18 @@
+.appColor-rh{--app-color:#8b5baf}
+.rhApp .rhTabs{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.rhApp .rhTabs .subTab{flex:0 1 auto;white-space:nowrap}
+.rhApp .rhCards{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.rhApp .rhMoney{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rhLedger{min-width:1150px}
+.rhApp .employeeEditModal{max-height:90vh;overflow-y:auto}
+.rhApp .employeeEditModal fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:16px}
+.rhApp .rhEntryModal{width:min(860px,100%)}
+.rhFormGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.rhFullWidth{grid-column:1/-1}
+.rhApp .rhCheckbox{display:flex;align-items:center;gap:8px}
+.rhApp .rhCheckbox input{width:auto}
+.rhPayrollPreview{padding:16px;border:1px solid #8b5baf55;border-radius:10px;display:grid;gap:5px;background:#8b5baf0a}
+.rhPayrollPreview strong{font-size:24px}
+.rhApp h2:focus{outline:none}
+.rhApp .employeeEditModal .panelHead{margin-bottom:0}
+@media(max-width:760px){.rhFormGrid{grid-template-columns:1fr}.rhApp .rhTabs .subTab{flex:1 1 40%}.rhApp .employeeEditBackdrop{padding:12px}.rhApp>.panelHead .rowActions{width:100%}}

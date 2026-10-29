@@ -10,7 +10,7 @@ export const permissionModules:{key:PermissionModule;label:string;editable:boole
   {key:'produtos',label:'Produtos / Estoque',editable:true,description:'Produtos, custos e movimentações'},
   {key:'compras',label:'Compras',editable:true,description:'Cotações, pedidos, recebimentos e NF-e'},
   {key:'comissoes',label:'Comissões',editable:true,description:'Vendedores, apuração e fechamentos'},
-  {key:'financeiro',label:'Financeiro',editable:true,description:'Contas, pagamentos e comprovantes'},
+  {key:'financeiro',label:'Financeiro',editable:true,description:'Contas, pagamentos, comprovantes e acesso ao RH'},
   {key:'entregas',label:'Entregas',editable:true,description:'Rotas, entregas, ocorrências e comprovantes'},
   {key:'autorizacoes',label:'Autorizações',editable:true,description:'Solicitações e decisões administrativas'},
   {key:'relatorios',label:'Relatórios',editable:false,description:'Consultas e relatórios gerenciais'},

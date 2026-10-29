@@ -24,7 +24,9 @@ import { FinanceAdministration, FinanceClassifications } from './FinanceAdminist
 import { NfeImportModal } from './NfeImportModal'
 import { FocusNfeSettings, FocusNfeSale } from './FocusNfe'
 import { AppLauncher } from './AppLauncher'
-import { EmployeeFinance } from './EmployeeFinance'
+import { HumanResources } from './HumanResources'
+import { appPermission } from './lib/hr'
+import type { AppModule } from './lib/hr'
 import { BankReconciliation } from './BankReconciliation'
 import { DeliveryManagement } from './DeliveryManagement'
 import { useTheme } from './lib/useTheme'
@@ -32,7 +34,7 @@ import type { EmployeeTitle } from './EmployeeFinance'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules, emptyPermissions, parseEffectivePermissions } from './lib/permissions'
 import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
 
-type ModuleKey=PermissionModule
+type ModuleKey=AppModule
 type PerfilRole='administrador'|'financeiro'|'vendas'|'estoque'|'visualizador'
 type PaymentMethod='dinheiro'|'pix'|'cartao'|'boleto'
 type PurchasePaymentMethod='pix'|'cartao'|'boleto'
@@ -68,7 +70,7 @@ type SaleHistoryEvent={evento_id:string;fonte:string;acao:string;usuario_id:stri
 const menu=[
   ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['entregas','Entregas',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
+  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['rh','RH',Users],['entregas','Entregas',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
@@ -248,7 +250,7 @@ function App(){
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
-  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'faturamento'|'funcionarios'|'vales'|'conciliacao'>('geral')
+  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'faturamento'|'conciliacao'>('geral')
   const [financeStatusFilter,setFinanceStatusFilter]=useState<'todos'|'aberto'|'parcial'|'pago'|'cancelado'>('todos')
   const [financeStart,setFinanceStart]=useState('')
   const [financeEnd,setFinanceEnd]=useState('')
@@ -285,8 +287,8 @@ function App(){
 
   const title=useMemo(()=>menu.find(m=>m[0]===active)?.[1]||'Dashboard',[active])
   const isAdmin=profileRole==='administrador'
-  const canViewModule=(module:PermissionModule)=>canViewPermission(userPermissions,module)
-  const canEditModule=(module:PermissionModule)=>canEditPermission(userPermissions,module)
+  const canViewModule=(module:AppModule)=>canViewPermission(userPermissions,appPermission(module))
+  const canEditModule=(module:AppModule)=>canEditPermission(userPermissions,appPermission(module))
   const canManageSales=canEditModule('vendas')
   const canManageClients=canEditModule('clientes')
   const canManageSuppliers=canEditModule('fornecedores')
@@ -1650,6 +1652,7 @@ function App(){
 
   function startEditTitle(t:Titulo){
     if(!canManageFinance){setMsg('Você possui somente visualização no Financeiro.');return}
+    if(t.funcionario_id){setMsg('Edite os dados deste lançamento no aplicativo RH. Use este painel para pagamentos e detalhes.');return}
     setEditingTitle(t)
     setFinanceTitleType(t.tipo)
     setFinanceTitleEntity(t.entidade_nome||'')
@@ -2622,7 +2625,6 @@ function App(){
       </div>
     </header>
     <main className="main">
-      <div className="privateReviewBar"><ShieldCheck size={15}/><span>Revisão privada · conectado aos dados atuais do ERP</span></div>
       {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Aguarde a conferência das permissões e dos dados do ERP.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sair</button></div>}</section>:showApps?<>
         {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
         <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp} notifications={{autorizacoes:saleApprovals.length}}/>
@@ -2634,7 +2636,7 @@ function App(){
           {active==='compras'&&canManagePurchases&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
           {((active==='vendas'&&canManageSales)||(active==='clientes'&&canManageClients)||(active==='fornecedores'&&canManageSuppliers)||(active==='compras'&&canManagePurchases))&&<button className="primary" onClick={headerAction}><Plus size={17}/>{active==='vendas'?'Novo orçamento':active==='compras'?'Nova compra':'Novo'}</button>}
           {canManageProducts&&active==='produtos'&&productSubtab==='cadastro'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Novo produto</button>}
-          {canManageFinance&&active==='financeiro'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='faturamento'&&financeSubtab!=='conciliacao'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
+          {canManageFinance&&active==='financeiro'&&financeSubtab!=='faturamento'&&financeSubtab!=='conciliacao'&&<button className="primary" onClick={headerAction}><Plus size={17}/>Nova fatura</button>}
           {canManageCommissions&&active==='comissoes'&&<button className="primary" onClick={headerAction}><UserPlus size={17}/>Novo vendedor</button>}
         </div>
       </header>
@@ -2642,6 +2644,7 @@ function App(){
       {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
       {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
+      {active==='rh'&&<HumanResources titles={titulos} canEdit={canEditModule('rh')} company={empresa} onChanged={refreshFinance} onOpen={t=>{closeForms();setActive('financeiro');setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');setFinancePanel(t.id);setFinancePanelTab('pagamentos');setPaymentDate(today());setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))}}/>}
       {active==='entregas'&&<DeliveryManagement canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
@@ -3606,8 +3609,6 @@ function App(){
           <button className={financeSubtab==='receber'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('receber');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Contas a receber <span className="subTabCount neutralCount">{openReceivableCount}</span></button>
           <button className={financeSubtab==='vencidos'?'subTab active overdueTab':'subTab overdueTab'} onClick={()=>{setFinanceSubtab('vencidos');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><Ban size={16}/>Vencidos <span className="subTabCount">{overdueTitles.length}</span></button>
           <button className={financeSubtab==='faturamento'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('faturamento');setFinancePanel(null);setShowForm(false);setEditingTitle(null)}}><ReceiptText size={16}/>Faturamento de vendas <span className="subTabCount neutralCount">{billingCounts.naoFaturado}</span></button>
-          <button className={financeSubtab==='funcionarios'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('funcionarios');closeForms()}}><Users size={16}/>Funcionários</button>
-          <button className={financeSubtab==='vales'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('vales');closeForms()}}><WalletCards size={16}/>Vale</button>
           <button className={financeSubtab==='conciliacao'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('conciliacao');closeForms()}}><Building2 size={16}/>Diários e Conciliação</button>
         </div>
 
@@ -3666,7 +3667,7 @@ function App(){
           </article>
         </>}
 
-        {financeSubtab!=='geral'&&financeSubtab!=='faturamento'&&financeSubtab!=='funcionarios'&&financeSubtab!=='vales'&&financeSubtab!=='conciliacao'&&<div className="panel financeFilterPanel">
+        {financeSubtab!=='geral'&&financeSubtab!=='faturamento'&&financeSubtab!=='conciliacao'&&<div className="panel financeFilterPanel">
           <div className="financeQuickRanges">
             <span>Período</span>
             <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('hoje')}>Hoje</button>
@@ -3763,7 +3764,6 @@ function App(){
         </fieldset></form></div></div>}
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
-        {(financeSubtab==='funcionarios'||financeSubtab==='vales')&&<><div className="financeReportBar compact"><div><strong>{financeSubtab==='funcionarios'?'Relatório de funcionários':'Relatório de vales'}</strong><span>Exporta os lançamentos desta área em PDF.</span></div><button type="button" className="ghost" onClick={()=>void downloadFinancePdf(financeSubtab)}><FileDown size={15}/>PDF</button></div><EmployeeFinance kind={financeSubtab==='funcionarios'?'gasto':'vale'} titles={titulos} canEdit={canManageFinance} onChanged={refreshFinance} onOpen={t=>{setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');openFinancePanel(t);setFinancePanel(t.id);setFinancePanelTab('pagamentos')}}/></>}
         {financeSubtab==='conciliacao'&&<BankReconciliation titles={titulos} canEdit={canManageFinance} canClosePeriods={canManageConfig} onChanged={refreshFinance}/>}
 
       </section>}
