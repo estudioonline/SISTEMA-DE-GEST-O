@@ -11,6 +11,7 @@
   color-scheme:light;
   background:var(--bg-primary); color:var(--bank-text);
   border-radius:16px; padding:20px; min-width:0;
+  min-height:calc(100vh - 250px);
 }
 .dark .bankRecon {
   --bg-primary:#0F172A; --card-bg:#1E293B; --bank-border:#334155;
@@ -176,3 +177,13 @@
 .bankRecon .bankMoreDivider{height:1px;background:var(--bank-border);margin:4px 2px}
 .bankRecon .bankMoreMenu .bankDangerMenu{color:#DC2626}
 .dark .bankRecon .bankMoreMenu .bankDangerMenu{color:#FCA5A5}
+
+/* Mantém o fundo da área financeira contínuo até o fim da viewport no modo escuro */
+.dark .financePage:has(.bankRecon),
+.dark .semanticPage.financePage:has(.bankRecon){
+  background:#0F172A;
+  min-height:calc(100vh - 150px);
+}
+.dark .financePage:has(.bankRecon) .bankRecon{
+  min-height:calc(100vh - 250px);
+}
