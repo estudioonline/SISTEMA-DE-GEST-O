@@ -187,3 +187,15 @@
 .dark .financePage:has(.bankRecon) .bankRecon{
   min-height:calc(100vh - 250px);
 }
+
+
+.bankRecon .bankTopControls{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.bankRecon .bankJournalSelector{display:grid;gap:5px;font-size:11px;font-weight:700;color:var(--bank-muted);min-width:180px}
+.bankRecon .bankJournalSelector select{height:36px;padding:0 10px;border:1px solid var(--bank-border);border-radius:9px;background:var(--card-bg);color:var(--bank-text)}
+.bankRecon .bankSearchOnly{grid-template-columns:1fr}
+.bankRecon .bankSearchOnly .bankSearch{width:100%}
+@media(max-width:760px){
+  .bankRecon .bankTopControls{width:100%;justify-content:stretch}
+  .bankRecon .bankJournalSelector{width:100%}
+  .bankRecon .bankActions{width:100%}
+}
