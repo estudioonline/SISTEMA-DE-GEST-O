@@ -40,7 +40,7 @@ type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;t
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
-type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
+type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
@@ -1182,6 +1182,7 @@ function App(){
     const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
     return {
       id:v.id,
+      venda_numero:v.venda_numero,
       fatura_numero:v.fatura_numero,
       created_at:v.created_at,
       status:v.status,
@@ -1213,8 +1214,8 @@ function App(){
       ;(await import('./lib/invoicePdf')).openInvoicePdfForPrint(payload)
     }catch{setMsg('Não foi possível abrir o documento para impressão.')}
   }
-  async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar fatura ${invoiceNo(v.fatura_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
-  async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!window.confirm(`Excluir fatura ${invoiceNo(v.fatura_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
+  async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar venda ${invoiceNo(v.venda_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
+  async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!window.confirm(`Excluir venda ${invoiceNo(v.venda_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
 
   // COMPRAS
   function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('cotacao');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
@@ -1500,7 +1501,7 @@ function App(){
     setFinanceEnd('')
     setFinanceCategory('todos')
     setFinanceCenter('todos')
-    setSearch('financeiro-receber',invoiceNo(v.fatura_numero))
+    setSearch('financeiro-receber',invoiceNo(v.venda_numero))
     setFinancePanel(first.id)
     setFinancePanelTab('pagamentos')
     setPaymentDate(today())
@@ -1997,9 +1998,9 @@ function App(){
       &&(salePaymentFilter==='todos'||v.forma_pagamento===salePaymentFilter)
       &&(salePaymentStateFilter==='todos'||ps.key===salePaymentStateFilter)
       &&(saleRouteFilter==='todos'||v.rota_entrega===saleRouteFilter)
-      &&searchMatches('vendas',[invoiceNo(v.fatura_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',saleStatusDisplay(v),deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,saleInvoiceStatus(v).label,ps.label,money(Number(v.total))])
+      &&searchMatches('vendas',[invoiceNo(v.venda_numero),new Date(v.created_at).toLocaleString('pt-BR'),client?.nome||'Consumidor',seller?.nome||'',saleStatusDisplay(v),deliveryRouteLabel(v.rota_entrega),paymentLabel(v.forma_pagamento),v.parcelas,saleInvoiceStatus(v).label,ps.label,money(Number(v.total))])
   }),{
-    fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,cliente:v=>clientes.find(x=>x.id===v.cliente_id)?.nome||'Consumidor',rota:v=>deliveryRouteLabel(v.rota_entrega),vendedor:v=>vendedores.find(x=>x.id===v.vendedor_cadastro_id)?.nome||'',status:v=>saleStatusDisplay(v),pagamento:v=>paymentLabel(v.forma_pagamento),faturamento:v=>saleInvoiceStatus(v).label,statuspag:v=>salePaymentStatus(v).label,total:v=>Number(v.total)
+    fatura:v=>Number(v.venda_numero||0),data:v=>v.created_at,cliente:v=>clientes.find(x=>x.id===v.cliente_id)?.nome||'Consumidor',rota:v=>deliveryRouteLabel(v.rota_entrega),vendedor:v=>vendedores.find(x=>x.id===v.vendedor_cadastro_id)?.nome||'',status:v=>saleStatusDisplay(v),pagamento:v=>paymentLabel(v.forma_pagamento),faturamento:v=>saleInvoiceStatus(v).label,statuspag:v=>salePaymentStatus(v).label,total:v=>Number(v.total)
   })
   const saleTotalPages=Math.max(1,Math.ceil(filteredSalesList.length/salePageSize))
   const safeSalePage=Math.min(salePage,saleTotalPages)
@@ -2013,7 +2014,7 @@ function App(){
     const seller=vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||''
     const matchStatus=billingStatusFilter==='todos'||invoiceState.key===billingStatusFilter
     const q=billingSearch.trim().toLowerCase()
-    const matchSearch=!q||[invoiceNo(v.fatura_numero),client,seller,paymentLabel(v.forma_pagamento),invoiceState.label,money(Number(v.total))].join(' ').toLowerCase().includes(q)
+    const matchSearch=!q||[invoiceNo(v.venda_numero),client,seller,paymentLabel(v.forma_pagamento),invoiceState.label,money(Number(v.total))].join(' ').toLowerCase().includes(q)
     return matchStatus&&matchSearch
   })
   const billingCounts={
@@ -3045,10 +3046,10 @@ function App(){
           const paymentStatus=salePaymentStatus(v)
           const approval=pendingSaleApproval(v.id)
           const waiting=Boolean(approval&&v.status==='orcamento')
-          return <div className="recordDetailOverlay saleRecordOverlay" role="dialog" aria-modal="true" aria-label={`Venda #${invoiceNo(v.fatura_numero)}`}>
+          return <div className="recordDetailOverlay saleRecordOverlay" role="dialog" aria-modal="true" aria-label={`Venda #${invoiceNo(v.venda_numero)}`}>
             <div className="recordDetailBackdrop" onClick={closeSaleDetail}/>
             <div className="recordDetailSheet recordDetailSheetWide saleRecordSheet">
-              <div className="recordDetailHeader"><strong>Venda #{invoiceNo(v.fatura_numero)}</strong><button type="button" className="recordDetailClose" onClick={closeSaleDetail}><X size={17}/>Fechar</button></div>
+              <div className="recordDetailHeader"><strong>Venda #{invoiceNo(v.venda_numero)}</strong><button type="button" className="recordDetailClose" onClick={closeSaleDetail}><X size={17}/>Fechar</button></div>
               <article className="panel saleDetailPage">
             <div className="saleDetailTopbar">
               <button type="button" className="ghost" onClick={closeSaleDetail}><ChevronLeft size={16}/>Voltar para lista</button>
@@ -3066,7 +3067,7 @@ function App(){
             <div className="saleDetailStatusBar">
               <div>
                 <span className="saleDetailEyebrow">{v.status==='orcamento'?'ORÇAMENTO':'VENDA / FATURA'}</span>
-                <h2>#{invoiceNo(v.fatura_numero)}</h2>
+                <h2>#{invoiceNo(v.venda_numero)}</h2>
               </div>
               <div className="saleDetailBadges">
                 {waiting
@@ -3208,8 +3209,8 @@ function App(){
                 const paymentStatus=salePaymentStatus(v)
                 const waiting=Boolean(pendingSaleApproval(v.id)&&v.status==='orcamento')
                 const actionOpen=saleActionMenu===v.id
-                return <tr key={v.id} {...recordRow(()=>void openSaleDetail(v),'venda '+invoiceNo(v.fatura_numero))}>
-                  <td><strong className="salesDocument">#{invoiceNo(v.fatura_numero)}</strong></td>
+                return <tr key={v.id} {...recordRow(()=>void openSaleDetail(v),'venda '+invoiceNo(v.venda_numero))}>
+                  <td><strong className="salesDocument">#{invoiceNo(v.venda_numero)}</strong></td>
                   <td>{new Date(v.created_at).toLocaleDateString('pt-BR')}</td>
                   <td><div className="salesIdentity"><span className="salesAvatar">{nameInitials(clientName)}</span><span>{clientName}</span></div></td>
                   <td><div className="salesIdentity"><span className="salesAvatar sellerAvatar">{nameInitials(sellerName)}</span><span>{seller?.nome||'—'}</span></div></td>
@@ -3436,9 +3437,9 @@ function App(){
           </div>
           <div className="billingSearch"><Search size={16}/><input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Buscar por documento, cliente, vendedor..."/></div>
           <div className="tableWrap"><table className="billingSalesTable">
-            <thead><tr><th>Documento</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status venda</th><th>Indicação pagamento</th><th>Status da fatura</th><th>Status pagto</th><th>Total</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Venda</th><th>Fatura</th><th>Data</th><th>Cliente</th><th>Vendedor</th><th>Status venda</th><th>Indicação pagamento</th><th>Status da fatura</th><th>Status pagto</th><th>Total</th><th>Ações</th></tr></thead>
             <tbody>
-              {billingSales.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message="Nenhuma venda aprovada encontrada com estes filtros."/></td></tr>}
+              {billingSales.length===0&&<tr className="emptyTableRow"><td colSpan={11}><EmptyState message="Nenhuma venda aprovada encontrada com estes filtros."/></td></tr>}
               {billingSales.map(v=>{
                 const client=clientes.find(c=>c.id===v.cliente_id)?.nome||'Consumidor'
                 const seller=vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||'—'
@@ -3446,7 +3447,8 @@ function App(){
                 const paymentState=salePaymentStatus(v)
                 const activeInvoice=activeInvoiceForSale(v.id)
                 return <tr key={v.id}>
-                  <td><strong>#{invoiceNo(v.fatura_numero)}</strong></td>
+                  <td><strong>#{invoiceNo(v.venda_numero)}</strong></td>
+                  <td><strong>{invoiceState.invoice?'#'+invoiceNo(invoiceState.invoice.numero):'—'}</strong></td>
                   <td>{dateBr(v.created_at)}</td>
                   <td>{client}</td>
                   <td>{seller}</td>
@@ -3468,7 +3470,7 @@ function App(){
         </div>}
 
         {billingSale&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label="Criar fatura da venda"><div className="saleModalShell billingModalShell"><form className="panel billingInvoiceForm" onSubmit={createSaleInvoice}>
-          <div className="formTitle saleModalTitle"><div><h3>Criar fatura — Venda #{invoiceNo(billingSale.fatura_numero)}</h3><p>Organize as parcelas antes de gerar o Contas a Receber.</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>{setBillingSale(null);setBillingLines([])}}><X size={18}/></button></div>
+          <div className="formTitle saleModalTitle"><div><h3>Criar fatura — Venda #{invoiceNo(billingSale.venda_numero)}</h3><p>Organize as parcelas antes de gerar o Contas a Receber.</p></div><button type="button" className="iconBtn saleModalClose" onClick={()=>{setBillingSale(null);setBillingLines([])}}><X size={18}/></button></div>
           <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>Total da venda</span><strong>{money(Number(billingSale.total))}</strong></div><div><span>Indicação do vendedor</span><strong>{paymentLabel(billingSale.forma_pagamento)} • {billingSale.parcelas}x</strong></div></div>
           <div className="billingInvoiceControls">
             <label>Forma de pagamento<select value={billingPayment} onChange={e=>setBillingPayment(e.target.value as PaymentMethod)}><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label>
@@ -3490,7 +3492,7 @@ function App(){
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
         <div className="cards compactCards semanticCards"><article className="card semanticCard semanticBlue"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card semanticCard semanticNegative"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className={'card semanticCard '+(reportSalesTotal-reportPurchaseTotal>=0?'semanticPositive':'semanticNegative')}><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
-        <div className="reportsStack"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','fatura')}>Fatura{sortMark('relatorio-vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','data')}>Data{sortMark('relatorio-vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','status')}>Status{sortMark('relatorio-vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','total')}>Total{sortMark('relatorio-vendas','total')}</button></th></tr></thead><tbody>{sortList('relatorio-vendas',filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.fatura_numero),dateBr(v.created_at),v.status,money(Number(v.total))])),{fatura:v=>Number(v.fatura_numero||0),data:v=>v.created_at,status:v=>v.status,total:v=>Number(v.total)}).map(v=><tr key={v.id} {...recordRow(()=>{setActive('vendas');setSalePanel(v.id)},'venda '+invoiceNo(v.fatura_numero))}><td>#{invoiceNo(v.fatura_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','data')}>Data{sortMark('relatorio-compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','status')}>Status{sortMark('relatorio-compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','total')}>Total{sortMark('relatorio-compras','total')}</button></th></tr></thead><tbody>{sortList('relatorio-compras',filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])),{data:c=>c.created_at,status:c=>c.status,total:c=>Number(c.total)}).map(c=><tr key={c.id} {...recordRow(()=>{setActive('compras');setPurchasePanel(c.id)},'compra '+invoiceNo(c.fatura_numero))}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
+        <div className="reportsStack"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','fatura')}>Fatura{sortMark('relatorio-vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','data')}>Data{sortMark('relatorio-vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','status')}>Status{sortMark('relatorio-vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','total')}>Total{sortMark('relatorio-vendas','total')}</button></th></tr></thead><tbody>{sortList('relatorio-vendas',filteredSales.filter(v=>searchMatches('relatorio-vendas',[invoiceNo(v.venda_numero),dateBr(v.created_at),v.status,money(Number(v.total))])),{fatura:v=>Number(v.venda_numero||0),data:v=>v.created_at,status:v=>v.status,total:v=>Number(v.total)}).map(v=><tr key={v.id} {...recordRow(()=>{setActive('vendas');setSalePanel(v.id)},'venda '+invoiceNo(v.venda_numero))}><td>#{invoiceNo(v.venda_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','data')}>Data{sortMark('relatorio-compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','status')}>Status{sortMark('relatorio-compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','total')}>Total{sortMark('relatorio-compras','total')}</button></th></tr></thead><tbody>{sortList('relatorio-compras',filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])),{data:c=>c.created_at,status:c=>c.status,total:c=>Number(c.total)}).map(c=><tr key={c.id} {...recordRow(()=>{setActive('compras');setPurchasePanel(c.id)},'compra '+invoiceNo(c.fatura_numero))}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
       </section>}
 
       {active==='config'&&<section>
