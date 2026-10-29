@@ -70,6 +70,7 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
 
   const routes=useMemo(()=>Array.from(new Set(deliveries.map(d=>d.rota).filter(Boolean) as string[])).sort((a,b)=>a.localeCompare(b,'pt-BR')),[deliveries])
   const active=useMemo(()=>deliveries.filter(d=>d.status==='a_entregar'||d.status==='em_transito').filter(d=>!selectedRoutes.length||selectedRoutes.includes(d.rota||'')),[deliveries,selectedRoutes])
+  const history=useMemo(()=>deliveries.filter(d=>d.status==='entregue'||d.status==='reagendamento').sort((a,b)=>b.updated_at.localeCompare(a.updated_at)).slice(0,20),[deliveries])
   const activeRoutes=new Set(active.map(d=>d.rota).filter(Boolean)).size
 
   function saleFor(d:Delivery){return sales.find(s=>s.id===d.venda_id)}
@@ -261,6 +262,17 @@ export function DeliveryManagement({canEdit}:{canEdit:boolean}){
       })}
     </div>
     {!active.length&&<div className="deliveryEmpty"><Truck size={34}/><strong>Nenhuma entrega ativa</strong><span>Pedidos com logística “A entregar” ou “Em trânsito” aparecerão aqui.</span></div>}
+
+    {history.length>0&&<section className="deliveryHistory">
+      <div className="deliveryHistoryHead"><div><span>HISTÓRICO OPERACIONAL</span><h3>Entregas recentes</h3></div><span>{history.length} registro(s)</span></div>
+      <div className="deliveryHistoryList">{history.map(d=>{
+        const s=saleFor(d),c=clientFor(d)
+        return <article key={d.id}>
+          <div><strong>#{String(s?.fatura_numero||0).padStart(7,'0')} · {c?.nome||'Cliente'}</strong><span>{routeLabel(d.rota)} · {d.entregador_nome||'Entregador não informado'}</span></div>
+          <div><span className={'deliveryHistoryStatus '+d.status}>{d.status==='entregue'?'Entregue':'Pendente de reagendamento'}</span><small>{d.status==='entregue'?dateTimeBr(d.entregue_em):`${failLabel(d.falha_motivo)} · ${dateTimeBr(d.falha_em)}`}</small></div>
+        </article>
+      })}</div>
+    </section>}
 
     {modalDelivery&&mode&&<div className="deliveryModalBackdrop">
       <div className="deliveryModal" role="dialog" aria-modal="true">
