@@ -50,6 +50,8 @@ type Titulo=EmployeeTitle&{id:string;tipo:'pagar'|'receber';descricao:string;ent
 type SaleApproval={id:string;entidade_id:string|null;status:string;solicitado_em:string;payload:Record<string,unknown>|null}
 type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:number}
 type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
+type FaturaVenda={id:string;numero:number;venda_id:string;status:'ativa'|'cancelada';forma_pagamento:string;parcelas:number;valor_total:number;criada_em:string;criada_por:string|null;cancelada_em:string|null;cancelada_por:string|null;motivo_cancelamento:string|null}
+type InvoiceDraftLine={key:string;vencimento:string;valor:number}
 type EmpresaConfig={id:number;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
 type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean;permissoes:PermissionMap}
@@ -223,7 +225,7 @@ function App(){
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
-  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'funcionarios'|'vales'|'conciliacao'>('geral')
+  const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'faturamento'|'funcionarios'|'vales'|'conciliacao'>('geral')
   const [financeStatusFilter,setFinanceStatusFilter]=useState<'todos'|'aberto'|'parcial'|'pago'|'cancelado'>('todos')
   const [financeStart,setFinanceStart]=useState('')
   const [financeEnd,setFinanceEnd]=useState('')
@@ -234,6 +236,13 @@ function App(){
   const [financeActivityState,setFinanceActivityState]=useState<'loading'|'ready'|'error'>('loading')
   const [financePayments,setFinancePayments]=useState<FinancePayment[]>([])
   const [financeReversals,setFinanceReversals]=useState<FinanceReversal[]>([])
+  const [faturasVendas,setFaturasVendas]=useState<FaturaVenda[]>([])
+  const [billingSale,setBillingSale]=useState<Venda|null>(null)
+  const [billingPayment,setBillingPayment]=useState<PaymentMethod>('pix')
+  const [billingLines,setBillingLines]=useState<InvoiceDraftLine[]>([])
+  const [billingStatusFilter,setBillingStatusFilter]=useState<'todos'|'nao-faturado'|'faturado'|'cancelado'>('todos')
+  const [billingSearch,setBillingSearch]=useState('')
+  const [billingBusy,setBillingBusy]=useState(false)
   const [paymentDate,setPaymentDate]=useState(today())
   const [paymentAmount,setPaymentAmount]=useState('')
 
@@ -277,7 +286,7 @@ function App(){
     setProfileRole('visualizador');setUserPermissions(defaultPermissionsForRole('visualizador'));setActive('dashboard');setShowApps(true);setPermissionsReady(false);closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setComissoes([])
-    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setEmail('');setPassword('')
+    setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setFaturasVendas([]);setBillingSale(null);setEmail('');setPassword('')
   },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
   useEffect(()=>{
@@ -342,7 +351,10 @@ function App(){
       readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to)),
       supabase.rpc('minhas_permissoes_erp')
     ])
-    const pc=await readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to))
+    const [pc,fv]=await Promise.all([
+      readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('faturas_vendas').select('*').order('criada_em',{ascending:false}).order('id').range(from,to))
+    ])
     if(currentSessionUser.current!==session.user.id)return
     if(!c.error)setClientes((c.data||[]) as Cliente[])
     if(!f.error)setFornecedores((f.data||[]) as Fornecedor[])
@@ -374,6 +386,7 @@ function App(){
     if(!cv.error)setComprovantes((cv.data||[]) as Comprovante[])
     if(!me.error)setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
     if(!pc.error)setProdutoComponentes((pc.data||[]) as ProdutoComponente[])
+    if(!fv.error)setFaturasVendas((fv.data||[]) as FaturaVenda[])
     if(!sa.error)setSaleApprovals((sa.data||[]) as SaleApproval[])
     setPermissionsReady(true)
   }
