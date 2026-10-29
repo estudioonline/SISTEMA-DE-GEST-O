@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -23,6 +23,7 @@ import { FocusNfeSettings, FocusNfeSale } from './FocusNfe'
 import { AppLauncher } from './AppLauncher'
 import { EmployeeFinance } from './EmployeeFinance'
 import { BankReconciliation } from './BankReconciliation'
+import { DeliveryManagement } from './DeliveryManagement'
 import type { EmployeeTitle } from './EmployeeFinance'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules } from './lib/permissions'
 import type { AccessLevel, PermissionMap, PermissionModule } from './lib/permissions'
@@ -57,7 +58,7 @@ type SaleHistoryEvent={evento_id:string;fonte:string;acao:string;usuario_id:stri
 const menu=[
   ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
+  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['entregas','Entregas',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
@@ -2182,6 +2183,7 @@ function App(){
       {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
       {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData}/>}
+      {active==='entregas'&&<DeliveryManagement canEdit={canEditModule('entregas')}/>} 
       {active==='dashboard'&&<section>
         <div className="cards dashboardCards">
           <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
