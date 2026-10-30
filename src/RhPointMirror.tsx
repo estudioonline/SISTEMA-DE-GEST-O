@@ -109,21 +109,21 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  }
  const extendedStart=periodStart?mondayOf(periodStart):''
  const extendedEnd=periodEnd?sundayOf(periodEnd):''
- const extendedCalendar=useMemo(()=>month?dateRange(extendedStart,extendedEnd).map(effectiveRow):[],[month,employeeId,byDate,rhidByDate])
- const calendar=useMemo(()=>month?dateRange(periodStart,periodEnd).map(effectiveRow):[],[month,employeeId,byDate,rhidByDate])
+ const extendedCalendar=useMemo(()=>periodStart&&periodEnd?dateRange(extendedStart,extendedEnd).map(effectiveRow):[],[periodStart,periodEnd,employeeId,byDate,rhidByDate])
+ const calendar=useMemo(()=>periodStart&&periodEnd?dateRange(periodStart,periodEnd).map(effectiveRow):[],[periodStart,periodEnd,employeeId,byDate,rhidByDate])
  const weeklyLimitMinutes=Math.round(Number(current?.jornada_semanal_horas||44)*60)
  const weeklySummary=useMemo(()=>{
   const map=new Map<string,{start:string;end:string;worked:number}>()
-  for(const r of extendedCalendar){
-   const start=mondayOf(r.data),end=addDays(start,6)
-   const item=map.get(start)||{start,end,worked:0}
+  for(const r of calendar){
+   const weekStart=mondayOf(r.data),weekEnd=addDays(weekStart,6)
+   const displayStart=weekStart<periodStart?periodStart:weekStart
+   const displayEnd=weekEnd>periodEnd?periodEnd:weekEnd
+   const item=map.get(weekStart)||{start:displayStart,end:displayEnd,worked:0}
    item.worked+=mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2)
-   map.set(start,item)
+   map.set(weekStart,item)
   }
-  return [...map.values()]
-   .filter(w=>w.end>=periodStart&&w.start<=periodEnd)
-   .map(w=>({...w,overtime:Math.max(0,w.worked-weeklyLimitMinutes)}))
- },[extendedCalendar,weeklyLimitMinutes,periodStart,periodEnd])
+  return [...map.values()].map(w=>({...w,overtime:Math.max(0,w.worked-weeklyLimitMinutes)}))
+ },[calendar,weeklyLimitMinutes,periodStart,periodEnd])
  const worked=calendar.reduce((s,r)=>s+mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2),0)
  const overtimeTotal=weeklySummary.reduce((s,w)=>s+w.overtime,0)
  const fmtMinutes=(m:number)=>Math.floor(m/60)+'h '+pad(m%60)+'m'
