@@ -45,6 +45,9 @@ export function assertUpstream(body: unknown) {
 export function desiredTimes(row: RecordValue): string[] {
   compactDate(row.data);
   const slots = ['entrada_1', 'saida_1', 'entrada_2', 'saida_2'].map(k => row[k]);
+  const firstEmpty = slots.findIndex(value => value == null || value === '');
+  if (firstEmpty >= 0 && slots.slice(firstEmpty).some(value => value != null && value !== ''))
+    fail('INCOMPLETE_SEQUENCE', 'Preencha as marcações em sequência, sem pular uma entrada ou saída.', 400);
   const times: string[] = [];
   for (const value of slots) {
     if (value == null || value === '') continue;
@@ -132,4 +135,6 @@ export function verifyAudit(body: unknown, person: number, changes: RecordValue[
     return Number(o.idAfdChange) > 0 && !inactive(o) && String(o.reason ?? '') === change.reason;
   }));
 }
+
+
 

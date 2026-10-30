@@ -31,6 +31,7 @@ test('invalid dates, nonzero seconds, reversed times and missing reason are refu
   assert.throws(() => compactDate('2026-02-30'));
   assert.throws(() => desiredTimes({...row,entrada_1:'08:01:30'}));
   assert.throws(() => desiredTimes({...row,entrada_1:'14:00'}));
+  assert.throws(() => desiredTimes({...row,entrada_1:null}));
   assert.throws(() => makePlan(7,12345678901,1,{...row,observacao:''},current));
 });
 test('read filters excluded marks and other people, handles both timestamp formats', () => {
