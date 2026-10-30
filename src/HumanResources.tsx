@@ -7,10 +7,11 @@ import {calculatePayroll,cents,hrSectionForTitle,summarizeHr} from './lib/hr'
 import type {HrSection,HrTitle} from './lib/hr'
 import type {EmployeeTitle} from './EmployeeFinance'
 import type {InvoiceCompany} from './lib/invoicePdf'
+import {RhidAttendance} from './RhidAttendance'
 
-type Employee={id:string;nome:string;cargo:string|null;ativo:boolean}
+type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
 type Title=EmployeeTitle&HrTitle
-const tabs:[HrSection,string][]=[['geral','Visão geral'],['funcionarios','Funcionários'],['folha','Folha salarial'],['fgts','FGTS'],['decimo','13º salário'],['vales','Vales']]
+const tabs:[HrSection,string][]=[['geral','Visão geral'],['funcionarios','Funcionários'],['folha','Folha salarial'],['fgts','FGTS'],['decimo','13º salário'],['vales','Vales'],['ponto','Ponto e presença']]
 const categories=['Salário','Bônus','13º salário','FGTS','Férias','Encargos','Benefícios','Outros','Vale de funcionário']
 const money=(value:number)=>value.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -33,7 +34,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   const sequence=++loadSequence.current
   setLoading(true)
   try{
-   const r=await readAllRows<Employee>((from,to)=>supabase.from('funcionarios').select('id,nome,cargo,ativo').order('nome').order('id').range(from,to))
+   const r=await readAllRows<Employee>((from,to)=>supabase.from('funcionarios').select('id,nome,cargo,ativo,rhid_person_id').order('nome').order('id').range(from,to))
    if(sequence!==loadSequence.current)return
    if(r.error)throw r.error
    setEmployees(r.data||[])
@@ -50,7 +51,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   return()=>window.removeEventListener('keydown',escape)
  },[entryForm,personForm])
  const rows=titles.filter(t=>hrSectionForTitle(t)!==null)
-  .filter(t=>section==='geral'||section==='funcionarios'||hrSectionForTitle(t)===section)
+  .filter(t=>section==='geral'||section==='funcionarios'||section==='ponto'||hrSectionForTitle(t)===section)
   .filter(t=>!month||t.competencia?.slice(0,7)===month)
   .filter(t=>!employee||t.funcionario_id===employee)
   .filter(t=>status==='todos'||(status==='a_descontar'?t.tipo_funcionario==='vale'&&t.status!=='cancelado'&&Number(t.valor_pago)>0&&!t.vale_descontado_em:status==='descontado'?!!t.vale_descontado_em:t.status===status))
@@ -173,7 +174,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   {error&&!personForm&&!entryForm&&<div className="panel noticePanel" role="alert">{error}</div>}{notice&&<div className="panel noticePanel" role="status">{notice}</div>}
   {!canEdit&&<p className="readOnlyTag">Somente leitura</p>}
   <div className="panel financeFilterPanel employeeFilters">{section!=='funcionarios'&&<label>Competência<input type="month" value={month} onChange={e=>setMonth(e.target.value)}/></label>}<label>Funcionário<select value={employee} onChange={e=>setEmployee(e.target.value)}><option value="">Todos os funcionários</option>{employees.map(p=><option key={p.id} value={p.id}>{p.nome}{!p.ativo?' · Inativo':''}</option>)}</select></label>{section!=='funcionarios'&&<label>Situação<select value={status} onChange={e=>setStatus(e.target.value)}><option value="todos">Todas</option><option value="aberto">Em aberto</option><option value="parcial">Parcial</option><option value="pago">Pago</option>{section==='vales'&&<><option value="a_descontar">Pago, a descontar</option><option value="descontado">Descontado</option></>}<option value="cancelado">Cancelado</option></select></label>}<label>Pesquisar<input type="search" value={search} placeholder="Nome, cargo, descrição ou categoria" onChange={e=>setSearch(e.target.value)}/></label><button className="ghost financeClearFilters" onClick={()=>{setMonth('');setEmployee('');setStatus('todos');setSearch('')}}>Limpar filtros</button></div>
-  {loading?<p role="status">Carregando funcionários…</p>:section==='funcionarios'?<article className="panel tablePanel"><div className="panelHead"><h3>{visibleEmployees.length} funcionário(s)</h3><span>{employees.filter(p=>p.ativo).length} ativo(s)</span></div><div className="tableWrap"><table><thead><tr><th>Nome</th><th>Cargo</th><th>Situação</th><th>Ações</th></tr></thead><tbody>{visibleEmployees.map(p=><tr key={p.id}><td>{p.nome}</td><td>{p.cargo||'—'}</td><td>{p.ativo?'Ativo':'Inativo'}</td><td><div className="rowActions"><button className="ghost" onClick={()=>{setEmployee(p.id);setSection('geral');setMonth('');setSearch('');setStatus('todos')}}>Ver lançamentos</button>{canEdit&&<button className="ghost" onClick={()=>{setError('');setPersonForm({person:p})}}><Pencil size={15}/>Editar</button>}</div></td></tr>)}{!visibleEmployees.length&&<tr><td colSpan={4}>Nenhum funcionário com estes filtros.</td></tr>}</tbody></table></div></article>:<>
+  {loading?<p role="status">Carregando funcionários…</p>:section==='ponto'?<RhidAttendance employees={employees} canEdit={canEdit} onLinked={load}/>:section==='funcionarios'?<article className="panel tablePanel"><div className="panelHead"><h3>{visibleEmployees.length} funcionário(s)</h3><span>{employees.filter(p=>p.ativo).length} ativo(s)</span></div><div className="tableWrap"><table><thead><tr><th>Nome</th><th>Cargo</th><th>Situação</th><th>Ações</th></tr></thead><tbody>{visibleEmployees.map(p=><tr key={p.id}><td>{p.nome}</td><td>{p.cargo||'—'}</td><td>{p.ativo?'Ativo':'Inativo'}</td><td><div className="rowActions"><button className="ghost" onClick={()=>{setEmployee(p.id);setSection('geral');setMonth('');setSearch('');setStatus('todos')}}>Ver lançamentos</button>{canEdit&&<button className="ghost" onClick={()=>{setError('');setPersonForm({person:p})}}><Pencil size={15}/>Editar</button>}</div></td></tr>)}{!visibleEmployees.length&&<tr><td colSpan={4}>Nenhum funcionário com estes filtros.</td></tr>}</tbody></table></div></article>:<>
    <div className="cards compactCards semanticCards rhCards">{(section==='geral'||section==='folha'||section==='decimo')&&<article className="card semanticCard semanticBlue"><span>Bruto informado</span><strong>{money(summary.bruto)}</strong><small>Referência da folha, sem somar ao contas a pagar</small></article>}<article className="card semanticCard"><span>{section==='folha'||section==='decimo'?'Líquido / obrigações':'Total lançado'}</span><strong>{money(summary.liquido)}</strong><small>Cancelados excluídos</small></article><article className="card semanticCard semanticPositive"><span>Pago</span><strong>{money(summary.pago)}</strong></article><article className="card semanticCard semanticNegative"><span>A pagar</span><strong>{money(summary.saldo)}</strong></article>{section==='geral'&&<><article className="card semanticCard"><span>FGTS lançado</span><strong>{money(summary.fgts)}</strong></article><article className="card semanticCard"><span>13º lançado</span><strong>{money(summary.decimo)}</strong></article></>}{(section==='geral'||section==='vales')&&<article className="card semanticCard"><span>Vales pagos a descontar</span><strong>{money(summary.valesPendentes)}</strong><small>Inclui pagamentos parciais</small></article>}</div>
    {!!summary.brutoAusente&&<p className="employeeHelp">{summary.brutoAusente} lançamento(s) anterior(es) sem bruto informado. Seus valores líquidos e pagamentos foram preservados.</p>}
    {section==='fgts'&&<p className="employeeHelp">Informe os valores da guia de FGTS por funcionário e competência. O FGTS é uma obrigação separada do líquido do funcionário.</p>}
