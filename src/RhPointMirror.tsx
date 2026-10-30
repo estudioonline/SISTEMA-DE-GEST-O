@@ -31,18 +31,6 @@ const editedTime=(r:Adjust,field:TimeField)=>{
  const after=(r[field]||'').slice(0,5)
  return Boolean(r.id)&&!isImportedOnly(r)&&before!==after
 }
-const rhidAdjustedTime=(r:Adjust,field:TimeField)=>{
- const remote=rhidByDate.get(r.data)
- const target=(r[field]||'').slice(0,5)
- if(!remote||!target)return false
- return remote.punches.some(p=>{
-  if(p.time!==target)return false
-  const raw=p.raw||{}
-  const change=String(raw._typeAfdChange??raw.typeAfdChange??'').toUpperCase()
-  return Boolean(Number(raw.idAfdChange||0))||change==='I'||change==='D'||Boolean(raw.reason)
- })
-}
-const highlightedTime=(r:Adjust,field:TimeField)=>editedTime(r,field)||rhidAdjustedTime(r,field)
 
 export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];month:string;canEdit:boolean}){
  const [employeeId,setEmployeeId]=useState(''),[rows,setRows]=useState<Adjust[]>([]),[rhidDays,setRhidDays]=useState<RhidDay[]>([]),[editing,setEditing]=useState<Adjust|null>(null),[sendingId,setSendingId]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[rhidValidated,setRhidValidated]=useState<boolean|null>(null)
@@ -90,6 +78,18 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  useEffect(()=>{void load()},[employeeId,month])
  const byDate=useMemo(()=>new Map(rows.map(r=>[r.data,r])),[rows])
  const rhidByDate=useMemo(()=>new Map(rhidDays.map(r=>[r.date,r])),[rhidDays])
+ const rhidAdjustedTime=(r:Adjust,field:TimeField)=>{
+  const remote=rhidByDate.get(r.data)
+  const target=(r[field]||'').slice(0,5)
+  if(!remote||!target)return false
+  return remote.punches.some(p=>{
+   if(p.time!==target)return false
+   const raw=p.raw||{}
+   const change=String(raw._typeAfdChange??raw.typeAfdChange??'').toUpperCase()
+   return Boolean(Number(raw.idAfdChange||0))||change==='I'||change==='D'||Boolean(raw.reason)
+  })
+ }
+ const highlightedTime=(r:Adjust,field:TimeField)=>editedTime(r,field)||rhidAdjustedTime(r,field)
  const effectiveRow=(d:string):Adjust=>{
   const local=byDate.get(d)
   const remote=rhidByDate.get(d)
