@@ -145,3 +145,35 @@
 .dark .rhidRaw{background:#0f172a;border-color:#334155;color:#e2e8f0}
 @media(max-width:980px){.rhidControls{grid-template-columns:1fr 1fr}.rhidControls button{width:100%}}
 @media(max-width:640px){.rhidControls{grid-template-columns:1fr}.rhidLinkActions{display:grid}.rhidLinkActions .tableSearch{min-width:0}}
+
+/* RH ampliado: Espelho de ponto e Benefícios */
+.rhBenefits,.rhPointMirror{display:grid;gap:14px}
+.rhBenefitCards{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rhBenefitsTable,.rhPointTable{min-width:1050px}
+.rhBenefitsTable th,.rhBenefitsTable td,.rhPointTable th,.rhPointTable td{padding:9px 10px;vertical-align:middle}
+.rhBenefitsTable td,.rhPointTable td{font-size:13px}
+.rhBenefitModal,.rhPointModal{width:min(900px,100%)}
+.rhPointHeader{display:grid;grid-template-columns:minmax(260px,1.5fr) repeat(2,minmax(180px,.8fr));gap:14px;align-items:end}
+.rhPointHeader label{display:grid;gap:5px}
+.rhPointHeader select{height:40px;border:1px solid #d7dee8;border-radius:10px;padding:0 10px;background:#fff;color:#172033}
+.rhPointHeader>div{display:grid;gap:3px}
+.rhPointHeader>div span{font-size:12px;color:#64748b}
+.rhPointHeader>div strong{font-size:18px}
+.dark .rhPointHeader select{background:#101725;border-color:#334155;color:#eef3ff}
+.dark .rhPointHeader>div span{color:#94a3b8}
+.rhPointTable .statusBadge{text-transform:capitalize;white-space:nowrap}
+.rhPoint-presente{background:#dcfce7;color:#166534}
+.rhPoint-atraso{background:#fef3c7;color:#92400e}
+.rhPoint-falta{background:#fee2e2;color:#991b1b}
+.rhPoint-folga{background:#e0e7ff;color:#3730a3}
+.rhPoint-atestado{background:#e0f2fe;color:#075985}
+.dark .rhPoint-presente{background:#123521;color:#86efac}
+.dark .rhPoint-atraso{background:#3a2a0a;color:#fcd34d}
+.dark .rhPoint-falta{background:#3a1515;color:#fca5a5}
+.dark .rhPoint-folga{background:#222b52;color:#c7d2fe}
+.dark .rhPoint-atestado{background:#0d2a3a;color:#7dd3fc}
+@media(max-width:1000px){
+  .rhBenefitCards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rhPointHeader{grid-template-columns:1fr}
+}
+@media(max-width:640px){.rhBenefitCards{grid-template-columns:1fr}}
