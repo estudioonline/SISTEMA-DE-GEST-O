@@ -149,7 +149,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
     pill(colX[7]-3.5,y+4.25,16,st.charAt(0).toUpperCase()+st.slice(1),st)
     const obs=observation(r)
     const isWarn=obs.startsWith('Verificar marcações')
-    doc.setFont('helvetica',isWarn?'bold':'normal');doc.setFontSize(7.1);doc.setTextColor(...(isWarn?amber:muted))
+    doc.setFont('helvetica',isWarn?'bold':'normal');doc.setFontSize(7.1);{const c=isWarn?amber:muted;doc.setTextColor(c[0],c[1],c[2])}
     const clipped=obs.length>42?obs.slice(0,39)+'...':obs
     doc.text(clipped,colX[8],y+4.65)
     y+=rowH
@@ -181,7 +181,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   ]
   cards.forEach(card=>{
    doc.setDrawColor(...line);doc.setFillColor(255,255,255);doc.roundedRect(card.x,cardY,cardW,cardH,2.5,2.5,'FD')
-   doc.setFillColor(...card.c);doc.roundedRect(card.x,cardY,1.4,cardH,1,1,'F')
+   doc.setFillColor(card.c[0],card.c[1],card.c[2]);doc.roundedRect(card.x,cardY,1.4,cardH,1,1,'F')
    doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(...muted);doc.text(card.label,card.x+4.2,cardY+5)
    doc.setFont('helvetica','bold');doc.setFontSize(14.2);doc.setTextColor(...ink);doc.text(card.value,card.x+4.2,cardY+11.7)
    doc.setFont('helvetica','normal');doc.setFontSize(6.6);doc.setTextColor(...muted);doc.text(card.note,card.x+4.2,cardY+16.5)
