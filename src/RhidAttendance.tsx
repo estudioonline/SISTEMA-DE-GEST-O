@@ -70,13 +70,25 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
    setConfigured(false);setConnectionTested(true);setMessage('Falha na conexão com RHID: '+errorMessage(e))
   }finally{setBusy(false)}
  }
- async function syncPeople(){
+ async function syncPeople(autoLink=true){
   setBusy(true);setMessage('')
   try{
    const data=await invoke({action:'people'})
    const list=arrayFrom(data).map(personFrom)
    setPeople(list)
-   setMessage(list.length?`${list.length} colaborador(es) carregado(s) do RHID.`:'O RHID não retornou colaboradores.')
+   if(!list.length){setMessage('O RHID não retornou colaboradores.');return}
+   let linked=0
+   if(autoLink&&canEdit){
+    for(const employee of employees.filter(e=>e.ativo&&!e.rhid_person_id)){
+     const matches=list.filter(p=>normalize(p.name)===normalize(employee.nome))
+     if(matches.length===1&&/^\\d+$/.test(matches[0].id)){
+      const {error}=await supabase.from('funcionarios').update({rhid_person_id:Number(matches[0].id)}).eq('id',employee.id).is('rhid_person_id',null)
+      if(!error)linked++
+     }
+    }
+    if(linked)await onLinked()
+   }
+   setMessage(linked?`${list.length} colaborador(es) carregado(s) do RHID. ${linked} vínculo(s) automático(s) criado(s) por nome exato.`:`${list.length} colaborador(es) carregado(s) do RHID.`)
   }catch(e){setMessage(errorMessage(e))}
   finally{setBusy(false)}
  }
@@ -105,6 +117,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  }
 
  useEffect(()=>{void check()},[])
+ useEffect(()=>{if(configured===true&&!people.length&&!busy)void syncPeople(true)},[configured])
  useEffect(()=>{setAttendance(null)},[selectedEmployee,start,end])
 
  const records=arrayFrom(attendance)
@@ -129,7 +142,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
   {current&&<div className="panel rhidLinkPanel"><div><strong>{current.nome}</strong><span>{current.rhid_person_id?'Vinculado ao RHID ID '+current.rhid_person_id:'Ainda não vinculado ao RHID'}</span></div>{canEdit&&<div className="rhidLinkActions"><div className="tableSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar colaborador no RHID"/></div>{filteredPeople.slice(0,8).map(p=><button key={p.id} className="ghost" disabled={busy} onClick={()=>void link(p.id)}><Link2 size={14}/>{p.name}</button>)}</div>}</div>}
 
   <article className="panel tablePanel rhidAttendanceTable"><div className="panelHead"><h3>Apuração do período</h3><span>{current?.nome||'Selecione um funcionário'}</span></div>
-   {objectRecords.length>0?<div className="tableWrap"><table><thead><tr>{keys.map(k=><th key={k}>{k}</th>)}</tr></thead><tbody>{objectRecords.map((row,i)=><tr key={i}>{keys.map(k=><td key={k}>{typeof row[k]==='object'?JSON.stringify(row[k]):String(row[k]??'—')}</td>)}</tr>)}</tbody></table></div>:attendance?<pre className="rhidRaw">{JSON.stringify(attendance,null,2)}</pre>:<div className="bankEmpty"><Users size={28}/><strong>Nenhum ponto consultado</strong><span>Selecione um funcionário vinculado e consulte um período.</span></div>}
+   {objectRecords.length>0?<div className="tableWrap"><table><thead><tr>{keys.map(k=><th key={k}>{k}</th>)}</tr></thead><tbody>{objectRecords.map((row,i)=><tr key={i}>{keys.map(k=><td key={k}>{typeof row[k]==='object'?JSON.stringify(row[k]):String(row[k]??'—')}</td>)}</tr>)}</tbody></table></div>:attendance?<pre className="rhidRaw">{JSON.stringify(attendance,null,2)}</pre>:<div className="rhidEmpty"><Users size={28}/><strong>Nenhum ponto consultado</strong><span>Selecione um funcionário vinculado e consulte um período.</span></div>}
   </article>
  </section>
 }
