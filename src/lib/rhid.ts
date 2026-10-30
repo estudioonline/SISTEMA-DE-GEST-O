@@ -30,6 +30,8 @@ function normDate(o:Record<string,unknown>){
  const vals=[o.dateTime,o.datetime,o.dateTimeStr,o.dataHora,o.date,o.data]
  for(const v of vals){
   const s=String(v??'')
+  const compact=s.match(/^(20\d{2})(\d{2})(\d{2})\d{4}$/)
+  if(compact)return compact[1]+'-'+compact[2]+'-'+compact[3]
   const m=s.match(/(20\d{2})-(\d{2})-(\d{2})/)
   if(m)return m[1]+'-'+m[2]+'-'+m[3]
  }
@@ -38,6 +40,7 @@ function normDate(o:Record<string,unknown>){
 function normTime(o:Record<string,unknown>){
  for(const k of ['dateTime','datetime','dateTimeStr','dataHora']){
   const s=String(o[k]??'')
+  if(/^20\d{10}$/.test(s))return s.slice(8,10)+':'+s.slice(10,12)
   const m=s.match(/T(\d{2}):(\d{2})/)
   if(m)return m[1]+':'+m[2]
  }
@@ -58,6 +61,7 @@ export function parseRhidAttendance(payload:unknown):RhidDay[]{
  const objects=collect(root)
  const punches:RhidPunch[]=[]
  for(const o of objects){
+  if(o.excluded===true||o.excluded===1||o.excluded==='1'||o._typeAfdChange==='X')continue
   const date=normDate(o),time=normTime(o),k=kind(o)
   if(date&&time&&(k||'hora' in o||'dateTime' in o||'dateTimeStr' in o)){
    if(!punches.some(p=>p.date===date&&p.time===time&&p.kind===k))punches.push({date,time,kind:k,raw:o})
@@ -80,3 +84,5 @@ export function parseRhidAttendance(payload:unknown):RhidDay[]{
   }
  })
 }
+
+
