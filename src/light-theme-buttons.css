@@ -1,0 +1,43 @@
+/* Global light-theme button borders.
+   Loaded last so every app follows the same visual rule without affecting dark mode. */
+
+.app:not(.dark) button,
+.app:not(.dark) .button,
+.app:not(.dark) [role="button"].button {
+  border:1px solid #3B82F6 !important;
+  transition:
+    background .16s ease,
+    border-color .16s ease,
+    color .16s ease,
+    box-shadow .16s ease,
+    opacity .16s ease,
+    transform .16s ease;
+}
+
+.app:not(.dark) button:hover:not(:disabled),
+.app:not(.dark) .button:hover:not(:disabled),
+.app:not(.dark) [role="button"].button:hover {
+  border-color:#2563EB !important;
+}
+
+.app:not(.dark) button:focus-visible,
+.app:not(.dark) .button:focus-visible,
+.app:not(.dark) [role="button"].button:focus-visible {
+  outline:none !important;
+  border-color:#2563EB !important;
+  box-shadow:0 0 0 3px rgba(59,130,246,.18) !important;
+}
+
+.app:not(.dark) button:disabled,
+.app:not(.dark) .button:disabled {
+  border-color:#60A5FA !important;
+  opacity:.55;
+}
+
+/* Keep destructive/warning meaning in fill/text while sharing the blue outline. */
+.app:not(.dark) .dangerAction,
+.app:not(.dark) .dangerBtn,
+.app:not(.dark) .warningBtn,
+.app:not(.dark) .bankDangerMenu {
+  border-color:#3B82F6 !important;
+}
