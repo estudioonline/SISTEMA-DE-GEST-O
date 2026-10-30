@@ -221,3 +221,6 @@
 .rhidControls>.employeePickerNav{grid-column:span 1}
 .rhPointHeader>.employeePickerNav{min-width:0}
 @media(max-width:700px){.employeePickerNav{grid-template-columns:38px minmax(0,1fr) 38px}}
+
+.rhEditedTime{color:#d97706!important;font-weight:700;background:rgba(245,158,11,.08)}
+.dark .rhEditedTime{color:#fbbf24!important;background:rgba(245,158,11,.12)}
