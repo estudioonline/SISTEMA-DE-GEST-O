@@ -180,6 +180,8 @@ function App(){
   const [userPermissionEdits,setUserPermissionEdits]=useState<Record<string,PermissionMap>>({})
   const [savingUserId,setSavingUserId]=useState<string|null>(null)
   const [savingPermissionUserId,setSavingPermissionUserId]=useState<string|null>(null)
+  const [profilePermissions,setProfilePermissions]=useState<Record<PerfilRole,Record<PermissionModule,boolean>>|null>(null)
+  const [savingProfileRole,setSavingProfileRole]=useState<PerfilRole|null>(null)
 
   const [showForm,setShowForm]=useState(false)
   const [editingClient,setEditingClient]=useState<Cliente|null>(null)
@@ -1797,8 +1799,11 @@ function App(){
   // CONFIG
   async function loadManagedUsers(){
     if(!canManageConfig)return
-    const {data,error}=await supabase.rpc('listar_usuarios_erp')
-    if(error){setMsg('Não foi possível carregar os usuários: '+error.message);return}
+    const [{data,error},{data:profileRows,error:profileError}]=await Promise.all([
+      supabase.rpc('listar_usuarios_erp'),
+      supabase.rpc('listar_permissoes_perfis_erp')
+    ])
+    if(error||profileError){setMsg('Não foi possível carregar os usuários e perfis: '+(error||profileError)?.message);return}
     const rows=((data||[]) as unknown[]).map((raw:unknown)=>{
       const u=raw as Omit<ManagedUser,'permissoes'>&{permissoes?:unknown}
       return {...u,availablePermissions:permissionModules.filter(m=>u.permissoes&&typeof u.permissoes==='object'&&Object.hasOwn(u.permissoes,m.key)).map(m=>m.key),permissoes:normalizePermissions(u.permissoes,u.perfil)}
@@ -1806,6 +1811,10 @@ function App(){
     setManagedUsers(rows)
     setUserEdits(Object.fromEntries(rows.map(u=>[u.user_id,{nome:u.nome,perfil:u.perfil,ativo:u.ativo}])))
     setUserPermissionEdits(Object.fromEntries(rows.map(u=>[u.user_id,{...u.permissoes}])))
+    const roles:PerfilRole[]=['administrador','financeiro','vendas','estoque','visualizador']
+    const base=Object.fromEntries(roles.map(role=>[role,Object.fromEntries(permissionModules.map(m=>[m.key,false]))])) as Record<PerfilRole,Record<PermissionModule,boolean>>
+    for(const row of (profileRows||[]) as {perfil:PerfilRole;modulo:PermissionModule;pode_editar:boolean}[])if(base[row.perfil])base[row.perfil][row.modulo]=Boolean(row.pode_editar)
+    setProfilePermissions(base)
   }
 
   function editManagedUser(id:string,field:'nome'|'perfil'|'ativo',value:string|boolean){
@@ -1848,6 +1857,23 @@ function App(){
     setSavingPermissionUserId(null)
     if(error){setMsg(error.message);return}
     setMsg('Permissões do usuário atualizadas.')
+    await loadManagedUsers()
+  }
+
+  function toggleProfilePermission(role:PerfilRole,module:PermissionModule){
+    if(!profilePermissions)return
+    if(module==='dashboard'||module==='relatorios'||(module==='config'&&role!=='administrador'))return
+    setProfilePermissions(prev=>prev?{...prev,[role]:{...prev[role],[module]:!prev[role][module]}}:prev)
+  }
+
+  async function saveProfilePermissions(role:PerfilRole){
+    if(!canManageConfig||!profilePermissions)return
+    setSavingProfileRole(role);setMsg('')
+    const payload=Object.fromEntries(permissionModules.map(m=>[m.key,Boolean(profilePermissions[role][m.key])]))
+    const {error}=await supabase.rpc('salvar_permissoes_perfil_erp',{p_perfil:role,p_modulos_edicao:payload})
+    setSavingProfileRole(null)
+    if(error){setMsg(error.message);return}
+    setMsg('Permissões de edição do perfil atualizadas.')
     await loadManagedUsers()
   }
 
@@ -3907,6 +3933,24 @@ function App(){
               </td></tr>}</Fragment>
             })}</tbody>
           </table></div>
+        </article>}
+
+        {configSection==='usuarios'&&canManageConfig&&profilePermissions&&<article className="panel profilePermissionPanel">
+          <div className="panelHead"><div><h3>O que cada perfil pode editar</h3><p>Todos os perfis podem visualizar todos os apps. Marque somente os apps que cada perfil poderá alterar.</p></div></div>
+          <div className="profilePermissionGrid">
+            {(['administrador','financeiro','vendas','estoque','visualizador'] as PerfilRole[]).map(role=><section className="profilePermissionCard" key={role}>
+              <div className="profilePermissionHead"><div><strong>{profileLabel(role)}</strong><span>Visualização liberada em todos os apps</span></div><button type="button" className="primary" disabled={savingProfileRole===role} onClick={()=>void saveProfilePermissions(role)}>{savingProfileRole===role?'Salvando...':'Salvar'}</button></div>
+              <div className="profilePermissionApps">
+                {permissionModules.map(module=>{
+                  const locked=module.key==='dashboard'||module.key==='relatorios'||(module.key==='config'&&role!=='administrador')
+                  return <label key={module.key} className={'profilePermissionItem'+(locked?' isLocked':'')}>
+                    <input type="checkbox" checked={Boolean(profilePermissions[role][module.key])} disabled={locked||savingProfileRole===role} onChange={()=>toggleProfilePermission(role,module.key)}/>
+                    <span><strong>{module.label}</strong><small>{locked?'Somente visualizar':'Pode editar'}</small></span>
+                  </label>
+                })}
+              </div>
+            </section>)}
+          </div>
         </article>}
 
         {configSection==='empresa'&&<form key={empresa?.updated_at||'initial'} className="panel configForm" onSubmit={saveCompany}>
