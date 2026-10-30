@@ -252,6 +252,7 @@ function App(){
 
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
+  const [financePanelReturnSubtab,setFinancePanelReturnSubtab]=useState<'faturamento'|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
   const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'faturamento'|'conciliacao'>('geral')
   const [financeStatusFilter,setFinanceStatusFilter]=useState<'todos'|'aberto'|'parcial'|'pago'|'cancelado'>('todos')
@@ -1673,17 +1674,25 @@ function App(){
     setMsg('')
   }
 
+  function closeFinancePanel(){
+    setFinancePanel(null)
+    if(financePanelReturnSubtab){
+      setFinanceSubtab(financePanelReturnSubtab)
+      setFinancePanelReturnSubtab(null)
+    }
+  }
   function openFinancePanel(t:Titulo){
     if(financePanel===t.id){
-      setFinancePanel(null)
+      closeFinancePanel()
       return
     }
+    setFinancePanelReturnSubtab(null)
     setFinancePanel(t.id)
     setFinancePanelTab('detalhes')
     setPaymentDate(today())
     setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))
   }
-  function openSaleFinancialStatement(v:Venda){
+  function openSaleFinancialStatement(v:Venda,returnToBilling=false){
     if(!canViewFinance){setMsg('Seu perfil não possui acesso ao Financeiro.');return}
     const related=financialTitlesForSale(v.id).sort((a,b)=>a.vencimento.localeCompare(b.vencimento))
     setSaleActionMenu(null)
@@ -1693,6 +1702,7 @@ function App(){
     }
     const first=related[0]
     setActive('financeiro')
+    setFinancePanelReturnSubtab(returnToBilling?'faturamento':null)
     setFinanceSubtab('receber')
     setFinanceStatusFilter('todos')
     setFinanceStart('')
@@ -1772,7 +1782,7 @@ function App(){
         : 'Pagamento registrado.')
 
     if(!error){
-      setFinancePanel(null)
+      closeFinancePanel()
       await refreshFinance()
       if(active==='comissoes')await loadCommissions()
     }
@@ -2556,9 +2566,9 @@ function App(){
               </tr>
               {canManageFinance&&opened&&<tr className="manageRow"><td colSpan={8}>
                 <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={t.descricao}>
-                  <div className="recordDetailBackdrop" onClick={()=>setFinancePanel(null)}/>
+                  <div className="recordDetailBackdrop" onClick={closeFinancePanel}/>
                   <div className="recordDetailSheet">
-                    <div className="recordDetailHeader"><strong>{t.descricao}</strong><button type="button" className="recordDetailClose" onClick={()=>setFinancePanel(null)}><X size={17}/>Fechar</button></div>
+                    <div className="recordDetailHeader"><strong>{t.descricao}</strong><button type="button" className="recordDetailClose" onClick={closeFinancePanel}><X size={17}/>Fechar</button></div>
                     <div className="financeManagePanel">
                   <div className="actionPanel">
                     <div className="actionMeta">
@@ -3792,7 +3802,7 @@ function App(){
                   <td><strong>{money(Number(v.total))}</strong></td>
                   <td><div className="billingRowActions">
                     {invoiceState.key==='nao-faturado'&&canManageFinance&&<button className="primary" onClick={()=>openBillingSale(v)}>Criar fatura</button>}
-                    {activeInvoice&&<button className="ghost" onClick={()=>openSaleFinancialStatement(v)}>Ver fatura</button>}
+                    {activeInvoice&&<button className="ghost" onClick={()=>openSaleFinancialStatement(v,true)}>Ver fatura</button>}
                     {activeInvoice&&canManageFinance&&<button className="warningBtn" disabled={billingBusy} onClick={()=>void cancelSaleInvoice(v)}>Cancelar</button>}
                     {invoiceState.key==='cancelado'&&canManageFinance&&['pedido','faturado'].includes(v.status)&&<button className="primary" onClick={()=>openBillingSale(v)}>Refaturar</button>}
                   </div></td>
