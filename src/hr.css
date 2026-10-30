@@ -177,3 +177,12 @@
   .rhPointHeader{grid-template-columns:1fr}
 }
 @media(max-width:640px){.rhBenefitCards{grid-template-columns:1fr}}
+
+.rhPointTable .rhRowActions{display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.rhSendBtn{white-space:nowrap}
+.rhSend-local{background:#e2e8f0;color:#334155}
+.rhSend-aguardando_envio{background:#fef3c7;color:#92400e}
+.rhSend-enviando{background:#dbeafe;color:#1d4ed8}
+.rhSend-enviado{background:#dcfce7;color:#166534}
+.rhSend-erro{background:#fee2e2;color:#991b1b}
+.rhSend-rejeitado{background:#fce7f3;color:#9d174d}
