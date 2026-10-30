@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState} from 'react'
 import {Save,Trash2} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
-type Employee={id:string;nome:string;cargo:string|null;ativo:boolean}
+type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
 type Row={id:string;funcionario_id:string;data:string;trabalha:boolean;entrada_prevista:string|null;saida_prevista:string|null;observacao:string|null}
 
 const pad=(n:number)=>String(n).padStart(2,'0')
