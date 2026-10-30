@@ -35,6 +35,7 @@ function daysBetween(a:string,b:string){
 
 export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[];canEdit:boolean;onLinked:()=>Promise<void>}){
  const [configured,setConfigured]=useState<boolean|null>(null)
+ const [connectionTested,setConnectionTested]=useState(false)
  const [people,setPeople]=useState<Person[]>([])
  const [selectedEmployee,setSelectedEmployee]=useState('')
  const [start,setStart]=useState(monthStart())
@@ -55,8 +56,19 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  }
 
  async function check(){
-  try{const data=await invoke({action:'status'});setConfigured(Boolean(data?.configured))}
-  catch{setConfigured(false)}
+  try{const data=await invoke({action:'status'});setConfigured(Boolean(data?.configured));setConnectionTested(false)}
+  catch{setConfigured(false);setConnectionTested(false)}
+ }
+ async function testConnection(){
+  setBusy(true);setMessage('')
+  try{
+   const data=await invoke({action:'people'})
+   const list=arrayFrom(data).map(personFrom)
+   setPeople(list);setConfigured(true);setConnectionTested(true)
+   setMessage(`Conexão com RHID validada. ${list.length} colaborador(es) encontrado(s).`)
+  }catch(e){
+   setConfigured(false);setConnectionTested(true);setMessage('Falha na conexão com RHID: '+errorMessage(e))
+  }finally{setBusy(false)}
  }
  async function syncPeople(){
   setBusy(true);setMessage('')
@@ -100,7 +112,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  const keys=objectRecords.length?Object.keys(objectRecords[0]).slice(0,7):[]
 
  return <section className="rhidAttendance">
-  <div className="panelHead rhidHead"><div><h3>Controle de ponto e presença</h3><p>Integração com RHID para colaboradores e apuração de ponto.</p></div><div className={'rhidConnection '+(configured?'ok':'off')}><ShieldCheck size={16}/>{configured===null?'Verificando...':configured?'RHID conectado':'RHID não configurado'}</div></div>
+  <div className="panelHead rhidHead"><div><h3>Controle de ponto e presença</h3><p>Integração com RHID para colaboradores e apuração de ponto.</p></div><div className={'rhidConnection '+(configured?'ok':'off')}><ShieldCheck size={16}/>{configured===null?'Verificando...':configured?(connectionTested?'RHID validado':'Credenciais detectadas'):'RHID não conectado'}</div></div>
 
   {!configured&&<div className="panel rhidSetupNotice"><strong>Integração preparada, aguardando credenciais do RHID.</strong><span>Cadastre RHID_EMAIL e RHID_PASSWORD nos Secrets das Edge Functions do Supabase. As credenciais não ficam no navegador nem no GitHub.</span></div>}
 
@@ -108,7 +120,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
    <label>Funcionário<select value={selectedEmployee} onChange={e=>setSelectedEmployee(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.ativo).map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · vinculado':''}</option>)}</select></label>
    <label>De<input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label>
    <label>Até<input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label>
-   <button className="ghost" disabled={busy||!configured} onClick={()=>void syncPeople()}><RefreshCw size={15}/>Sincronizar RHID</button>
+   <button className="ghost" disabled={busy||!configured} onClick={()=>void testConnection()}><ShieldCheck size={15}/>Testar conexão</button><button className="ghost" disabled={busy||!configured} onClick={()=>void syncPeople()}><RefreshCw size={15}/>Sincronizar RHID</button>
    <button className="primary" disabled={busy||!configured||!selectedEmployee} onClick={()=>void loadAttendance()}><Search size={15}/>Consultar ponto</button>
   </div>
 
