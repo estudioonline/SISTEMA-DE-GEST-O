@@ -981,7 +981,7 @@ function App(){
     setMsg(editingProduct?'Produto atualizado.':'Produto cadastrado.')
     setEditingProduct(null);setProductComponentDrafts([]);setShowForm(false);await loadData()
   }
-  function startAdjustStock(p:Produto){if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setShowForm(false);setMsg('')}
+  function startAdjustStock(p:Produto){if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setMsg('')}
   async function adjustStock(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}
@@ -2975,12 +2975,20 @@ function App(){
             </div>
           </form></div></div>}
 
-          {adjustingProduct&&<form className="panel stockForm" onSubmit={adjustStock}>
-            <div><strong>Ajustar estoque</strong><span>{adjustingProduct.codigo} - {adjustingProduct.descricao}</span></div>
-            <label>Novo estoque<input type="number" min="0" step="0.001" value={stockNew} onChange={e=>setStockNew(e.target.value)} required/></label>
-            <label>Motivo<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required/></label>
-            <div className="formActions"><button type="button" className="ghost" onClick={()=>{const returnToEdit=editingProduct?.id===adjustingProduct.id;setAdjustingProduct(null);if(returnToEdit)setShowForm(true)}}>Cancelar</button><button className="primary">Aplicar</button></div>
-          </form>}
+          {adjustingProduct&&<div className="stockAdjustmentModalOverlay" role="dialog" aria-modal="true" aria-label="Ajustar estoque">
+            <div className="stockAdjustmentDialog">
+              <div className="stockAdjustmentDialogHeader">
+                <div><h3>Ajustar estoque</h3><p>{adjustingProduct.codigo} - {adjustingProduct.descricao}</p></div>
+                <button type="button" className="iconBtn" aria-label="Fechar ajuste de estoque" title="Fechar" onClick={()=>setAdjustingProduct(null)}><X size={17}/></button>
+              </div>
+              <form className="stockForm stockAdjustmentForm" onSubmit={adjustStock}>
+                <div className="stockAdjustmentCurrent"><span>Estoque atual</span><strong>{Number(adjustingProduct.estoque_atual).toLocaleString('pt-BR')} {adjustingProduct.unidade||'UN'}</strong></div>
+                <label>Novo estoque<input type="number" min="0" step="0.001" value={stockNew} onChange={e=>setStockNew(e.target.value)} required autoFocus/></label>
+                <label>Motivo do ajuste<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required placeholder="Ex.: contagem física, perda ou reposição"/></label>
+                <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar ajuste</button></div>
+              </form>
+            </div>
+          </div>}
 
           <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>
         </>}
