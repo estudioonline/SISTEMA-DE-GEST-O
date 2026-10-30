@@ -1,7 +1,8 @@
 import {useEffect,useMemo,useState} from 'react'
-import {Pencil,Save,X} from 'lucide-react'
+import {FileDown,Pencil,Save,X} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {parseRhidAttendance,RhidDay} from './lib/rhid'
+import {jsPDF} from 'jspdf'
 
 type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
 type Adjust={id:string;funcionario_id:string;data:string;entrada_1:string|null;saida_1:string|null;entrada_2:string|null;saida_2:string|null;status:'presente'|'atraso'|'falta'|'folga'|'atestado';observacao:string|null}
@@ -44,11 +45,54 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    saida_1:remote?.saida_1||null,
    entrada_2:remote?.entrada_2||null,
    saida_2:remote?.saida_2||null,
-   status:(remote?.punches.length?'presente':'presente') as Adjust['status'],
+   status:(remote?.punches.length?'presente':'falta') as Adjust['status'],
    observacao:remote?.punches.length?'Importado do RHID':null
   }
  }):[],[month,employeeId,byDate,rhidByDate])
  const worked=calendar.reduce((s,r)=>s+mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2),0)
+ function downloadPdf(){
+  if(!current||!employeeId)return
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'})
+  const title='Espelho de ponto'
+  const competence=new Date(month+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})
+  doc.setFontSize(16);doc.text(title,14,14)
+  doc.setFontSize(10)
+  doc.text('Funcionário: '+current.nome,14,21)
+  doc.text('Competência: '+competence,14,27)
+  doc.text('Fonte: '+(current.rhid_person_id?'RHID + ajustes':'Ajustes locais'),14,33)
+  doc.text('Total de horas: '+Math.floor(worked/60)+'h '+pad(worked%60)+'m',14,39)
+  const headers=['Data','Ent. 1','Saída 1','Ent. 2','Saída 2','Total','Status','Observação']
+  const widths=[28,24,24,24,24,24,28,88]
+  let y=49
+  const drawHeader=()=>{
+   doc.setFont('helvetica','bold');doc.setFontSize(8)
+   let x=14
+   headers.forEach((h,i)=>{doc.text(h,x,y);x+=widths[i]})
+   doc.setDrawColor(180);doc.line(14,y+2,283,y+2);y+=7
+   doc.setFont('helvetica','normal')
+  }
+  drawHeader()
+  for(const r of calendar){
+   if(y>190){doc.addPage();y=16;drawHeader()}
+   const vals=[
+    r.data.split('-').reverse().join('/'),
+    r.entrada_1?.slice(0,5)||'—',
+    r.saida_1?.slice(0,5)||'—',
+    r.entrada_2?.slice(0,5)||'—',
+    r.saida_2?.slice(0,5)||'—',
+    hours(r),
+    r.status,
+    r.observacao||(rhidByDate.has(r.data)?'RHID':'—')
+   ]
+   let x=14
+   vals.forEach((v,i)=>{
+    const text=i===7?doc.splitTextToSize(String(v),widths[i]-2)[0]:String(v)
+    doc.text(text,x,y);x+=widths[i]
+   })
+   y+=6
+  }
+  doc.save('espelho-ponto-'+current.nome.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+month+'.pdf')
+ }
  async function save(){
   if(!editing||!employeeId)return
   setBusy(true);setMessage('')
@@ -61,7 +105,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  return <section className="rhPointMirror">
   <div className="panel rhPointHeader"><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.ativo).map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><div><span>Horas no mês</span><strong>{Math.floor(worked/60)}h {pad(worked%60)}m</strong></div><div><span>Fonte</span><strong>{current?.rhid_person_id?'RHID + ajustes':'Ajustes locais'}</strong></div></div>
   {message&&<div className="panel noticePanel">{message}</div>}
-  <article className="panel tablePanel"><div className="panelHead"><div><h3>Espelho de ponto do mês</h3><p>Marcações do RHID com possibilidade de ajuste e justificativa por dia.</p></div><span>{current?.nome||'Selecione um funcionário'}</span></div><div className="tableWrap"><table className="rhPointTable"><thead><tr><th>Dia / Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Total</th><th>Status</th><th>Observação</th><th>Ação</th></tr></thead><tbody>
+  <article className="panel tablePanel"><div className="panelHead"><div><h3>Espelho de ponto do mês</h3><p>Marcações do RHID com possibilidade de ajuste e justificativa por dia.</p></div><div className="rhPointReportActions"><span>{current?.nome||'Selecione um funcionário'}</span><button className="ghost" disabled={!current||!employeeId} onClick={downloadPdf}><FileDown size={15}/>Relatório PDF</button></div></div><div className="tableWrap"><table className="rhPointTable"><thead><tr><th>Dia / Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Total</th><th>Status</th><th>Observação</th><th>Ação</th></tr></thead><tbody>
    {employeeId?calendar.map(r=><tr key={r.data}><td><strong>{r.data.slice(8,10)}</strong><small className="employeeCategory">{weekday(r.data)}</small></td><td>{r.entrada_1?.slice(0,5)||'—'}</td><td>{r.saida_1?.slice(0,5)||'—'}</td><td>{r.entrada_2?.slice(0,5)||'—'}</td><td>{r.saida_2?.slice(0,5)||'—'}</td><td>{hours(r)}</td><td><span className={'statusBadge rhPoint-'+r.status}>{r.status}</span></td><td>{r.observacao|| (rhidByDate.has(r.data)?'RHID':'—')}</td><td>{canEdit&&<button className="ghost" onClick={()=>setEditing({...r})}><Pencil size={14}/>Editar</button>}</td></tr>):<tr><td colSpan={9}>Selecione um funcionário.</td></tr>}
   </tbody></table></div></article>
   {editing&&<div className="employeeEditBackdrop"><div className="panel employeeEditModal rhPointModal"><div className="panelHead"><h3>Editar horário — {editing.data.split('-').reverse().join('/')}</h3><button className="ghost" onClick={()=>setEditing(null)}><X size={16}/></button></div><div className="rhFormGrid">
