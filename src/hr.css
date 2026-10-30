@@ -62,3 +62,60 @@
 .rhRowActions{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important;flex-wrap:nowrap!important}
 .rhActionBtn{min-width:0!important;height:30px!important;padding:0 8px!important;white-space:nowrap!important}
 .rhApp .rhLedger th:last-child,.rhApp .rhLedger td:last-child{width:15%}
+
+/* RH: corrige alinhamento final das colunas de vale e ações */
+.rhApp .rhLedger{min-width:1120px;table-layout:fixed}
+.rhApp .rhLedgerVales{min-width:1240px}
+
+.rhApp .rhLedger .rhSelectCol{width:38px!important}
+.rhApp .rhLedger th:nth-child(2),.rhApp .rhLedger td:nth-child(2){width:11%}
+.rhApp .rhLedger th:nth-child(3),.rhApp .rhLedger td:nth-child(3){width:13%}
+.rhApp .rhLedger th:nth-child(4),.rhApp .rhLedger td:nth-child(4){width:8%}
+.rhApp .rhLedger th:nth-child(5),.rhApp .rhLedger td:nth-child(5){width:9%}
+.rhApp .rhLedger th:nth-child(6),.rhApp .rhLedger td:nth-child(6){width:7%}
+.rhApp .rhLedger th:nth-child(7),.rhApp .rhLedger td:nth-child(7){width:10%}
+.rhApp .rhLedger th:nth-child(8),.rhApp .rhLedger td:nth-child(8){width:8%}
+.rhApp .rhLedger th:nth-child(9),.rhApp .rhLedger td:nth-child(9){width:7%}
+.rhApp .rhLedger th:nth-child(10),.rhApp .rhLedger td:nth-child(10){width:7%}
+.rhApp .rhLedger th:nth-child(11),.rhApp .rhLedger td:nth-child(11){width:8%}
+
+.rhApp .rhLedger .rhDiscountCol{
+  width:130px!important;
+  min-width:130px!important;
+  white-space:normal;
+}
+
+.rhApp .rhLedger .rhActionsCol{
+  width:180px!important;
+  min-width:180px!important;
+  padding-left:8px!important;
+  padding-right:8px!important;
+}
+
+.rhApp .rhRowActions{
+  width:100%;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  flex-wrap:nowrap!important;
+}
+
+.rhApp .rhActionBtn{
+  height:30px!important;
+  min-width:78px!important;
+  padding:0 9px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  white-space:nowrap!important;
+  flex:0 0 auto!important;
+}
+
+.rhApp .rhActionBtn:last-child{min-width:92px!important}
+
+@media(max-width:1200px){
+  .rhApp .rhLedger{min-width:1100px}
+  .rhApp .rhLedgerVales{min-width:1220px}
+}
