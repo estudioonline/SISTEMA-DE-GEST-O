@@ -986,9 +986,17 @@ function App(){
     e.preventDefault()
     if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}
     if(!adjustingProduct)return
+    const returnToEdit=editingProduct?.id===adjustingProduct.id
     const {error}=await supabase.rpc('ajustar_estoque_produto',{p_produto_id:adjustingProduct.id,p_novo_estoque:Number(stockNew),p_motivo:stockReason})
     setMsg(error?error.message:'Estoque ajustado e movimento registrado.')
-    if(!error){setAdjustingProduct(null);await loadData()}
+    if(!error){
+      if(returnToEdit){
+        setEditingProduct(current=>current?.id===adjustingProduct.id?{...current,estoque_atual:Number(stockNew)}:current)
+        setShowForm(true)
+      }
+      setAdjustingProduct(null)
+      await loadData()
+    }
   }
   async function deleteProduct(p:Produto){
     if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return}
@@ -2892,6 +2900,16 @@ function App(){
             <label className="fieldLabel">Estoque mínimo
               <input name="estoque_minimo" type="number" min="0" step="0.001" placeholder="0" defaultValue={editingProduct?.estoque_minimo??''}/>
             </label>
+            {editingProduct&&<div className="productStockAdjustmentBox fieldLabelWide">
+              <div className="productStockAdjustmentInfo">
+                <span>Estoque atual</span>
+                <strong>{Number(editingProduct.estoque_atual).toLocaleString('pt-BR')} {editingProduct.unidade||'UN'}</strong>
+                <small>Para corrigir o saldo, registre um ajuste com motivo e histórico de movimentação.</small>
+              </div>
+              <button type="button" className="ghost" onClick={()=>startAdjustStock(editingProduct)} disabled={!canManageProducts}>
+                <Boxes size={16}/>Ajustar estoque
+              </button>
+            </div>}
             <label className="fieldLabel">Peso unitário (kg)
               <input name="peso_kg" type="number" min="0" step="0.001" placeholder="0,000" defaultValue={editingProduct?.peso_kg??''}/>
             </label>
@@ -2961,7 +2979,7 @@ function App(){
             <div><strong>Ajustar estoque</strong><span>{adjustingProduct.codigo} - {adjustingProduct.descricao}</span></div>
             <label>Novo estoque<input type="number" min="0" step="0.001" value={stockNew} onChange={e=>setStockNew(e.target.value)} required/></label>
             <label>Motivo<input value={stockReason} onChange={e=>setStockReason(e.target.value)} required/></label>
-            <div className="formActions"><button type="button" className="ghost" onClick={()=>setAdjustingProduct(null)}>Cancelar</button><button className="primary">Aplicar</button></div>
+            <div className="formActions"><button type="button" className="ghost" onClick={()=>{const returnToEdit=editingProduct?.id===adjustingProduct.id;setAdjustingProduct(null);if(returnToEdit)setShowForm(true)}}>Cancelar</button><button className="primary">Aplicar</button></div>
           </form>}
 
           <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>

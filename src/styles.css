@@ -5330,3 +5330,26 @@
 }
 .employeeEditModal label{display:grid;gap:6px}
 .employeeEditModal input,.employeeEditModal select{width:100%}
+
+
+/* Ajuste de estoque acessível diretamente no formulário de edição do produto. */
+.productStockAdjustmentBox {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:14px 16px;
+  border:1px solid var(--ds-border,#dbe2ec);
+  border-radius:12px;
+  background:var(--ds-surface-soft,#f8fafc);
+}
+.productStockAdjustmentInfo { display:grid; gap:4px; min-width:0; }
+.productStockAdjustmentInfo>span { color:var(--ds-muted,#64748b); font-size:12px; font-weight:700; }
+.productStockAdjustmentInfo>strong { color:var(--ds-text,#172033); font-size:18px; font-variant-numeric:tabular-nums; }
+.productStockAdjustmentInfo>small { color:var(--ds-muted,#64748b); font-size:11px; line-height:1.5; }
+.productStockAdjustmentBox>button { flex-shrink:0; display:inline-flex; align-items:center; gap:7px; }
+.dark .productStockAdjustmentBox { background:var(--ds-surface,#151c2b); border-color:var(--ds-border,#253047); }
+@media(max-width:600px) {
+  .productStockAdjustmentBox { align-items:stretch; flex-direction:column; gap:12px; }
+  .productStockAdjustmentBox>button { justify-content:center; min-height:40px; }
+}
