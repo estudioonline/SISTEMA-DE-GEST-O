@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react'
 import {Link2,RefreshCw,Search,ShieldCheck,Users} from 'lucide-react'
 import {supabase} from './lib/supabase'
+import {parseRhidAttendance} from './lib/rhid'
 
 type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
 type Person={id:string;name:string;raw:Record<string,unknown>}
@@ -123,9 +124,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  useEffect(()=>{if(configured===true&&!people.length&&!busy)void syncPeople(true)},[configured])
  useEffect(()=>{setAttendance(null)},[selectedEmployee,start,end])
 
- const records=arrayFrom(attendance)
- const objectRecords=records.filter(r=>r&&typeof r==='object') as Record<string,unknown>[]
- const keys=objectRecords.length?Object.keys(objectRecords[0]).slice(0,7):[]
+ const parsedDays=parseRhidAttendance(attendance)
 
  return <section className="rhidAttendance">
   <div className="panelHead rhidHead"><div><h3>Controle de ponto e presença</h3><p>Integração com RHID para colaboradores e apuração de ponto.</p></div><div className={'rhidConnection '+(configured?'ok':'off')}><ShieldCheck size={16}/>{configured===null?'Verificando...':configured?(connectionTested?'RHID validado':'Credenciais detectadas'):'RHID não conectado'}</div></div>
@@ -145,7 +144,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
   {current&&<div className="panel rhidLinkPanel"><div><strong>{current.nome}</strong><span>{current.rhid_person_id?'Vinculado ao RHID ID '+current.rhid_person_id:'Ainda não vinculado ao RHID'}</span></div>{canEdit&&<div className="rhidLinkActions"><div className="tableSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar colaborador no RHID"/></div>{filteredPeople.slice(0,8).map(p=><button key={p.id} className="ghost" disabled={busy} onClick={()=>void link(p.id)}><Link2 size={14}/>{p.name}</button>)}</div>}</div>}
 
   <article className="panel tablePanel rhidAttendanceTable"><div className="panelHead"><h3>Apuração do período</h3><span>{current?.nome||'Selecione um funcionário'}</span></div>
-   {objectRecords.length>0?<div className="tableWrap"><table><thead><tr>{keys.map(k=><th key={k}>{k}</th>)}</tr></thead><tbody>{objectRecords.map((row,i)=><tr key={i}>{keys.map(k=><td key={k}>{typeof row[k]==='object'?JSON.stringify(row[k]):String(row[k]??'—')}</td>)}</tr>)}</tbody></table></div>:attendance?<pre className="rhidRaw">{JSON.stringify(attendance,null,2)}</pre>:<div className="rhidEmpty"><Users size={28}/><strong>Nenhum ponto consultado</strong><span>Selecione um funcionário vinculado e consulte um período.</span></div>}
+   {parsedDays.length>0?<div className="tableWrap"><table><thead><tr><th>Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Batidas</th></tr></thead><tbody>{parsedDays.map(day=><tr key={day.date}><td>{day.date.split('-').reverse().join('/')}</td><td>{day.entrada_1||'—'}</td><td>{day.saida_1||'—'}</td><td>{day.entrada_2||'—'}</td><td>{day.saida_2||'—'}</td><td>{day.punches.map(p=>p.time).join(' · ')||'—'}</td></tr>)}</tbody></table></div>:attendance?<div className="rhidEmpty"><Users size={28}/><strong>Nenhuma marcação encontrada</strong><span>O RHID respondeu, mas não retornou batidas reconhecíveis neste período.</span></div>:<div className="rhidEmpty"><Users size={28}/><strong>Nenhum ponto consultado</strong><span>Selecione um funcionário vinculado e consulte um período.</span></div>}
   </article>
  </section>
 }
