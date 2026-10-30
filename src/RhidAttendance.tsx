@@ -139,6 +139,15 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  useEffect(()=>{setAttendance(null)},[selectedEmployee,start,end])
 
  const parsedDays=parseRhidAttendance(attendance)
+ const isRhidAdjusted=(day:{punches:Array<{time:string;raw:Record<string,unknown>}>},time:string|null)=>{
+  if(!time)return false
+  return day.punches.some(p=>{
+   if(p.time!==time)return false
+   const raw=p.raw||{}
+   const change=String(raw._typeAfdChange??raw.typeAfdChange??'').toUpperCase()
+   return Boolean(Number(raw.idAfdChange||0))||change==='I'||change==='D'||Boolean(raw.reason)
+  })
+ }
 
  return <section className="rhidAttendance">
   <div className="panelHead rhidHead"><div><h3>Controle de ponto e presença</h3><p>Consulta operacional das marcações do RHID. Ajustes, justificativas e relatório ficam no Espelho de ponto. Período padrão: dia 26 até dia 25 do mês seguinte.</p></div><div className={'rhidConnection '+(configured?'ok':'off')}><ShieldCheck size={16}/>{configured===null?'Verificando...':configured?(connectionTested?'RHID validado':'Credenciais detectadas'):'RHID não conectado'}</div></div>
@@ -158,7 +167,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
   {current&&!current.rhid_person_id&&<div className="panel rhidLinkPanel"><div><strong>{current.nome}</strong><span>Ainda não vinculado ao RHID</span></div>{canEdit&&<div className="rhidLinkActions"><div className="tableSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar colaborador no RHID"/></div>{filteredPeople.slice(0,8).map(p=><button key={p.id} className="ghost" disabled={busy} onClick={()=>void link(p.id)}><Link2 size={14}/>{p.name}</button>)}</div>}</div>}
 
   <article className="panel tablePanel rhidAttendanceTable"><div className="panelHead"><h3>Apuração do período</h3><span>{current?.nome||'Selecione um funcionário'}</span></div>
-   {parsedDays.length>0?<div className="tableWrap"><table><thead><tr><th>Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Batidas</th></tr></thead><tbody>{parsedDays.map(day=><tr key={day.date}><td>{day.date.split('-').reverse().join('/')}</td><td>{day.entrada_1||'—'}</td><td>{day.saida_1||'—'}</td><td>{day.entrada_2||'—'}</td><td>{day.saida_2||'—'}</td><td>{day.punches.map(p=>p.time).join(' · ')||'—'}</td></tr>)}</tbody></table></div>:attendance?<div className="rhidEmpty"><Users size={28}/><strong>Nenhuma marcação encontrada</strong><span>O RHID respondeu, mas não retornou batidas reconhecíveis neste período.</span></div>:<div className="rhidEmpty"><Users size={28}/><strong>Nenhum ponto consultado</strong><span>Selecione um funcionário vinculado e consulte um período.</span></div>}
+   {parsedDays.length>0?<div className="tableWrap"><table><thead><tr><th>Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Batidas</th></tr></thead><tbody>{parsedDays.map(day=><tr key={day.date}><td>{day.date.split('-').reverse().join('/')}</td><td className={isRhidAdjusted(day,day.entrada_1)?'rhEditedTime':''}>{day.entrada_1||'—'}</td><td className={isRhidAdjusted(day,day.saida_1)?'rhEditedTime':''}>{day.saida_1||'—'}</td><td className={isRhidAdjusted(day,day.entrada_2)?'rhEditedTime':''}>{day.entrada_2||'—'}</td><td className={isRhidAdjusted(day,day.saida_2)?'rhEditedTime':''}>{day.saida_2||'—'}</td><td>{day.punches.map(p=>p.time).join(' · ')||'—'}</td></tr>)}</tbody></table></div>:attendance?<div className="rhidEmpty"><Users size={28}/><strong>Nenhuma marcação encontrada</strong><span>O RHID respondeu, mas não retornou batidas reconhecíveis neste período.</span></div>:<div className="rhidEmpty"><Users size={28}/><strong>Nenhum ponto consultado</strong><span>Selecione um funcionário vinculado e consulte um período.</span></div>}
   </article>
  </section>
 }
