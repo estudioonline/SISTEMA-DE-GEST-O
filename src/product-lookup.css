@@ -1,0 +1,36 @@
+.saleProductPicker{display:flex;align-items:center;gap:8px;min-width:0}
+.saleProductPicker>select{flex:1;min-width:0;width:100%}
+.productLookupTrigger{flex:0 0 42px;justify-content:center;padding:0!important;height:42px}
+.productLookupOverlay{position:fixed;inset:0;z-index:1600;background:rgba(9,17,32,.7);display:flex;align-items:center;justify-content:center;padding:24px;color:#172033;font-family:Roboto,Arial,sans-serif}
+.productLookupDialog{display:flex;flex-direction:column;width:min(960px,100%);max-height:calc(100dvh - 48px);min-height:0;background:#fff;border:1px solid #dbe2ec;border-radius:16px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.3)}
+.productLookupHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.productLookupHeader h2{font-size:19px;line-height:1.3;margin:0 0 6px}
+.productLookupHeader p,.productLookupCount{margin:0;color:#64748b;font-size:13px;line-height:1.5}
+.productLookupHeader>.iconBtn{flex-shrink:0;justify-content:center;width:40px;padding:0}
+.productLookupSearch{display:flex;gap:10px;align-items:center;flex-shrink:0;border:1px solid #94a3b8;border-radius:10px;min-height:46px;padding:0 12px;color:#64748b}
+.productLookupSearch:focus-within{outline:2px solid #3b82f6;outline-offset:2px}
+.productLookupSearch input{border:0;outline:0;background:transparent;color:inherit;min-width:0;flex:1;padding:12px 0;font-size:15px;height:auto}
+.productLookupSearch button{border:0;background:transparent;color:inherit;padding:6px;display:flex;cursor:pointer}
+.productLookupCount{padding:12px 0}
+.productLookupResults{overflow:auto;min-height:0;overscroll-behavior:contain}
+.productLookupResult{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 165px 110px;gap:14px;align-items:center;border:1px solid #e2e8f0;border-radius:10px;background:#fff;color:inherit;padding:12px;text-align:left;cursor:pointer;margin-bottom:7px;font-size:13px}
+.productLookupResult:hover,.productLookupResult:focus-visible,.productLookupResult.isSelected{border-color:#3b82f6;background:#eff6ff;outline:0}
+.productLookupName{display:flex;align-items:flex-start;flex-wrap:wrap;gap:5px 9px;min-width:0}
+.productLookupName small{border-radius:5px;padding:2px 6px;background:#eaf0f8;flex-shrink:0}
+.productLookupName strong{font-size:13px;line-height:1.5;overflow-wrap:anywhere;flex:1;min-width:120px}
+.productLookupName em{font-size:11px;font-style:normal;color:#2563eb}
+.productLookupStock{color:#64748b;font-size:12px}
+.productLookupPrice{text-align:right;font-weight:700;white-space:nowrap}
+.productLookupEmpty{padding:36px 18px;text-align:center;color:#64748b;line-height:1.6}
+.productLookupMore{display:block;margin:12px auto 4px;border:1px solid #cbd5e1;border-radius:8px;background:transparent;color:inherit;padding:10px 16px;cursor:pointer}
+.productLookupOverlay.dark{background:rgba(9,17,32,.78);color:#eef3ff}
+.productLookupOverlay.dark .productLookupDialog{background:#101725;border-color:#334155;color:#eef3ff}
+.productLookupOverlay.dark .productLookupHeader p,.productLookupOverlay.dark .productLookupCount,.productLookupOverlay.dark .productLookupStock,.productLookupOverlay.dark .productLookupEmpty{color:#a3b2c8}
+.productLookupOverlay.dark .productLookupHeader>.iconBtn{background:#101725;color:#eef3ff;border-color:#334155}
+.productLookupOverlay.dark .productLookupSearch{background:#101725;border-color:#475569;color:#eef3ff}
+.productLookupOverlay.dark .productLookupResult{background:#151e2e;border-color:#334155}
+.productLookupOverlay.dark .productLookupResult:hover,.productLookupOverlay.dark .productLookupResult:focus-visible,.productLookupOverlay.dark .productLookupResult.isSelected{background:#172b4d;border-color:#60a5fa}
+.productLookupOverlay.dark .productLookupName small{background:#26354b}
+.productLookupOverlay.dark .productLookupName em{color:#93c5fd}
+@media(max-width:820px){.saleProductPicker{grid-column:1/-1}}
+@media(max-width:600px){.productLookupOverlay{padding:12px}.productLookupDialog{padding:14px;max-height:calc(100dvh - 24px)}.productLookupResult{grid-template-columns:minmax(0,1fr) auto;gap:8px}.productLookupName{grid-column:1/-1}.productLookupStock{font-size:12px}.productLookupHeader p{font-size:12px}}

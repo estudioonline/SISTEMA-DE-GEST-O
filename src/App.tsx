@@ -22,6 +22,7 @@ import { AuthorizationCenter } from './AuthorizationCenter'
 import { PaymentHistory } from './PaymentHistory'
 import { FinanceAdministration, FinanceClassifications } from './FinanceAdministration'
 import { NfeImportModal } from './NfeImportModal'
+import { ProductLookup } from './ProductLookup'
 import { FocusNfeSettings, FocusNfeSale } from './FocusNfe'
 import { AppLauncher } from './AppLauncher'
 import { HumanResources } from './HumanResources'
@@ -3322,10 +3323,10 @@ function App(){
 
           <div className="saleItems">
             {saleItems.map(i=>{const stock=saleItemStockInfo(i);const productionMaterials=productionMaterialsForItem(i);return <div className="saleItemRow" key={i.key}>
-              <select value={i.produto_id} onChange={e=>chooseProduct(i.key,e.target.value)} required>
+              <div className="saleProductPicker"><select value={i.produto_id} onChange={e=>chooseProduct(i.key,e.target.value)} required aria-label="Produto">
                 <option value="">Produto</option>
                 {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — estoque {Number(p.estoque_atual).toLocaleString('pt-BR')}</option>)}
-              </select>
+              </select><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)}/></div>
               <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
               <label className="saleItemField"><span>Preço</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
               <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
