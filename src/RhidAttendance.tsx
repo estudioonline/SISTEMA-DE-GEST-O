@@ -56,8 +56,11 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  }
 
  async function check(){
-  try{const data=await invoke({action:'status'});setConfigured(Boolean(data?.configured));setConnectionTested(false)}
-  catch{setConfigured(false);setConnectionTested(false)}
+  try{
+   const data=await invoke({action:'status'})
+   setConfigured(Boolean(data?.configured&&data?.connected!==false));setConnectionTested(Boolean(data?.connected))
+   if(data?.connected)setMessage('Conexão com RHID validada.')
+  }catch(e){setConfigured(false);setConnectionTested(true);setMessage('Falha na conexão com RHID: '+errorMessage(e))}
  }
  async function testConnection(){
   setBusy(true);setMessage('')
