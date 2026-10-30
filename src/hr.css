@@ -228,3 +228,11 @@
 .rhSortHead{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;padding:0;color:inherit;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
 .rhSortHead:hover{color:#2563eb}
 .dark .rhSortHead:hover{color:#60a5fa}
+
+.rhPointReportActions{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;max-width:52%}
+.rhPointReportActions>span{min-width:0;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.rhPointReportActions>button{flex:0 0 auto;white-space:nowrap}
+@media(max-width:800px){
+ .rhPointReportActions{max-width:100%;width:100%;justify-content:space-between}
+ .rhPointReportActions>span{max-width:60%;text-align:left}
+}
