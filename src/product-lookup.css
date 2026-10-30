@@ -1,7 +1,7 @@
 .saleProductPicker{display:flex;align-items:center;gap:8px;min-width:0}
 .saleProductPicker>select{flex:1;min-width:0;width:100%}
 .productLookupTrigger{flex:0 0 42px;justify-content:center;padding:0!important;height:42px}
-.productLookupOverlay{position:fixed;inset:0;z-index:1600;background:rgba(9,17,32,.7);display:flex;align-items:center;justify-content:center;padding:24px;color:#172033;font-family:Roboto,Arial,sans-serif}
+.productLookupOverlay{position:fixed;inset:0;z-index:8000;background:rgba(9,17,32,.7);display:flex;align-items:center;justify-content:center;padding:24px;color:#172033;font-family:Roboto,Arial,sans-serif}
 .productLookupDialog{display:flex;flex-direction:column;width:min(960px,100%);max-height:calc(100dvh - 48px);min-height:0;background:#fff;border:1px solid #dbe2ec;border-radius:16px;padding:20px;box-shadow:0 24px 80px rgba(0,0,0,.3)}
 .productLookupHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
 .productLookupHeader h2{font-size:19px;line-height:1.3;margin:0 0 6px}
