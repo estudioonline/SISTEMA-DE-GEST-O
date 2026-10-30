@@ -25,7 +25,7 @@ function parseShifts(value:unknown):Shift[]{
 }
 
 export function RhSaturdaySchedule({employees,month,canEdit}:{employees:Employee[];month:string;canEdit:boolean}){
- const [rows,setRows]=useState<Row[]>([]),[selectedDate,setSelectedDate]=useState(''),[selected,setSelected]=useState<Record<string,boolean>>({}),[entrada,setEntrada]=useState('08:00'),[saida,setSaida]=useState('12:00'),[observacao,setObservacao]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
+ const [rows,setRows]=useState<Row[]>([]),[shifts,setShifts]=useState<Shift[]>([]),[workShift,setWorkShift]=useState(''),[offShift,setOffShift]=useState(''),[selectedDate,setSelectedDate]=useState(''),[selected,setSelected]=useState<Record<string,boolean>>({}),[entrada,setEntrada]=useState('08:00'),[saida,setSaida]=useState('12:00'),[observacao,setObservacao]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
  const dates=useMemo(()=>saturdays(month),[month])
  useEffect(()=>{if(!selectedDate||!dates.includes(selectedDate))setSelectedDate(dates[0]||'')},[month,dates])
  async function load(){
