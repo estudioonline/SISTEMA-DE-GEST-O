@@ -148,7 +148,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  function downloadPdf(){
   if(!current||!employeeId)return
 
-  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'})
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   const navy=[15,23,42] as const
   const ink=[30,41,59] as const
   const muted=[100,116,139] as const
@@ -160,8 +160,9 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   const amber=[217,119,6] as const
   const lightBlue=[219,234,254] as const
 
-  const pageW=297
-  const margin=8.5
+  const pageW=210
+  const pageH=297
+  const margin=8
   const contentW=pageW-margin*2
   const competence=new Date(month+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})
   const periodLabel=new Date(periodStart+'T12:00:00').toLocaleDateString('pt-BR')+' a '+new Date(periodEnd+'T12:00:00').toLocaleDateString('pt-BR')
@@ -179,31 +180,33 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    return has?r.status:'falta'
   }
   const observation=(r:Adjust)=>{
-   const base=r.observacao||(rhidByDate.has(r.data)?'Importado do RHID':'—')
+   const base=r.observacao||(rhidByDate.has(r.data)?'RHID':'—')
    const has=Boolean(r.entrada_1||r.saida_1||r.entrada_2||r.saida_2)
    const m=mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2)
-   if(has&&m<360)return 'Verificar marcações - '+(base==='—'?'RHID':base)
+   if(has&&m<360)return 'Verificar'
+   if(base==='Importado do RHID'||base==='RHID')return 'RHID'
    return base
   }
 
   const drawHeader=()=>{
-   doc.setFillColor(...navy);doc.rect(0,0,pageW,22,'F')
-   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15)
-   doc.text('ESPELHO DE PONTO',margin,10.2)
-   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(203,213,225)
-   doc.text('Sistema de Gestão | Recursos Humanos',margin,15.5)
-   doc.setFont('helvetica','bold');doc.setFontSize(8.7);doc.setTextColor(255,255,255)
-   doc.text('Competência: '+competence,pageW-margin,8.7,{align:'right'})
-   doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text('Período: '+periodLabel,pageW-margin,12.4,{align:'right'})
-   doc.setFont('helvetica','normal');doc.setTextColor(203,213,225);doc.setFontSize(8)
-   doc.text('Fonte: '+(current.rhid_person_id?'RHID + ajustes':'Ajustes locais'),pageW-margin,15.2,{align:'right'})
+   doc.setFillColor(...navy);doc.rect(0,0,pageW,20,'F')
+   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(14)
+   doc.text('ESPELHO DE PONTO',margin,9)
+   doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor(203,213,225)
+   doc.text('Sistema de Gestão | Recursos Humanos',margin,14)
+   doc.setFont('helvetica','bold');doc.setFontSize(7.6);doc.setTextColor(255,255,255)
+   doc.text('Competência: '+competence,pageW-margin,7.3,{align:'right'})
+   doc.setFont('helvetica','normal');doc.setFontSize(6.8)
+   doc.text('Período: '+periodLabel,pageW-margin,11.6,{align:'right'})
+   doc.setTextColor(203,213,225)
+   doc.text('Fonte: '+(current.rhid_person_id?'RHID + ajustes':'Ajustes locais'),pageW-margin,15.5,{align:'right'})
   }
 
   const footer=(page:number,total:number)=>{
-   doc.setDrawColor(...line);doc.setLineWidth(.25);doc.line(margin,199,pageW-margin,199)
-   doc.setFont('helvetica','normal');doc.setFontSize(7.3);doc.setTextColor(...muted)
-   doc.text('Gerado pelo Sistema de Gestão - Dados integrados ao RHID',margin,203.3)
-   doc.text('Página '+page+' de '+total,pageW-margin,203.3,{align:'right'})
+   doc.setDrawColor(...line);doc.setLineWidth(.2);doc.line(margin,pageH-10,pageW-margin,pageH-10)
+   doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...muted)
+   doc.text('Gerado pelo Sistema de Gestão - Dados integrados ao RHID',margin,pageH-5.7)
+   doc.text('Página '+page+' de '+total,pageW-margin,pageH-5.7,{align:'right'})
   }
 
   const pill=(x:number,y:number,w:number,text:string,status:string)=>{
@@ -212,26 +215,26 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    else if(status==='atraso'){doc.setFillColor(254,243,199);doc.setTextColor(...amber)}
    else if(status==='atestado'){doc.setFillColor(224,242,254);doc.setTextColor(3,105,161)}
    else {doc.setFillColor(226,232,240);doc.setTextColor(...ink)}
-   doc.roundedRect(x,y-3.1,w,4.2,2.1,2.1,'F')
-   doc.setFont('helvetica','bold');doc.setFontSize(7)
-   doc.text(text,x+w/2,y-.25,{align:'center'})
+   doc.roundedRect(x,y-2.8,w,3.8,1.9,1.9,'F')
+   doc.setFont('helvetica','bold');doc.setFontSize(5.8)
+   doc.text(text,x+w/2,y-.2,{align:'center'})
   }
 
-  const colX=[12.5,34,45,64,83,102,121,141,158]
+  const colX=[10.5,29,40,57,74,91,108,126,145]
   const drawTableHeader=(y:number)=>{
-   doc.setFillColor(...navy);doc.roundedRect(margin,y,contentW,7.2,1.6,1.6,'F')
-   doc.setFont('helvetica','bold');doc.setFontSize(7.2);doc.setTextColor(255,255,255)
-   const hs=['Data','Dia','Entrada 1','Saída 1','Entrada 2','Saída 2','Total','Status','Observação / conferência']
-   hs.forEach((h,i)=>doc.text(h,colX[i],y+4.7))
+   doc.setFillColor(...navy);doc.roundedRect(margin,y,contentW,6.4,1.3,1.3,'F')
+   doc.setFont('helvetica','bold');doc.setFontSize(5.8);doc.setTextColor(255,255,255)
+   const hs=['Data','Dia','Ent. 1','Saí. 1','Ent. 2','Saí. 2','Total','Status','Obs.']
+   hs.forEach((h,i)=>doc.text(h,colX[i],y+4.1))
   }
 
-  const drawRows=(rows:Adjust[],yStart:number)=>{
+  const drawRows=(rowsToDraw:Adjust[],yStart:number)=>{
    let y=yStart
-   rows.forEach((r,idx)=>{
-    const rowH=7.05
+   rowsToDraw.forEach((r,idx)=>{
+    const rowH=6.2
     if(idx%2===1){doc.setFillColor(...soft);doc.rect(margin,y,contentW,rowH,'F')}
-    doc.setDrawColor(...line);doc.setLineWidth(.18);doc.line(margin,y+rowH,pageW-margin,y+rowH)
-    doc.setFont('helvetica','normal');doc.setFontSize(7.25);doc.setTextColor(...ink)
+    doc.setDrawColor(...line);doc.setLineWidth(.15);doc.line(margin,y+rowH,pageW-margin,y+rowH)
+    doc.setFont('helvetica','normal');doc.setFontSize(6.2);doc.setTextColor(...ink)
     const values=[
      r.data.split('-').reverse().join('/'),
      weekday(r.data),
@@ -241,14 +244,22 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
      r.saida_2?.slice(0,5)||'—',
      hours(r)
     ]
-    values.forEach((v,i)=>doc.text(String(v),colX[i],y+4.65))
+    values.forEach((v,i)=>{
+     if(i>=2&&i<=5){
+      const field=(['entrada_1','saida_1','entrada_2','saida_2'] as TimeField[])[i-2]
+      if(highlightedTime(r,field)){doc.setTextColor(...amber);doc.setFont('helvetica','bold')}
+      else {doc.setTextColor(...ink);doc.setFont('helvetica','normal')}
+     }else{doc.setTextColor(...ink);doc.setFont('helvetica','normal')}
+     doc.text(String(v),colX[i],y+4)
+    })
     const st=statusLabel(r)
-    pill(colX[7]-3.5,y+4.25,16,st.charAt(0).toUpperCase()+st.slice(1),st)
+    pill(colX[7]-2,y+3.7,15,st.charAt(0).toUpperCase()+st.slice(1),st)
     const obs=observation(r)
-    const isWarn=obs.startsWith('Verificar marcações')
-    doc.setFont('helvetica',isWarn?'bold':'normal');doc.setFontSize(7.1);{const c=isWarn?amber:muted;doc.setTextColor(c[0],c[1],c[2])}
-    const clipped=obs.length>42?obs.slice(0,39)+'...':obs
-    doc.text(clipped,colX[8],y+4.65)
+    const warn=obs==='Verificar'
+    doc.setFont('helvetica',warn?'bold':'normal');doc.setFontSize(5.8)
+    if(warn)doc.setTextColor(...amber);else doc.setTextColor(...muted)
+    const clipped=obs.length>24?obs.slice(0,21)+'...':obs
+    doc.text(clipped,colX[8],y+4)
     y+=rowH
    })
    return y
@@ -256,99 +267,98 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
 
   drawHeader()
 
-  doc.setDrawColor(...line);doc.setLineWidth(.35);doc.roundedRect(margin,28.5,contentW,17,2.5,2.5)
-  const infoXs=[12.5,121.5,176,284]
-  doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(...muted)
-  doc.text('FUNCIONÁRIO',infoXs[0],33.2)
-  doc.text('FONTE',infoXs[1],33.2)
-  doc.text('JORNADA CONTRATUAL',infoXs[2],33.2)
-  doc.text('EMISSÃO',infoXs[3],33.2,{align:'right'})
-  doc.setFont('helvetica','bold');doc.setFontSize(10.2);doc.setTextColor(...ink)
-  doc.text(current.nome,infoXs[0],39)
-  doc.text(current.rhid_person_id?'RHID + ajustes':'Ajustes locais',infoXs[1],39)
-  doc.setTextColor(...green);doc.text(String(Number(current.jornada_semanal_horas||44))+'h por semana (CLT)',infoXs[2],39)
-  doc.setTextColor(...ink);doc.text(emitted,infoXs[3],39,{align:'right'})
+  doc.setDrawColor(...line);doc.setLineWidth(.3);doc.roundedRect(margin,25,contentW,20,2,2)
+  doc.setFont('helvetica','normal');doc.setFontSize(6.2);doc.setTextColor(...muted)
+  doc.text('FUNCIONÁRIO',11,30)
+  doc.text('FONTE',11,38)
+  doc.text('JORNADA',108,30)
+  doc.text('EMISSÃO',108,38)
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...ink)
+  doc.text(current.nome,11,34.5,{maxWidth:92})
+  doc.setFontSize(7.4);doc.text(current.rhid_person_id?'RHID + ajustes':'Ajustes locais',11,42)
+  doc.setTextColor(...green);doc.text(String(Number(current.jornada_semanal_horas||44))+'h por semana (CLT)',108,34.5)
+  doc.setTextColor(...ink);doc.text(emitted,108,42)
 
-  const cardY=50,cardW=67.5,cardH=19.5,gap=3.5
+  const cardY=50,cardW=46.8,cardH=18,gap=2.2
   const cards=[
-   {x:margin,label:'HORAS TRABALHADAS',value:Math.floor(worked/60)+'h '+pad(worked%60)+'m',note:'Total informado pelo relatório atual',c:blue},
-   {x:margin+(cardW+gap),label:'DIAS COM MARCAÇÃO',value:String(daysWithMark),note:'Dias com pelo menos uma marcação',c:green},
-   {x:margin+(cardW+gap)*2,label:'SEM MARCAÇÃO',value:String(daysWithoutMark),note:'Classificados como falta no relatório',c:red},
-   {x:margin+(cardW+gap)*3,label:'HORAS EXTRAS',value:fmtMinutes(overtimeTotal),note:'Excedente de '+String(Number(current.jornada_semanal_horas||44))+'h por semana',c:amber}
+   {x:margin,label:'HORAS TRABALHADAS',value:Math.floor(worked/60)+'h '+pad(worked%60)+'m',c:blue},
+   {x:margin+(cardW+gap),label:'DIAS COM MARCAÇÃO',value:String(daysWithMark),c:green},
+   {x:margin+(cardW+gap)*2,label:'SEM MARCAÇÃO',value:String(daysWithoutMark),c:red},
+   {x:margin+(cardW+gap)*3,label:'HORAS EXTRAS',value:fmtMinutes(overtimeTotal),c:amber}
   ]
   cards.forEach(card=>{
-   doc.setDrawColor(...line);doc.setFillColor(255,255,255);doc.roundedRect(card.x,cardY,cardW,cardH,2.5,2.5,'FD')
-   doc.setFillColor(card.c[0],card.c[1],card.c[2]);doc.roundedRect(card.x,cardY,1.4,cardH,1,1,'F')
-   doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(...muted);doc.text(card.label,card.x+4.2,cardY+5)
-   doc.setFont('helvetica','bold');doc.setFontSize(14.2);doc.setTextColor(...ink);doc.text(card.value,card.x+4.2,cardY+11.7)
-   doc.setFont('helvetica','normal');doc.setFontSize(6.6);doc.setTextColor(...muted);doc.text(card.note,card.x+4.2,cardY+16.5)
+   doc.setDrawColor(...line);doc.setFillColor(255,255,255);doc.roundedRect(card.x,cardY,cardW,cardH,2,2,'FD')
+   doc.setFillColor(card.c[0],card.c[1],card.c[2]);doc.roundedRect(card.x,cardY,1.2,cardH,.8,.8,'F')
+   doc.setFont('helvetica','normal');doc.setFontSize(5.7);doc.setTextColor(...muted);doc.text(card.label,card.x+3.5,cardY+5)
+   doc.setFont('helvetica','bold');doc.setFontSize(11.5);doc.setTextColor(...ink);doc.text(card.value,card.x+3.5,cardY+12.3)
   })
 
-  doc.setFillColor(...lightBlue);doc.setDrawColor(147,197,253);doc.roundedRect(margin,73.5,contentW,10.4,2.2,2.2,'FD')
-  doc.setFont('helvetica','bold');doc.setFontSize(7.4);doc.setTextColor(30,64,175);doc.text('Leitura gerencial',12.5,77.5)
-  doc.setFont('helvetica','normal');doc.setFontSize(7.2)
-  doc.text('Jornada CLT considerada: '+String(Number(current.jornada_semanal_horas||44))+'h semanais. O excedente de cada semana é demonstrado como hora extra.',12.5,81.4)
+  doc.setFillColor(...lightBlue);doc.setDrawColor(147,197,253);doc.roundedRect(margin,72,contentW,9,1.8,1.8,'FD')
+  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(30,64,175)
+  doc.text('Jornada considerada: '+String(Number(current.jornada_semanal_horas||44))+'h semanais. Excedente semanal = hora extra.',11,77.5)
 
-  doc.setFont('helvetica','bold');doc.setFontSize(9.3);doc.setTextColor(...ink)
-  const firstRows=calendar.slice(0,16)
-  const restRows=calendar.slice(16)
-  doc.text('Marcações diárias',margin,88.6)
-  doc.setFont('helvetica','normal');doc.setFontSize(7.1);doc.setTextColor(...muted)
-  doc.text('Período: '+periodLabel,40,88.6)
-  drawTableHeader(91.2)
-  drawRows(firstRows,98.4)
+  doc.setFont('helvetica','bold');doc.setFontSize(8.4);doc.setTextColor(...ink)
+  doc.text('Marcações diárias',margin,87)
+  doc.setFont('helvetica','normal');doc.setFontSize(6.2);doc.setTextColor(...muted)
+  doc.text(periodLabel,pageW-margin,87,{align:'right'})
+
+  const firstRows=calendar.slice(0,28)
+  const restRows=calendar.slice(28)
+  drawTableHeader(90)
+  drawRows(firstRows,96.4)
 
   if(restRows.length){
    doc.addPage()
    drawHeader()
-   doc.setFont('helvetica','bold');doc.setFontSize(10.2);doc.setTextColor(...ink)
-   doc.text('Marcações diárias - continuação',margin,28.5)
-   doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.setTextColor(...muted)
-   doc.text('Funcionário: '+current.nome+'   |   Competência: '+competence+'   |   Período: '+periodLabel,margin,33.3)
-   drawTableHeader(37.2)
-   let y=drawRows(restRows,44.4)
-
-   y+=3.5
-   doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...ink);doc.text('Demonstrativo de horas extras por semana',margin,y+4)
-   y+=7
-   doc.setFillColor(...navy);doc.roundedRect(margin,y,contentW,6.5,1.4,1.4,'F')
-   doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold')
-   doc.text('Semana',12.5,y+4.2);doc.text('Trabalhadas',112,y+4.2);doc.text('Limite',158,y+4.2);doc.text('Horas extras',205,y+4.2)
-   y+=6.5
-   weeklySummary.forEach((w,i)=>{
-    if(i%2===1){doc.setFillColor(...soft);doc.rect(margin,y,contentW,6,'F')}
-    doc.setTextColor(...ink);doc.setFont('helvetica','normal');doc.setFontSize(7)
-    doc.text(new Date(w.start+'T12:00:00').toLocaleDateString('pt-BR')+' a '+new Date(w.end+'T12:00:00').toLocaleDateString('pt-BR'),12.5,y+4)
-    doc.text(fmtMinutes(w.worked),112,y+4);doc.text(fmtMinutes(weeklyLimitMinutes),158,y+4)
-    doc.setFont('helvetica','bold');if(w.overtime>0)doc.setTextColor(...amber);doc.text(fmtMinutes(w.overtime),205,y+4);doc.setTextColor(...ink)
-    y+=6
-   })
-   y+=3.5
-   doc.setFillColor(248,250,252);doc.setDrawColor(...line);doc.roundedRect(margin,y,contentW,18.2,2.5,2.5,'FD')
-   doc.setFont('helvetica','bold');doc.setFontSize(8.4);doc.setTextColor(...ink);doc.text('Resumo de conferência',12.5,y+5)
-   doc.setFont('helvetica','normal');doc.setFontSize(7.1);doc.setTextColor(...muted)
-   doc.text('Dias com marcação: '+daysWithMark+'    |    Sem marcação: '+daysWithoutMark+'    |    Marcações parciais (<6h): '+partial,12.5,y+10)
-   doc.text('Horas extras nas semanas da competência: '+fmtMinutes(overtimeTotal)+' | Limite semanal: '+fmtMinutes(weeklyLimitMinutes)+'.',12.5,y+14.4)
-
-   const sigY=y+27
-   const sigs=[
-    {x:25,label:'Assinatura do funcionário'},
-    {x:117,label:'Responsável pelo RH'},
-    {x:209,label:'Data'}
-   ]
-   sigs.forEach(sig=>{
-    doc.setDrawColor(71,85,105);doc.setLineWidth(.25);doc.line(sig.x,sigY,sig.x+67,sigY)
-    doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(...muted);doc.text(sig.label,sig.x+33.5,sigY+3.8,{align:'center'})
-   })
-   footer(2,2)
-  }else{
-   footer(1,1)
+   doc.setFont('helvetica','bold');doc.setFontSize(8.4);doc.setTextColor(...ink)
+   doc.text('Marcações diárias - continuação',margin,28)
+   drawTableHeader(32)
+   drawRows(restRows,38.4)
   }
 
-  if(restRows.length){
-   doc.setPage(1)
-   // sem rodapé na primeira página para manter a mesma densidade visual da demonstração
-  }
+  doc.addPage()
+  drawHeader()
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...ink)
+  doc.text('Demonstrativo de horas extras por semana',margin,29)
+  doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...muted)
+  doc.text('Período: '+periodLabel,margin,34)
+
+  let y=40
+  doc.setFillColor(...navy);doc.roundedRect(margin,y,contentW,7,1.5,1.5,'F')
+  doc.setTextColor(255,255,255);doc.setFontSize(6.3);doc.setFont('helvetica','bold')
+  doc.text('Semana',11,y+4.6);doc.text('Trabalhadas',95,y+4.6);doc.text('Limite',132,y+4.6);doc.text('Horas extras',164,y+4.6)
+  y+=7
+  weeklySummary.forEach((w,i)=>{
+   if(i%2===1){doc.setFillColor(...soft);doc.rect(margin,y,contentW,8,'F')}
+   doc.setTextColor(...ink);doc.setFont('helvetica','normal');doc.setFontSize(6.5)
+   doc.text(new Date(w.start+'T12:00:00').toLocaleDateString('pt-BR')+' a '+new Date(w.end+'T12:00:00').toLocaleDateString('pt-BR'),11,y+5)
+   doc.text(fmtMinutes(w.worked),95,y+5);doc.text(fmtMinutes(weeklyLimitMinutes),132,y+5)
+   doc.setFont('helvetica','bold');if(w.overtime>0)doc.setTextColor(...amber);doc.text(fmtMinutes(w.overtime),164,y+5);doc.setTextColor(...ink)
+   y+=8
+  })
+
+  y+=6
+  doc.setFillColor(248,250,252);doc.setDrawColor(...line);doc.roundedRect(margin,y,contentW,30,2,2,'FD')
+  doc.setFont('helvetica','bold');doc.setFontSize(8.2);doc.setTextColor(...ink);doc.text('Resumo de horas',11,y+6)
+  doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(...muted)
+  doc.text('Horas trabalhadas no período: '+Math.floor(worked/60)+'h '+pad(worked%60)+'m',11,y+12)
+  doc.text('Horas extras no período: '+fmtMinutes(overtimeTotal),11,y+17)
+  doc.text('Jornada semanal considerada: '+fmtMinutes(weeklyLimitMinutes),11,y+22)
+  doc.text('Dias com marcação: '+daysWithMark+' | Sem marcação: '+daysWithoutMark+' | Marcações parciais (<6h): '+partial,11,y+27)
+
+  const sigY=Math.min(y+48,270)
+  const sigs=[
+   {x:14,label:'Assinatura do funcionário'},
+   {x:77,label:'Responsável pelo RH'},
+   {x:140,label:'Data'}
+  ]
+  sigs.forEach(sig=>{
+   doc.setDrawColor(71,85,105);doc.setLineWidth(.2);doc.line(sig.x,sigY,sig.x+52,sigY)
+   doc.setFont('helvetica','normal');doc.setFontSize(6.3);doc.setTextColor(...muted);doc.text(sig.label,sig.x+26,sigY+3.6,{align:'center'})
+  })
+
+  const totalPages=doc.getNumberOfPages()
+  for(let p=1;p<=totalPages;p++){doc.setPage(p);footer(p,totalPages)}
 
   doc.save('espelho-ponto-'+current.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+month+'.pdf')
  }
