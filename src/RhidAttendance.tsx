@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useState} from 'react'
-import {Link2,RefreshCw,Search,ShieldCheck,Users} from 'lucide-react'
+import {ChevronLeft,ChevronRight,Link2,RefreshCw,Search,ShieldCheck,Users} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {parseRhidAttendance} from './lib/rhid'
 
@@ -46,7 +46,14 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  const [busy,setBusy]=useState(false)
  const [message,setMessage]=useState('')
 
+ const activeEmployees=employees.filter(e=>e.ativo)
  const current=employees.find(e=>e.id===selectedEmployee)
+ function moveEmployee(direction:-1|1){
+  if(!activeEmployees.length)return
+  const index=activeEmployees.findIndex(e=>e.id===selectedEmployee)
+  const next=index<0?(direction>0?0:activeEmployees.length-1):(index+direction+activeEmployees.length)%activeEmployees.length
+  setSelectedEmployee(activeEmployees[next].id)
+ }
  const filteredPeople=useMemo(()=>people.filter(p=>normalize(p.name+' '+p.id).includes(normalize(search))),[people,search])
 
  async function invoke(body:Record<string,unknown>){
@@ -132,7 +139,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
   {!configured&&<div className="panel rhidSetupNotice"><strong>Integração preparada, aguardando credenciais do RHID.</strong><span>Cadastre RHID_EMAIL e RHID_PASSWORD nos Secrets das Edge Functions do Supabase. As credenciais não ficam no navegador nem no GitHub.</span></div>}
 
   <div className="panel rhidControls">
-   <label>Funcionário<select value={selectedEmployee} onChange={e=>setSelectedEmployee(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.ativo).map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · vinculado':''}</option>)}</select></label>
+   <div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<select value={selectedEmployee} onChange={e=>setSelectedEmployee(e.target.value)}><option value="">Selecione</option>{activeEmployees.map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · vinculado':''}</option>)}</select></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div>
    <label>De<input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label>
    <label>Até<input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label>
    <button className="ghost" disabled={busy||!configured} onClick={()=>void testConnection()}><ShieldCheck size={15}/>Testar conexão</button><button className="ghost" disabled={busy||!configured} onClick={()=>void syncPeople()}><RefreshCw size={15}/>Sincronizar RHID</button>
