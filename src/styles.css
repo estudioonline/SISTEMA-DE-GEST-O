@@ -5353,3 +5353,69 @@
   .productStockAdjustmentBox { align-items:stretch; flex-direction:column; gap:12px; }
   .productStockAdjustmentBox>button { justify-content:center; min-height:40px; }
 }
+
+
+/* Small stock-adjustment window layered above the product editor. */
+.stockAdjustmentModalOverlay {
+  position:fixed;
+  inset:0;
+  z-index:5000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(15,23,42,.30);
+  backdrop-filter:blur(2px);
+  overflow-y:auto;
+}
+.stockAdjustmentDialog {
+  width:min(500px,100%);
+  max-height:calc(100vh - 36px);
+  overflow:auto;
+  padding:20px;
+  border:1px solid var(--ds-border,#dbe2ec);
+  border-radius:16px;
+  background:var(--ds-surface,#fff);
+  color:var(--ds-text,#172033);
+  box-shadow:0 24px 70px rgba(15,23,42,.26);
+}
+.stockAdjustmentDialogHeader {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  padding-bottom:14px;
+  margin-bottom:16px;
+  border-bottom:1px solid var(--ds-border,#dbe2ec);
+}
+.stockAdjustmentDialogHeader h3 { margin:0; color:var(--ds-text,#172033); font-size:17px; }
+.stockAdjustmentDialogHeader p { margin:5px 0 0; color:var(--ds-muted,#64748b); font-size:12px; line-height:1.5; }
+.stockAdjustmentDialog .stockForm {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  align-items:stretch;
+  gap:14px;
+  margin:0;
+}
+.stockAdjustmentCurrent {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 14px;
+  border-radius:10px;
+  background:var(--ds-surface-soft,#f8fafc);
+  border:1px solid var(--ds-border,#dbe2ec);
+}
+.stockAdjustmentCurrent span { color:var(--ds-muted,#64748b); font-size:12px; font-weight:700; }
+.stockAdjustmentCurrent strong { color:var(--ds-text,#172033); font-size:15px; font-variant-numeric:tabular-nums; }
+.stockAdjustmentDialog .stockForm label { color:var(--ds-text-soft,#5f6b7d); }
+.stockAdjustmentDialog .stockForm input { width:100%; box-sizing:border-box; }
+.stockAdjustmentDialog .formActions { display:flex; justify-content:flex-end; gap:8px; margin-top:4px; }
+.dark .stockAdjustmentDialog { background:var(--ds-surface,#151c2b); border-color:var(--ds-border,#253047); color:var(--ds-text,#eef3ff); }
+.dark .stockAdjustmentDialogHeader { border-bottom-color:var(--ds-border,#253047); }
+.dark .stockAdjustmentCurrent { background:var(--ds-surface-soft,#101725); border-color:var(--ds-border,#253047); }
+@media(max-width:480px) {
+  .stockAdjustmentDialog { padding:16px; }
+  .stockAdjustmentCurrent { align-items:flex-start; flex-direction:column; gap:5px; }
+}
