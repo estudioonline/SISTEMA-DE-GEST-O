@@ -183,7 +183,9 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    })
    if(error)throw error
    setAdjustmentOpen(false)
-   setMessage('Ajuste financeiro criado.')
+   setSearch('')
+   setScreen('matching')
+   setMessage('Linha de ajuste criada e pronta para conciliação.')
    await load()
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
