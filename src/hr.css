@@ -45,3 +45,20 @@
   .rhApp .rhLedger th,.rhApp .rhLedger td{padding:7px 8px}
   .rhApp .rhLedger .rowActions .ghost{padding:0 7px}
 }
+
+.rhBulkBar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff}
+.rhBulkBar>div{display:flex;flex-direction:column;gap:2px;margin-right:auto}
+.rhBulkBar>div span{font-size:12px;color:#64748b}
+.rhBulkBar label{display:grid;gap:4px;font-size:12px;color:#475569}
+.rhBulkBar input[type="date"]{height:34px;border:1px solid #93c5fd;border-radius:8px;padding:0 8px;background:#fff}
+.rhBulkBar button{height:34px}
+.dark .rhBulkBar{background:#101a2d;border-color:#294b7a}
+.dark .rhBulkBar>div span,.dark .rhBulkBar label{color:#a8b5c7}
+.dark .rhBulkBar input[type="date"]{background:#101725;color:#eef3ff;border-color:#35527b}
+.rhSelectCol{width:38px!important;text-align:center!important;padding-left:6px!important;padding-right:6px!important}
+.rhSelectCol input{width:16px;height:16px}
+.rhSelectedRow td{background:#eff6ff!important}
+.dark .rhSelectedRow td{background:#17233a!important}
+.rhRowActions{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important;flex-wrap:nowrap!important}
+.rhActionBtn{min-width:0!important;height:30px!important;padding:0 8px!important;white-space:nowrap!important}
+.rhApp .rhLedger th:last-child,.rhApp .rhLedger td:last-child{width:15%}
