@@ -3,7 +3,7 @@ import {Save,Trash2} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
 type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
-type Row={id:string;funcionario_id:string;data:string;trabalha:boolean;entrada_prevista:string|null;saida_prevista:string|null;observacao:string|null}
+type Row={id:string;funcionario_id:string;data:string;trabalha:boolean;entrada_prevista:string|null;saida_prevista:string|null;observacao:string|null;rhid_shift_id?:number|null;rhid_shift_nome?:string|null;sync_status?:string|null;sync_erro?:string|null;sincronizado_em?:string|null}
 
 const pad=(n:number)=>String(n).padStart(2,'0')
 const saturdays=(month:string)=>{
@@ -17,6 +17,12 @@ const saturdays=(month:string)=>{
  return out
 }
 const brDate=(v:string)=>new Date(v+'T12:00:00').toLocaleDateString('pt-BR')
+type Shift={id:number;name:string}
+function parseShifts(value:unknown):Shift[]{
+ const root=(value&&typeof value==='object'?value:{}) as Record<string,unknown>
+ const list=(Array.isArray(value)?value:Array.isArray(root.data)?root.data:Array.isArray(root.items)?root.items:Array.isArray(root.records)?root.records:[]) as Record<string,unknown>[]
+ return list.map((o,i)=>({id:Number(o.id??o.idShift??i),name:String(o.description??o.name??o.codigo??('Escala '+String(o.id??i)))})).filter(x=>Number.isFinite(x.id)&&x.id>0)
+}
 
 export function RhSaturdaySchedule({employees,month,canEdit}:{employees:Employee[];month:string;canEdit:boolean}){
  const [rows,setRows]=useState<Row[]>([]),[selectedDate,setSelectedDate]=useState(''),[selected,setSelected]=useState<Record<string,boolean>>({}),[entrada,setEntrada]=useState('08:00'),[saida,setSaida]=useState('12:00'),[observacao,setObservacao]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
