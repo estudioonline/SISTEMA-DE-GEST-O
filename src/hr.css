@@ -214,3 +214,10 @@
 @media(max-width:700px){
  .rhSaturdayToolbar,.rhPointHeader{grid-template-columns:1fr}
 }
+
+.employeePickerNav{display:grid;grid-template-columns:38px minmax(180px,1fr) 38px;gap:7px;align-items:end}
+.employeePickerNav label{display:grid;gap:5px;min-width:0}
+.employeePickerNav .iconOnly{width:38px;height:40px;padding:0;display:grid;place-items:center}
+.rhidControls>.employeePickerNav{grid-column:span 1}
+.rhPointHeader>.employeePickerNav{min-width:0}
+@media(max-width:700px){.employeePickerNav{grid-template-columns:38px minmax(0,1fr) 38px}}
