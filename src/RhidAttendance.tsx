@@ -1,0 +1,123 @@
+import {useEffect,useMemo,useState} from 'react'
+import {Link2,RefreshCw,Search,ShieldCheck,Users} from 'lucide-react'
+import {supabase} from './lib/supabase'
+
+type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
+type Person={id:string;name:string;raw:Record<string,unknown>}
+
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+const monthStart=()=>today().slice(0,8)+'01'
+const errorMessage=(e:unknown)=>e instanceof Error?e.message:(e as {message?:string})?.message||'Não foi possível concluir.'
+const normalize=(v:unknown)=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+
+function arrayFrom(value:unknown):unknown[]{
+ if(Array.isArray(value))return value
+ if(value&&typeof value==='object'){
+  const o=value as Record<string,unknown>
+  for(const key of ['data','items','results','persons','pessoas','apuracao','records']){
+   if(Array.isArray(o[key]))return o[key] as unknown[]
+  }
+ }
+ return []
+}
+
+function personFrom(raw:unknown,index:number):Person{
+ const o=(raw&&typeof raw==='object'?raw:{}) as Record<string,unknown>
+ const id=String(o.idPerson??o.id_person??o.personId??o.id??index)
+ const name=String(o.name??o.nome??o.fullName??o.full_name??o.description??('Colaborador '+id))
+ return {id,name,raw:o}
+}
+
+function daysBetween(a:string,b:string){
+ const x=new Date(a+'T12:00:00'),y=new Date(b+'T12:00:00')
+ return Math.floor((y.getTime()-x.getTime())/86400000)
+}
+
+export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[];canEdit:boolean;onLinked:()=>Promise<void>}){
+ const [configured,setConfigured]=useState<boolean|null>(null)
+ const [people,setPeople]=useState<Person[]>([])
+ const [selectedEmployee,setSelectedEmployee]=useState('')
+ const [start,setStart]=useState(monthStart())
+ const [end,setEnd]=useState(today())
+ const [search,setSearch]=useState('')
+ const [attendance,setAttendance]=useState<unknown>(null)
+ const [busy,setBusy]=useState(false)
+ const [message,setMessage]=useState('')
+
+ const current=employees.find(e=>e.id===selectedEmployee)
+ const filteredPeople=useMemo(()=>people.filter(p=>normalize(p.name+' '+p.id).includes(normalize(search))),[people,search])
+
+ async function invoke(body:Record<string,unknown>){
+  const {data,error}=await supabase.functions.invoke('rhid-proxy',{body})
+  if(error)throw error
+  if(data?.error)throw new Error(String(data.error))
+  return data
+ }
+
+ async function check(){
+  try{const data=await invoke({action:'status'});setConfigured(Boolean(data?.configured))}
+  catch{setConfigured(false)}
+ }
+ async function syncPeople(){
+  setBusy(true);setMessage('')
+  try{
+   const data=await invoke({action:'people'})
+   const list=arrayFrom(data).map(personFrom)
+   setPeople(list)
+   setMessage(list.length?`${list.length} colaborador(es) carregado(s) do RHID.`:'O RHID não retornou colaboradores.')
+  }catch(e){setMessage(errorMessage(e))}
+  finally{setBusy(false)}
+ }
+ async function link(personId:string){
+  if(!canEdit||!current)return
+  setBusy(true);setMessage('')
+  try{
+   const {error}=await supabase.from('funcionarios').update({rhid_person_id:Number(personId)}).eq('id',current.id)
+   if(error)throw error
+   await onLinked()
+   setMessage('Funcionário vinculado ao RHID.')
+  }catch(e){setMessage(errorMessage(e))}
+  finally{setBusy(false)}
+ }
+ async function loadAttendance(){
+  if(!current?.rhid_person_id){setMessage('Vincule este funcionário a um colaborador do RHID primeiro.');return}
+  if(!start||!end||start>end){setMessage('Informe um período válido.');return}
+  const span=daysBetween(start,end)
+  if(span<0||span>89){setMessage('A consulta do RHID aceita período máximo de 90 dias.');return}
+  setBusy(true);setMessage('');setAttendance(null)
+  try{
+   const data=await invoke({action:'attendance',person_id:current.rhid_person_id,start,end})
+   setAttendance(data)
+  }catch(e){setMessage(errorMessage(e))}
+  finally{setBusy(false)}
+ }
+
+ useEffect(()=>{void check()},[])
+ useEffect(()=>{setAttendance(null)},[selectedEmployee,start,end])
+
+ const records=arrayFrom(attendance)
+ const objectRecords=records.filter(r=>r&&typeof r==='object') as Record<string,unknown>[]
+ const keys=objectRecords.length?Object.keys(objectRecords[0]).slice(0,7):[]
+
+ return <section className="rhidAttendance">
+  <div className="panelHead rhidHead"><div><h3>Controle de ponto e presença</h3><p>Integração com RHID para colaboradores e apuração de ponto.</p></div><div className={'rhidConnection '+(configured?'ok':'off')}><ShieldCheck size={16}/>{configured===null?'Verificando...':configured?'RHID conectado':'RHID não configurado'}</div></div>
+
+  {!configured&&<div className="panel rhidSetupNotice"><strong>Integração preparada, aguardando credenciais do RHID.</strong><span>Cadastre RHID_EMAIL e RHID_PASSWORD nos Secrets das Edge Functions do Supabase. As credenciais não ficam no navegador nem no GitHub.</span></div>}
+
+  <div className="panel rhidControls">
+   <label>Funcionário<select value={selectedEmployee} onChange={e=>setSelectedEmployee(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.ativo).map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · vinculado':''}</option>)}</select></label>
+   <label>De<input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label>
+   <label>Até<input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label>
+   <button className="ghost" disabled={busy||!configured} onClick={()=>void syncPeople()}><RefreshCw size={15}/>Sincronizar RHID</button>
+   <button className="primary" disabled={busy||!configured||!selectedEmployee} onClick={()=>void loadAttendance()}><Search size={15}/>Consultar ponto</button>
+  </div>
+
+  {message&&<div className="panel noticePanel" role="status">{message}</div>}
+
+  {current&&<div className="panel rhidLinkPanel"><div><strong>{current.nome}</strong><span>{current.rhid_person_id?'Vinculado ao RHID ID '+current.rhid_person_id:'Ainda não vinculado ao RHID'}</span></div>{canEdit&&<div className="rhidLinkActions"><div className="tableSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar colaborador no RHID"/></div>{filteredPeople.slice(0,8).map(p=><button key={p.id} className="ghost" disabled={busy} onClick={()=>void link(p.id)}><Link2 size={14}/>{p.name}</button>)}</div>}</div>}
+
+  <article className="panel tablePanel rhidAttendanceTable"><div className="panelHead"><h3>Apuração do período</h3><span>{current?.nome||'Selecione um funcionário'}</span></div>
+   {objectRecords.length>0?<div className="tableWrap"><table><thead><tr>{keys.map(k=><th key={k}>{k}</th>)}</tr></thead><tbody>{objectRecords.map((row,i)=><tr key={i}>{keys.map(k=><td key={k}>{typeof row[k]==='object'?JSON.stringify(row[k]):String(row[k]??'—')}</td>)}</tr>)}</tbody></table></div>:attendance?<pre className="rhidRaw">{JSON.stringify(attendance,null,2)}</pre>:<div className="bankEmpty"><Users size={28}/><strong>Nenhum ponto consultado</strong><span>Selecione um funcionário vinculado e consulte um período.</span></div>}
+  </article>
+ </section>
+}
