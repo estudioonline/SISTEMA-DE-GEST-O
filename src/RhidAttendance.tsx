@@ -7,7 +7,13 @@ type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person
 type Person={id:string;name:string;raw:Record<string,unknown>}
 
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-const monthStart=()=>today().slice(0,8)+'01'
+const cycleRange=()=>{
+ const now=new Date(),year=now.getFullYear(),month=now.getMonth(),day=now.getDate()
+ const start=new Date(year,day>=26?month:month-1,26,12)
+ const end=new Date(start.getFullYear(),start.getMonth()+1,25,12)
+ const fmt=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+ return {start:fmt(start),end:fmt(end)}
+}
 const errorMessage=(e:unknown)=>e instanceof Error?e.message:(e as {message?:string})?.message||'Não foi possível concluir.'
 const normalize=(v:unknown)=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
 
@@ -39,8 +45,9 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  const [connectionTested,setConnectionTested]=useState(false)
  const [people,setPeople]=useState<Person[]>([])
  const [selectedEmployee,setSelectedEmployee]=useState('')
- const [start,setStart]=useState(monthStart())
- const [end,setEnd]=useState(today())
+ const initialCycle=cycleRange()
+ const [start,setStart]=useState(initialCycle.start)
+ const [end,setEnd]=useState(initialCycle.end)
  const [search,setSearch]=useState('')
  const [attendance,setAttendance]=useState<unknown>(null)
  const [busy,setBusy]=useState(false)
@@ -134,7 +141,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
  const parsedDays=parseRhidAttendance(attendance)
 
  return <section className="rhidAttendance">
-  <div className="panelHead rhidHead"><div><h3>Controle de ponto e presença</h3><p>Integração com RHID para colaboradores e apuração de ponto.</p></div><div className={'rhidConnection '+(configured?'ok':'off')}><ShieldCheck size={16}/>{configured===null?'Verificando...':configured?(connectionTested?'RHID validado':'Credenciais detectadas'):'RHID não conectado'}</div></div>
+  <div className="panelHead rhidHead"><div><h3>Controle de ponto e presença</h3><p>Integração com RHID para colaboradores e apuração de ponto. Período padrão: dia 26 até dia 25 do mês seguinte.</p></div><div className={'rhidConnection '+(configured?'ok':'off')}><ShieldCheck size={16}/>{configured===null?'Verificando...':configured?(connectionTested?'RHID validado':'Credenciais detectadas'):'RHID não conectado'}</div></div>
 
   {!configured&&<div className="panel rhidSetupNotice"><strong>Integração preparada, aguardando credenciais do RHID.</strong><span>Cadastre RHID_EMAIL e RHID_PASSWORD nos Secrets das Edge Functions do Supabase. As credenciais não ficam no navegador nem no GitHub.</span></div>}
 
