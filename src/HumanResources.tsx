@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react'
 import type {FormEvent} from 'react'
-import {FileDown,Pencil,Plus,RefreshCw,Users,WalletCards,X} from 'lucide-react'
+import {FileDown,Pencil,Plus,RefreshCw,Trash2,Users,WalletCards,X} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {readAllRows} from './lib/readAllRows'
 import {calculatePayroll,cents,hrSectionForTitle,summarizeHr} from './lib/hr'
@@ -26,6 +26,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
  const [personForm,setPersonForm]=useState<{person:Employee|null}|null>(null),[entryForm,setEntryForm]=useState<{title:T|null}|null>(null)
  const [category,setCategory]=useState('Salário'),[formEmployee,setFormEmployee]=useState(''),[detailed,setDetailed]=useState(true)
  const [gross,setGross]=useState(''),[deductions,setDeductions]=useState('0'),[advances,setAdvances]=useState('0'),[installments,setInstallments]=useState(1)
+ const [selected,setSelected]=useState<Record<string,boolean>>({}),[bulkPaymentDate,setBulkPaymentDate]=useState(today())
  const saving=useRef(false),loadSequence=useRef(0)
  const heading=useRef<HTMLHeadingElement>(null)
  async function load(){
@@ -54,6 +55,9 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   .filter(t=>!employee||t.funcionario_id===employee)
   .filter(t=>status==='todos'||(status==='a_descontar'?t.tipo_funcionario==='vale'&&t.status!=='cancelado'&&Number(t.valor_pago)>0&&!t.vale_descontado_em:status==='descontado'?!!t.vale_descontado_em:t.status===status))
   .filter(t=>`${employees.find(p=>p.id===t.funcionario_id)?.nome||''} ${t.descricao} ${t.categoria||''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
+ const selectedRows=rows.filter(t=>selected[t.id])
+ const selectableRows=rows.filter(t=>t.status!=='cancelado')
+ const allRowsSelected=selectableRows.length>0&&selectableRows.every(t=>selected[t.id])
  const summary=summarizeHr(rows)
  const visibleEmployees=employees.filter(p=>(!employee||p.id===employee)&&`${p.nome} ${p.cargo||''}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
  const payrollCategory=category==='Salário'||category==='13º salário'
@@ -67,6 +71,39 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   setGross(title?.salario_bruto==null?'':String(title.salario_bruto));setDeductions(String(title?.descontos_folha||0));setAdvances(String(title?.vales_folha||0));setInstallments(1)
   setError('');setNotice('');setEntryForm({title})
  }
+ function toggleSelected(id:string){setSelected(prev=>({...prev,[id]:!prev[id]}))}
+ function toggleAllRows(){
+  setSelected(prev=>{
+   const next={...prev},shouldSelect=!allRowsSelected
+   for(const t of selectableRows)next[t.id]=shouldSelect
+   return next
+  })
+ }
+ async function paySelected(){
+  if(!canEdit||busy||!selectedRows.length)return
+  if(!selectedRows.every(t=>t.status==='aberto'||t.status==='parcial')){setError('Selecione apenas lançamentos em aberto ou parciais para pagar.');return}
+  if(!bulkPaymentDate){setError('Informe a data do pagamento.');return}
+  const total=selectedRows.reduce((sum,t)=>sum+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  if(!window.confirm(`Pagar ${selectedRows.length} lançamento(s), totalizando ${money(total)}, em ${date(bulkPaymentDate)}?`))return
+  setBusy(true);setError('');setNotice('')
+  try{
+   const {data,error}=await supabase.rpc('pagar_titulos_rh_lote',{p_titulo_ids:selectedRows.map(t=>t.id),p_data_pagamento:bulkPaymentDate})
+   if(error)throw error
+   setSelected({});await onChanged();setNotice(`${Number(data)||selectedRows.length} lançamento(s) pagos com sucesso.`)
+  }catch(e){setError(errorMessage(e))}finally{setBusy(false)}
+ }
+ async function deleteSelected(){
+  if(!canEdit||busy||!selectedRows.length)return
+  if(!selectedRows.every(t=>Number(t.valor_pago)===0&&t.status!=='pago'&&t.status!=='parcial')){setError('Não é possível excluir lançamentos com pagamento. Remova esses itens da seleção.');return}
+  if(!window.confirm(`Excluir definitivamente ${selectedRows.length} lançamento(s) selecionado(s)? Essa ação também remove as respectivas contas a pagar do RH.`))return
+  setBusy(true);setError('');setNotice('')
+  try{
+   const {data,error}=await supabase.rpc('excluir_titulos_rh_lote',{p_titulo_ids:selectedRows.map(t=>t.id)})
+   if(error)throw error
+   setSelected({});await onChanged();setNotice(`${Number(data)||selectedRows.length} lançamento(s) excluído(s).`)
+  }catch(e){setError(errorMessage(e))}finally{setBusy(false)}
+ }
+
  async function savePerson(event:FormEvent<HTMLFormElement>){
   event.preventDefault();if(!canEdit||saving.current||!personForm)return
   const data=new FormData(event.currentTarget),nome=String(data.get('nome')||'').trim(),cargo=String(data.get('cargo')||'').trim()||null,ativo=data.get('ativo')!=='false'
