@@ -15,6 +15,7 @@ const categories=['Salário','Bônus','13º salário','FGTS','Férias','Encargos
 const money=(value:number)=>value.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 const date=(value:string)=>value?new Date(value+'T12:00:00').toLocaleDateString('pt-BR'):'—'
+const addMonths=(value:string,months:number)=>{const [year,month,day]=value.split('-').map(Number),d=new Date(year,month-1+months,1,12);const last=new Date(d.getFullYear(),d.getMonth()+1,0,12).getDate();d.setDate(Math.min(day,last));return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 const errorMessage=(error:unknown)=>error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível concluir. Atualize e tente novamente.'
 const statusLabel:Record<string,string>={aberto:'Em aberto',parcial:'Parcial',pago:'Pago',cancelado:'Cancelado'}
 
@@ -24,7 +25,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true)
  const [personForm,setPersonForm]=useState<{person:Employee|null}|null>(null),[entryForm,setEntryForm]=useState<{title:T|null}|null>(null)
  const [category,setCategory]=useState('Salário'),[formEmployee,setFormEmployee]=useState(''),[detailed,setDetailed]=useState(true)
- const [gross,setGross]=useState(''),[deductions,setDeductions]=useState('0'),[advances,setAdvances]=useState('0')
+ const [gross,setGross]=useState(''),[deductions,setDeductions]=useState('0'),[advances,setAdvances]=useState('0'),[installments,setInstallments]=useState(1)
  const saving=useRef(false),loadSequence=useRef(0)
  const heading=useRef<HTMLHeadingElement>(null)
  async function load(){
@@ -63,7 +64,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   if(!canEdit||loading)return
   const nextCategory=title?.categoria||(section==='fgts'?'FGTS':section==='decimo'?'13º salário':section==='vales'?'Vale de funcionário':'Salário')
   setCategory(nextCategory);setFormEmployee(title?.funcionario_id||employee);setDetailed(title?title.salario_bruto!=null:true)
-  setGross(title?.salario_bruto==null?'':String(title.salario_bruto));setDeductions(String(title?.descontos_folha||0));setAdvances(String(title?.vales_folha||0))
+  setGross(title?.salario_bruto==null?'':String(title.salario_bruto));setDeductions(String(title?.descontos_folha||0));setAdvances(String(title?.vales_folha||0));setInstallments(1)
   setError('');setNotice('');setEntryForm({title})
  }
  async function savePerson(event:FormEvent<HTMLFormElement>){
@@ -91,15 +92,24 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
    if(payrollCategory&&detailed){detail=calculatePayroll(gross,deductions,advances);value=detail.liquido}
    else{value=cents(data.get('valor'))/100;if(value<=0)throw new Error('O valor a pagar precisa ser maior que zero.')}
   }catch(e){setError(errorMessage(e));return}
+  const parcelCount=category==='Vale de funcionário'&&!entryForm.title?installments:1
+  if(!Number.isInteger(parcelCount)||parcelCount<1||parcelCount>24){setError('Informe de 1 a 24 parcelas para o vale.');return}
   saving.current=true;setBusy(true);setError('');setNotice('')
   try{
    const payload={tipo:'pagar',funcionario_id:person.id,tipo_funcionario:category==='Vale de funcionário'?'vale':'gasto',competencia:competencia+'-01',descricao,entidade_nome:person.nome,categoria:category,centro_custo:'Funcionários',vencimento,valor:value,salario_bruto:detail?.bruto??null,descontos_folha:detail?.descontos??null,vales_folha:detail?.vales??null}
    const title=entryForm.title
-   const query=title?supabase.from('titulos_financeiros').update(payload).eq('id',title.id).eq('status','aberto').eq('valor_pago',0).eq('valor',title.valor).eq('descricao',title.descricao).eq('vencimento',title.vencimento):supabase.from('titulos_financeiros').insert({...payload,valor_pago:0,status:'aberto'})
-   const r=await query.select('id').maybeSingle()
-   if(r.error)throw r.error
-   if(!r.data)throw new Error('O lançamento mudou ou já recebeu um pagamento. Atualize antes de editar; seus campos foram mantidos.')
-   setEntryForm(null);await onChanged();setMonth(competencia);setEmployee(person.id);setSearch('');setStatus('todos');setSection(category==='FGTS'?'fgts':category==='13º salário'?'decimo':category==='Vale de funcionário'?'vales':'folha');setNotice('Lançamento salvo no RH e em Contas a pagar. Nenhum pagamento foi registrado automaticamente.')
+   if(title){
+    const r=await supabase.from('titulos_financeiros').update(payload).eq('id',title.id).eq('status','aberto').eq('valor_pago',0).eq('valor',title.valor).eq('descricao',title.descricao).eq('vencimento',title.vencimento).select('id').maybeSingle()
+    if(r.error)throw r.error
+    if(!r.data)throw new Error('O lançamento mudou ou já recebeu um pagamento. Atualize antes de editar; seus campos foram mantidos.')
+   }else{
+    const totalCents=Math.round(value*100),base=Math.floor(totalCents/parcelCount),remainder=totalCents-base*parcelCount
+    const parcels=Array.from({length:parcelCount},(_,index)=>({...payload,descricao:parcelCount>1?`${descricao} · Parcela ${index+1}/${parcelCount}`:descricao,vencimento:addMonths(vencimento,index),valor:(base+(index<remainder?1:0))/100,valor_pago:0,status:'aberto'}))
+    const r=await supabase.from('titulos_financeiros').insert(parcels).select('id')
+    if(r.error)throw r.error
+    if(!r.data?.length)throw new Error('Não foi possível gerar as parcelas do vale.')
+   }
+   setEntryForm(null);await onChanged();setMonth(competencia);setEmployee(person.id);setSearch('');setStatus('todos');setSection(category==='FGTS'?'fgts':category==='13º salário'?'decimo':category==='Vale de funcionário'?'vales':'folha');setNotice(parcelCount>1?`Vale salvo em ${parcelCount} parcelas mensais no RH e em Contas a pagar.`:'Lançamento salvo no RH e em Contas a pagar. Nenhum pagamento foi registrado automaticamente.')
   }catch(e){setError(errorMessage(e))}finally{saving.current=false;setBusy(false)}
  }
  async function discount(title:T){
@@ -135,6 +145,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   {personForm&&canEdit&&<div className="employeeEditBackdrop"><form className="panel employeeEditModal" role="dialog" aria-modal="true" aria-labelledby="rh-person-title" onSubmit={e=>void savePerson(e)}><div className="panelHead"><h3 id="rh-person-title">{personForm.person?'Editar':'Cadastrar'} funcionário</h3><button type="button" className="ghost" disabled={busy} aria-label="Fechar funcionário" onClick={()=>setPersonForm(null)}><X size={16}/></button></div>{error&&<p role="alert" className="billingFormError">{error}</p>}<fieldset disabled={busy}><label>Nome<input name="nome" required maxLength={120} defaultValue={personForm.person?.nome||''} autoFocus/></label><label>Cargo<input name="cargo" maxLength={100} defaultValue={personForm.person?.cargo||''}/></label><label>Situação<select name="ativo" defaultValue={personForm.person?.ativo===false?'false':'true'}><option value="true">Ativo</option><option value="false">Inativo</option></select></label><p className="employeeHelp">Inativar preserva todo o histórico e impede novos lançamentos para este funcionário.</p><div className="formActions"><button type="button" className="ghost" onClick={()=>setPersonForm(null)}>Cancelar</button><button className="primary">{busy?'Salvando…':'Salvar funcionário'}</button></div></fieldset></form></div>}
   {entryForm&&canEdit&&<div className="employeeEditBackdrop"><form className="panel employeeEditModal rhEntryModal" role="dialog" aria-modal="true" aria-labelledby="rh-entry-title" onSubmit={e=>void saveEntry(e)}><div className="panelHead"><h3 id="rh-entry-title">{entryForm.title?'Editar':'Novo'} lançamento de RH</h3><button type="button" className="ghost" disabled={busy} aria-label="Fechar lançamento" onClick={()=>setEntryForm(null)}><X size={16}/></button></div>{error&&<p role="alert" className="billingFormError">{error}</p>}<fieldset disabled={busy}><div className="rhFormGrid"><label>Funcionário<select required value={formEmployee} onChange={e=>setFormEmployee(e.target.value)}><option value="">Selecione</option>{employees.filter(p=>p.ativo||p.id===entryForm.title?.funcionario_id).map(p=><option key={p.id} value={p.id}>{p.nome}{!p.ativo?' · Inativo':''}</option>)}</select></label><label>Tipo de lançamento<select value={category} onChange={e=>{setCategory(e.target.value);setError('')}}>{[...new Set([...categories,category])].map(c=><option key={c}>{c}</option>)}</select></label><label>Competência<input type="month" name="competencia" required defaultValue={entryForm.title?.competencia?.slice(0,7)||month||today().slice(0,7)}/></label><label>Vencimento / data prevista<input type="date" name="vencimento" required defaultValue={entryForm.title?.vencimento||today()}/></label><label className="rhFullWidth">Descrição<input name="descricao" required maxLength={200} defaultValue={entryForm.title?.descricao||''} placeholder="Ex.: Salário de novembro ou 1ª parcela do 13º"/></label>
    {payrollCategory&&<label className="rhFullWidth rhCheckbox"><input type="checkbox" checked={detailed} onChange={e=>setDetailed(e.target.checked)}/>Informar bruto e descontos da folha</label>}
+   {category==='Vale de funcionário'&&!entryForm.title&&<><label>Parcelas<input type="number" min="1" max="24" step="1" value={installments} onChange={e=>setInstallments(Math.max(1,Math.min(24,Number(e.target.value)||1)))}/></label><p className="employeeHelp">O valor total será dividido em parcelas mensais, começando no vencimento informado. A diferença de centavos fica distribuída nas primeiras parcelas.</p></>}
    {payrollCategory&&detailed?<><label>Bruto (R$)<input type="number" min="0.01" max="999999999" step="0.01" required value={gross} onChange={e=>setGross(e.target.value)}/></label><label>Outros descontos (R$)<input type="number" min="0" max="999999999" step="0.01" required value={deductions} onChange={e=>setDeductions(e.target.value)}/></label><label>Vales abatidos nesta folha (R$)<input type="number" min="0" max="999999999" step="0.01" required value={advances} onChange={e=>setAdvances(e.target.value)}/></label><div className="rhPayrollPreview rhFullWidth" aria-live="polite"><span>Líquido a pagar</span><strong>{payroll?money(payroll.liquido):'—'}</strong><small>{payroll?`${money(payroll.bruto)} − ${money(payroll.descontos)} − ${money(payroll.vales)}`:previewError}</small></div>{formEmployee&&<p className="employeeHelp rhFullWidth">Vales pagos ainda sem marcação de desconto: {money(outstandingAdvances)}. Informe apenas o que será abatido nesta folha; após conferir, marque os vales correspondentes como descontados na aba Vales. A marcação é manual.</p>}</>:<label>Valor {payrollCategory?'líquido ':''}a pagar (R$)<input type="number" name="valor" min="0.01" max="999999999" step="0.01" required defaultValue={entryForm.title?.valor||''}/></label>}
    <p className="employeeHelp rhFullWidth">{category==='FGTS'?'Informe o valor da guia, sem descontá-lo novamente do líquido.':payrollCategory?'Transcreva os valores conferidos da folha ou holerite. INSS, IRRF e outros descontos são informados, sem cálculo automático de alíquotas.':'O valor gera uma conta a pagar vinculada ao funcionário.'} O lançamento não registra pagamento automático.</p></div><div className="formActions"><button type="button" className="ghost" onClick={()=>setEntryForm(null)}>Cancelar</button><button className="primary" disabled={loading||!employees.some(p=>p.ativo)}>{busy?'Salvando…':'Salvar lançamento'}</button></div></fieldset></form></div>}
  </section>
