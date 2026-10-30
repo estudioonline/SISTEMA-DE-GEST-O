@@ -10,6 +10,7 @@ type LookupProduct = {
   descricao: string
   unidade: string
   preco_venda: number
+  custo: number
   estoque_atual: number
   ativo: boolean
 }
@@ -109,7 +110,10 @@ export function ProductLookup({ products, value, onSelect }: {
             onClick={() => { onSelect(product.id); close() }}>
             <span className="productLookupName"><small>{product.codigo}</small><strong>{product.descricao}</strong>{product.id === value && <em>Selecionado</em>}</span>
             <span className="productLookupStock">Estoque: {Number(product.estoque_atual).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {product.unidade}</span>
-            <span className="productLookupPrice">{currency(product.preco_venda)}</span>
+            <span className="productLookupPrice" style={{display:'grid',gap:6}}>
+              <span><small style={{display:'block',fontSize:11,fontWeight:400,opacity:.75}}>Venda</small>{currency(product.preco_venda)}</span>
+              <span><small style={{display:'block',fontSize:11,fontWeight:400,opacity:.75}}>Custo</small>{currency(product.custo)}</span>
+            </span>
           </button>)}
           {results.length > limit && <button type="button" className="productLookupMore" onClick={() => setLimit(count => count + 60)}>Mostrar mais produtos ({limit} de {results.length})</button>}
         </div>
