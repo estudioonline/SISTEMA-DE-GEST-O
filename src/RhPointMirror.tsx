@@ -89,10 +89,12 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    if(p.time!==target)return false
    const raw=p.raw||{}
    const change=String(raw._typeAfdChange??raw.typeAfdChange??'').toUpperCase()
-   return Boolean(Number(raw.idAfdChange||0))||change==='I'||change==='D'||Boolean(raw.reason)
+   const reason=String(raw.reason??'').trim()
+   const manualWithoutOriginal=Number(raw.idAfd||0)===0&&Number(raw.idAfdChange||0)>0
+   return change==='I'||Boolean(reason)||manualWithoutOriginal
   })
  }
- const highlightedTime=(r:Adjust,field:TimeField)=>editedTime(r,field)||rhidAdjustedTime(r,field)
+ const highlightedTime=(r:Adjust,field:TimeField)=>rhidAdjustedTime(r,field)
  const effectiveRow=(d:string):Adjust=>{
   const local=byDate.get(d)
   const remote=rhidByDate.get(d)
