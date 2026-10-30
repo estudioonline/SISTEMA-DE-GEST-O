@@ -41,23 +41,16 @@ export function parseEffectivePermissions(rows:unknown):PermissionMap{
 
 export function defaultPermissionsForRole(role:string):PermissionMap{
   const p={...none}
+  for(const m of permissionModules)p[m.key]='visualizar'
   if(role==='administrador'){
-    for(const m of permissionModules)p[m.key]=m.editable?'editar':'visualizar'
-    return p
+    for(const m of permissionModules)if(m.editable)p[m.key]='editar'
+  }else if(role==='financeiro'){
+    p.financeiro='editar'
+  }else if(role==='vendas'){
+    p.vendas='editar';p.clientes='editar'
+  }else if(role==='estoque'){
+    p.fornecedores='editar';p.produtos='editar';p.compras='editar'
   }
-  if(role==='financeiro'){
-    p.dashboard='visualizar';p.clientes='visualizar';p.fornecedores='visualizar';p.financeiro='editar';p.relatorios='visualizar'
-    return p
-  }
-  if(role==='vendas'){
-    p.dashboard='visualizar';p.vendas='editar';p.clientes='editar';p.produtos='visualizar';p.comissoes='visualizar';p.autorizacoes='visualizar';p.relatorios='visualizar'
-    return p
-  }
-  if(role==='estoque'){
-    p.dashboard='visualizar';p.fornecedores='editar';p.produtos='editar';p.compras='editar';p.relatorios='visualizar'
-    return p
-  }
-  p.dashboard='visualizar';p.vendas='visualizar';p.clientes='visualizar';p.relatorios='visualizar'
   return p
 }
 
