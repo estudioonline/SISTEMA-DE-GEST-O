@@ -145,7 +145,9 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
    if(p.time!==time)return false
    const raw=p.raw||{}
    const change=String(raw._typeAfdChange??raw.typeAfdChange??'').toUpperCase()
-   return Boolean(Number(raw.idAfdChange||0))||change==='I'||change==='D'||Boolean(raw.reason)
+   const reason=String(raw.reason??'').trim()
+   const manualWithoutOriginal=Number(raw.idAfd||0)===0&&Number(raw.idAfdChange||0)>0
+   return change==='I'||Boolean(reason)||manualWithoutOriginal
   })
  }
 
