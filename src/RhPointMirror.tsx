@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useState} from 'react'
-import {ChevronLeft,ChevronRight,FileDown,Pencil,Save,X} from 'lucide-react'
+import {ChevronLeft,ChevronRight,FileDown,Pencil,RefreshCw,Search,Save,ShieldCheck,X} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {parseRhidAttendance,RhidDay} from './lib/rhid'
 import {jsPDF} from 'jspdf'
@@ -25,9 +25,26 @@ const hours=(r:Adjust)=>{const m=mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.
 const pendingVerification=(r:Adjust)=>Boolean((r.rhid_resposta as {request_sent?:boolean;verified?:boolean}|null)?.request_sent&&!(r.rhid_resposta as {verified?:boolean}|null)?.verified)
 
 export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];month:string;canEdit:boolean}){
- const [employeeId,setEmployeeId]=useState(''),[rows,setRows]=useState<Adjust[]>([]),[rhidDays,setRhidDays]=useState<RhidDay[]>([]),[editing,setEditing]=useState<Adjust|null>(null),[sendingId,setSendingId]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
+ const [employeeId,setEmployeeId]=useState(''),[rows,setRows]=useState<Adjust[]>([]),[rhidDays,setRhidDays]=useState<RhidDay[]>([]),[editing,setEditing]=useState<Adjust|null>(null),[sendingId,setSendingId]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[rhidValidated,setRhidValidated]=useState<boolean|null>(null)
  const activeEmployees=employees.filter(e=>e.ativo)
  const current=employees.find(e=>e.id===employeeId)
+ async function testRhidConnection(){
+  setBusy(true);setMessage('')
+  try{
+   const {data,error}=await supabase.functions.invoke('rhid-proxy',{body:{action:'status'}})
+   if(error)throw error
+   if(data?.error)throw new Error(String(data.error))
+   setRhidValidated(Boolean(data?.configured&&data?.connected!==false))
+   setMessage('Conexão com RHID validada.')
+  }catch(e){setRhidValidated(false);setMessage('Falha na conexão com RHID: '+((e as Error)?.message||'erro desconhecido'))}
+  finally{setBusy(false)}
+ }
+ async function syncRhid(){
+  if(!employeeId){setMessage('Selecione um funcionário.');return}
+  await load()
+  setRhidValidated(true)
+  setMessage('Espelho sincronizado com o RHID.')
+ }
  function moveEmployee(direction:-1|1){
   if(!activeEmployees.length)return
   const index=activeEmployees.findIndex(e=>e.id===employeeId)
@@ -350,7 +367,18 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   }finally{setSendingId('');await load(true)}
  }
  return <section className="rhPointMirror">
-  <div className="panel rhPointHeader"><div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{activeEmployees.map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div><div><span>Horas do período</span><strong>{Math.floor(worked/60)}h {pad(worked%60)}m</strong></div><div><span>Horas extras (44h/sem.)</span><strong>{fmtMinutes(overtimeTotal)}</strong></div><div><span>Fonte</span><strong>{current?.rhid_person_id?'RHID + ajustes':'Ajustes locais'}</strong></div></div>
+  <div className="panelHead rhidHead"><div><h3>Espelho de ponto</h3><p>Integração com RHID para conferência e ajustes. Período padrão: dia 26 até dia 25 do mês seguinte.</p></div><div className={'rhidConnection '+(rhidValidated===false?'off':'ok')}><ShieldCheck size={16}/>{rhidValidated===false?'RHID não validado':'RHID validado'}</div></div>
+
+  <div className="panel rhidControls rhPointMirrorControls">
+   <div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{activeEmployees.map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div>
+   <label>De<input type="date" value={periodStart} readOnly/></label>
+   <label>Até<input type="date" value={periodEnd} readOnly/></label>
+   <button className="ghost" disabled={busy} onClick={()=>void testRhidConnection()}><ShieldCheck size={15}/>Testar conexão</button>
+   <button className="ghost" disabled={busy||!employeeId} onClick={()=>void syncRhid()}><RefreshCw size={15}/>Sincronizar RHID</button>
+   <button className="primary" disabled={busy||!employeeId} onClick={()=>void load()}><Search size={15}/>Consultar espelho</button>
+  </div>
+
+  <div className="panel rhPointHeader rhPointSummary"><div><span>Horas do período</span><strong>{Math.floor(worked/60)}h {pad(worked%60)}m</strong></div><div><span>Horas extras (44h/sem.)</span><strong>{fmtMinutes(overtimeTotal)}</strong></div><div><span>Fonte</span><strong>{current?.rhid_person_id?'RHID + ajustes':'Ajustes locais'}</strong></div></div>
   {message&&<div className="panel noticePanel">{message}</div>}
   {employeeId&&<article className="panel tablePanel rhOvertimePanel"><div className="panelHead"><div><h3>Demonstrativo de horas extras</h3><p>Regra do SG: jornada CLT de {Number(current?.jornada_semanal_horas||44)}h semanais. O excedente de cada semana é considerado hora extra.</p></div><strong>{fmtMinutes(overtimeTotal)} de HE</strong></div><div className="tableWrap"><table className="rhOvertimeTable"><thead><tr><th>Semana</th><th>Horas trabalhadas</th><th>Limite semanal</th><th>Horas extras</th></tr></thead><tbody>{weeklySummary.map(w=><tr key={w.start}><td>{new Date(w.start+'T12:00:00').toLocaleDateString('pt-BR')} a {new Date(w.end+'T12:00:00').toLocaleDateString('pt-BR')}</td><td>{fmtMinutes(w.worked)}</td><td>{fmtMinutes(weeklyLimitMinutes)}</td><td><strong className={w.overtime>0?'rhOvertimePositive':''}>{fmtMinutes(w.overtime)}</strong></td></tr>)}</tbody></table></div></article>}
   <article className="panel tablePanel"><div className="panelHead"><div><h3>Espelho de ponto do mês</h3><p>Marcações do RHID com possibilidade de ajuste e justificativa por dia.</p></div><div className="rhPointReportActions"><span>{current?.nome||'Selecione um funcionário'}</span><button className="ghost" disabled={!current||!employeeId} onClick={downloadPdf}><FileDown size={15}/>Relatório PDF</button></div></div><div className="tableWrap"><table className="rhPointTable"><thead><tr><th>Dia / Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Total</th><th>Status</th><th>Observação</th><th>Envio RHID</th><th>Ação</th></tr></thead><tbody>
