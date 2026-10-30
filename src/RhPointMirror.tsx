@@ -5,7 +5,7 @@ import {parseRhidAttendance,RhidDay} from './lib/rhid'
 import {jsPDF} from 'jspdf'
 
 type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
-type Adjust={id:string;funcionario_id:string;data:string;entrada_1:string|null;saida_1:string|null;entrada_2:string|null;saida_2:string|null;status:'presente'|'atraso'|'falta'|'folga'|'atestado';observacao:string|null}
+type Adjust={id:string;funcionario_id:string;data:string;entrada_1:string|null;saida_1:string|null;entrada_2:string|null;saida_2:string|null;status:'presente'|'atraso'|'falta'|'folga'|'atestado';observacao:string|null;envio_status?:'local'|'aguardando_envio'|'enviando'|'enviado'|'erro'|'rejeitado';enviado_em?:string|null;envio_erro?:string|null;rhid_resposta?:unknown;rhid_snapshot?:unknown}
 const pad=(n:number)=>String(n).padStart(2,'0')
 const daysInMonth=(m:string)=>{const p=m.split('-').map(Number),y=p[0],mo=p[1];return new Date(y,mo,0).getDate()}
 const weekday=(d:string)=>new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'})
@@ -13,7 +13,7 @@ function mins(a:string|null,b:string|null){if(!a||!b)return 0;const x=a.split(':
 const hours=(r:Adjust)=>{const m=mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2);return Math.floor(m/60)+'h '+pad(m%60)+'m'}
 
 export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];month:string;canEdit:boolean}){
- const [employeeId,setEmployeeId]=useState(''),[rows,setRows]=useState<Adjust[]>([]),[rhidDays,setRhidDays]=useState<RhidDay[]>([]),[editing,setEditing]=useState<Adjust|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
+ const [employeeId,setEmployeeId]=useState(''),[rows,setRows]=useState<Adjust[]>([]),[rhidDays,setRhidDays]=useState<RhidDay[]>([]),[editing,setEditing]=useState<Adjust|null>(null),[sendingId,setSendingId]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('')
  const current=employees.find(e=>e.id===employeeId)
  async function load(){
   if(!employeeId||!month){setRows([]);setRhidDays([]);return}
@@ -243,17 +243,74 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  async function save(){
   if(!editing||!employeeId)return
   setBusy(true);setMessage('')
-  const {id,...body}=editing
-  const q=id?supabase.from('rh_ponto_ajustes').update(body).eq('id',id):supabase.from('rh_ponto_ajustes').insert(body)
-  const {error}=await q
-  if(error)setMessage(error.message);else{setEditing(null);setMessage('Ajuste de ponto salvo.');await load()}
+  const before=editing.id?rows.find(r=>r.id===editing.id)||null:null
+  const remote=rhidByDate.get(editing.data)
+  const snapshot=remote?{
+   entrada_1:remote.entrada_1,saida_1:remote.saida_1,entrada_2:remote.entrada_2,saida_2:remote.saida_2,
+   punches:remote.punches.map(p=>({time:p.time,kind:p.kind}))
+  }:null
+  const payload={
+   funcionario_id:employeeId,data:editing.data,
+   entrada_1:editing.entrada_1,saida_1:editing.saida_1,entrada_2:editing.entrada_2,saida_2:editing.saida_2,
+   status:editing.status,observacao:editing.observacao||null,
+   envio_status:'aguardando_envio',envio_erro:null,rhid_snapshot:snapshot
+  }
+  const result=editing.id
+   ?await supabase.from('rh_ponto_ajustes').update(payload).eq('id',editing.id).select('*').single()
+   :await supabase.from('rh_ponto_ajustes').insert(payload).select('*').single()
+  if(result.error){setMessage(result.error.message);setBusy(false);return}
+  const saved=result.data as Adjust
+  const {data:userData}=await supabase.auth.getUser()
+  await supabase.from('rh_ponto_ajustes_historico').insert({
+   ajuste_id:saved.id,funcionario_id:employeeId,data:saved.data,acao:editing.id?'editado':'criado',
+   antes:before,depois:saved,usuario_id:userData.user?.id||null
+  })
+  setEditing(null);setMessage('Ajuste salvo e marcado como aguardando envio ao RHID.');await load()
   setBusy(false)
+ }
+
+ async function sendToRhid(r:Adjust){
+  if(!r.id||!current?.rhid_person_id)return
+  const ok=window.confirm('Deseja enviar este ajuste ao RHID?\\n\\nO SG manterá o histórico desta tentativa.')
+  if(!ok)return
+  setSendingId(r.id);setMessage('')
+  const {data:userData}=await supabase.auth.getUser()
+  await supabase.from('rh_ponto_ajustes').update({envio_status:'enviando',envio_erro:null}).eq('id',r.id)
+  try{
+   const {data,error}=await supabase.functions.invoke('rhid-proxy',{body:{
+    action:'send_adjustment',
+    adjustment_id:r.id,
+    person_id:current.rhid_person_id,
+    date:r.data,
+    entrada_1:r.entrada_1,saida_1:r.saida_1,entrada_2:r.entrada_2,saida_2:r.saida_2,
+    status:r.status,observation:r.observacao
+   }})
+   if(error)throw error
+   if(data?.error)throw new Error(String(data.error))
+   await supabase.from('rh_ponto_ajustes').update({
+    envio_status:'enviado',enviado_em:new Date().toISOString(),enviado_por:userData.user?.id||null,
+    envio_erro:null,rhid_resposta:data
+   }).eq('id',r.id)
+   await supabase.from('rh_ponto_ajustes_historico').insert({
+    ajuste_id:r.id,funcionario_id:r.funcionario_id,data:r.data,acao:'enviado_rhid',
+    antes:r,depois:{...r,envio_status:'enviado'},resposta_rhid:data,usuario_id:userData.user?.id||null
+   })
+   setMessage('Ajuste enviado ao RHID.')
+  }catch(e){
+   const err=(e as Error)?.message||'Falha no envio ao RHID.'
+   await supabase.from('rh_ponto_ajustes').update({envio_status:'erro',envio_erro:err}).eq('id',r.id)
+   await supabase.from('rh_ponto_ajustes_historico').insert({
+    ajuste_id:r.id,funcionario_id:r.funcionario_id,data:r.data,acao:'erro_envio_rhid',
+    antes:r,depois:{...r,envio_status:'erro'},erro:err,usuario_id:userData.user?.id||null
+   })
+   setMessage('Não foi possível enviar ao RHID: '+err)
+  }finally{setSendingId('');await load()}
  }
  return <section className="rhPointMirror">
   <div className="panel rhPointHeader"><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.ativo).map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><div><span>Horas no mês</span><strong>{Math.floor(worked/60)}h {pad(worked%60)}m</strong></div><div><span>Fonte</span><strong>{current?.rhid_person_id?'RHID + ajustes':'Ajustes locais'}</strong></div></div>
   {message&&<div className="panel noticePanel">{message}</div>}
-  <article className="panel tablePanel"><div className="panelHead"><div><h3>Espelho de ponto do mês</h3><p>Marcações do RHID com possibilidade de ajuste e justificativa por dia.</p></div><div className="rhPointReportActions"><span>{current?.nome||'Selecione um funcionário'}</span><button className="ghost" disabled={!current||!employeeId} onClick={downloadPdf}><FileDown size={15}/>Relatório PDF</button></div></div><div className="tableWrap"><table className="rhPointTable"><thead><tr><th>Dia / Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Total</th><th>Status</th><th>Observação</th><th>Ação</th></tr></thead><tbody>
-   {employeeId?calendar.map(r=><tr key={r.data}><td><strong>{r.data.slice(8,10)}</strong><small className="employeeCategory">{weekday(r.data)}</small></td><td>{r.entrada_1?.slice(0,5)||'—'}</td><td>{r.saida_1?.slice(0,5)||'—'}</td><td>{r.entrada_2?.slice(0,5)||'—'}</td><td>{r.saida_2?.slice(0,5)||'—'}</td><td>{hours(r)}</td><td><span className={'statusBadge rhPoint-'+r.status}>{r.status}</span></td><td>{r.observacao|| (rhidByDate.has(r.data)?'RHID':'—')}</td><td>{canEdit&&<button className="ghost" onClick={()=>setEditing({...r})}><Pencil size={14}/>Editar</button>}</td></tr>):<tr><td colSpan={9}>Selecione um funcionário.</td></tr>}
+  <article className="panel tablePanel"><div className="panelHead"><div><h3>Espelho de ponto do mês</h3><p>Marcações do RHID com possibilidade de ajuste e justificativa por dia.</p></div><div className="rhPointReportActions"><span>{current?.nome||'Selecione um funcionário'}</span><button className="ghost" disabled={!current||!employeeId} onClick={downloadPdf}><FileDown size={15}/>Relatório PDF</button></div></div><div className="tableWrap"><table className="rhPointTable"><thead><tr><th>Dia / Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Total</th><th>Status</th><th>Observação</th><th>Envio RHID</th><th>Ação</th></tr></thead><tbody>
+   {employeeId?calendar.map(r=><tr key={r.data}><td><strong>{r.data.slice(8,10)}</strong><small className="employeeCategory">{weekday(r.data)}</small></td><td>{r.entrada_1?.slice(0,5)||'—'}</td><td>{r.saida_1?.slice(0,5)||'—'}</td><td>{r.entrada_2?.slice(0,5)||'—'}</td><td>{r.saida_2?.slice(0,5)||'—'}</td><td>{hours(r)}</td><td><span className={'statusBadge rhPoint-'+r.status}>{r.status}</span></td><td>{r.observacao|| (rhidByDate.has(r.data)?'RHID':'—')}</td><td>{r.id?<span className={'statusBadge rhSend-'+(r.envio_status||'local')}>{(r.envio_status||'local').replaceAll('_',' ')}</span>:<span className="statusBadge">Original RHID</span>}</td><td><div className="rhRowActions">{canEdit&&<button className="ghost" onClick={()=>setEditing({...r})}><Pencil size={14}/>Editar</button>}{canEdit&&r.id&&current?.rhid_person_id&&r.envio_status!=='enviado'&&<button className="ghost rhSendBtn" disabled={sendingId===r.id} onClick={()=>void sendToRhid(r)}>{sendingId===r.id?'Enviando...':'Enviar ao RHID'}</button>}</div></td></tr>):<tr><td colSpan={10}>Selecione um funcionário.</td></tr>}
   </tbody></table></div></article>
   {editing&&<div className="employeeEditBackdrop"><div className="panel employeeEditModal rhPointModal"><div className="panelHead"><h3>Editar horário — {editing.data.split('-').reverse().join('/')}</h3><button className="ghost" onClick={()=>setEditing(null)}><X size={16}/></button></div><div className="rhFormGrid">
    <label>Entrada 1<input type="time" value={editing.entrada_1?.slice(0,5)||''} onChange={e=>setEditing({...editing,entrada_1:e.target.value||null})}/></label>
