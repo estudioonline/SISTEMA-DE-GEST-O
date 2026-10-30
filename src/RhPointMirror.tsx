@@ -33,7 +33,8 @@ const editedTime=(r:Adjust,field:TimeField)=>{
 }
 
 export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];month:string;canEdit:boolean}){
- const [employeeId,setEmployeeId]=useState(''),[rows,setRows]=useState<Adjust[]>([]),[rhidDays,setRhidDays]=useState<RhidDay[]>([]),[editing,setEditing]=useState<Adjust|null>(null),[sendingId,setSendingId]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[rhidValidated,setRhidValidated]=useState<boolean|null>(null)
+ const defaultCycle=month?cycleForMonth(month):{start:'',end:''}
+ const [employeeId,setEmployeeId]=useState(''),[rows,setRows]=useState<Adjust[]>([]),[rhidDays,setRhidDays]=useState<RhidDay[]>([]),[editing,setEditing]=useState<Adjust|null>(null),[sendingId,setSendingId]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[rhidValidated,setRhidValidated]=useState<boolean|null>(null),[periodStart,setPeriodStart]=useState(defaultCycle.start),[periodEnd,setPeriodEnd]=useState(defaultCycle.end)
  const activeEmployees=employees.filter(e=>e.ativo)
  const current=employees.find(e=>e.id===employeeId)
  async function testRhidConnection(){
@@ -62,7 +63,8 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  async function load(preserveMessage=false){
   if(!employeeId||!month){setRows([]);setRhidDays([]);return}
   setBusy(true);if(!preserveMessage)setMessage('')
-  const cycle=cycleForMonth(month),start=mondayOf(cycle.start),end=sundayOf(cycle.end)
+  if(!periodStart||!periodEnd||periodStart>periodEnd){setMessage('Informe um período válido.');setBusy(false);return}
+  const start=mondayOf(periodStart),end=sundayOf(periodEnd)
   const currentEmployee=employees.find(e=>e.id===employeeId)
   const {data,error}=await supabase.from('rh_ponto_ajustes').select('*').eq('funcionario_id',employeeId).gte('data',start).lte('data',end).order('data')
   if(error)setMessage(error.message);else setRows((data||[]) as Adjust[])
@@ -75,6 +77,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   }else setRhidDays([])
   setBusy(false)
  }
+ useEffect(()=>{const c=month?cycleForMonth(month):{start:'',end:''};setPeriodStart(c.start);setPeriodEnd(c.end)},[month])
  useEffect(()=>{void load()},[employeeId,month])
  const byDate=useMemo(()=>new Map(rows.map(r=>[r.data,r])),[rows])
  const rhidByDate=useMemo(()=>new Map(rhidDays.map(r=>[r.date,r])),[rhidDays])
@@ -104,9 +107,6 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    observacao:remote?.punches.length?'Importado do RHID':null
   }
  }
- const cycle=month?cycleForMonth(month):{start:'',end:''}
- const periodStart=cycle.start
- const periodEnd=cycle.end
  const extendedStart=periodStart?mondayOf(periodStart):''
  const extendedEnd=periodEnd?sundayOf(periodEnd):''
  const extendedCalendar=useMemo(()=>month?dateRange(extendedStart,extendedEnd).map(effectiveRow):[],[month,employeeId,byDate,rhidByDate])
@@ -391,8 +391,8 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
 
   <div className="panel rhidControls rhPointMirrorControls">
    <div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{activeEmployees.map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div>
-   <label>De<input type="date" value={periodStart} readOnly/></label>
-   <label>Até<input type="date" value={periodEnd} readOnly/></label>
+   <label>De<input type="date" value={periodStart} onChange={e=>setPeriodStart(e.target.value)}/></label>
+   <label>Até<input type="date" value={periodEnd} onChange={e=>setPeriodEnd(e.target.value)}/></label>
    <button className="ghost" disabled={busy} onClick={()=>void testRhidConnection()}><ShieldCheck size={15}/>Testar conexão</button>
    <button className="ghost" disabled={busy||!employeeId} onClick={()=>void syncRhid()}><RefreshCw size={15}/>Sincronizar RHID</button>
    <button className="primary" disabled={busy||!employeeId} onClick={()=>void load()}><Search size={15}/>Consultar espelho</button>
