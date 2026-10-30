@@ -186,3 +186,31 @@
 .rhSend-enviado{background:#dcfce7;color:#166534}
 .rhSend-erro{background:#fee2e2;color:#991b1b}
 .rhSend-rejeitado{background:#fce7f3;color:#9d174d}
+
+/* Horas extras e escala de sábado */
+.rhOvertimePanel{margin-bottom:14px}
+.rhOvertimeTable{min-width:720px}
+.rhOvertimeTable th,.rhOvertimeTable td{padding:9px 12px;text-align:left}
+.rhOvertimePositive{color:#d97706}
+.dark .rhOvertimePositive{color:#fbbf24}
+
+.rhPointHeader{grid-template-columns:minmax(260px,1.4fr) repeat(3,minmax(150px,.75fr))}
+.rhSaturdaySchedule{display:grid;gap:14px}
+.rhSaturdayToolbar{display:grid;grid-template-columns:repeat(3,minmax(150px,.7fr)) minmax(240px,1.4fr) auto;gap:12px;align-items:end}
+.rhSaturdayToolbar label{display:grid;gap:5px}
+.rhSaturdayToolbar input,.rhSaturdayToolbar select{height:40px;border:1px solid #d7dee8;border-radius:10px;padding:0 10px;background:#fff;color:#172033}
+.rhSaturdayNote{min-width:240px}
+.rhSaturdayTable{min-width:850px}
+.rhSaturdayTable th,.rhSaturdayTable td{padding:10px 12px;vertical-align:middle}
+.rhSaturdayTable td:first-child,.rhSaturdayTable th:first-child{text-align:center;width:90px}
+.rhSaturdayTable input[type="checkbox"]{width:18px;height:18px}
+.dark .rhSaturdayToolbar input,.dark .rhSaturdayToolbar select{background:#101725;border-color:#334155;color:#eef3ff}
+
+@media(max-width:1100px){
+ .rhSaturdayToolbar{grid-template-columns:repeat(2,minmax(180px,1fr))}
+ .rhSaturdayNote{min-width:0}
+ .rhPointHeader{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+ .rhSaturdayToolbar,.rhPointHeader{grid-template-columns:1fr}
+}
