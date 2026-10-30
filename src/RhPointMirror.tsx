@@ -4,11 +4,16 @@ import {supabase} from './lib/supabase'
 import {parseRhidAttendance,RhidDay} from './lib/rhid'
 import {jsPDF} from 'jspdf'
 
-type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
+type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null;regime_trabalho?:string|null;jornada_semanal_horas?:number|null}
 type Adjust={id:string;funcionario_id:string;data:string;entrada_1:string|null;saida_1:string|null;entrada_2:string|null;saida_2:string|null;status:'presente'|'atraso'|'falta'|'folga'|'atestado';observacao:string|null;envio_status?:'local'|'aguardando_envio'|'enviando'|'enviado'|'erro'|'rejeitado';enviado_em?:string|null;envio_erro?:string|null;rhid_resposta?:unknown;rhid_snapshot?:unknown}
 const pad=(n:number)=>String(n).padStart(2,'0')
 const daysInMonth=(m:string)=>{const p=m.split('-').map(Number),y=p[0],mo=p[1];return new Date(y,mo,0).getDate()}
 const weekday=(d:string)=>new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'})
+const iso=(d:Date)=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+const addDays=(value:string,days:number)=>{const d=new Date(value+'T12:00:00');d.setDate(d.getDate()+days);return iso(d)}
+const mondayOf=(value:string)=>{const d=new Date(value+'T12:00:00'),day=d.getDay(),back=day===0?6:day-1;d.setDate(d.getDate()-back);return iso(d)}
+const sundayOf=(value:string)=>addDays(mondayOf(value),6)
+const dateRange=(start:string,end:string)=>{const out:string[]=[];for(let d=start;d<=end;d=addDays(d,1))out.push(d);return out}
 function mins(a:string|null,b:string|null){if(!a||!b)return 0;const x=a.split(':').map(Number),y=b.split(':').map(Number);return Math.max(0,(y[0]*60+y[1])-(x[0]*60+x[1]))}
 const hours=(r:Adjust)=>{const m=mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2);return Math.floor(m/60)+'h '+pad(m%60)+'m'}
 
@@ -18,7 +23,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  async function load(){
   if(!employeeId||!month){setRows([]);setRhidDays([]);return}
   setBusy(true);setMessage('')
-  const start=month+'-01',end=month+'-'+pad(daysInMonth(month))
+  const monthStart=month+'-01',monthEnd=month+'-'+pad(daysInMonth(month)),start=mondayOf(monthStart),end=sundayOf(monthEnd)
   const currentEmployee=employees.find(e=>e.id===employeeId)
   const {data,error}=await supabase.from('rh_ponto_ajustes').select('*').eq('funcionario_id',employeeId).gte('data',start).lte('data',end).order('data')
   if(error)setMessage(error.message);else setRows((data||[]) as Adjust[])
@@ -34,8 +39,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
  useEffect(()=>{void load()},[employeeId,month])
  const byDate=useMemo(()=>new Map(rows.map(r=>[r.data,r])),[rows])
  const rhidByDate=useMemo(()=>new Map(rhidDays.map(r=>[r.date,r])),[rhidDays])
- const calendar=useMemo(()=>month?Array.from({length:daysInMonth(month)},(_,i)=>{
-  const d=month+'-'+pad(i+1)
+ const effectiveRow=(d:string):Adjust=>{
   const local=byDate.get(d)
   const remote=rhidByDate.get(d)
   if(local)return local
@@ -48,8 +52,29 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    status:(remote?.punches.length?'presente':'falta') as Adjust['status'],
    observacao:remote?.punches.length?'Importado do RHID':null
   }
- }):[],[month,employeeId,byDate,rhidByDate])
+ }
+ const monthStart=month?month+'-01':''
+ const monthEnd=month?month+'-'+pad(daysInMonth(month)):''
+ const extendedStart=monthStart?mondayOf(monthStart):''
+ const extendedEnd=monthEnd?sundayOf(monthEnd):''
+ const extendedCalendar=useMemo(()=>month?dateRange(extendedStart,extendedEnd).map(effectiveRow):[],[month,employeeId,byDate,rhidByDate])
+ const calendar=useMemo(()=>month?dateRange(monthStart,monthEnd).map(effectiveRow):[],[month,employeeId,byDate,rhidByDate])
+ const weeklyLimitMinutes=Math.round(Number(current?.jornada_semanal_horas||44)*60)
+ const weeklySummary=useMemo(()=>{
+  const map=new Map<string,{start:string;end:string;worked:number}>()
+  for(const r of extendedCalendar){
+   const start=mondayOf(r.data),end=addDays(start,6)
+   const item=map.get(start)||{start,end,worked:0}
+   item.worked+=mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2)
+   map.set(start,item)
+  }
+  return [...map.values()]
+   .filter(w=>w.end>=monthStart&&w.start<=monthEnd)
+   .map(w=>({...w,overtime:Math.max(0,w.worked-weeklyLimitMinutes)}))
+ },[extendedCalendar,weeklyLimitMinutes,monthStart,monthEnd])
  const worked=calendar.reduce((s,r)=>s+mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2),0)
+ const overtimeTotal=weeklySummary.reduce((s,w)=>s+w.overtime,0)
+ const fmtMinutes=(m:number)=>Math.floor(m/60)+'h '+pad(m%60)+'m'
  function downloadPdf(){
   if(!current||!employeeId)return
 
@@ -169,7 +194,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   doc.setFont('helvetica','bold');doc.setFontSize(10.2);doc.setTextColor(...ink)
   doc.text(current.nome,infoXs[0],39)
   doc.text(current.rhid_person_id?'RHID + ajustes':'Ajustes locais',infoXs[1],39)
-  doc.setTextColor(...amber);doc.text('Não informada no relatório atual',infoXs[2],39)
+  doc.setTextColor(...green);doc.text(String(Number(current.jornada_semanal_horas||44))+'h por semana (CLT)',infoXs[2],39)
   doc.setTextColor(...ink);doc.text(emitted,infoXs[3],39,{align:'right'})
 
   const cardY=50,cardW=67.5,cardH=19.5,gap=3.5
@@ -177,7 +202,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    {x:margin,label:'HORAS TRABALHADAS',value:Math.floor(worked/60)+'h '+pad(worked%60)+'m',note:'Total informado pelo relatório atual',c:blue},
    {x:margin+(cardW+gap),label:'DIAS COM MARCAÇÃO',value:String(daysWithMark),note:'Dias com pelo menos uma marcação',c:green},
    {x:margin+(cardW+gap)*2,label:'SEM MARCAÇÃO',value:String(daysWithoutMark),note:'Classificados como falta no relatório',c:red},
-   {x:margin+(cardW+gap)*3,label:'MARCAÇÕES PARCIAIS',value:String(partial),note:'Menos de 6h registradas no dia',c:amber}
+   {x:margin+(cardW+gap)*3,label:'HORAS EXTRAS',value:fmtMinutes(overtimeTotal),note:'Excedente de '+String(Number(current.jornada_semanal_horas||44))+'h por semana',c:amber}
   ]
   cards.forEach(card=>{
    doc.setDrawColor(...line);doc.setFillColor(255,255,255);doc.roundedRect(card.x,cardY,cardW,cardH,2.5,2.5,'FD')
@@ -190,7 +215,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   doc.setFillColor(...lightBlue);doc.setDrawColor(147,197,253);doc.roundedRect(margin,73.5,contentW,10.4,2.2,2.2,'FD')
   doc.setFont('helvetica','bold');doc.setFontSize(7.4);doc.setTextColor(30,64,175);doc.text('Leitura gerencial',12.5,77.5)
   doc.setFont('helvetica','normal');doc.setFontSize(7.2)
-  doc.text('Horas extras e saldo de banco não são calculados nesta demonstração porque a jornada prevista do funcionário não consta no relatório de origem.',12.5,81.4)
+  doc.text('Jornada CLT considerada: '+String(Number(current.jornada_semanal_horas||44))+'h semanais. O excedente de cada semana é demonstrado como hora extra.',12.5,81.4)
 
   doc.setFont('helvetica','bold');doc.setFontSize(9.3);doc.setTextColor(...ink)
   const firstRows=calendar.slice(0,16)
@@ -212,11 +237,26 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
    let y=drawRows(restRows,44.4)
 
    y+=3.5
+   doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...ink);doc.text('Demonstrativo de horas extras por semana',margin,y+4)
+   y+=7
+   doc.setFillColor(...navy);doc.roundedRect(margin,y,contentW,6.5,1.4,1.4,'F')
+   doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold')
+   doc.text('Semana',12.5,y+4.2);doc.text('Trabalhadas',112,y+4.2);doc.text('Limite',158,y+4.2);doc.text('Horas extras',205,y+4.2)
+   y+=6.5
+   weeklySummary.forEach((w,i)=>{
+    if(i%2===1){doc.setFillColor(...soft);doc.rect(margin,y,contentW,6,'F')}
+    doc.setTextColor(...ink);doc.setFont('helvetica','normal');doc.setFontSize(7)
+    doc.text(new Date(w.start+'T12:00:00').toLocaleDateString('pt-BR')+' a '+new Date(w.end+'T12:00:00').toLocaleDateString('pt-BR'),12.5,y+4)
+    doc.text(fmtMinutes(w.worked),112,y+4);doc.text(fmtMinutes(weeklyLimitMinutes),158,y+4)
+    doc.setFont('helvetica','bold');if(w.overtime>0)doc.setTextColor(...amber);doc.text(fmtMinutes(w.overtime),205,y+4);doc.setTextColor(...ink)
+    y+=6
+   })
+   y+=3.5
    doc.setFillColor(248,250,252);doc.setDrawColor(...line);doc.roundedRect(margin,y,contentW,18.2,2.5,2.5,'FD')
    doc.setFont('helvetica','bold');doc.setFontSize(8.4);doc.setTextColor(...ink);doc.text('Resumo de conferência',12.5,y+5)
    doc.setFont('helvetica','normal');doc.setFontSize(7.1);doc.setTextColor(...muted)
    doc.text('Dias com marcação: '+daysWithMark+'    |    Sem marcação: '+daysWithoutMark+'    |    Marcações parciais (<6h): '+partial,12.5,y+10)
-   doc.text('Horas extras / saldo do período: não calculados - jornada prevista não disponível no relatório de origem.',12.5,y+14.4)
+   doc.text('Horas extras nas semanas da competência: '+fmtMinutes(overtimeTotal)+' | Limite semanal: '+fmtMinutes(weeklyLimitMinutes)+'.',12.5,y+14.4)
 
    const sigY=y+27
    const sigs=[
@@ -307,8 +347,9 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   }finally{setSendingId('');await load()}
  }
  return <section className="rhPointMirror">
-  <div className="panel rhPointHeader"><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.ativo).map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><div><span>Horas no mês</span><strong>{Math.floor(worked/60)}h {pad(worked%60)}m</strong></div><div><span>Fonte</span><strong>{current?.rhid_person_id?'RHID + ajustes':'Ajustes locais'}</strong></div></div>
+  <div className="panel rhPointHeader"><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.ativo).map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><div><span>Horas no mês</span><strong>{Math.floor(worked/60)}h {pad(worked%60)}m</strong></div><div><span>Horas extras (44h/sem.)</span><strong>{fmtMinutes(overtimeTotal)}</strong></div><div><span>Fonte</span><strong>{current?.rhid_person_id?'RHID + ajustes':'Ajustes locais'}</strong></div></div>
   {message&&<div className="panel noticePanel">{message}</div>}
+  {employeeId&&<article className="panel tablePanel rhOvertimePanel"><div className="panelHead"><div><h3>Demonstrativo de horas extras</h3><p>Regra do SG: jornada CLT de {Number(current?.jornada_semanal_horas||44)}h semanais. O excedente de cada semana é considerado hora extra.</p></div><strong>{fmtMinutes(overtimeTotal)} de HE</strong></div><div className="tableWrap"><table className="rhOvertimeTable"><thead><tr><th>Semana</th><th>Horas trabalhadas</th><th>Limite semanal</th><th>Horas extras</th></tr></thead><tbody>{weeklySummary.map(w=><tr key={w.start}><td>{new Date(w.start+'T12:00:00').toLocaleDateString('pt-BR')} a {new Date(w.end+'T12:00:00').toLocaleDateString('pt-BR')}</td><td>{fmtMinutes(w.worked)}</td><td>{fmtMinutes(weeklyLimitMinutes)}</td><td><strong className={w.overtime>0?'rhOvertimePositive':''}>{fmtMinutes(w.overtime)}</strong></td></tr>)}</tbody></table></div></article>}
   <article className="panel tablePanel"><div className="panelHead"><div><h3>Espelho de ponto do mês</h3><p>Marcações do RHID com possibilidade de ajuste e justificativa por dia.</p></div><div className="rhPointReportActions"><span>{current?.nome||'Selecione um funcionário'}</span><button className="ghost" disabled={!current||!employeeId} onClick={downloadPdf}><FileDown size={15}/>Relatório PDF</button></div></div><div className="tableWrap"><table className="rhPointTable"><thead><tr><th>Dia / Data</th><th>Entrada 1</th><th>Saída 1</th><th>Entrada 2</th><th>Saída 2</th><th>Total</th><th>Status</th><th>Observação</th><th>Envio RHID</th><th>Ação</th></tr></thead><tbody>
    {employeeId?calendar.map(r=><tr key={r.data}><td><strong>{r.data.slice(8,10)}</strong><small className="employeeCategory">{weekday(r.data)}</small></td><td>{r.entrada_1?.slice(0,5)||'—'}</td><td>{r.saida_1?.slice(0,5)||'—'}</td><td>{r.entrada_2?.slice(0,5)||'—'}</td><td>{r.saida_2?.slice(0,5)||'—'}</td><td>{hours(r)}</td><td><span className={'statusBadge rhPoint-'+r.status}>{r.status}</span></td><td>{r.observacao|| (rhidByDate.has(r.data)?'RHID':'—')}</td><td>{r.id?<span className={'statusBadge rhSend-'+(r.envio_status||'local')}>{(r.envio_status||'local').replaceAll('_',' ')}</span>:<span className="statusBadge">Original RHID</span>}</td><td><div className="rhRowActions">{canEdit&&<button className="ghost" onClick={()=>setEditing({...r})}><Pencil size={14}/>Editar</button>}{canEdit&&r.id&&current?.rhid_person_id&&r.envio_status!=='enviado'&&<button className="ghost rhSendBtn" disabled={sendingId===r.id} onClick={()=>void sendToRhid(r)}>{sendingId===r.id?'Enviando...':'Enviar ao RHID'}</button>}</div></td></tr>):<tr><td colSpan={10}>Selecione um funcionário.</td></tr>}
   </tbody></table></div></article>
