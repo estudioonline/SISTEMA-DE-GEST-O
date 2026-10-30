@@ -2,7 +2,7 @@ import type { PermissionModule } from './permissions'
 
 export type AppModule=PermissionModule|'rh'|'documentos'
 export const appPermission=(module:AppModule):PermissionModule=>module==='rh'||module==='documentos'?'financeiro':module
-export type HrSection='geral'|'funcionarios'|'folha'|'fgts'|'decimo'|'vales'
+export type HrSection='geral'|'funcionarios'|'folha'|'fgts'|'decimo'|'vales'|'ponto'
 export type HrTitle={tipo_funcionario?:'gasto'|'vale'|null;categoria:string|null;valor:number;valor_pago:number;status:string;salario_bruto?:number|null;descontos_folha?:number|null;vales_folha?:number|null;vale_descontado_em?:string|null}
 const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
 export function hrSectionForTitle(title:HrTitle):Exclude<HrSection,'geral'|'funcionarios'>|null{
