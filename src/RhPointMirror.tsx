@@ -23,7 +23,7 @@ const cycleForMonth=(month:string)=>{
 function mins(a:string|null,b:string|null){if(!a||!b)return 0;const x=a.split(':').map(Number),y=b.split(':').map(Number);return Math.max(0,(y[0]*60+y[1])-(x[0]*60+x[1]))}
 const hours=(r:Adjust)=>{const m=mins(r.entrada_1,r.saida_1)+mins(r.entrada_2,r.saida_2);return Math.floor(m/60)+'h '+pad(m%60)+'m'}
 const pendingVerification=(r:Adjust)=>Boolean((r.rhid_resposta as {request_sent?:boolean;verified?:boolean}|null)?.request_sent&&!(r.rhid_resposta as {verified?:boolean}|null)?.verified)
-const isImportedOnly=(r:Adjust)=>r.observacao==='Importado do RHID'&&(r.envio_status==='local'||!r.envio_status)
+const isImportedOnly=(r:Adjust)=>r.observacao==='Importado do RHID'&&!Boolean((r.rhid_resposta as {request_sent?:boolean}|null)?.request_sent)
 type TimeField='entrada_1'|'saida_1'|'entrada_2'|'saida_2'
 const editedTime=(r:Adjust,field:TimeField)=>{
  const snap=(r.rhid_snapshot&&typeof r.rhid_snapshot==='object'?r.rhid_snapshot:{}) as Partial<Record<TimeField,string|null>>
