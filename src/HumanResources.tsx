@@ -92,8 +92,23 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
  function openEntry(title:T|null=null){
   if(!canEdit||loading)return
   const nextCategory=title?.categoria||(section==='fgts'?'FGTS':section==='decimo'?'13º salário':section==='vales'?'Vale de funcionário':'Salário')
-  setCategory(nextCategory);setFormEmployee(title?.funcionario_id||employee);setDetailed(title?title.salario_bruto!=null:true)
-  setGross(title?.salario_bruto==null?'':String(title.salario_bruto));setDeductions(String(title?.descontos_folha||0));setAdvances(String(title?.vales_folha||0));setInstallments(1)
+  const targetId=title?.funcionario_id||employee
+  const target=employees.find(p=>p.id===targetId)
+  let suggestedGross=0
+  if(target?.salario_base){
+   if(nextCategory==='13º salário'){
+    const year=Number((month||today().slice(0,7)).slice(0,4))
+    const avos=calculate13thAvos(target.data_admissao,year,12)
+    suggestedGross=Math.round(Number(target.salario_base)*avos/12*100)/100
+   }else if(nextCategory==='Salário'){
+    suggestedGross=Number(target.salario_base)
+   }
+  }
+  const suggested=suggestedGross>0?calculateAutomaticPayroll2026(suggestedGross,Number(target?.dependentes_ir||0),0,Number(title?.vales_folha||0),Number(target?.fgts_aliquota||8)):null
+  setCategory(nextCategory);setFormEmployee(targetId);setDetailed(title?title.salario_bruto!=null:true)
+  setGross(title?.salario_bruto==null?(suggestedGross?String(suggestedGross):''):String(title.salario_bruto))
+  setDeductions(title?String(title?.descontos_folha||0):(suggested?String((suggested.inss+suggested.irrf).toFixed(2)):'0'))
+  setAdvances(String(title?.vales_folha||0));setInstallments(1)
   setError('');setNotice('');setEntryForm({title})
  }
  function toggleSelected(id:string){setSelected(prev=>({...prev,[id]:!prev[id]}))}
