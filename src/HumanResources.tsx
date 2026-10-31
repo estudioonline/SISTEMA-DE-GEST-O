@@ -3,7 +3,7 @@ import type {FormEvent} from 'react'
 import {FileDown,Pencil,Plus,RefreshCw,Trash2,Users,WalletCards,X} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {readAllRows} from './lib/readAllRows'
-import {calculatePayroll,cents,hrSectionForTitle,summarizeHr} from './lib/hr'
+import {calculatePayroll,calculateAutomaticPayroll2026,calculate13thAvos,cents,hrSectionForTitle,summarizeHr} from './lib/hr'
 import type {HrSection,HrTitle} from './lib/hr'
 import type {EmployeeTitle} from './EmployeeFinance'
 import type {InvoiceCompany} from './lib/invoicePdf'
@@ -12,7 +12,7 @@ import {RhPointMirror} from './RhPointMirror'
 import {RhBenefits} from './RhBenefits'
 import {RhSaturdaySchedule} from './RhSaturdaySchedule'
 
-type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null;regime_trabalho?:string|null;jornada_semanal_horas?:number|null}
+type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null;regime_trabalho?:string|null;jornada_semanal_horas?:number|null;salario_base?:number|null;data_admissao?:string|null;dependentes_ir?:number|null;fgts_aliquota?:number|null}
 type Title=EmployeeTitle&HrTitle
 type PayrollImported={id:string;funcionario_id:string;competencia:string;salario_base:number;total_proventos:number;total_descontos:number;salario_liquido:number;base_fgts:number;fgts_recolher:number;base_inss:number;base_irrf:number;observacao:string|null;fonte:string}
 const tabs:[HrSection,string][]=[['geral','Visão geral'],['funcionarios','Funcionários'],['folha','Folha salarial'],['fgts','FGTS'],['decimo','13º salário'],['vales','Vales'],['ponto','Ponto e presença'],['espelho','Espelho de ponto'],['escala_sabado','Escala de sábado'],['beneficios','Benefícios']]
@@ -39,7 +39,7 @@ export function HumanResources<T extends Title>({titles,canEdit,company,onChange
   const sequence=++loadSequence.current
   setLoading(true)
   try{
-   const r=await readAllRows<Employee>((from,to)=>supabase.from('funcionarios').select('id,nome,cargo,ativo,rhid_person_id,regime_trabalho,jornada_semanal_horas').order('nome').order('id').range(from,to))
+   const r=await readAllRows<Employee>((from,to)=>supabase.from('funcionarios').select('id,nome,cargo,ativo,rhid_person_id,regime_trabalho,jornada_semanal_horas,salario_base,data_admissao,dependentes_ir,fgts_aliquota').order('nome').order('id').range(from,to))
    if(sequence!==loadSequence.current)return
    if(r.error)throw r.error
    setEmployees(r.data||[])
