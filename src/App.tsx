@@ -3230,10 +3230,10 @@ function App(){
 
           <div className="saleItems">
             {purchaseItems.map(i=><div className="purchaseItemRow" key={i.key}>
-              <select value={i.produto_id} onChange={e=>choosePurchaseProduct(i.key,e.target.value)} required>
+              <div className="saleProductPicker"><select value={i.produto_id} onChange={e=>choosePurchaseProduct(i.key,e.target.value)} required aria-label="Produto">
                 <option value="">Produto</option>
-                {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao}</option>)}
-              </select>
+                {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — custo {money(Number(p.custo))}</option>)}
+              </select><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>choosePurchaseProduct(i.key,id)}/></div>
               <input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updatePurchaseItem(i.key,'quantidade',Number(e.target.value))}/>
               <input type="number" min="0" step="0.01" value={i.custo_unitario} onChange={e=>updatePurchaseItem(i.key,'custo_unitario',Number(e.target.value))}/>
               <strong>{money(i.quantidade*i.custo_unitario)}</strong>
