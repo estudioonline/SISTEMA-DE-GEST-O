@@ -9,7 +9,12 @@ type ProductLike = {
   estoque_atual: number
   estoque_minimo: number
   ativo: boolean
+  grupo_id?: string|null
+  subgrupo_id?: string|null
 }
+
+type GroupLike={id:string;nome:string}
+type SubgroupLike={id:string;grupo_id:string;nome:string}
 
 export type ImportedProductRow = {
   codigo: string
@@ -20,9 +25,11 @@ export type ImportedProductRow = {
   estoque_atual: number
   estoque_minimo: number
   ativo: string
+  grupo: string
+  subgrupo: string
 }
 
-const headers=['Código','Descrição','Unidade','Custo','Preço de Venda','Estoque Atual','Estoque Mínimo','Ativo']
+const headers=['Código','Descrição','Grupo','Subgrupo','Unidade','Custo','Preço de Venda','Estoque Atual','Estoque Mínimo','Ativo']
 
 function downloadWorkbook(workbook:XLSX.WorkBook,filename:string){
   const output=XLSX.write(workbook,{type:'array',bookType:'xlsx'})
@@ -43,6 +50,8 @@ function makeInstructions(){
     ['Regra','Descrição'],
     ['Código','Obrigatório e usado como chave. Se já existir, o item será atualizado.'],
     ['Descrição','Obrigatória.'],
+    ['Grupo','Use exatamente o nome de um grupo existente no SG. Em branco remove o grupo e também o subgrupo.'],
+    ['Subgrupo','Use exatamente o nome de um subgrupo existente dentro do Grupo informado. Em branco deixa o produto sem subgrupo.'],
     ['Estoque Atual','Substitui o saldo atual do sistema. A diferença fica registrada no histórico como Importação Excel.'],
     ['Ativo','Aceita SIM/NÃO, ATIVO/INATIVO, TRUE/FALSE ou 1/0.'],
     ['Colunas','Não altere os títulos das colunas da aba Produtos.'],
@@ -50,10 +59,12 @@ function makeInstructions(){
   ])
 }
 
-export function exportProductsExcel(produtos:ProductLike[]){
+export function exportProductsExcel(produtos:ProductLike[],groups:GroupLike[]=[],subgroups:SubgroupLike[]=[]){
   const rows=produtos.map(p=>({
     'Código':p.codigo,
     'Descrição':p.descricao,
+    'Grupo':groups.find(g=>g.id===p.grupo_id)?.nome||'',
+    'Subgrupo':subgroups.find(s=>s.id===p.subgrupo_id)?.nome||'',
     'Unidade':p.unidade,
     'Custo':Number(p.custo),
     'Preço de Venda':Number(p.preco_venda),
@@ -62,7 +73,7 @@ export function exportProductsExcel(produtos:ProductLike[]){
     'Ativo':p.ativo?'SIM':'NÃO',
   }))
   const ws=XLSX.utils.json_to_sheet(rows,{header:headers})
-  ws['!cols']=[{wch:16},{wch:42},{wch:12},{wch:14},{wch:16},{wch:16},{wch:16},{wch:12}]
+  ws['!cols']=[{wch:16},{wch:42},{wch:24},{wch:24},{wch:12},{wch:14},{wch:16},{wch:16},{wch:16},{wch:12}]
   const wb=XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb,ws,'Produtos')
   XLSX.utils.book_append_sheet(wb,makeInstructions(),'Instruções')
@@ -73,9 +84,9 @@ export function exportProductsExcel(produtos:ProductLike[]){
 export function downloadProductsTemplate(){
   const ws=XLSX.utils.aoa_to_sheet([
     headers,
-    ['PROD-001','Produto exemplo','UN',10.5,19.9,25,5,'SIM']
+    ['PROD-001','Produto exemplo','Acessórios','','UN',10.5,19.9,25,5,'SIM']
   ])
-  ws['!cols']=[{wch:16},{wch:42},{wch:12},{wch:14},{wch:16},{wch:16},{wch:16},{wch:12}]
+  ws['!cols']=[{wch:16},{wch:42},{wch:24},{wch:24},{wch:12},{wch:14},{wch:16},{wch:16},{wch:16},{wch:12}]
   const wb=XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb,ws,'Produtos')
   XLSX.utils.book_append_sheet(wb,makeInstructions(),'Instruções')
@@ -130,6 +141,8 @@ export async function parseProductsExcel(file:File):Promise<ImportedProductRow[]
       return {
         codigo,
         descricao,
+        grupo:String(findValue(row,['Grupo','Categoria Grupo'])).trim(),
+        subgrupo:String(findValue(row,['Subgrupo','Sub Grupo','Sub-Grupo'])).trim(),
         unidade:String(findValue(row,['Unidade','Un.','UN'])||'UN').trim().toUpperCase(),
         custo:Math.max(0,numberValue(findValue(row,['Custo','Preço de Custo','Preco de Custo']))),
         preco_venda:Math.max(0,numberValue(findValue(row,['Preço de Venda','Preco de Venda','Venda','Preço Venda']))),
