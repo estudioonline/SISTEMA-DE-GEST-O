@@ -31,6 +31,8 @@ import type { AppModule } from './lib/hr'
 import { BankReconciliation } from './BankReconciliation'
 import { DocumentsLibrary } from './DocumentsLibrary'
 import { DeliveryManagement } from './DeliveryManagement'
+import { ProductGroupsManager } from './ProductGroupsManager'
+import type { ProductGroup, ProductSubgroup } from './ProductGroupsManager'
 import { useTheme } from './lib/useTheme'
 import type { EmployeeTitle } from './EmployeeFinance'
 import { canEditPermission, canViewPermission, defaultPermissionsForRole, normalizePermissions, permissionModules, emptyPermissions, parseEffectivePermissions } from './lib/permissions'
@@ -45,7 +47,7 @@ type BeforeInstallPromptEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null;latitude?:number|null;longitude?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';grupo_id?:string|null;subgrupo_id?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
@@ -167,6 +169,8 @@ function App(){
   const [comissoes,setComissoes]=useState<ComissaoResumo[]>([])
   const [movimentosEstoque,setMovimentosEstoque]=useState<MovimentoEstoque[]>([])
   const [produtoComponentes,setProdutoComponentes]=useState<ProdutoComponente[]>([])
+  const [gruposProdutos,setGruposProdutos]=useState<ProductGroup[]>([])
+  const [subgruposProdutos,setSubgruposProdutos]=useState<ProductSubgroup[]>([])
 
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
@@ -194,12 +198,14 @@ function App(){
 
   const [editingProduct,setEditingProduct]=useState<Produto|null>(null)
   const [productType,setProductType]=useState<'insumo'|'produto_final'>('insumo')
+  const [productGroupId,setProductGroupId]=useState('')
+  const [productSubgroupId,setProductSubgroupId]=useState('')
   const [productComponentDrafts,setProductComponentDrafts]=useState<ProdutoComponenteDraft[]>([])
   const [productPanel,setProductPanel]=useState<string|null>(null)
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
   const [stockReason,setStockReason]=useState('Ajuste manual')
-  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'>('cadastro')
+  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'>('cadastro')
   const [excelToolsOpen,setExcelToolsOpen]=useState(false)
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
@@ -421,7 +427,7 @@ function App(){
   useEffect(()=>{
     setProfileRole('visualizador');setUserPermissions(emptyPermissions());setActive('dashboard');setShowApps(true);setPermissionsReady(false);setAccessError('');accessSignature.current='';dataLoadSequence.current++;closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
-    setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setComissoes([])
+    setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setGruposProdutos([]);setSubgruposProdutos([]);setComissoes([])
     setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setFaturasVendas([]);setFaturaVendaItens([]);setBillingSelectedSales([]);setBillingSale(null);setEmail('');setPassword('')
   },[session?.user.id])
   useEffect(()=>{if(session)void loadData()},[session])
@@ -518,7 +524,7 @@ function App(){
   function blockAccess(error:unknown){
     dataLoadSequence.current++
     setPermissionsReady(false);setUserPermissions(emptyPermissions());closeForms()
-    setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setSaleApprovals([]);setFaturasVendas([]);setFaturaVendaItens([]);setManagedUsers([]);setFinancePayments([]);setFinanceReversals([]);setComissoes([])
+    setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setGruposProdutos([]);setSubgruposProdutos([]);setSaleApprovals([]);setFaturasVendas([]);setFaturaVendaItens([]);setManagedUsers([]);setFinancePayments([]);setFinanceReversals([]);setComissoes([])
     setAccessError(error instanceof Error?error.message:'Não foi possível validar seus acessos.')
   }
 
@@ -546,10 +552,12 @@ function App(){
       readAllRows((from,to)=>supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to))
     ])
-    const [pc,fv,fvi]=await Promise.all([
+    const [pc,fv,fvi,gp,sgp]=await Promise.all([
       readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('faturas_vendas').select('*').order('criada_em',{ascending:false}).order('id').range(from,to)),
-      readAllRows((from,to)=>supabase.from('fatura_venda_itens').select('*').order('created_at').order('venda_id').range(from,to))
+      readAllRows((from,to)=>supabase.from('fatura_venda_itens').select('*').order('created_at').order('venda_id').range(from,to)),
+      readAllRows((from,to)=>supabase.from('grupos_produtos').select('*').order('ordem').order('nome').range(from,to)),
+      readAllRows((from,to)=>supabase.from('subgrupos_produtos').select('*').order('ordem').order('nome').range(from,to))
     ])
     if(currentSessionUser.current!==userId||sequence!==dataLoadSequence.current)return
     setClientes((c.data||[]) as Cliente[])
@@ -564,10 +572,12 @@ function App(){
     setComprovantes((cv.data||[]) as Comprovante[])
     setMovimentosEstoque((me.data||[]) as MovimentoEstoque[])
     setProdutoComponentes((pc.data||[]) as ProdutoComponente[])
+    setGruposProdutos((gp.data||[]) as ProductGroup[])
+    setSubgruposProdutos((sgp.data||[]) as ProductSubgroup[])
     setFaturasVendas((fv.data||[]) as FaturaVenda[])
     setFaturaVendaItens((fvi.data||[]) as FaturaVendaItem[])
     setSaleApprovals((sa.data||[]) as SaleApproval[])
-    const failed=[c,f,p,v,cp,t,vd,cv,me,sa,pc,fv,fvi].filter(result=>result.error)
+    const failed=[c,f,p,v,cp,t,vd,cv,me,sa,pc,fv,fvi,gp,sgp].filter(result=>result.error)
     if(failed.length)throw new Error('Não foi possível carregar todos os vínculos do ERP. Atualize para continuar com os dados completos.')
     setPermissionsReady(true)
     }catch(error){
@@ -903,11 +913,11 @@ function App(){
   }
   function startNewProduct(){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setEditingProduct(null);setProductType('insumo');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setEditingProduct(null);setProductType('insumo');setProductGroupId('');setProductSubgroupId('');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function startEditProduct(p:Produto){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function addProductComponent(){
     setProductComponentDrafts(rows=>[...rows,{key:crypto.randomUUID(),componente_id:'',quantidade:1}])
@@ -952,6 +962,8 @@ function App(){
       cst_pis:onlyDigits(String(f.get('cst_pis')||''),2)||null,
       cst_cofins:onlyDigits(String(f.get('cst_cofins')||''),2)||null,
       complemento_tributario:complemento,
+      grupo_id:productGroupId||null,
+      subgrupo_id:productSubgroupId&&subgruposProdutos.some(row=>row.id===productSubgroupId&&row.grupo_id===productGroupId)?productSubgroupId:null,
       tipo_produto:productType,
       ativo:String(f.get('ativo')||'true')==='true'
     }
@@ -2865,6 +2877,7 @@ function App(){
         <div className="subTabs">
           <button className={productSubtab==='cadastro'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('cadastro');setMsg('')}}><Package size={16}/>Cadastro / Estoque</button>
           <button className={productSubtab==='movimentos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('movimentos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Entradas e saídas</button>
+          <button className={productSubtab==='grupos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('grupos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Package size={16}/>Grupos e subgrupos</button>
         </div>
 
         {productSubtab==='cadastro'&&<>
@@ -2910,6 +2923,18 @@ function App(){
             </label>
             <label className="fieldLabel">Produto / Descrição
               <input name="descricao" placeholder="Nome do produto" required defaultValue={editingProduct?.descricao||''}/>
+            </label>
+            <label className="fieldLabel">Grupo
+              <select value={productGroupId} onChange={e=>{setProductGroupId(e.target.value);setProductSubgroupId('')}}>
+                <option value="">Sem grupo</option>
+                {gruposProdutos.filter(g=>g.ativo||g.id===editingProduct?.grupo_id).map(g=><option key={g.id} value={g.id}>{g.nome}{g.ativo?'':' (inativo)'}</option>)}
+              </select>
+            </label>
+            <label className="fieldLabel">Subgrupo
+              <select value={productSubgroupId} onChange={e=>setProductSubgroupId(e.target.value)} disabled={!productGroupId}>
+                <option value="">Sem subgrupo</option>
+                {subgruposProdutos.filter(s=>s.grupo_id===productGroupId&&(s.ativo||s.id===editingProduct?.subgrupo_id)).map(s=><option key={s.id} value={s.id}>{s.nome}{s.ativo?'':' (inativo)'}</option>)}
+              </select>
             </label>
             <label className="fieldLabel">Tipo de produto
               <select name="tipo_produto" value={productType} onChange={e=>{const next=e.target.value as 'insumo'|'produto_final';setProductType(next);if(next==='insumo')setProductComponentDrafts([])}}>
@@ -3027,8 +3052,10 @@ function App(){
             </div>
           </div>}
 
-          <ProductTable produtos={produtos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>
+          <ProductTable produtos={produtos} groups={gruposProdutos} subgroups={subgruposProdutos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>
         </>}
+
+        {productSubtab==='grupos'&&<ProductGroupsManager groups={gruposProdutos} subgroups={subgruposProdutos} canEdit={canManageProducts} onReload={loadData} onMessage={setMsg}/>} 
 
         {productSubtab==='movimentos'&&<>
           <div className="cards compactCards semanticCards">
@@ -4029,21 +4056,52 @@ function EditableEntityTable({title,headers,rows,readOnly=false,emptyActionLabel
   return <article className="panel tablePanel"><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map((h,i)=><th key={h}>{i===headers.length-1?h:<button className="tableSortBtn" onClick={()=>toggle(i)}>{h}{sort?.index===i?(sort.dir==='asc'?' ▲':' ▼'):''}</button>}</th>)}</tr></thead><tbody>{sorted.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{sorted.map(r=><Fragment key={r.id}><tr {...recordRow(()=>{if(!r.opened)r.onToggle()},String(r.cells[0]))}>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td><button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button></td></tr>{r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={String(r.cells[0])}><div className="recordDetailBackdrop" onClick={r.onToggle}/><div className="recordDetailSheet"><div className="recordDetailHeader"><strong>{String(r.cells[0])}</strong><button type="button" className="recordDetailClose" onClick={r.onToggle}><X size={17}/>Fechar</button></div><div className="actionPanel">{r.panel}</div></div></div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
-function ProductTable({produtos,onCreate,openId,onToggle,onEdit,onAdjust,onDelete,canDelete,readOnly=false}:{produtos:Produto[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
+function ProductTable({produtos,groups,subgroups,onCreate,onEdit,readOnly=false}:{produtos:Produto[];groups:ProductGroup[];subgroups:ProductSubgroup[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
   const [query,setQuery]=useState('')
-  const [sort,setSort]=useState<{key:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda';dir:'asc'|'desc'}|null>(null)
+  const [groupFilter,setGroupFilter]=useState('todos')
+  const [subgroupFilter,setSubgroupFilter]=useState('todos')
+  const [sort,setSort]=useState<{key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda';dir:'asc'|'desc'}|null>(null)
+  const groupName=(p:Produto)=>groups.find(g=>g.id===p.grupo_id)?.nome||'Sem grupo'
+  const subgroupName=(p:Produto)=>subgroups.find(s=>s.id===p.subgrupo_id)?.nome||'—'
   const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
-  const filtered=normalized?produtos.filter(p=>[p.codigo,p.descricao,p.ativo?'ativo':'inativo',p.unidade,p.estoque_atual,p.estoque_minimo,money(Number(p.custo)),money(Number(p.preco_venda))].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)):produtos
+  const filtered=produtos.filter(p=>{
+    if(groupFilter!=='todos'&&(groupFilter==='sem-grupo'?Boolean(p.grupo_id):p.grupo_id!==groupFilter))return false
+    if(subgroupFilter!=='todos'&&(subgroupFilter==='sem-subgrupo'?Boolean(p.subgrupo_id):p.subgrupo_id!==subgroupFilter))return false
+    if(!normalized)return true
+    return [p.codigo,p.descricao,groupName(p),subgroupName(p),p.ativo?'ativo':'inativo',p.unidade,p.estoque_atual,p.estoque_minimo,money(Number(p.custo)),money(Number(p.preco_venda))].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)
+  })
   const sorted=[...filtered].sort((a,b)=>{
-    if(!sort)return 0
-    const map=(p:Produto)=>sort.key==='codigo'?p.codigo:sort.key==='produto'?p.descricao:sort.key==='status'?(p.ativo?'ativo':'inativo'):sort.key==='unidade'?p.unidade:sort.key==='estoque'?Number(p.estoque_atual):sort.key==='minimo'?Number(p.estoque_minimo):sort.key==='custo'?Number(p.custo):Number(p.preco_venda)
+    if(!sort)return a.descricao.localeCompare(b.descricao,'pt-BR',{numeric:true,sensitivity:'base'})
+    const map=(p:Produto)=>sort.key==='codigo'?p.codigo:sort.key==='produto'?p.descricao:sort.key==='grupo'?groupName(p):sort.key==='subgrupo'?subgroupName(p):sort.key==='status'?(p.ativo?'ativo':'inativo'):sort.key==='unidade'?p.unidade:sort.key==='estoque'?Number(p.estoque_atual):sort.key==='minimo'?Number(p.estoque_minimo):sort.key==='custo'?Number(p.custo):Number(p.preco_venda)
     const av=map(a),bv=map(b)
     const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'pt-BR',{numeric:true,sensitivity:'base'})
     return sort.dir==='asc'?cmp:-cmp
   })
-  const toggle=(key:typeof sort extends never?never:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>setSort(s=>({key,dir:s?.key===key&&s.dir==='asc'?'desc':'asc'}))
-  const mark=(key:'codigo'|'produto'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>sort?.key===key?(sort.dir==='asc'?' ▲':' ▼'):''
-  return <article className="panel tablePanel"><div className="panelHead"><div>{produtos.some(p=>Number(p.estoque_atual)<0)&&<p role="status">Há produtos com saldo negativo. Confira as entradas e saídas e registre a reposição ou um ajuste justificado após a contagem física.</p>}<h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th></tr></thead><tbody>{filtered.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para esta pesquisa.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}{sorted.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <Fragment key={p.id}><tr {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}</div></td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr></Fragment>})}</tbody></table></div></article>
+  const toggle=(key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>setSort(v=>({key,dir:v?.key===key&&v.dir==='asc'?'desc':'asc'}))
+  const mark=(key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>sort?.key===key?(sort.dir==='asc'?' ▲':' ▼'):''
+  const visibleSubgroups=subgroups.filter(s=>groupFilter==='todos'||groupFilter==='sem-grupo'||s.grupo_id===groupFilter)
+  return <article className="panel tablePanel">
+    <div className="panelHead"><div>{produtos.some(p=>Number(p.estoque_atual)<0)&&<p role="status">Há produtos com saldo negativo. Confira as entradas e saídas e registre a reposição ou um ajuste justificado após a contagem física.</p>}<h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div>
+    <div className="productGroupFilters">
+      <label>Grupo<select value={groupFilter} onChange={e=>{setGroupFilter(e.target.value);setSubgroupFilter('todos')}}><option value="todos">Todos</option><option value="sem-grupo">Sem grupo</option>{groups.filter(g=>g.ativo).map(g=><option key={g.id} value={g.id}>{g.nome}</option>)}</select></label>
+      <label>Subgrupo<select value={subgroupFilter} onChange={e=>setSubgroupFilter(e.target.value)}><option value="todos">Todos</option><option value="sem-subgrupo">Sem subgrupo</option>{visibleSubgroups.filter(s=>s.ativo).map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</select></label>
+    </div>
+    <div className="tableWrap"><table><thead><tr>
+      <th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('grupo')}>Grupo{mark('grupo')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('subgrupo')}>Subgrupo{mark('subgrupo')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('status')}>Status{mark('status')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('unidade')}>Un.{mark('unidade')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('estoque')}>Estoque{mark('estoque')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('minimo')}>Mínimo{mark('minimo')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th>
+      <th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th>
+    </tr></thead><tbody>
+      {filtered.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para estes filtros.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}
+      {sorted.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <tr key={p.id} {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}</div></td><td>{groupName(p)}</td><td>{subgroupName(p)}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>})}
+    </tbody></table></div>
+  </article>
 }
 
 export default App
