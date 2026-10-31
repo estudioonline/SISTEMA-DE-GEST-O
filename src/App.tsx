@@ -1027,7 +1027,7 @@ function App(){
 
   async function exportProducts(){
     try{
-      (await import('./lib/productsExcel')).exportProductsExcel(produtos)
+      (await import('./lib/productsExcel')).exportProductsExcel(produtos,gruposProdutos,subgruposProdutos)
       setMsg(`Relatório Excel exportado com ${produtos.length} produto(s).`)
     }catch{
       setMsg('Não foi possível exportar o relatório Excel.')
@@ -1056,16 +1056,41 @@ function App(){
     try{
       setMsg('Validando planilha...')
       const rows=await (await import('./lib/productsExcel')).parseProductsExcel(file)
+      const normalizeName=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
+      const groupByName=new Map(gruposProdutos.map(g=>[normalizeName(g.nome),g]))
+      const subgroupByGroupAndName=new Map(subgruposProdutos.map(s=>[s.grupo_id+'|'+normalizeName(s.nome),s]))
+      const invalid:string[]=[]
+      const prepared=rows.map((row,index)=>{
+        const groupName=row.grupo.trim()
+        const subgroupName=row.subgrupo.trim()
+        if(!groupName){
+          if(subgroupName)invalid.push(`Linha ${index+2}: Subgrupo "${subgroupName}" informado sem Grupo.`)
+          return {...row,grupo_id:null,subgrupo_id:null}
+        }
+        const group=groupByName.get(normalizeName(groupName))
+        if(!group){
+          invalid.push(`Linha ${index+2}: Grupo "${groupName}" não existe no SG.`)
+          return {...row,grupo_id:null,subgrupo_id:null}
+        }
+        if(!subgroupName)return {...row,grupo_id:group.id,subgrupo_id:null}
+        const subgroup=subgroupByGroupAndName.get(group.id+'|'+normalizeName(subgroupName))
+        if(!subgroup){
+          invalid.push(`Linha ${index+2}: Subgrupo "${subgroupName}" não existe dentro do grupo "${group.nome}".`)
+          return {...row,grupo_id:group.id,subgrupo_id:null}
+        }
+        return {...row,grupo_id:group.id,subgrupo_id:subgroup.id}
+      })
+      if(invalid.length)throw new Error(invalid.slice(0,8).join('\n'))
 
       const confirmed=window.confirm(
-        `Importar ${rows.length} linha(s)?\n\nProdutos com o mesmo código serão atualizados. O valor da coluna "Estoque Atual" substituirá o saldo atual e a diferença ficará registrada no histórico.`
+        `Importar ${rows.length} linha(s)?\n\nProdutos com o mesmo código serão atualizados. Grupo e Subgrupo também serão atualizados pelos nomes da planilha. O valor da coluna "Estoque Atual" substituirá o saldo atual e a diferença ficará registrada no histórico.`
       )
       if(!confirmed){
         setMsg('Importação cancelada.')
         return
       }
 
-      const {data,error}=await supabase.rpc('importar_produtos_estoque',{p_linhas:rows})
+      const {data,error}=await supabase.rpc('importar_produtos_estoque',{p_linhas:prepared})
       if(error){
         setMsg('Falha na importação: '+error.message)
         return
