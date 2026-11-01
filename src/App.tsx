@@ -33,6 +33,7 @@ import { DocumentsLibrary } from './DocumentsLibrary'
 import { InfrastructureUsage } from './InfrastructureUsage'
 import { DeliveryWorkspace } from './DeliveryWorkspace'
 import { ProductGroupsManager } from './ProductGroupsManager'
+import { SearchableSelect } from './SearchableSelect'
 import type { ProductGroup, ProductSubgroup } from './ProductGroupsManager'
 import { useTheme } from './lib/useTheme'
 import type { EmployeeTitle } from './EmployeeFinance'
@@ -3131,16 +3132,10 @@ function App(){
               <input name="descricao" placeholder="Nome do produto" required defaultValue={editingProduct?.descricao||''}/>
             </label>
             <label className="fieldLabel">Grupo
-              <select value={productGroupId} onChange={e=>{setProductGroupId(e.target.value);setProductSubgroupId('')}}>
-                <option value="">Sem grupo</option>
-                {gruposProdutos.filter(g=>g.ativo||g.id===editingProduct?.grupo_id).map(g=><option key={g.id} value={g.id}>{g.nome}{g.ativo?'':' (inativo)'}</option>)}
-              </select>
+              <SearchableSelect value={productGroupId} onChange={value=>{setProductGroupId(value);setProductSubgroupId('')}} placeholder="Sem grupo" searchPlaceholder="Pesquisar grupo..." options={gruposProdutos.filter(g=>g.ativo||g.id===editingProduct?.grupo_id).map(g=>({value:g.id,label:g.nome+(g.ativo?'':' (inativo)')}))}/>
             </label>
             <label className="fieldLabel">Subgrupo
-              <select value={productSubgroupId} onChange={e=>setProductSubgroupId(e.target.value)} disabled={!productGroupId}>
-                <option value="">Sem subgrupo</option>
-                {subgruposProdutos.filter(s=>s.grupo_id===productGroupId&&(s.ativo||s.id===editingProduct?.subgrupo_id)).map(s=><option key={s.id} value={s.id}>{s.nome}{s.ativo?'':' (inativo)'}</option>)}
-              </select>
+              <SearchableSelect value={productSubgroupId} onChange={setProductSubgroupId} disabled={!productGroupId} placeholder="Sem subgrupo" searchPlaceholder="Pesquisar subgrupo..." options={subgruposProdutos.filter(s=>s.grupo_id===productGroupId&&(s.ativo||s.id===editingProduct?.subgrupo_id)).map(s=>({value:s.id,label:s.nome+(s.ativo?'':' (inativo)')}))}/>
             </label>
             <label className="fieldLabel">Tipo de produto
               <select name="tipo_produto" value={productType} onChange={e=>{const next=e.target.value as 'insumo'|'produto_final';setProductType(next);if(next==='insumo')setProductComponentDrafts([])}}>
@@ -3443,10 +3438,7 @@ function App(){
 
           <div className="saleHeader saleHeaderExpanded">
             <label>Fornecedor
-              <select value={purchaseSupplier} onChange={e=>setPurchaseSupplier(e.target.value)}>
-                <option value="">Sem fornecedor</option>
-                {fornecedores.filter(f=>f.ativo).map(f=><option key={f.id} value={f.id}>{f.nome}</option>)}
-              </select>
+              <SearchableSelect value={purchaseSupplier} onChange={setPurchaseSupplier} placeholder="Sem fornecedor" searchPlaceholder="Pesquisar fornecedor..." options={fornecedores.filter(f=>f.ativo).map(f=>({value:f.id,label:f.nome,keywords:[f.documento,f.email,f.telefone].filter(Boolean).join(' ')}))}/>
             </label>
             <label>Status
               <select value={purchaseStatus} onChange={e=>setPurchaseStatus(e.target.value)}>
@@ -3499,10 +3491,7 @@ function App(){
 
           <div className="saleItems">
             {purchaseItems.map(i=><div className="purchaseItemRow" key={i.key}>
-              <div className="saleProductPicker"><select value={i.produto_id} onChange={e=>choosePurchaseProduct(i.key,e.target.value)} required aria-label="Produto">
-                <option value="">Produto</option>
-                {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — {p.unidade||'UN'} — custo {money(Number(p.custo))}</option>)}
-              </select><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>choosePurchaseProduct(i.key,id)}/></div>
+              <div className="saleProductPicker"><SearchableSelect value={i.produto_id} onChange={value=>choosePurchaseProduct(i.key,value)} required placeholder="Produto" searchPlaceholder="Pesquisar código ou produto..." options={produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=>({value:p.id,label:`${p.codigo} — ${p.descricao} — ${p.unidade||'UN'} — custo ${money(Number(p.custo))}`,keywords:`${p.codigo} ${p.descricao} ${p.unidade||''}`}))}/><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>choosePurchaseProduct(i.key,id)}/></div>
               <input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updatePurchaseItem(i.key,'quantidade',Number(e.target.value))}/>
               <input type="number" min="0" step="0.01" value={i.custo_unitario} onChange={e=>updatePurchaseItem(i.key,'custo_unitario',Number(e.target.value))}/>
               <strong>{money(i.quantidade*i.custo_unitario)}</strong>
@@ -3594,16 +3583,10 @@ function App(){
           {saleNotice&&<div role="alert" aria-live="assertive" style={{position:"sticky",top:0,zIndex:20,background:"#fff0f0",color:"#991b1b",border:"1px solid #fca5a5",borderRadius:10,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10,boxShadow:"0 5px 20px #00000016"}}><Ban size={20}/><span style={{flex:1}}><strong>Atenção:</strong> {saleNotice}</span><button type="button" aria-label="Fechar aviso" onClick={()=>setSaleNotice('')} style={{background:"transparent",border:"none",cursor:"pointer",color:"inherit"}}><X size={18}/></button></div>}
           <div className="saleHeader saleHeaderExpanded">
             <label>Cliente
-              <select value={saleClient} onChange={e=>setSaleClient(e.target.value)}>
-                <option value="">Consumidor</option>
-                {clientes.filter(c=>c.ativo).map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
-              </select>
+              <SearchableSelect value={saleClient} onChange={setSaleClient} placeholder="Consumidor" searchPlaceholder="Pesquisar cliente, CNPJ/CPF ou telefone..." options={clientes.filter(c=>c.ativo).map(c=>({value:c.id,label:c.nome,keywords:[c.documento,c.email,c.telefone].filter(Boolean).join(' ')}))}/>
             </label>
             <label>Vendedor
-              <select value={saleSeller} onChange={e=>setSaleSeller(e.target.value)}>
-                <option value="">Sem vendedor / sem comissão</option>
-                {vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=><option key={v.id} value={v.id}>{v.nome} — {Number(v.percentual_comissao).toLocaleString('pt-BR')}%</option>)}
-              </select>
+              <SearchableSelect value={saleSeller} onChange={setSaleSeller} placeholder="Sem vendedor / sem comissão" searchPlaceholder="Pesquisar vendedor..." options={vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=>({value:v.id,label:`${v.nome} — ${Number(v.percentual_comissao).toLocaleString('pt-BR')}%`,keywords:v.nome}))}/>
             </label>
             <label>Status
               <select value={saleStatus} onChange={e=>setSaleStatus(e.target.value)} disabled={!editingSale}>
@@ -3652,10 +3635,7 @@ function App(){
           <div className="saleItems">
             <div className="saleItemColumnHead" aria-hidden="true"><span>Produto</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
             {saleItems.map(i=>{const stock=saleItemStockInfo(i);const productionMaterials=productionMaterialsForItem(i);return <div className="saleItemRow" key={i.key}>
-              <div className="saleProductPicker"><select value={i.produto_id} onChange={e=>chooseProduct(i.key,e.target.value)} required aria-label="Produto">
-                <option value="">Produto</option>
-                {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — estoque {Number(p.estoque_atual).toLocaleString('pt-BR')}</option>)}
-              </select><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)}/></div>
+              <div className="saleProductPicker"><SearchableSelect value={i.produto_id} onChange={value=>chooseProduct(i.key,value)} required placeholder="Produto" searchPlaceholder="Pesquisar código ou produto..." options={produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=>({value:p.id,label:`${p.codigo} — ${p.descricao} — estoque ${Number(p.estoque_atual).toLocaleString('pt-BR')}`,keywords:`${p.codigo} ${p.descricao} ${p.unidade||''}`}))}/><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)}/></div>
               <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
               <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
               <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
@@ -3930,10 +3910,7 @@ function App(){
           <label>De<input type="date" value={commissionStart} onChange={e=>setCommissionStart(e.target.value)}/></label>
           <label>Até<input type="date" value={commissionEnd} onChange={e=>setCommissionEnd(e.target.value)}/></label>
           <label>Relatório de
-            <select value={commissionReportSeller} onChange={e=>setCommissionReportSeller(e.target.value)}>
-              <option value="todos">Todos os vendedores</option>
-              {vendedores.map(v=><option key={v.id} value={v.id}>{v.nome}{v.ativo?'':' (inativo)'}</option>)}
-            </select>
+            <SearchableSelect value={commissionReportSeller==='todos'?'':commissionReportSeller} onChange={value=>setCommissionReportSeller(value||'todos')} placeholder="Todos os vendedores" searchPlaceholder="Pesquisar vendedor..." options={vendedores.map(v=>({value:v.id,label:v.nome+(v.ativo?'':' (inativo)')}))}/>
           </label>
           <button className="ghost" onClick={()=>void loadCommissions()}><RefreshCw size={15}/>Atualizar</button>
           <button className="primary commissionPdfBtn" onClick={()=>void downloadCommissionReport()} title="Gerar relatório de comissões em PDF"><FileDown size={15}/>Gerar PDF</button>
@@ -4007,11 +3984,10 @@ function App(){
           </label>
           <label className="fieldLabel">Descrição<input name="descricao" placeholder="Descrição" required defaultValue={editingTitle?.descricao||''} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
           <label className="fieldLabel">Cliente / Fornecedor
-            <select value={financeTitleEntity} onChange={e=>setFinanceTitleEntity(e.target.value)} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}>
-              <option value="">Sem vínculo cadastral</option>
-              {financeTitleEntity&&!(financeTitleType==='receber'?clientes:fornecedores).some(x=>x.nome===financeTitleEntity)&&<option value={financeTitleEntity}>{financeTitleEntity} (registro anterior)</option>}
-              {(financeTitleType==='receber'?clientes:fornecedores).filter(x=>x.ativo||x.nome===financeTitleEntity).map(x=><option key={x.id} value={x.nome}>{x.nome}</option>)}
-            </select>
+            <SearchableSelect value={financeTitleEntity} onChange={setFinanceTitleEntity} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))} placeholder="Sem vínculo cadastral" searchPlaceholder={financeTitleType==='receber'?'Pesquisar cliente...':'Pesquisar fornecedor...'} options={[
+              ...(financeTitleEntity&&!(financeTitleType==='receber'?clientes:fornecedores).some(x=>x.nome===financeTitleEntity)?[{value:financeTitleEntity,label:financeTitleEntity+' (registro anterior)'}]:[]),
+              ...(financeTitleType==='receber'?clientes:fornecedores).filter(x=>x.ativo||x.nome===financeTitleEntity).map(x=>({value:x.nome,label:x.nome,keywords:[x.documento,x.email,x.telefone].filter(Boolean).join(' ')}))
+            ]}/>
           </label>
           <label className="fieldLabel">Data de vencimento<input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
           <label className="fieldLabel">Valor (R$)<input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
@@ -4375,8 +4351,8 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,readOnly=false}
   return <article className="panel tablePanel">
     <div className="panelHead"><div>{produtos.some(p=>Number(p.estoque_atual)<0)&&<p role="status">Há produtos com saldo negativo. Confira as entradas e saídas e registre a reposição ou um ajuste justificado após a contagem física.</p>}<h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div>
     <div className="productGroupFilters">
-      <label>Grupo<select value={groupFilter} onChange={e=>{setGroupFilter(e.target.value);setSubgroupFilter('todos')}}><option value="todos">Todos</option><option value="sem-grupo">Sem grupo</option>{groups.filter(g=>g.ativo).map(g=><option key={g.id} value={g.id}>{g.nome}</option>)}</select></label>
-      <label>Subgrupo<select value={subgroupFilter} onChange={e=>setSubgroupFilter(e.target.value)}><option value="todos">Todos</option><option value="sem-subgrupo">Sem subgrupo</option>{visibleSubgroups.filter(s=>s.ativo).map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</select></label>
+      <label>Grupo<SearchableSelect value={groupFilter==='todos'?'':groupFilter} onChange={value=>{setGroupFilter(value||'todos');setSubgroupFilter('todos')}} placeholder="Todos os grupos" searchPlaceholder="Pesquisar grupo..." options={[{value:'sem-grupo',label:'Sem grupo'},...groups.filter(g=>g.ativo).map(g=>({value:g.id,label:g.nome}))]}/></label>
+      <label>Subgrupo<SearchableSelect value={subgroupFilter==='todos'?'':subgroupFilter} onChange={value=>setSubgroupFilter(value||'todos')} placeholder="Todos os subgrupos" searchPlaceholder="Pesquisar subgrupo..." options={[{value:'sem-subgrupo',label:'Sem subgrupo'},...visibleSubgroups.filter(s=>s.ativo).map(s=>({value:s.id,label:s.nome}))]}/></label>
     </div>
     <div className="tableWrap"><table><thead><tr>
       <th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th>
