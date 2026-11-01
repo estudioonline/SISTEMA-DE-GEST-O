@@ -4792,25 +4792,27 @@
 .salesModernTable .salesUxTable th,
 .salesModernTable .salesUxTable td{padding:10px 8px}
 .salesModernTable .salesUxTable th:nth-child(1),
-.salesModernTable .salesUxTable td:nth-child(1){width:9%}
+.salesModernTable .salesUxTable td:nth-child(1){width:8%}
 .salesModernTable .salesUxTable th:nth-child(2),
-.salesModernTable .salesUxTable td:nth-child(2){width:8%}
+.salesModernTable .salesUxTable td:nth-child(2){width:7%}
 .salesModernTable .salesUxTable th:nth-child(3),
-.salesModernTable .salesUxTable td:nth-child(3){width:20%}
+.salesModernTable .salesUxTable td:nth-child(3){width:18%}
 .salesModernTable .salesUxTable th:nth-child(4),
-.salesModernTable .salesUxTable td:nth-child(4){width:12%}
+.salesModernTable .salesUxTable td:nth-child(4){width:10%}
 .salesModernTable .salesUxTable th:nth-child(5),
-.salesModernTable .salesUxTable td:nth-child(5){width:9%}
+.salesModernTable .salesUxTable td:nth-child(5){width:13%}
 .salesModernTable .salesUxTable th:nth-child(6),
-.salesModernTable .salesUxTable td:nth-child(6){width:10%}
+.salesModernTable .salesUxTable td:nth-child(6){width:8%}
 .salesModernTable .salesUxTable th:nth-child(7),
 .salesModernTable .salesUxTable td:nth-child(7){width:9%}
 .salesModernTable .salesUxTable th:nth-child(8),
 .salesModernTable .salesUxTable td:nth-child(8){width:8%}
 .salesModernTable .salesUxTable th:nth-child(9),
-.salesModernTable .salesUxTable td:nth-child(9){width:10%}
+.salesModernTable .salesUxTable td:nth-child(9){width:8%}
 .salesModernTable .salesUxTable th:nth-child(10),
-.salesModernTable .salesUxTable td:nth-child(10){width:5%}
+.salesModernTable .salesUxTable td:nth-child(10){width:7%}
+.salesModernTable .salesUxTable th:nth-child(11),
+.salesModernTable .salesUxTable td:nth-child(11){width:4%}
 .salesModernTable .salesUxTable td{font-size:11px}
 .salesModernTable .salesUxTable .tableSortBtn{font-size:10px;padding:4px 6px}
 .salesModernTable .salesIdentity{min-width:0;gap:6px}
@@ -4823,7 +4825,8 @@
 }
 .salesModernTable .salesAvatar{width:26px;height:26px;flex-basis:26px;font-size:9px}
 .salesModernTable .salesStatus,
-.salesModernTable .salesPaymentStatus{font-size:9px;padding:3px 7px;min-height:22px}
+.salesModernTable .salesPaymentStatus{font-size:9px;padding:3px 7px;min-height:22px;max-width:100%}
+.salesModernTable .salesStatusPending{padding-inline:8px}
 .salesModernTable .salesPaymentText,
 .salesModernTable .salesRoute{font-size:10px}
 .salesModernTable .salesRoute{gap:3px}
@@ -4837,12 +4840,16 @@
 .salesModernTable .salesFilterButton{padding:0 10px;font-size:11px}
 .salesModernTable .salesPagination{padding:10px 14px}
 @media(max-width:1280px){
+  .salesModernTable .salesUxTable th:nth-child(3),
+  .salesModernTable .salesUxTable td:nth-child(3){width:17%}
   .salesModernTable .salesUxTable th:nth-child(4),
-  .salesModernTable .salesUxTable td:nth-child(4){width:10%}
+  .salesModernTable .salesUxTable td:nth-child(4){width:9%}
+  .salesModernTable .salesUxTable th:nth-child(5),
+  .salesModernTable .salesUxTable td:nth-child(5){width:14%}
   .salesModernTable .salesUxTable th:nth-child(6),
-  .salesModernTable .salesUxTable td:nth-child(6){width:9%}
+  .salesModernTable .salesUxTable td:nth-child(6){width:8%}
   .salesModernTable .salesUxTable th:nth-child(8),
-  .salesModernTable .salesUxTable td:nth-child(8){width:7%}
+  .salesModernTable .salesUxTable td:nth-child(8){width:8%}
   .salesModernTable .salesUxTable td{font-size:10px}
   .salesModernTable .salesPaymentText,
   .salesModernTable .salesRoute{font-size:9px}
