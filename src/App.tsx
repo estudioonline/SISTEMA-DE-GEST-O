@@ -203,6 +203,7 @@ function App(){
   const [installPrompt,setInstallPrompt]=useState<BeforeInstallPromptEvent|null>(null)
   const [appInstalled,setAppInstalled]=useState(false)
   const [permissionsReady,setPermissionsReady]=useState(false)
+  const [dataReady,setDataReady]=useState(false)
   const [accessError,setAccessError]=useState('')
   const [loginBusy,setLoginBusy]=useState(false)
   const [savingCompany,setSavingCompany]=useState(false)
@@ -495,7 +496,7 @@ function App(){
   },[session?.user.id,permissionsReady])
 
   useEffect(()=>{
-    setProfileRole('visualizador');setUserPermissions(emptyPermissions());setActive('dashboard');setShowApps(true);setPermissionsReady(false);setAccessError('');accessSignature.current='';dataLoadSequence.current++;closeForms()
+    setProfileRole('visualizador');setUserPermissions(emptyPermissions());setActive('dashboard');setShowApps(true);setPermissionsReady(false);setDataReady(false);setAccessError('');accessSignature.current='';dataLoadSequence.current++;closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setSaleApprovals([])
     setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setGruposProdutos([]);setSubgruposProdutos([]);setComissoes([])
     setManagedUsers([]);setManagedUserCard(null);setUserEdits({});setUserPermissionEdits({});setFinancePayments([]);setFinanceReversals([]);setFaturasVendas([]);setFaturaVendaItens([]);setBillingSelectedSales([]);setBillingSale(null);setEmail('');setPassword('')
@@ -542,7 +543,7 @@ function App(){
     let expiring=false
     const expire=()=>{
       if(expiring)return
-      expiring=true;setPermissionsReady(false);setUserPermissions(emptyPermissions());closeForms()
+      expiring=true;setPermissionsReady(false);setDataReady(false);setUserPermissions(emptyPermissions());closeForms()
       setMsg('Sessão encerrada por inatividade. Entre novamente para continuar.')
       storeActivity(null)
       void supabase.auth.signOut({scope:'local'}).finally(()=>setSession(null))
@@ -571,7 +572,7 @@ function App(){
       try{
         const access=await fetchAccess(session.user.id)
         if(cancelled||currentSessionUser.current!==session.user.id||sequence!==dataLoadSequence.current)return
-        if(JSON.stringify(access)!==accessSignature.current){setPermissionsReady(false);closeForms();await loadData()}
+        if(JSON.stringify(access)!==accessSignature.current){setPermissionsReady(false);setDataReady(false);closeForms();await loadData()}
       }catch(error){if(!cancelled&&sequence===dataLoadSequence.current)blockAccess(error)}
       finally{running=false}
     }
@@ -608,8 +609,8 @@ function App(){
     const signature=JSON.stringify(access)
     if(accessSignature.current&&accessSignature.current!==signature){setPermissionsReady(false);closeForms();setMsg('Seus acessos foram atualizados. Revise a operação antes de continuar.')}
     accessSignature.current=signature
-    setProfileRole(access.role);setUserPermissions(access.permissions);setAccessError('')
-    const [c,f,p,v,cp,t,ec,vd,cv,me,sa]=await Promise.all([
+    setProfileRole(access.role);setUserPermissions(access.permissions);setAccessError('');setPermissionsReady(true)
+    const [c,f,p,v,cp,t,ec,vd,cv,me,sa,pc,fv,fvi,gp,sgp]=await Promise.all([
       readAllRows((from,to)=>supabase.from('clientes').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('fornecedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('produtos').select('*').order('descricao',{ascending:true}).order('id').range(from,to)),
@@ -620,9 +621,7 @@ function App(){
       readAllRows((from,to)=>supabase.from('vendedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('comprovantes_pagamento').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('movimentos_estoque').select('*').order('created_at',{ascending:false}).order('id').range(from,to)),
-      readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to))
-    ])
-    const [pc,fv,fvi,gp,sgp]=await Promise.all([
+      readAllRows((from,to)=>supabase.from('aprovacoes_operacoes').select('id,entidade_id,status,solicitado_em,payload').eq('entidade_tipo','venda').eq('status','pendente').order('solicitado_em',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('produto_componentes').select('*').order('created_at').order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('faturas_vendas').select('*').order('criada_em',{ascending:false}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('fatura_venda_itens').select('*').order('created_at').order('venda_id').range(from,to)),
@@ -649,7 +648,7 @@ function App(){
     setSaleApprovals((sa.data||[]) as SaleApproval[])
     const failed=[c,f,p,v,cp,t,vd,cv,me,sa,pc,fv,fvi,gp,sgp].filter(result=>result.error)
     if(failed.length)throw new Error('Não foi possível carregar todos os vínculos do ERP. Atualize para continuar com os dados completos.')
-    setPermissionsReady(true)
+    setDataReady(true)
     }catch(error){
       if(currentSessionUser.current!==userId||sequence!==dataLoadSequence.current)return
       blockAccess(error)
@@ -2845,7 +2844,7 @@ function App(){
   }
 
   function openApp(module:ModuleKey){
-    if(!permissionsReady||!canViewModule(module))return
+    if(!permissionsReady||!dataReady||!canViewModule(module))return
     setActive(module)
     if(module==='financeiro')setFinanceSubtab('geral')
     closeForms();setMsg('');setShowApps(false)
@@ -2873,9 +2872,9 @@ function App(){
       </div>
     </header>
     <main className="main">
-      {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Aguarde a conferência das permissões e dos dados do ERP.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sair</button></div>}</section>:showApps?<>
+      {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Conferindo seu perfil e suas permissões de acesso.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sair</button></div>}</section>:showApps?<>
         {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
-        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp} notifications={{financeiro:billingCounts.naoFaturado,autorizacoes:saleApprovals.length}}/>
+        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={dataReady} canEdit={canEditModule} onOpen={openApp} notifications={{financeiro:billingCounts.naoFaturado,autorizacoes:saleApprovals.length}}/>
       </>:permissionsReady&&canViewModule(active)&&<>
       <header className="topbar">
         <div><h1 ref={moduleHeading} tabIndex={-1}>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'}</p></div>
