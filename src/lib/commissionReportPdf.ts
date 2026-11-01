@@ -55,12 +55,12 @@ function header(doc:jsPDF,data:CommissionReportData,continued=false){
   doc.text(company,12,12)
 
   doc.setTextColor(...blue)
-  doc.setFontSize(12)
+  doc.setFontSize(13)
   doc.text(continued?'Relatório de Comissões - continuação':'Relatório de Comissões sobre Vendas Recebidas',12,20)
 
   doc.setTextColor(...muted)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(8)
+  doc.setFontSize(9)
   doc.text(`Período: ${dateBr(data.inicio)} a ${dateBr(data.fim)}`,285,10,{align:'right'})
   doc.text(`Vendedor: ${data.vendedorFiltro||'Todos'}`,285,16,{align:'right'})
   doc.text(`Emitido em: ${new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date())}`,285,22,{align:'right'})
@@ -82,7 +82,7 @@ function tableHeader(doc:jsPDF,y:number){
   doc.rect(12,y,273,8,'F')
   doc.setTextColor(255,255,255)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(7.1)
+  doc.setFontSize(8.1)
   cols.forEach(c=>{
     const numeric=['Recebido','%','Comissão'].includes(c.label)
     doc.text(c.label,numeric?c.x+c.w-2:c.x+2,y+5.2,{align:numeric?'right':'left'})
@@ -106,7 +106,7 @@ function addFooter(doc:jsPDF,data:CommissionReportData){
     doc.line(12,199,285,199)
     doc.setTextColor(...muted)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(7)
+    doc.setFontSize(8)
     const left=[data.company?.email||'',data.company?.cnpj||''].filter(Boolean).join(' | ')
     doc.text(left,12,204)
     doc.text(`Página ${p}/${pages}`,285,204,{align:'right'})
@@ -141,11 +141,11 @@ export function generateCommissionReportPdf(data:CommissionReportData){
     doc.roundedRect(c.x,y,59,19,3,3,'FD')
     doc.setTextColor(...muted)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(7.2)
+    doc.setFontSize(8.2)
     doc.text(c.label,c.x+4,y+6)
     doc.setTextColor(...darkBlue)
     doc.setFont('helvetica','bold')
-    doc.setFontSize(11)
+    doc.setFontSize(12)
     doc.text(c.value,c.x+4,y+14)
   })
 
@@ -154,7 +154,7 @@ export function generateCommissionReportPdf(data:CommissionReportData){
   if(!data.rows.length){
     doc.setTextColor(...muted)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(10)
+    doc.setFontSize(11)
     doc.text('Nenhum recebimento de venda encontrado no período selecionado.',12,y+10)
     addFooter(doc,data)
     doc.save(`relatorio-comissoes-${data.vendedorFiltro?safe(data.vendedorFiltro)+'-':''}${safe(data.inicio)}-a-${safe(data.fim)}.pdf`)
@@ -181,7 +181,7 @@ export function generateCommissionReportPdf(data:CommissionReportData){
 
     doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(7)
+    doc.setFontSize(8)
 
     const fatura=`#${invoiceNo(row.fatura_numero)}${row.parcela_numero?' / '+row.parcela_numero:''}`
     doc.text(fatura,14,y+5.1)
@@ -206,7 +206,7 @@ export function generateCommissionReportPdf(data:CommissionReportData){
   doc.setFillColor(...paleBlue)
   doc.roundedRect(177,y+4,108,14,3,3,'F')
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8)
+  doc.setFontSize(9)
   doc.setTextColor(...darkBlue)
   doc.text('TOTAL RECEBIDO',181,y+10)
   doc.text(money(totalReceived),230,y+10,{align:'right'})
