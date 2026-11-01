@@ -114,6 +114,73 @@ const maskCep=(value:string)=>{
 }
 const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0})
 const newPurchaseItem=():PurchaseItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,custo_unitario:0})
+
+function themedPrompt(message:string,title='Solicitar autorização'){
+  return new Promise<string|null>(resolve=>{
+    const overlay=document.createElement('div')
+    overlay.className='sgPromptOverlay'
+    overlay.setAttribute('role','presentation')
+
+    const dialog=document.createElement('div')
+    dialog.className='sgPromptDialog'
+    dialog.setAttribute('role','dialog')
+    dialog.setAttribute('aria-modal','true')
+    dialog.setAttribute('aria-labelledby','sg-prompt-title')
+
+    const head=document.createElement('div')
+    head.className='sgPromptHead'
+    const icon=document.createElement('div')
+    icon.className='sgPromptIcon'
+    icon.textContent='!'
+    const heading=document.createElement('div')
+    const h=document.createElement('strong')
+    h.id='sg-prompt-title'
+    h.textContent=title
+    const p=document.createElement('p')
+    p.textContent=message
+    heading.append(h,p)
+    head.append(icon,heading)
+
+    const input=document.createElement('textarea')
+    input.className='sgPromptInput'
+    input.rows=3
+    input.placeholder='Informe o motivo da solicitação...'
+    input.setAttribute('aria-label','Motivo da solicitação')
+
+    const actions=document.createElement('div')
+    actions.className='sgPromptActions'
+    const cancel=document.createElement('button')
+    cancel.type='button'
+    cancel.className='ghost'
+    cancel.textContent='Cancelar'
+    const confirm=document.createElement('button')
+    confirm.type='button'
+    confirm.className='primary'
+    confirm.textContent='Solicitar autorização'
+    confirm.disabled=true
+    actions.append(cancel,confirm)
+
+    dialog.append(head,input,actions)
+    overlay.append(dialog)
+    document.body.append(overlay)
+
+    const finish=(value:string|null)=>{
+      document.removeEventListener('keydown',onKey)
+      overlay.remove()
+      resolve(value)
+    }
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape')finish(null)
+      if((event.ctrlKey||event.metaKey)&&event.key==='Enter'&&!confirm.disabled)finish(input.value.trim())
+    }
+    input.addEventListener('input',()=>{confirm.disabled=input.value.trim().length<5})
+    cancel.addEventListener('click',()=>finish(null))
+    confirm.addEventListener('click',()=>finish(input.value.trim()))
+    overlay.addEventListener('mousedown',event=>{if(event.target===overlay)finish(null)})
+    document.addEventListener('keydown',onKey)
+    requestAnimationFrame(()=>input.focus())
+  })
+}
 const addMonthsIso=(base:string,months:number)=>{
   const [y,m,d]=base.split('-').map(Number)
   const first=new Date(y,m-1+months,1,12)
@@ -1334,7 +1401,7 @@ function App(){
 
       if(blockers.length){
         if(saleApprovals.some(a=>a.entidade_id===v.id)){setMsg('Este orçamento já está aguardando autorização.');return}
-        const motivo=window.prompt(`Este orçamento possui ${blockers.length} bloqueio(s). Informe o motivo para solicitar autorização:`)
+        const motivo=await themedPrompt(`Este orçamento possui ${blockers.length} bloqueio(s). Informe o motivo para solicitar autorização.`,'Autorização necessária')
         if(!motivo)return
         const {error}=await supabase.rpc('solicitar_autorizacao_venda',{p_motivo:motivo,p_payload:{...payload,p_bloqueios:blockers}})
         if(error)throw error
@@ -1374,7 +1441,7 @@ function App(){
       return
     }
 
-    const motivo=window.prompt('Justifique a solicitação para o responsável pela autorização (mínimo de 5 caracteres):')
+    const motivo=await themedPrompt('Justifique a solicitação para o responsável pela autorização. O motivo deve ter pelo menos 5 caracteres.','Solicitar autorização')
     if(!motivo)return
 
     setSavingSale(true)
