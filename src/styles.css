@@ -5440,7 +5440,8 @@
 .productGroupCreate label{display:grid;gap:5px;min-width:0}
 .productGroupCreate input,.productGroupCreate select{min-height:38px}
 .productGroupCreate .ghost{min-height:38px;white-space:nowrap}
-.productGroupList{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start}
+.productGroupList{columns:4 280px;column-gap:12px}
+.productGroupCard{break-inside:avoid;margin:0 0 12px;display:inline-block;width:100%;box-sizing:border-box}
 .productGroupCard{align-self:start;border:1px solid rgba(148,163,184,.25);border-radius:14px;padding:12px 14px;background:rgba(148,163,184,.05)}
 .productGroupTitle{display:flex;align-items:center;gap:8px;min-height:34px}
 .productGroupTitle>strong{flex:1;line-height:1.25}
@@ -5454,11 +5455,13 @@
 .productSubgroupRow>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .productSubgroupRow>small{flex:0 0 auto;font-size:11px;color:var(--muted,#64748b)}
 @media(max-width:1100px){
+  .productGroupList{columns:2 280px}
   .productGroupCreate{grid-template-columns:1fr auto 1fr}
   .productGroupCreate label:nth-of-type(2){grid-column:1}
   .productGroupCreate label:nth-of-type(3){grid-column:2}
 }
 @media(max-width:760px){
+  .productGroupList{columns:1}
   .productGroupFilters label,.productGroupCreate label{min-width:100%;width:100%}
   .productGroupCreate{grid-template-columns:1fr}
   .productGroupCreate>*{width:100%;grid-column:auto!important}
