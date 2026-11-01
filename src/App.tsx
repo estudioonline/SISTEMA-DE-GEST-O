@@ -3296,7 +3296,7 @@ function App(){
                   },0)
                   return <tr key={p.id} onDoubleClick={()=>startEditProduct(p)} title="Clique duplo para abrir a receita">
                     <td><strong>{p.codigo||'—'}</strong></td>
-                    <td><div className="productNameCell"><span>{p.descricao}</span><small className="productFinalBadge">PRODUÇÃO</small></div></td>
+                    <td><div className="productNameCell productionNameCell"><span className="productionProductName">{p.descricao}</span><small className="productFinalBadge">PRODUÇÃO</small></div></td>
                     <td><strong>{recipe.length}</strong></td>
                     <td>{money(recipeCost)}</td>
                     <td>{p.unidade||'UN'}</td>
