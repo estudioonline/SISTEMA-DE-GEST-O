@@ -5645,3 +5645,31 @@
 .productionProductName{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
 .productionNameCell .productFinalBadge{flex:0 0 auto;margin-left:2px}
 @media(max-width:760px){.productionNameCell{align-items:flex-start;flex-direction:column;gap:4px}.productionProductName{white-space:normal}}
+
+.productionRecipeSection{grid-column:1/-1;margin-top:8px;padding:16px;border:1px solid #dbe3ef;border-radius:16px;background:#f8fafc}
+.productionRecipeHead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.productionRecipeHeadText{display:grid;gap:4px;min-width:0}
+.productionRecipeEyebrow{font-size:10px;font-weight:900;letter-spacing:.1em;color:#2563eb}
+.productionRecipeHeadText>strong{font-size:20px;line-height:1.2;color:#0f172a}
+.productionRecipeHeadText>span:last-child{font-size:12px;line-height:1.45;color:#64748b}
+.productionRecipeHeadActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.productionRecipeCounter{display:inline-flex;align-items:center;min-height:34px;padding:0 11px;border:1px solid #bfdbfe;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:800}
+.productionRecipeRows{display:grid;gap:10px}
+.productionRecipeRow{display:grid;gap:10px;padding:12px;border:1px solid #dbe3ef;border-radius:12px;background:#fff}
+.productionRecipeRowHead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.productionRecipeRowHead>strong{font-size:12px;color:#0f172a}
+.productionRecipeRowGrid{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:12px;align-items:end}
+.productionRecipeRow .fieldLabel{margin:0}
+.productionRecipeRow select,.productionRecipeRow input{width:100%}
+.productionRecipeRemove{position:static;flex:0 0 auto}
+.productionRecipeEmpty{padding:18px;border:1px dashed #cbd5e1;border-radius:12px;background:#fff;color:#64748b;text-align:center;font-size:12px}
+.productionRecipeCost{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;padding:12px 14px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff}
+.productionRecipeCost span{font-size:11px;color:#475569}
+.productionRecipeCost strong{font-size:18px;color:#0f172a}
+.dark .productionRecipeSection{background:#0f172a;border-color:#334155}
+.dark .productionRecipeHeadText>strong,.dark .productionRecipeRowHead>strong,.dark .productionRecipeCost strong{color:#f8fafc}
+.dark .productionRecipeHeadText>span:last-child,.dark .productionRecipeCost span{color:#94a3b8}
+.dark .productionRecipeCounter{background:rgba(37,99,235,.14);border-color:#1d4ed8;color:#93c5fd}
+.dark .productionRecipeRow,.dark .productionRecipeEmpty{background:#111827;border-color:#334155}
+.dark .productionRecipeCost{background:#111827;border-color:#1d4ed8}
+@media(max-width:760px){.productionRecipeHead{flex-direction:column}.productionRecipeHeadActions{width:100%;justify-content:space-between}.productionRecipeRowGrid{grid-template-columns:1fr}.productionRecipeCost{align-items:flex-start;flex-direction:column}.productionRecipeCost strong{font-size:16px}}
