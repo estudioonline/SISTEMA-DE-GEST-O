@@ -3776,7 +3776,7 @@ function App(){
                   <td><strong className="salesDocument">#{saleCode(v.venda_numero)}</strong></td>
                   <td>{new Date(v.created_at).toLocaleDateString('pt-BR')}</td>
                   <td><div className="salesIdentity"><span className="salesAvatar">{nameInitials(clientName)}</span><span>{clientName}</span></div></td>
-                  <td><div className="salesIdentity"><span className="salesAvatar sellerAvatar">{nameInitials(sellerName)}</span><span>{seller?.nome||'—'}</span></div></td>
+                  <td><div className="salesIdentity salesSellerIdentity"><span className="salesAvatar sellerAvatar">{nameInitials(sellerName)}</span><span className="salesSellerName">{seller?.nome||'—'}</span></div></td>
                   <td>{waiting
                     ? <span className="salesStatus salesStatusPending">Aguardando aprovação</span>
                     : <span className={'salesStatus salesStatus-'+v.status}>{saleStatusDisplay(v)}</span>}</td>
