@@ -5681,3 +5681,14 @@
 .dark .productionMaterialSearch{background:#0f172a;border-color:#334155}
 .dark .productionMaterialSearch input{color:#f8fafc}
 .dark .productionMaterialSearch svg{color:#94a3b8}
+
+.searchableSelect{display:grid;gap:6px;min-width:0}
+.searchableSelectSearch{display:flex;align-items:center;gap:7px;min-height:36px;padding:0 10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}
+.searchableSelectSearch svg{flex:0 0 auto;color:#64748b}
+.searchableSelectSearch input{width:100%;min-width:0;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding:0!important;height:auto!important;min-height:0!important}
+.searchableSelectSearch button{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;background:transparent;color:#64748b;cursor:pointer}
+.searchableSelect>select{width:100%}
+.searchableSelectEmpty,.searchableSelectCurrent{font-size:10px;color:#64748b}
+.dark .searchableSelectSearch{background:#0f172a;border-color:#334155}
+.dark .searchableSelectSearch input{color:#f8fafc}
+.dark .searchableSelectSearch svg,.dark .searchableSelectSearch button,.dark .searchableSelectEmpty,.dark .searchableSelectCurrent{color:#94a3b8}
