@@ -2,7 +2,6 @@ import {useEffect,useId,useMemo,useRef,useState} from 'react'
 import type {KeyboardEvent} from 'react'
 import {createPortal} from 'react-dom'
 import {Search,X} from 'lucide-react'
-import './party-lookup.css'
 
 type Party={id:string;nome:string;documento?:string|null;email?:string|null;telefone?:string|null;ativo:boolean}
 
