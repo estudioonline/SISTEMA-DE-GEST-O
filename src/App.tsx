@@ -31,7 +31,7 @@ import type { AppModule } from './lib/hr'
 import { BankReconciliation } from './BankReconciliation'
 import { DocumentsLibrary } from './DocumentsLibrary'
 import { InfrastructureUsage } from './InfrastructureUsage'
-import { DeliveryManagement } from './DeliveryManagement'
+import { DeliveryWorkspace } from './DeliveryWorkspace'
 import { ProductGroupsManager } from './ProductGroupsManager'
 import type { ProductGroup, ProductSubgroup } from './ProductGroupsManager'
 import { useTheme } from './lib/useTheme'
@@ -2901,7 +2901,7 @@ function App(){
 
       {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
       {active==='rh'&&<HumanResources titles={titulos} canEdit={canEditModule('rh')} company={empresa} onChanged={refreshFinance} onOpen={t=>{closeForms();setActive('financeiro');setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');setFinancePanel(t.id);setFinancePanelTab('pagamentos');setPaymentDate(today());setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))}}/>}
-      {active==='entregas'&&<DeliveryManagement canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
+      {active==='entregas'&&<DeliveryWorkspace canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
       {active==='documentos'&&<DocumentsLibrary/>}
       {active==='infra'&&<InfrastructureUsage/>}
       {active==='dashboard'&&<section>
