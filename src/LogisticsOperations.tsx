@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState} from 'react'
-import {CheckCircle2,Clock3,PackageCheck,RefreshCw,Route,Truck} from 'lucide-react'
+import {CheckCircle2,Clock3,FileDown,PackageCheck,RefreshCw,Route,Truck} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
 type Sale={id:string;cliente_id:string|null;status:string;venda_numero:number|null;fatura_numero:number|null;created_at:string}
@@ -123,13 +123,53 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
   }
 
   const routeDeliveries=deliveries.filter(d=>Boolean(d.rota_logistica_id))
+  async function generateLogisticsPdf(){
+    const {jsPDF}=await import('jspdf')
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
+    const routed=deliveries.filter(d=>Boolean(d.rota_logistica_id))
+    const completedRoutes=routes.filter(r=>r.status==='concluida')
+    const openRoutes=routes.filter(r=>r.status!=='concluida'&&r.status!=='cancelada')
+    const receivedTotal=routed.reduce((a,d)=>a+Number(d.valor_recebido_entrega||0),0)
+    const deliveredTotal=routed.filter(d=>d.status==='entregue').length
+    const failedTotal=routed.filter(d=>d.status==='reagendamento'||d.status==='cancelado').length
+    doc.setFillColor(15,23,42);doc.roundedRect(12,10,186,24,3,3,'F')
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('Relatório da Logística',17,20)
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text('Rotas, entregas e valores recebidos na entrega',17,27)
+    doc.setTextColor(15,23,42);doc.setFont('helvetica','bold');doc.setFontSize(10)
+    doc.text('Rotas concluídas',14,45);doc.text(String(completedRoutes.length),14,52)
+    doc.text('Rotas em aberto',58,45);doc.text(String(openRoutes.length),58,52)
+    doc.text('Entregas concluídas',102,45);doc.text(String(deliveredTotal),102,52)
+    doc.text('Não entregues',151,45);doc.text(String(failedTotal),151,52)
+    doc.setFillColor(239,246,255);doc.roundedRect(12,58,186,20,3,3,'F')
+    doc.setFontSize(9);doc.text('Recebido nas entregas',17,66)
+    doc.setFontSize(15);doc.text(money(receivedTotal),17,74)
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text('Registro operacional da Logística; não baixa títulos financeiros automaticamente.',82,73)
+    let y=89
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Rotas',14,y);y+=7
+    doc.setFillColor(226,232,240);doc.rect(12,y,186,8,'F')
+    doc.setFontSize(8);doc.text('Data / Rota',15,y+5);doc.text('Motorista',78,y+5);doc.text('Status',120,y+5);doc.text('Entregas',148,y+5);doc.text('Recebido',171,y+5,{align:'right'});y+=8
+    for(const r of routes){
+      const ds=routed.filter(d=>d.rota_logistica_id===r.id)
+      const rec=ds.reduce((a,d)=>a+Number(d.valor_recebido_entrega||0),0)
+      const delivered=ds.filter(d=>d.status==='entregue').length
+      if(y>276){doc.addPage();y=18}
+      doc.setDrawColor(226,232,240);doc.line(12,y+8,198,y+8)
+      doc.setTextColor(15,23,42);doc.setFont('helvetica','bold');doc.setFontSize(8)
+      doc.text(new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR')+' · '+r.nome,15,y+5)
+      doc.setFont('helvetica','normal');doc.text(r.motorista||'—',78,y+5)
+      doc.text(r.status,120,y+5);doc.text(delivered+'/'+ds.length,148,y+5);doc.text(money(rec),195,y+5,{align:'right'})
+      y+=9
+    }
+    doc.save('relatorio-logistica.pdf')
+  }
+
   const completed=routes.filter(r=>r.status==='concluida')
   const open=routes.filter(r=>r.status!=='concluida'&&r.status!=='cancelada')
   const received=routeDeliveries.reduce((a,d)=>a+Number(d.valor_recebido_entrega||0),0)
   const delivered=routeDeliveries.filter(d=>d.status==='entregue').length
   const failed=routeDeliveries.filter(d=>d.status==='reagendamento'||d.status==='cancelado').length
   return <section className="logOps">
-    <div className="logOpsHead"><div><span>DASHBOARD</span><h3>Relatório da Logística</h3><p>Resumo das rotas, entregas e valores informados como recebidos na entrega.</p></div><button onClick={()=>void load()}><RefreshCw size={15}/>Atualizar</button></div>
+    <div className="logOpsHead"><div><span>DASHBOARD</span><h3>Relatório da Logística</h3><p>Resumo das rotas, entregas e valores informados como recebidos na entrega.</p></div><div className="logOpsActions"><button onClick={()=>void generateLogisticsPdf()}><FileDown size={15}/>PDF</button><button onClick={()=>void load()}><RefreshCw size={15}/>Atualizar</button></div></div>
     <div className="logDashCards">
       <article><Route size={20}/><span>Rotas concluídas</span><strong>{completed.length}</strong></article>
       <article><Truck size={20}/><span>Rotas em aberto</span><strong>{open.length}</strong></article>
