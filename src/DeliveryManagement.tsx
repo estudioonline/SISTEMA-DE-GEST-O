@@ -15,6 +15,10 @@ type Sale={id:string;cliente_id:string|null;status:string;total:number;observaco
 type Client={id:string;nome:string;telefone:string|null;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;uf?:string|null;cep?:string|null}
 type Title={venda_id:string|null;tipo:'receber'|'pagar';valor:number;valor_pago:number;status:string}
 type Company={nome_fantasia:string;razao_social:string}
+type LogisticsSaleItem={id:string;venda_id:string;produto_id:string|null;quantidade:number}
+type LogisticsProduct={id:string;tipo_produto:string|null}
+type LogisticsSep={venda_item_id:string;quantidade_separada:number;status:string}
+type LogisticsProd={venda_item_id:string;status:string}
 type Mode='entregue'|'falha'|null
 
 const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0)
@@ -38,6 +42,10 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
   const [titles,setTitles]=useState<Title[]>([])
   const [company,setCompany]=useState<Company|null>(null)
   const [routePlans,setRoutePlans]=useState<RoutePlan[]>([])
+  const [logisticsItems,setLogisticsItems]=useState<LogisticsSaleItem[]>([])
+  const [logisticsProducts,setLogisticsProducts]=useState<LogisticsProduct[]>([])
+  const [logisticsSeps,setLogisticsSeps]=useState<LogisticsSep[]>([])
+  const [logisticsProds,setLogisticsProds]=useState<LogisticsProd[]>([])
   const [routeDay,setRouteDay]=useState(()=>new URLSearchParams(window.location.search).get('dia')||today())
   const [newRouteName,setNewRouteName]=useState('')
   const [newRouteDriver,setNewRouteDriver]=useState('')
@@ -63,15 +71,19 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
   const drawing=useRef(false)
 
   const load=useCallback(async()=>{
-    const [e,v,c,t,ec,rp]=await Promise.all([
+    const [e,v,c,t,ec,rp,vi,pr,sp,pd]=await Promise.all([
       supabase.from('entregas').select('*').order('data_prevista').order('created_at'),
       supabase.from('vendas').select('id,cliente_id,status,total,observacoes,rota_entrega,forma_pagamento,fatura_numero,created_at').order('created_at',{ascending:false}),
       supabase.from('clientes').select('id,nome,telefone,logradouro,numero,bairro,municipio,uf,cep').order('nome'),
       supabase.from('titulos_financeiros').select('venda_id,tipo,valor,valor_pago,status').eq('tipo','receber'),
       supabase.from('empresa_config').select('nome_fantasia,razao_social').eq('id',1).maybeSingle(),
-      supabase.from('rotas_logisticas').select('*').order('data_rota',{ascending:false}).order('created_at')
+      supabase.from('rotas_logisticas').select('*').order('data_rota',{ascending:false}).order('created_at'),
+      supabase.from('venda_itens').select('id,venda_id,produto_id,quantidade'),
+      supabase.from('produtos').select('id,tipo_produto'),
+      supabase.from('logistica_separacao_itens').select('venda_item_id,quantidade_separada,status'),
+      supabase.from('logistica_producao_itens').select('venda_item_id,status')
     ])
-    const error=e.error||v.error||c.error||t.error||ec.error||rp.error
+    const error=e.error||v.error||c.error||t.error||ec.error||rp.error||vi.error||pr.error||sp.error||pd.error
     if(error){setMessage(error.message);return}
     setDeliveries((e.data||[]) as Delivery[])
     setSales((v.data||[]) as Sale[])
@@ -79,12 +91,35 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
     setTitles((t.data||[]) as Title[])
     if(ec.data)setCompany(ec.data as Company)
     setRoutePlans((rp.data||[]) as RoutePlan[])
+    setLogisticsItems((vi.data||[]) as LogisticsSaleItem[])
+    setLogisticsProducts((pr.data||[]) as LogisticsProduct[])
+    setLogisticsSeps((sp.data||[]) as LogisticsSep[])
+    setLogisticsProds((pd.data||[]) as LogisticsProd[])
   },[])
 
   useEffect(()=>{void load()},[load])
 
   const routes=useMemo(()=>Array.from(new Set(deliveries.map(d=>d.rota).filter(Boolean) as string[])).sort((a,b)=>a.localeCompare(b,'pt-BR')),[deliveries])
-  const active=useMemo(()=>deliveries.filter(d=>view==='montagem'?d.status==='a_entregar':view==='rota'?d.status==='em_transito':false).filter(d=>!selectedRoutes.length||selectedRoutes.includes(d.rota||'')).filter(d=>(!reportDate||d.data_prevista===reportDate)&&(!driverFilter||(d.entregador_nome||'').toLowerCase().includes(driverFilter.toLowerCase()))),[deliveries,selectedRoutes,view,reportDate,driverFilter])
+  const readyForRoute=useMemo(()=>{
+    const result=new Set<string>()
+    for(const sale of sales){
+      const saleItems=logisticsItems.filter(i=>i.venda_id===sale.id)
+      if(!saleItems.length)continue
+      const separated=saleItems.every(item=>{
+        const sep=logisticsSeps.find(x=>x.venda_item_id===item.id)
+        return sep?.status==='separado'&&Number(sep.quantidade_separada)>=Number(item.quantidade)
+      })
+      if(!separated)continue
+      const productionReady=saleItems.every(item=>{
+        const product=logisticsProducts.find(p=>p.id===item.produto_id)
+        if(product?.tipo_produto!=='produto_final')return true
+        return logisticsProds.find(x=>x.venda_item_id===item.id)?.status==='pronto'
+      })
+      if(productionReady)result.add(sale.id)
+    }
+    return result
+  },[sales,logisticsItems,logisticsProducts,logisticsSeps,logisticsProds])
+  const active=useMemo(()=>deliveries.filter(d=>view==='montagem'?(d.status==='a_entregar'&&readyForRoute.has(d.venda_id)):view==='rota'?d.status==='em_transito':false).filter(d=>!selectedRoutes.length||selectedRoutes.includes(d.rota||'')).filter(d=>(!reportDate||d.data_prevista===reportDate)&&(!driverFilter||(d.entregador_nome||'').toLowerCase().includes(driverFilter.toLowerCase()))),[deliveries,selectedRoutes,view,reportDate,driverFilter,readyForRoute])
   const history=useMemo(()=>deliveries.filter(d=>d.status==='entregue'||d.status==='reagendamento').sort((a,b)=>b.updated_at.localeCompare(a.updated_at)).slice(0,20),[deliveries])
   const activeRoutes=new Set(active.map(d=>d.rota).filter(Boolean)).size
   const dayPlans=useMemo(()=>routePlans.filter(r=>r.data_rota===routeDay&&r.status!=='cancelada'),[routePlans,routeDay])
