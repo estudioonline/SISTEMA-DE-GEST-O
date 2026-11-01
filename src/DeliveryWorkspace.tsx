@@ -1,7 +1,9 @@
 import {useState} from 'react'
 import {BarChart3,Boxes,ClipboardCheck,PackageCheck,Truck,X} from 'lucide-react'
 import {DeliveryManagement} from './DeliveryManagement'
+import {LogisticsOperations} from './LogisticsOperations'
 import './delivery-workspace.css'
+import './logistics-operations.css'
 
 type Section='separacao'|'producao'|'rotas'|'conferencia'|'relatorio'
 
@@ -18,7 +20,7 @@ export function DeliveryWorkspace({canEdit,canOperate}:{canEdit:boolean;canOpera
   if(!section){
     return <section className="deliveryWorkspace">
       <header className="deliveryWorkspaceHead">
-        <div><span>ENTREGAS</span><h2>Operação de entregas</h2><p>Separe, monte rotas, confira retornos e acompanhe o histórico sem movimentar estoque.</p></div>
+        <div><span>LOGÍSTICA</span><h2>Operação logística</h2><p>Separe pedidos, acompanhe produção, monte rotas, confira entregas e analise os resultados.</p></div>
       </header>
       <div className="deliveryWorkspaceGrid">
         {sections.map(item=>{
@@ -34,8 +36,8 @@ export function DeliveryWorkspace({canEdit,canOperate}:{canEdit:boolean;canOpera
 
   return <section className="deliveryWorkspace">
     <div className="deliveryWorkspaceNav">
-      <button type="button" className="deliveryWorkspaceBack" onClick={()=>setSection(null)}>← Entregas</button>
-      <nav aria-label="Áreas de Entregas">
+      <button type="button" className="deliveryWorkspaceBack" onClick={()=>setSection(null)}>← Logística</button>
+      <nav aria-label="Áreas de Logística">
         {sections.map(item=><button key={item.key} type="button" className={section===item.key?'active':''} onClick={()=>setSection(item.key)}>{item.title}</button>)}
       </nav>
       <button type="button" className="deliveryWorkspaceClose" onClick={()=>setSection(null)} title="Voltar ao início"><X size={16}/></button>
@@ -44,6 +46,10 @@ export function DeliveryWorkspace({canEdit,canOperate}:{canEdit:boolean;canOpera
       <strong>{sections.find(item=>item.key===section)?.title}</strong>
       <span>{sections.find(item=>item.key===section)?.description}</span>
     </div>
-    <DeliveryManagement key={section} canEdit={canEdit} canOperate={canOperate} initialView={section==='rotas'?'rota':section==='conferencia'||section==='relatorio'?'historico':'montagem'}/>
+    {section==='separacao'&&<LogisticsOperations mode="separacao" canEdit={canEdit}/>}
+    {section==='producao'&&<LogisticsOperations mode="producao" canEdit={canEdit}/>}
+    {section==='relatorio'&&<LogisticsOperations mode="relatorio" canEdit={canEdit}/>}
+    {section==='rotas'&&<DeliveryManagement key="rotas" canEdit={canEdit} canOperate={canOperate} initialView="rota"/>}
+    {section==='conferencia'&&<DeliveryManagement key="conferencia" canEdit={canEdit} canOperate={canOperate} initialView="historico"/>}
   </section>
 }
