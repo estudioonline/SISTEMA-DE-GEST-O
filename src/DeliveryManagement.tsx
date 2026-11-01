@@ -442,6 +442,7 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
 
     {view!=='historico'&&<>
     {deliveryFilters}
+    {view==='montagem'&&<div className="deliveryAvailableHead"><div><span>PEDIDOS DISPONÍVEIS</span><h3>Pedidos disponíveis para montar entrega</h3><p>Selecione abaixo os pedidos já separados e prontos para adicionar à rota escolhida.</p></div><strong>{active.length}</strong></div>}
     <div className="deliverySummary"><Truck size={18}/><strong>{active.length} entrega(s)</strong><span>{selectedRoutes.length?`em ${activeRoutes} rota(s) selecionada(s)`:'em todas as rotas'}</span></div>
 
     {active.length>0&&<div className="deliveryBulkBar">
