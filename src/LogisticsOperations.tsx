@@ -2,7 +2,7 @@ import {useCallback,useEffect,useMemo,useState} from 'react'
 import {CheckCircle2,Clock3,FileDown,PackageCheck,RefreshCw,Route,Truck} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
-type Sale={id:string;cliente_id:string|null;status:string;venda_numero:number|null;fatura_numero:number|null;created_at:string}
+type Sale={id:string;cliente_id:string|null;status:string;venda_numero:number|null;fatura_numero:number|null;total:number;created_at:string}
 type Client={id:string;nome:string}
 type SaleItem={id:string;venda_id:string;produto_id:string|null;quantidade:number}
 type Product={id:string;codigo:string|null;descricao:string;unidade:string|null;tipo_produto:string|null}
@@ -28,7 +28,7 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
 
   const load=useCallback(async()=>{
     const [s,c,i,p,sp,pr,d,r]=await Promise.all([
-      supabase.from('vendas').select('id,cliente_id,status,venda_numero,fatura_numero,created_at').eq('status','pedido').order('created_at',{ascending:false}),
+      supabase.from('vendas').select('id,cliente_id,status,venda_numero,fatura_numero,total,created_at').eq('status','pedido').order('created_at',{ascending:false}),
       supabase.from('clientes').select('id,nome'),
       supabase.from('venda_itens').select('id,venda_id,produto_id,quantidade'),
       supabase.from('produtos').select('id,codigo,descricao,unidade,tipo_produto'),
@@ -145,20 +145,43 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
     doc.setFontSize(15);doc.text(money(receivedTotal),17,74)
     doc.setFont('helvetica','normal');doc.setFontSize(7);doc.text('Registro operacional da Logística; não baixa títulos financeiros automaticamente.',82,73)
     let y=89
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Rotas',14,y);y+=7
-    doc.setFillColor(226,232,240);doc.rect(12,y,186,8,'F')
-    doc.setFontSize(8);doc.text('Data / Rota',15,y+5);doc.text('Motorista',78,y+5);doc.text('Status',120,y+5);doc.text('Entregas',148,y+5);doc.text('Recebido',171,y+5,{align:'right'});y+=8
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Detalhamento por rota',14,y);y+=7
     for(const r of routes){
       const ds=routed.filter(d=>d.rota_logistica_id===r.id)
-      const rec=ds.reduce((a,d)=>a+Number(d.valor_recebido_entrega||0),0)
-      const delivered=ds.filter(d=>d.status==='entregue').length
-      if(y>276){doc.addPage();y=18}
-      doc.setDrawColor(226,232,240);doc.line(12,y+8,198,y+8)
-      doc.setTextColor(15,23,42);doc.setFont('helvetica','bold');doc.setFontSize(8)
-      doc.text(new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR')+' · '+r.nome,15,y+5)
-      doc.setFont('helvetica','normal');doc.text(r.motorista||'—',78,y+5)
-      doc.text(r.status,120,y+5);doc.text(delivered+'/'+ds.length,148,y+5);doc.text(money(rec),195,y+5,{align:'right'})
-      y+=9
+      if(y>258){doc.addPage();y=18}
+      doc.setFillColor(226,232,240);doc.roundedRect(12,y,186,10,2,2,'F')
+      doc.setTextColor(15,23,42);doc.setFont('helvetica','bold');doc.setFontSize(9)
+      doc.text(new Date(r.data_rota+'T12:00:00').toLocaleDateString('pt-BR')+' · '+r.nome,15,y+6)
+      doc.setFont('helvetica','normal');doc.text((r.motorista||'Motorista não definido')+' · '+r.status,112,y+6)
+      y+=12
+
+      doc.setFillColor(248,250,252);doc.rect(12,y,186,8,'F')
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5)
+      doc.text('Venda',15,y+5);doc.text('Cliente',38,y+5);doc.text('Valor',137,y+5,{align:'right'});doc.text('Entrega',142,y+5);doc.text('Recebido',195,y+5,{align:'right'})
+      y+=8
+
+      for(const d of ds){
+        const sale=sales.find(v=>v.id===d.venda_id)
+        const client=clients.find(c=>c.id===sale?.cliente_id)
+        const saleLabel=sale?saleNumber(sale):'—'
+        const clientLabel=client?.nome||'Cliente'
+        const value=Number(sale?.total||0)
+        const rowHeight=Math.max(9,doc.splitTextToSize(clientLabel,88).length*4+3)
+        if(y+rowHeight>282){doc.addPage();y=18
+          doc.setFillColor(248,250,252);doc.rect(12,y,186,8,'F')
+          doc.setFont('helvetica','bold');doc.setFontSize(7.5)
+          doc.text('Venda',15,y+5);doc.text('Cliente',38,y+5);doc.text('Valor',137,y+5,{align:'right'});doc.text('Entrega',142,y+5);doc.text('Recebido',195,y+5,{align:'right'});y+=8
+        }
+        doc.setFont('helvetica','normal');doc.setFontSize(7.5)
+        doc.text(saleLabel,15,y+5)
+        doc.text(doc.splitTextToSize(clientLabel,88),38,y+5)
+        doc.text(money(value),137,y+5,{align:'right'})
+        doc.text(d.status,142,y+5)
+        doc.text(money(Number(d.valor_recebido_entrega||0)),195,y+5,{align:'right'})
+        doc.setDrawColor(226,232,240);doc.line(12,y+rowHeight,198,y+rowHeight)
+        y+=rowHeight
+      }
+      y+=5
     }
     doc.save('relatorio-logistica.pdf')
   }
