@@ -2857,7 +2857,7 @@ function App(){
     <main className="main">
       {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Aguarde a conferência das permissões e dos dados do ERP.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sair</button></div>}</section>:showApps?<>
         {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
-        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp} notifications={{autorizacoes:saleApprovals.length}}/>
+        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={permissionsReady} canEdit={canEditModule} onOpen={openApp} notifications={{financeiro:billingCounts.naoFaturado,autorizacoes:saleApprovals.length}}/>
       </>:permissionsReady&&canViewModule(active)&&<>
       <header className="topbar">
         <div><h1 ref={moduleHeading} tabIndex={-1}>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'}</p></div>
