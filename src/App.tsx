@@ -54,8 +54,9 @@ type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:numb
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
-type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
-type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number}
+type SaleRecipeDraft={key:string;componente_id:string;quantidade:number}
+type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;receita_producao?:Array<{componente_id:string;quantidade:number}>|null}
+type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;receita_producao:SaleRecipeDraft[]}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
@@ -115,7 +116,7 @@ const maskCep=(value:string)=>{
   const d=onlyDigits(value,8)
   return d.replace(/(\d{5})(\d{1,3})$/,'$1-$2')
 }
-const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0})
+const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0,receita_producao:[]})
 const newPurchaseItem=():PurchaseItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,custo_unitario:0})
 
 function themedPrompt(message:string,title='Solicitar autorização'){
@@ -1179,7 +1180,7 @@ function App(){
   function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()])}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}setSalePanel(null);setSaleDetailItems([]);resetSaleForm();setShowForm(true);setMsg('')}
   async function openSaleDetail(v:Venda){
-    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
+    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,receita_producao').eq('venda_id',v.id)
     if(error){setMsg('Não foi possível abrir os detalhes da venda: '+error.message);return}
     setSaleDetailItems((data||[]) as VendaItem[])
     setSaleDetailTab('itens')
@@ -1245,11 +1246,41 @@ function App(){
     setSaleRequestId(crypto.randomUUID())
     setOriginalSaleItems(items)
     const saleCount=Number(v.parcelas)||1;const saleBase=v.primeiro_vencimento||today();const saleDates=Array.isArray(v.vencimentos_parcelas)&&v.vencimentos_parcelas.length===saleCount?v.vencimentos_parcelas:buildInstallmentDates(saleBase,saleCount);setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(saleCount);setSaleDueDate(saleDates[0]||saleBase);setSaleInstallmentDates(saleDates)
-    setSaleItems(items.map(i=>({key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)})))
+    setSaleItems(items.map(i=>{
+      const product=produtos.find(p=>p.id===i.produto_id)
+      const saved=Array.isArray(i.receita_producao)&&i.receita_producao.length?i.receita_producao:null
+      const recipe=saved||((product?.tipo_produto==='produto_final')
+        ? produtoComponentes.filter(row=>row.produto_final_id===i.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade)}))
+        : [])
+      return {key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),receita_producao:recipe.map(row=>({key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade)}))}
+    }))
     setSalePanel(null);setSaleDetailItems([]);setShowForm(true);setMsg('')
   }
-  function chooseProduct(key:string,id:string){const p=produtos.find(x=>x.id===id);setSaleItems(items=>items.map(i=>i.key===key?{...i,produto_id:id,valor_unitario:p?Number(p.preco_venda):0}:i))}
+  function defaultSaleRecipe(productId:string):SaleRecipeDraft[]{
+    return produtoComponentes.filter(row=>row.produto_final_id===productId).map(row=>({key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade)}))
+  }
+  function chooseProduct(key:string,id:string){
+    const p=produtos.find(x=>x.id===id)
+    setSaleItems(items=>items.map(i=>i.key===key?{
+      ...i,
+      produto_id:id,
+      valor_unitario:p?Number(p.preco_venda):0,
+      receita_producao:p?.tipo_produto==='produto_final'?defaultSaleRecipe(id):[]
+    }:i))
+  }
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
+  function updateSaleRecipeItem(itemKey:string,recipeKey:string,field:'componente_id'|'quantidade',value:string|number){
+    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:item.receita_producao.map(row=>row.key===recipeKey?{...row,[field]:field==='componente_id'?String(value):Math.max(0,Number(value)||0)}:row)}:item))
+  }
+  function addSaleRecipeItem(itemKey:string){
+    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:[...item.receita_producao,{key:crypto.randomUUID(),componente_id:'',quantidade:1}]}:item))
+  }
+  function removeSaleRecipeItem(itemKey:string,recipeKey:string){
+    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:item.receita_producao.filter(row=>row.key!==recipeKey)}:item))
+  }
+  function resetSaleRecipe(itemKey:string,productId:string){
+    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:defaultSaleRecipe(productId)}:item))
+  }
   function removeSaleItem(key:string){setSaleItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
   function resizeSaleDates(count:number){
     const next=Math.max(1,count)
@@ -1290,7 +1321,7 @@ function App(){
       p_primeiro_vencimento:today(),
       p_vencimentos:buildInstallmentDates(today(),saleInstallments),
       p_observacoes:saleNotes,
-      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto}))
+      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto,receita_producao:i.receita_producao.map(row=>({componente_id:row.componente_id,quantidade:row.quantidade}))}))
     }
     const r=await supabase.rpc('salvar_venda_erp',{
       p_requisicao:saleRequestId,
@@ -2353,15 +2384,11 @@ function App(){
   function productionMaterialsForItem(item:SaleItemDraft){
     const produto=produtos.find(p=>p.id===item.produto_id)
     if(!produto||produto.tipo_produto!=='produto_final')return []
-    return produtoComponentes
-      .filter(row=>row.produto_final_id===produto.id)
+    return item.receita_producao
       .map(row=>{
         const componente=produtos.find(p=>p.id===row.componente_id)
-        const base=Number(row.quantidade)*Number(item.quantidade||0)
-        const total=base
-        return {componente,quantidade:total}
+        return {row,componente,quantidade:Number(row.quantidade)*Number(item.quantidade||0)}
       })
-      .filter(row=>row.componente)
   }
   function saleItemStockInfo(item:SaleItemDraft){
     const produto=produtos.find(p=>p.id===item.produto_id)
@@ -3643,15 +3670,24 @@ function App(){
               <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
               <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
               {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
-              {productionMaterials.length>0&&<div className="saleProductionMaterials">
-                <div className="saleProductionMaterialsTitle"><Boxes size={15}/><strong>Materiais necessários para produção</strong><span>para {Number(i.quantidade).toLocaleString('pt-BR')} unidade(s)</span></div>
-                <div className="saleProductionMaterialGrid">
-                  {productionMaterials.map(row=><div key={row.componente!.id} className={Number(row.componente!.estoque_atual)<row.quantidade?'productionMaterialShort':''}>
-                    <span>{row.componente!.codigo} — {row.componente!.descricao}</span>
-                    <strong>{row.quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {row.componente!.unidade}</strong>
-                    <small>Estoque: {Number(row.componente!.estoque_atual).toLocaleString('pt-BR')} {row.componente!.unidade}</small>
-                  </div>)}
+              {produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'&&<div className="saleProductionMaterials saleProductionRecipeEditor">
+                <div className="saleProductionMaterialsTitle">
+                  <Boxes size={15}/>
+                  <div><strong>Receita deste item</strong><span>Uma cópia da ficha técnica padrão. Alterações valem somente para esta venda.</span></div>
+                  <div className="saleProductionRecipeActions">
+                    <button type="button" className="ghost compactBtn" onClick={()=>resetSaleRecipe(i.key,i.produto_id)}>Restaurar padrão</button>
+                    <button type="button" className="ghost compactBtn" onClick={()=>addSaleRecipeItem(i.key)}><Plus size={14}/>Material</button>
+                  </div>
                 </div>
+                {i.receita_producao.length===0?<div className="saleProductionRecipeEmpty">Este produto de produção está sem receita configurada. Adicione os materiais necessários.</div>:<div className="saleProductionRecipeRows">
+                  {productionMaterials.map(({row,componente,quantidade},idx)=><div key={row.key} className={'saleProductionRecipeRow'+(componente&&Number(componente.estoque_atual)<quantidade?' productionMaterialShort':'')}>
+                    <span className="saleProductionRecipeIndex">{idx+1}</span>
+                    <ProductLookup products={produtos.filter(p=>p.ativo&&p.tipo_produto!=='produto_final')} value={row.componente_id} onSelect={id=>updateSaleRecipeItem(i.key,row.key,'componente_id',id)} fullWidth/>
+                    <label><span>Qtd./un.</span><input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateSaleRecipeItem(i.key,row.key,'quantidade',Number(e.target.value))}/></label>
+                    <div className="saleProductionRecipeTotal"><span>Total</span><strong>{quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {componente?.unidade||''}</strong><small>{componente?'Estoque '+Number(componente.estoque_atual).toLocaleString('pt-BR')+' '+componente.unidade:'Selecione o material'}</small></div>
+                    <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleRecipeItem(i.key,row.key)} title="Remover material"><Trash2 size={15}/></button>
+                  </div>)}
+                </div>}
               </div>}
             </div>})}
           </div>
