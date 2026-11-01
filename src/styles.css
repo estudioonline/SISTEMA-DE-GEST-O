@@ -5626,3 +5626,17 @@
 .dark .productionCatalogHead p,.dark .productionCatalogTitle>div>span,.dark .productionCatalogMeta span,.dark .productionCatalogRecipe span{color:#94a3b8}
 .dark .productionCatalogCard{background:#111827;border-color:#334155}.dark .productionCatalogMeta>div,.dark .productionCatalogRecipe>div:not(.productionRecipeEmpty){background:#0f172a}
 @media(max-width:760px){.productionCatalogHead{flex-direction:column}.productionCatalogHead>button{width:100%}.productionCatalogGrid{grid-template-columns:1fr}.productionCatalogMeta{grid-template-columns:1fr}}
+
+.productionListPanel .panelHead{align-items:flex-start;gap:14px}
+.productionListActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.productionListActions .searchField{min-width:260px}
+.productionListTable tbody tr{cursor:pointer}
+.productionListTable tbody tr:hover{background:#f8fafc}
+.productionListTable td,.productionListTable th{vertical-align:middle}
+.productionListTable td:nth-child(1){width:90px}
+.productionListTable td:nth-child(3),.productionListTable th:nth-child(3){text-align:center;width:90px}
+.productionListTable td:nth-child(4),.productionListTable th:nth-child(4){text-align:right;width:130px}
+.productionListTable td:nth-child(5),.productionListTable th:nth-child(5){width:90px}
+.productionListTable td:nth-child(6),.productionListTable th:nth-child(6){width:100px}
+.dark .productionListTable tbody tr:hover{background:#172033}
+@media(max-width:760px){.productionListActions{width:100%}.productionListActions .searchField{min-width:0;flex:1 1 100%}.productionListActions .primary{width:100%}}
