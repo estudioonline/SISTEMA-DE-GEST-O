@@ -3310,9 +3310,14 @@ function App(){
               <h3>{editingSale?(editingSale.status==='orcamento'?'Editar orçamento ':'Editar venda ')+invoiceNo(editingSale.fatura_numero):'Novo orçamento'}</h3>
               <p>O processo de venda começa como orçamento. Depois ele pode ser convertido em Pedido/Venda para gerar cobrança e movimentação de estoque.</p>
             </div>
-            <div className="saleGeminiNote">
-              <Info size={19}/>
-              <div><strong>Nota de Processo</strong><span>{saleStatus==='orcamento'?'Este orçamento não gera cobrança ou movimentação de estoque. Converta para Pedido/Venda para faturamento.':'Pedido/Venda gera cobrança e movimentação conforme as regras do sistema.'}</span></div>
+            <div className={`saleGeminiNote${saleHasAuthorizationBlocker?' saleGeminiNoteBlocked':''}`} role={saleHasAuthorizationBlocker?'alert':undefined}>
+              {saleHasAuthorizationBlocker?<ShieldCheck size={19}/>:<Info size={19}/>}
+              <div>
+                <strong>{saleHasAuthorizationBlocker?`Bloqueio identificado (${saleApprovalBlockers.length})`:'Nota de Processo'}</strong>
+                {saleHasAuthorizationBlocker
+                  ? <span>{saleApprovalBlockers.map(blocker=>`${blocker.label}: ${blocker.detalhe}`).join(' • ')}</span>
+                  : <span>{saleStatus==='orcamento'?'Este orçamento não gera cobrança ou movimentação de estoque. Converta para Pedido/Venda para faturamento.':'Pedido/Venda gera cobrança e movimentação conforme as regras do sistema.'}</span>}
+              </div>
             </div>
             <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de venda" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}><X size={18}/></button>
           </div>
@@ -3410,19 +3415,6 @@ function App(){
           {saleStatus!=='orcamento'&&saleBelowStockMinimum.length>0&&saleStockShortages.length===0&&<div className="stockMinimumNotice">
             <strong>Aviso de estoque mínimo</strong>
             <span>Esta venda pode ser concluída normalmente. Alguns itens ficarão abaixo do estoque mínimo configurado após a saída.</span>
-          </div>}
-
-          {saleHasAuthorizationBlocker&&<div className="saleAuthorizationBlockers" role="alert">
-            <div className="saleAuthorizationBlockersHead">
-              <ShieldCheck size={20}/>
-              <div><strong>Esta venda precisa de autorização</strong><span>{saleApprovalBlockers.length} bloqueio(s) identificado(s). A venda normal não será concluída enquanto houver estes bloqueios.</span></div>
-            </div>
-            <div className="saleAuthorizationBlockerList">
-              {saleApprovalBlockers.map((blocker,index)=><div key={blocker.tipo+'-'+index}>
-                <strong>{blocker.label}</strong>
-                <span>{blocker.detalhe}</span>
-              </div>)}
-            </div>
           </div>}
 
           <div className="saleActions">
