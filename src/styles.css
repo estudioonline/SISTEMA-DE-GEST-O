@@ -5440,7 +5440,7 @@
 .productGroupCreate label{display:grid;gap:5px;min-width:0}
 .productGroupCreate input,.productGroupCreate select{min-height:38px}
 .productGroupCreate .ghost{min-height:38px;white-space:nowrap}
-.productGroupList{columns:4 280px;column-gap:12px}
+.productGroupList{column-count:4;column-gap:12px;width:100%}
 .productGroupCard{break-inside:avoid;margin:0 0 12px;display:inline-block;width:100%;box-sizing:border-box}
 .productGroupCard{align-self:start;border:1px solid rgba(148,163,184,.25);border-radius:14px;padding:12px 14px;background:rgba(148,163,184,.05)}
 .productGroupTitle{display:flex;align-items:center;gap:8px;min-height:34px}
