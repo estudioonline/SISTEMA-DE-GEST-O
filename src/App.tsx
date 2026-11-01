@@ -271,7 +271,8 @@ function App(){
   const [productGroupId,setProductGroupId]=useState('')
   const [productSubgroupId,setProductSubgroupId]=useState('')
   const [productComponentDrafts,setProductComponentDrafts]=useState<ProdutoComponenteDraft[]>([])
-  const [productComponentSearch,setProductComponentSearch]=useState<Record<string,string>>({})
+  const [productComponentPicker,setProductComponentPicker]=useState<string|null>(null)
+  const [productComponentPickerSearch,setProductComponentPickerSearch]=useState('')
   const [productPanel,setProductPanel]=useState<string|null>(null)
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
@@ -994,18 +995,15 @@ function App(){
   function addProductComponent(){
     const key=crypto.randomUUID()
     setProductComponentDrafts(rows=>[...rows,{key,componente_id:'',quantidade:1}])
-    setProductComponentSearch(prev=>({...prev,[key]:''}))
+    setProductComponentPicker(key)
+    setProductComponentPickerSearch('')
   }
   function updateProductComponent(key:string,field:'componente_id'|'quantidade',value:string|number){
     setProductComponentDrafts(rows=>rows.map(row=>row.key===key?{...row,[field]:field==='componente_id'?String(value):Math.max(0,Number(value)||0)}:row))
   }
   function removeProductComponent(key:string){
     setProductComponentDrafts(rows=>rows.filter(row=>row.key!==key))
-    setProductComponentSearch(prev=>{
-      const next={...prev}
-      delete next[key]
-      return next
-    })
+    if(productComponentPicker===key)setProductComponentPicker(null)
   }
   async function saveProduct(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
@@ -3200,30 +3198,14 @@ function App(){
                   </div>
                   <div className="productionRecipeRowGrid">
                     <label className="fieldLabel productionRecipeMaterial">Material
-                      <div className="productionMaterialPicker">
-                        <div className="productionMaterialSearch">
-                          <Search size={15}/>
-                          <input
-                            type="text"
-                            placeholder="Pesquisar por código ou nome..."
-                            value={productComponentSearch[row.key]??''}
-                            onChange={e=>setProductComponentSearch(prev=>({...prev,[row.key]:e.target.value}))}
-                          />
-                        </div>
-                        <select value={row.componente_id} onChange={e=>{
-                          updateProductComponent(row.key,'componente_id',e.target.value)
-                          const selected=produtos.find(p=>p.id===e.target.value)
-                          if(selected)setProductComponentSearch(prev=>({...prev,[row.key]:selected.codigo+' — '+selected.descricao}))
-                        }} required>
-                          <option value="">Selecione um material</option>
-                          {produtos.filter(p=>{
-                            if(!(p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id))return false
-                            const q=(productComponentSearch[row.key]??'').trim().toLowerCase()
-                            if(!q)return true
-                            return [p.codigo,p.descricao,p.unidade].some(v=>String(v??'').toLowerCase().includes(q))
-                          }).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} ({p.unidade})</option>)}
-                        </select>
-                      </div>
+                      <button type="button" className="productionMaterialButton" onClick={()=>{setProductComponentPicker(row.key);setProductComponentPickerSearch('')}}>
+                        <Search size={15}/>
+                        <span>{(()=>{
+                          const material=produtos.find(p=>p.id===row.componente_id)
+                          return material?`${material.codigo} — ${material.descricao} (${material.unidade||'UN'})`:'Selecionar material'
+                        })()}</span>
+                        <strong>{row.componente_id?'Alterar':'Escolher'}</strong>
+                      </button>
                     </label>
                     <label className="fieldLabel productionRecipeQuantity">Quantidade por unidade
                       <input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateProductComponent(row.key,'quantidade',e.target.value)} required/>
@@ -3237,6 +3219,36 @@ function App(){
                   const material=produtos.find(p=>p.id===row.componente_id)
                   return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0))
                 },0))}</strong>
+              </div>}
+              {productComponentPicker&&<div className="productionPickerBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setProductComponentPicker(null)}}>
+                <div className="productionPickerModal" role="dialog" aria-modal="true" aria-label="Pesquisar material">
+                  <div className="productionPickerHead">
+                    <div><strong>Pesquisar material</strong><span>Digite o código ou nome do produto que deseja usar na receita.</span></div>
+                    <button type="button" className="iconBtn" onClick={()=>setProductComponentPicker(null)} aria-label="Fechar"><X size={17}/></button>
+                  </div>
+                  <div className="productionPickerSearch">
+                    <Search size={17}/>
+                    <input autoFocus value={productComponentPickerSearch} onChange={e=>setProductComponentPickerSearch(e.target.value)} placeholder="Código, nome ou unidade..."/>
+                    {productComponentPickerSearch&&<button type="button" onClick={()=>setProductComponentPickerSearch('')}><X size={14}/></button>}
+                  </div>
+                  <div className="productionPickerList">
+                    {produtos.filter(p=>{
+                      if(!(p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id))return false
+                      const q=productComponentPickerSearch.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
+                      if(!q)return true
+                      const hay=[p.codigo,p.descricao,p.unidade].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+                      return hay.includes(q)
+                    }).slice(0,80).map(p=><button type="button" key={p.id} className="productionPickerOption" onClick={()=>{
+                      updateProductComponent(productComponentPicker,'componente_id',p.id)
+                      setProductComponentPicker(null)
+                      setProductComponentPickerSearch('')
+                    }}>
+                      <span><strong>{p.codigo}</strong><b>{p.descricao}</b></span>
+                      <small>{p.unidade||'UN'} · estoque {Number(p.estoque_atual||0).toLocaleString('pt-BR')}</small>
+                    </button>)}
+                    {productComponentPickerSearch&&produtos.filter(p=>p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id&&[p.codigo,p.descricao,p.unidade].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(productComponentPickerSearch.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim())).length===0&&<div className="productionPickerEmpty">Nenhum material encontrado.</div>}
+                  </div>
+                </div>
               </div>}
             </div>}
             <div className="fiscalCadastroSection productFiscalSection">
