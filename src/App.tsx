@@ -75,7 +75,7 @@ type SaleHistoryEvent={evento_id:string;fonte:string;acao:string;usuario_id:stri
 const menu=[
   ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['documentos','Documentos',FolderOpen],['rh','RH',Users],['entregas','Entregas',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['infra','GitHub & Supabase',Database],['config','Configurações',Settings]
+  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['documentos','Documentos',FolderOpen],['rh','RH',Users],['entregas','Logística',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['infra','GitHub & Supabase',Database],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
