@@ -5673,3 +5673,11 @@
 .dark .productionRecipeRow,.dark .productionRecipeEmpty{background:#111827;border-color:#334155}
 .dark .productionRecipeCost{background:#111827;border-color:#1d4ed8}
 @media(max-width:760px){.productionRecipeHead{flex-direction:column}.productionRecipeHeadActions{width:100%;justify-content:space-between}.productionRecipeRowGrid{grid-template-columns:1fr}.productionRecipeCost{align-items:flex-start;flex-direction:column}.productionRecipeCost strong{font-size:16px}}
+
+.productionMaterialPicker{display:grid;gap:7px}
+.productionMaterialSearch{display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;border:1px solid #cbd5e1;border-radius:9px;background:#fff}
+.productionMaterialSearch svg{flex:0 0 auto;color:#64748b}
+.productionMaterialSearch input{border:0!important;outline:0!important;box-shadow:none!important;padding:0!important;height:auto!important;min-height:0!important;background:transparent!important;width:100%}
+.dark .productionMaterialSearch{background:#0f172a;border-color:#334155}
+.dark .productionMaterialSearch input{color:#f8fafc}
+.dark .productionMaterialSearch svg{color:#94a3b8}
