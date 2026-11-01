@@ -37,6 +37,8 @@ export type InvoiceCompany = {
 
 export type InvoiceData = {
   id: string
+  document_kind?: 'orcamento'|'venda'|'fatura'
+  document_number?: string
   venda_numero?: number | null
   fatura_numero?: number | null
   created_at: string
@@ -90,9 +92,11 @@ const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
 const saleCode=(value:number|null|undefined)=>`S${String(value||0).padStart(5,'0')}`
 const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='dinheiro'?'DINHEIRO':value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
 const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
-const isQuote=(data:InvoiceData)=>data.status==='orcamento'
-const documentLabel=(data:InvoiceData)=>isQuote(data)?'ORÇAMENTO':'Pedido'
-const documentNumber=(data:InvoiceData)=>saleCode(data.venda_numero)
+const documentKind=(data:InvoiceData)=>data.document_kind||(data.status==='orcamento'?'orcamento':'venda')
+const isQuote=(data:InvoiceData)=>documentKind(data)==='orcamento'
+const isFinancialInvoice=(data:InvoiceData)=>documentKind(data)==='fatura'
+const documentLabel=(data:InvoiceData)=>isQuote(data)?'ORÇAMENTO':isFinancialInvoice(data)?'FATURA':'VENDA'
+const documentNumber=(data:InvoiceData)=>data.document_number||(isFinancialInvoice(data)?`FAT${String(data.fatura_numero||0).padStart(5,'0')}`:saleCode(data.venda_numero))
 const deliveryRouteLabel=(value:string|null|undefined)=>value==='norte'?'NORTE':value==='sul'?'SUL':value==='leste'?'LESTE':value==='interestadual'?'INTERESTADUAL':value==='retirada'?'RETIRADA':'-'
 const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'cliente'
 
@@ -182,8 +186,8 @@ function drawBrandHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(18)
-  doc.setFont('helvetica',isQuote(data)?'bold':'normal')
-  doc.setFontSize(isQuote(data)?20:18)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(20)
   doc.text(`${documentLabel(data)} ${documentNumber(data)}`,196,52,{align:'right'})
 }
 
@@ -214,7 +218,7 @@ function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
   doc.setFontSize(8.7)
-  doc.text(isQuote(data)?'Data do orçamento':'Data do pedido',leftX,y)
+  doc.text(isQuote(data)?'Data do orçamento':isFinancialInvoice(data)?'Data da fatura':'Data da venda',leftX,y)
   doc.text('Vendedor',sellerX,y)
 
   doc.setTextColor(...text)
@@ -419,25 +423,23 @@ function addFooters(doc:jsPDF,data:InvoiceData){
 function buildInvoiceDocument(data:InvoiceData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
-    title:`${isQuote(data)?'Orçamento':'Pedido'} ${invoiceNo(data.venda_numero)}`,
-    subject:isQuote(data)?'Orçamento comercial':'Pedido / venda',
+    title:`${documentLabel(data)} ${documentNumber(data)}`,
+    subject:isQuote(data)?'Orçamento comercial':isFinancialInvoice(data)?'Fatura financeira':'Venda / pedido',
     author:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
   })
 
   drawBrandHeader(doc,data)
-  if(isQuote(data)){
-    doc.setFillColor(...paleBlue)
-    doc.roundedRect(12,60,184,10,2,2,'F')
-    doc.setDrawColor(...blue)
-    doc.setLineWidth(0.5)
-    doc.roundedRect(12,60,184,10,2,2,'S')
-    doc.setTextColor(...blue)
-    doc.setFont('helvetica','bold')
-    doc.setFontSize(12)
-    doc.text('ORÇAMENTO',105,66.7,{align:'center'})
-    doc.setTextColor(...text)
-  }
-  let y=drawCustomer(doc,data,isQuote(data)?80:66)
+  doc.setFillColor(...paleBlue)
+  doc.roundedRect(12,60,184,10,2,2,'F')
+  doc.setDrawColor(...blue)
+  doc.setLineWidth(0.5)
+  doc.roundedRect(12,60,184,10,2,2,'S')
+  doc.setTextColor(...blue)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(12)
+  doc.text(documentLabel(data),105,66.7,{align:'center'})
+  doc.setTextColor(...text)
+  let y=drawCustomer(doc,data,80)
   y=drawOrderInfo(doc,data,y)
   y=drawItems(doc,data,y)
   drawNotesAndConditions(doc,data,y+5)
@@ -447,7 +449,7 @@ function buildInvoiceDocument(data:InvoiceData){
 
 export function generateInvoicePdf(data:InvoiceData){
   const doc=buildInvoiceDocument(data)
-  doc.save(`${safeFilePart(data.cliente?.nome||'consumidor')}-${invoiceNo(data.venda_numero)}.pdf`)
+  doc.save(`${safeFilePart(data.cliente?.nome||'consumidor')}-${safeFilePart(documentNumber(data))}.pdf`)
 }
 
 export function openInvoicePdfForPrint(data:InvoiceData){
