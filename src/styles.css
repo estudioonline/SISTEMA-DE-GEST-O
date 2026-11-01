@@ -5640,3 +5640,8 @@
 .productionListTable td:nth-child(6),.productionListTable th:nth-child(6){width:100px}
 .dark .productionListTable tbody tr:hover{background:#172033}
 @media(max-width:760px){.productionListActions{width:100%}.productionListActions .searchField{min-width:0;flex:1 1 100%}.productionListActions .primary{width:100%}}
+
+.productionNameCell{display:flex;align-items:center;gap:8px;min-width:0}
+.productionProductName{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.productionNameCell .productFinalBadge{flex:0 0 auto;margin-left:2px}
+@media(max-width:760px){.productionNameCell{align-items:flex-start;flex-direction:column;gap:4px}.productionProductName{white-space:normal}}
