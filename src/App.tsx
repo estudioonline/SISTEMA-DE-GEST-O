@@ -34,6 +34,7 @@ import { InfrastructureUsage } from './InfrastructureUsage'
 import { DeliveryWorkspace } from './DeliveryWorkspace'
 import { ProductGroupsManager } from './ProductGroupsManager'
 import { SearchableSelect } from './SearchableSelect'
+import { PartyLookup } from './PartyLookup'
 import type { ProductGroup, ProductSubgroup } from './ProductGroupsManager'
 import { useTheme } from './lib/useTheme'
 import type { EmployeeTitle } from './EmployeeFinance'
@@ -3438,7 +3439,7 @@ function App(){
 
           <div className="saleHeader saleHeaderExpanded">
             <label>Fornecedor
-              <SearchableSelect value={purchaseSupplier} onChange={setPurchaseSupplier} placeholder="Sem fornecedor" searchPlaceholder="Pesquisar fornecedor..." options={fornecedores.filter(f=>f.ativo).map(f=>({value:f.id,label:f.nome,keywords:[f.documento,f.email,f.telefone].filter(Boolean).join(' ')}))}/>
+              <PartyLookup items={fornecedores} value={purchaseSupplier} onSelect={setPurchaseSupplier} kind="fornecedor" emptyLabel="Sem fornecedor"/>
             </label>
             <label>Status
               <select value={purchaseStatus} onChange={e=>setPurchaseStatus(e.target.value)}>
@@ -3491,7 +3492,7 @@ function App(){
 
           <div className="saleItems">
             {purchaseItems.map(i=><div className="purchaseItemRow" key={i.key}>
-              <div className="saleProductPicker"><SearchableSelect value={i.produto_id} onChange={value=>choosePurchaseProduct(i.key,value)} required placeholder="Produto" searchPlaceholder="Pesquisar código ou produto..." options={produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=>({value:p.id,label:`${p.codigo} — ${p.descricao} — ${p.unidade||'UN'} — custo ${money(Number(p.custo))}`,keywords:`${p.codigo} ${p.descricao} ${p.unidade||''}`}))}/><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>choosePurchaseProduct(i.key,id)}/></div>
+              <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>choosePurchaseProduct(i.key,id)} fullWidth/></div>
               <input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updatePurchaseItem(i.key,'quantidade',Number(e.target.value))}/>
               <input type="number" min="0" step="0.01" value={i.custo_unitario} onChange={e=>updatePurchaseItem(i.key,'custo_unitario',Number(e.target.value))}/>
               <strong>{money(i.quantidade*i.custo_unitario)}</strong>
@@ -3583,7 +3584,7 @@ function App(){
           {saleNotice&&<div role="alert" aria-live="assertive" style={{position:"sticky",top:0,zIndex:20,background:"#fff0f0",color:"#991b1b",border:"1px solid #fca5a5",borderRadius:10,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10,boxShadow:"0 5px 20px #00000016"}}><Ban size={20}/><span style={{flex:1}}><strong>Atenção:</strong> {saleNotice}</span><button type="button" aria-label="Fechar aviso" onClick={()=>setSaleNotice('')} style={{background:"transparent",border:"none",cursor:"pointer",color:"inherit"}}><X size={18}/></button></div>}
           <div className="saleHeader saleHeaderExpanded">
             <label>Cliente
-              <SearchableSelect value={saleClient} onChange={setSaleClient} placeholder="Consumidor" searchPlaceholder="Pesquisar cliente, CNPJ/CPF ou telefone..." options={clientes.filter(c=>c.ativo).map(c=>({value:c.id,label:c.nome,keywords:[c.documento,c.email,c.telefone].filter(Boolean).join(' ')}))}/>
+              <PartyLookup items={clientes} value={saleClient} onSelect={setSaleClient} kind="cliente" emptyLabel="Consumidor"/>
             </label>
             <label>Vendedor
               <SearchableSelect value={saleSeller} onChange={setSaleSeller} placeholder="Sem vendedor / sem comissão" searchPlaceholder="Pesquisar vendedor..." options={vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=>({value:v.id,label:`${v.nome} — ${Number(v.percentual_comissao).toLocaleString('pt-BR')}%`,keywords:v.nome}))}/>
