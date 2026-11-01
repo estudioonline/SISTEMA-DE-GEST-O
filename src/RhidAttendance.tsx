@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from 'react'
 import {ChevronLeft,ChevronRight,Link2,RefreshCw,Search,ShieldCheck,Users} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {parseRhidAttendance} from './lib/rhid'
+import {SearchableSelect} from './SearchableSelect'
 
 type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null}
 type Person={id:string;name:string;raw:Record<string,unknown>}
@@ -157,7 +158,7 @@ export function RhidAttendance({employees,canEdit,onLinked}:{employees:Employee[
   {!configured&&<div className="panel rhidSetupNotice"><strong>Integração preparada, aguardando credenciais do RHID.</strong><span>Cadastre RHID_EMAIL e RHID_PASSWORD nos Secrets das Edge Functions do Supabase. As credenciais não ficam no navegador nem no GitHub.</span></div>}
 
   <div className="panel rhidControls">
-   <div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<select value={selectedEmployee} onChange={e=>setSelectedEmployee(e.target.value)}><option value="">Selecione</option>{activeEmployees.map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · vinculado':''}</option>)}</select></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div>
+   <div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<SearchableSelect value={selectedEmployee} onChange={setSelectedEmployee} placeholder="Selecione" searchPlaceholder="Pesquisar funcionário..." options={activeEmployees.map(e=>({value:e.id,label:e.nome+(e.rhid_person_id?' · vinculado':''),keywords:[e.nome,e.cargo].filter(Boolean).join(' ')}))}/></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div>
    <label>De<input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label>
    <label>Até<input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label>
    <button className="ghost" disabled={busy||!configured} onClick={()=>void testConnection()}><ShieldCheck size={15}/>Testar conexão</button><button className="ghost" disabled={busy||!configured} onClick={()=>void syncPeople()}><RefreshCw size={15}/>Sincronizar RHID</button>
