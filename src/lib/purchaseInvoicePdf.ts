@@ -74,7 +74,7 @@ function drawHeader(doc:jsPDF,data:PurchasePdfData){
   doc.text(companyName(data),12,17)
 
   doc.setTextColor(...blue)
-  doc.setFontSize(7.5)
+  doc.setFontSize(8.5)
   doc.setCharSpace(1.3)
   doc.text('CONTAS A PAGAR',12,23)
   doc.setCharSpace(0)
@@ -90,7 +90,7 @@ function drawHeader(doc:jsPDF,data:PurchasePdfData){
 
   doc.setTextColor(...text)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(8.2)
+  doc.setFontSize(9.2)
   let y=12
   lines.slice(0,5).forEach(v=>{doc.text(v,rightX,y,{align:'right'});y+=5.2})
 
@@ -102,11 +102,11 @@ function drawHeader(doc:jsPDF,data:PurchasePdfData){
 function drawSupplier(doc:jsPDF,data:PurchasePdfData){
   doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(9.5)
+  doc.setFontSize(10.5)
   doc.text(data.fornecedor?.nome||'FORNECEDOR NÃO INFORMADO',12,61)
 
   doc.setFont('helvetica','normal')
-  doc.setFontSize(8.1)
+  doc.setFontSize(9.1)
   let y=67
   const lines=[
     data.fornecedor?.documento?`CPF/CNPJ: ${data.fornecedor.documento}`:'',
@@ -120,13 +120,13 @@ function drawSupplier(doc:jsPDF,data:PurchasePdfData){
 function drawInfo(doc:jsPDF,data:PurchasePdfData,y:number){
   doc.setFont('helvetica','bold')
   doc.setTextColor(...darkBlue)
-  doc.setFontSize(8.6)
+  doc.setFontSize(9.6)
   doc.text('Data da compra',12,y)
   doc.text('Forma de pagamento',105,y)
 
   doc.setFont('helvetica','normal')
   doc.setTextColor(...text)
-  doc.setFontSize(8.2)
+  doc.setFontSize(9.2)
   doc.text(dateTime(data.created_at),12,y+5)
   doc.text(`${paymentLabel(data.forma_pagamento)}${data.parcelas>1?` - ${data.parcelas}x`:''}`,105,y+5)
 
@@ -140,7 +140,7 @@ function drawInfo(doc:jsPDF,data:PurchasePdfData,y:number){
 function drawTableHeader(doc:jsPDF,y:number){
   doc.setTextColor(...text)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(8.2)
+  doc.setFontSize(9.2)
   doc.text('Descrição',14,y)
   doc.text('Quantidade',130,y,{align:'right'})
   doc.text('Custo unitário',166,y,{align:'right'})
@@ -156,11 +156,11 @@ function drawContinuationHeader(doc:jsPDF,data:PurchasePdfData){
   doc.rect(0,0,210,24,'F')
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(11)
+  doc.setFontSize(12)
   doc.text(companyName(data),12,10)
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(12)
+  doc.setFontSize(13)
   doc.text(`Compra nº ${invoiceNo(data.fatura_numero)} - continuação`,196,16,{align:'right'})
 }
 
@@ -181,7 +181,7 @@ function drawItems(doc:jsPDF,data:PurchasePdfData,startY:number){
 
     doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(8.1)
+    doc.setFontSize(9.1)
     doc.text(lines,14,y+4.3)
     doc.text(`${num(item.quantidade)} ${item.unidade}`,130,y+4.3,{align:'right'})
     doc.text(money(item.custo_unitario),166,y+4.3,{align:'right'})
@@ -197,7 +197,7 @@ function drawItems(doc:jsPDF,data:PurchasePdfData,startY:number){
   doc.rect(105,y,91,7,'F')
   doc.setTextColor(...blue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8.5)
+  doc.setFontSize(9.5)
   doc.text('Total a pagar',145,y+4.8,{align:'right'})
   doc.text(money(data.total),196,y+4.8,{align:'right'})
   return y+13
@@ -219,12 +219,12 @@ function drawSchedule(doc:jsPDF,data:PurchasePdfData,startY:number){
 
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8.5)
+  doc.setFontSize(9.5)
   doc.text('Parcelas / vencimentos',12,y)
   y+=6
 
   doc.setFont('helvetica','normal')
-  doc.setFontSize(7.7)
+  doc.setFontSize(8.7)
   for(let i=0;i<data.parcelas;i++){
     const customDue=data.vencimentos_parcelas?.[i]
     const due=customDue?parseDate(customDue):addMonths(data.primeiro_vencimento,i)
@@ -254,14 +254,14 @@ function drawNotes(doc:jsPDF,data:PurchasePdfData,startY:number){
   if(y+18>274){doc.addPage();drawContinuationHeader(doc,data);y=34}
   doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8.3)
+  doc.setFontSize(9.3)
   doc.text('Anotações:',12,y)
   y+=6
 
   const notes=(data.observacoes||'Sem observações.').trim()
   const lines=doc.splitTextToSize(notes,184) as string[]
   doc.setFont('helvetica','normal')
-  doc.setFontSize(7.4)
+  doc.setFontSize(8.4)
   doc.text(lines,12,y)
 }
 
@@ -274,7 +274,7 @@ function addFooters(doc:jsPDF,data:PurchasePdfData){
     doc.line(12,282,196,282)
     doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(7.1)
+    doc.setFontSize(8.1)
     const left=[data.company?.email||'',data.company?.cnpj||''].filter(Boolean).join('   ')
     doc.text(left,12,289)
     doc.setTextColor(...muted)
