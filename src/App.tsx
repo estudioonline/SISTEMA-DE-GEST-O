@@ -328,6 +328,7 @@ function App(){
 
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
+  const [financePanelReturnModule,setFinancePanelReturnModule]=useState<ModuleKey|null>(null)
   const [financePanelReturnSubtab,setFinancePanelReturnSubtab]=useState<'faturamento'|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
   const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'faturamento'|'conciliacao'>('geral')
@@ -1859,6 +1860,12 @@ function App(){
 
   function closeFinancePanel(){
     setFinancePanel(null)
+    if(financePanelReturnModule){
+      setActive(financePanelReturnModule)
+      setFinancePanelReturnModule(null)
+      setFinancePanelReturnSubtab(null)
+      return
+    }
     if(financePanelReturnSubtab){
       setFinanceSubtab(financePanelReturnSubtab)
       setFinancePanelReturnSubtab(null)
@@ -1869,6 +1876,7 @@ function App(){
       closeFinancePanel()
       return
     }
+    setFinancePanelReturnModule(null)
     setFinancePanelReturnSubtab(null)
     setFinancePanel(t.id)
     setFinancePanelTab('detalhes')
@@ -1884,6 +1892,7 @@ function App(){
       return
     }
     const first=related[0]
+    setFinancePanelReturnModule(returnToBilling?null:'vendas')
     setActive('financeiro')
     setFinancePanelReturnSubtab(returnToBilling?'faturamento':null)
     setFinanceSubtab('receber')
