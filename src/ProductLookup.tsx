@@ -18,10 +18,11 @@ type LookupProduct = {
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const currency = (value: number) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-export function ProductLookup({ products, value, onSelect }: {
+export function ProductLookup({ products, value, onSelect, fullWidth=false }: {
   products: LookupProduct[]
   value: string
   onSelect: (id: string) => void
+  fullWidth?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [dark, setDark] = useState(false)
@@ -79,15 +80,26 @@ export function ProductLookup({ products, value, onSelect }: {
     }
   }
 
+  const selectedProduct=products.find(product=>product.id===value)
+  const openLookup=()=>{
+    setDark(Boolean(trigger.current?.closest('.dark')))
+    setQuery('')
+    setLimit(60)
+    setOpen(true)
+  }
+
   return <>
-    <button ref={trigger} type="button" className="iconBtn productLookupTrigger"
-      title="Pesquisar produto" aria-label="Pesquisar produto" aria-haspopup="dialog" aria-expanded={open}
-      onClick={() => {
-        setDark(Boolean(trigger.current?.closest('.dark')))
-        setQuery('')
-        setLimit(60)
-        setOpen(true)
-      }}><Search size={18}/></button>
+    {fullWidth
+      ? <button ref={trigger} type="button" className="productLookupField"
+          title="Clique para pesquisar e alterar o produto" aria-label="Pesquisar produto" aria-haspopup="dialog" aria-expanded={open}
+          onClick={openLookup}>
+          <Search size={16}/>
+          <span>{selectedProduct?`${selectedProduct.codigo} — ${selectedProduct.descricao}`:'Selecionar produto'}</span>
+          <strong>{selectedProduct?'Alterar':'Escolher'}</strong>
+        </button>
+      : <button ref={trigger} type="button" className="iconBtn productLookupTrigger"
+          title="Pesquisar produto" aria-label="Pesquisar produto" aria-haspopup="dialog" aria-expanded={open}
+          onClick={openLookup}><Search size={18}/></button>}
     {open && createPortal(<div className={`productLookupOverlay${dark ? ' dark' : ''}`}
       onClick={event => { event.stopPropagation(); if (event.target === event.currentTarget) close() }}
       onKeyDown={handleKeyDown}>
