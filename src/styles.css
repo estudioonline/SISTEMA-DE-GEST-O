@@ -5571,3 +5571,16 @@
 .clientsEntityTable th:nth-child(5) .tableSortBtn{justify-content:flex-end}
 .clientsEntityTable th:nth-child(6) .tableSortBtn{justify-content:center}
 .clientsEntityTable .rowMenuBtn{margin-inline:auto}
+
+/* Lista de fornecedores: colunas e alinhamentos */
+.suppliersEntityTable table{table-layout:fixed;min-width:980px}
+.suppliersEntityTable th,.suppliersEntityTable td{height:64px;vertical-align:middle}
+.suppliersEntityTable th:nth-child(1),.suppliersEntityTable td:nth-child(1){width:38%}
+.suppliersEntityTable th:nth-child(2),.suppliersEntityTable td:nth-child(2){width:15%}
+.suppliersEntityTable th:nth-child(3),.suppliersEntityTable td:nth-child(3){width:22%}
+.suppliersEntityTable th:nth-child(4),.suppliersEntityTable td:nth-child(4){width:13%}
+.suppliersEntityTable th:nth-child(5),.suppliersEntityTable td:nth-child(5){width:7%;text-align:center;white-space:nowrap}
+.suppliersEntityTable th:nth-child(6),.suppliersEntityTable td:nth-child(6){width:5%;text-align:center}
+.suppliersEntityTable td:nth-child(1),.suppliersEntityTable td:nth-child(2),.suppliersEntityTable td:nth-child(3),.suppliersEntityTable td:nth-child(4){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.suppliersEntityTable th:nth-child(5) .tableSortBtn{width:100%;justify-content:center}
+.suppliersEntityTable .rowMenuBtn{margin-inline:auto}
