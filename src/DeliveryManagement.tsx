@@ -30,8 +30,8 @@ function addressOf(c?:Client){
   return [[c.logradouro,c.numero].filter(Boolean).join(', '),c.bairro,c.municipio,c.uf,c.cep].filter(Boolean).join(' - ')
 }
 
-export function DeliveryManagement({canEdit,canOperate}:{canEdit:boolean;canOperate:boolean}){
-  const [view,setView]=useState<'montagem'|'rota'|'historico'>('montagem')
+export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{canEdit:boolean;canOperate:boolean;initialView?:'montagem'|'rota'|'historico'}){
+  const [view,setView]=useState<'montagem'|'rota'|'historico'>(initialView)
   const [deliveries,setDeliveries]=useState<Delivery[]>([])
   const [sales,setSales]=useState<Sale[]>([])
   const [clients,setClients]=useState<Client[]>([])
