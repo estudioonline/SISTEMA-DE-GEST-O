@@ -34,3 +34,8 @@
 .productLookupOverlay.dark .productLookupName em{color:#93c5fd}
 @media(max-width:820px){.saleProductPicker{grid-column:1/-1}}
 @media(max-width:600px){.productLookupOverlay{padding:12px}.productLookupDialog{padding:14px;max-height:calc(100dvh - 24px)}.productLookupResult{grid-template-columns:minmax(0,1fr) auto;gap:8px}.productLookupName{grid-column:1/-1}.productLookupStock{font-size:12px}.productLookupHeader p{font-size:12px}}
+
+.productLookupField{width:100%;min-height:44px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;text-align:left;cursor:pointer}
+.productLookupField svg{color:#64748b}.productLookupField span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.productLookupField strong{font-size:11px;color:#2563eb}
+.dark .productLookupField{background:#111827;border-color:#334155;color:#f8fafc}
+@media(max-width:700px){.productLookupField{grid-template-columns:auto minmax(0,1fr)}.productLookupField strong{display:none}}
