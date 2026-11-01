@@ -270,6 +270,7 @@ function App(){
   const [productGroupId,setProductGroupId]=useState('')
   const [productSubgroupId,setProductSubgroupId]=useState('')
   const [productComponentDrafts,setProductComponentDrafts]=useState<ProdutoComponenteDraft[]>([])
+  const [productComponentSearch,setProductComponentSearch]=useState<Record<string,string>>({})
   const [productPanel,setProductPanel]=useState<string|null>(null)
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
@@ -990,13 +991,20 @@ function App(){
     setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function addProductComponent(){
-    setProductComponentDrafts(rows=>[...rows,{key:crypto.randomUUID(),componente_id:'',quantidade:1}])
+    const key=crypto.randomUUID()
+    setProductComponentDrafts(rows=>[...rows,{key,componente_id:'',quantidade:1}])
+    setProductComponentSearch(prev=>({...prev,[key]:''}))
   }
   function updateProductComponent(key:string,field:'componente_id'|'quantidade',value:string|number){
     setProductComponentDrafts(rows=>rows.map(row=>row.key===key?{...row,[field]:field==='componente_id'?String(value):Math.max(0,Number(value)||0)}:row))
   }
   function removeProductComponent(key:string){
     setProductComponentDrafts(rows=>rows.filter(row=>row.key!==key))
+    setProductComponentSearch(prev=>{
+      const next={...prev}
+      delete next[key]
+      return next
+    })
   }
   async function saveProduct(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
@@ -3197,10 +3205,30 @@ function App(){
                   </div>
                   <div className="productionRecipeRowGrid">
                     <label className="fieldLabel productionRecipeMaterial">Material
-                      <select value={row.componente_id} onChange={e=>updateProductComponent(row.key,'componente_id',e.target.value)} required>
-                        <option value="">Selecione um material</option>
-                        {produtos.filter(p=>p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} ({p.unidade})</option>)}
-                      </select>
+                      <div className="productionMaterialPicker">
+                        <div className="productionMaterialSearch">
+                          <Search size={15}/>
+                          <input
+                            type="text"
+                            placeholder="Pesquisar por código ou nome..."
+                            value={productComponentSearch[row.key]??''}
+                            onChange={e=>setProductComponentSearch(prev=>({...prev,[row.key]:e.target.value}))}
+                          />
+                        </div>
+                        <select value={row.componente_id} onChange={e=>{
+                          updateProductComponent(row.key,'componente_id',e.target.value)
+                          const selected=produtos.find(p=>p.id===e.target.value)
+                          if(selected)setProductComponentSearch(prev=>({...prev,[row.key]:selected.codigo+' — '+selected.descricao}))
+                        }} required>
+                          <option value="">Selecione um material</option>
+                          {produtos.filter(p=>{
+                            if(!(p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id))return false
+                            const q=(productComponentSearch[row.key]??'').trim().toLowerCase()
+                            if(!q)return true
+                            return [p.codigo,p.descricao,p.unidade].some(v=>String(v??'').toLowerCase().includes(q))
+                          }).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} ({p.unidade})</option>)}
+                        </select>
+                      </div>
                     </label>
                     <label className="fieldLabel productionRecipeQuantity">Quantidade por unidade
                       <input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateProductComponent(row.key,'quantidade',e.target.value)} required/>
