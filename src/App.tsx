@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen, Info
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -3305,10 +3305,14 @@ function App(){
 
       {active==='vendas'&&<section className="semanticPage salesPage">
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingSale?'Editar venda':'Novo orçamento'}><div className="saleModalShell"><form className="panel saleForm salesForm saleModalForm" onSubmit={saveSale}>
-          <div className="formTitle saleModalTitle">
-            <div>
+          <div className="saleGeminiHeader">
+            <div className="saleGeminiTitle">
               <h3>{editingSale?(editingSale.status==='orcamento'?'Editar orçamento ':'Editar venda ')+invoiceNo(editingSale.fatura_numero):'Novo orçamento'}</h3>
-              <p>Toda nova negociação começa como orçamento. Depois ela pode avançar para Pedido/Venda; somente nessa etapa gera cobrança e movimenta estoque.</p>
+              <p>O processo de venda começa como orçamento. Depois ele pode ser convertido em Pedido/Venda para gerar cobrança e movimentação de estoque.</p>
+            </div>
+            <div className="saleGeminiNote">
+              <Info size={19}/>
+              <div><strong>Nota de Processo</strong><span>{saleStatus==='orcamento'?'Este orçamento não gera cobrança ou movimentação de estoque. Converta para Pedido/Venda para faturamento.':'Pedido/Venda gera cobrança e movimentação conforme as regras do sistema.'}</span></div>
             </div>
             <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de venda" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}><X size={18}/></button>
           </div>
@@ -3358,29 +3362,28 @@ function App(){
               </select>
             </label>
             <label className="saleNotes">Observações
-              <input value={saleNotes} onChange={e=>setSaleNotes(e.target.value)}/>
+              <textarea value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} placeholder="Informe observações do orçamento (opcional)"/>
             </label>
           </div>
 
-          <div className={`paymentNotice saleStageNotice saleStage-${saleStatus}`}>
-            <strong>{saleStatus==='orcamento'?'Orçamento — sem cobrança e sem movimentação de estoque':'Pedido aprovado — aguardando faturamento pelo Financeiro'}</strong>
-            <span>{saleStatus==='orcamento'
-              ? 'Depois de salvo, o orçamento pode ser convertido em Pedido/Venda. Se houver bloqueio, seguirá para aprovação.'
-              : paymentLabel(salePayment)+' • '+saleInstallments+'x indicado pelo vendedor. O Financeiro definirá datas e valores das parcelas.'}</span>
-          </div>
+          {saleStatus!=='orcamento'&&<div className={`paymentNotice saleStageNotice saleStage-${saleStatus}`}>
+            <strong>Pedido aprovado — aguardando faturamento pelo Financeiro</strong>
+            <span>{paymentLabel(salePayment)+' • '+saleInstallments+'x indicado pelo vendedor. O Financeiro definirá datas e valores das parcelas.'}</span>
+          </div>}
           <div className="saleItemsHead">
             <h3>Itens</h3>
             <button type="button" className="ghost" onClick={()=>setSaleItems(x=>[...x,newSaleItem()])}><Plus size={16}/>Adicionar item</button>
           </div>
 
           <div className="saleItems">
+            <div className="saleItemColumnHead" aria-hidden="true"><span>Produto</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
             {saleItems.map(i=>{const stock=saleItemStockInfo(i);const productionMaterials=productionMaterialsForItem(i);return <div className="saleItemRow" key={i.key}>
               <div className="saleProductPicker"><select value={i.produto_id} onChange={e=>chooseProduct(i.key,e.target.value)} required aria-label="Produto">
                 <option value="">Produto</option>
                 {produtos.filter(p=>p.ativo||p.id===i.produto_id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} — estoque {Number(p.estoque_atual).toLocaleString('pt-BR')}</option>)}
               </select><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)}/></div>
               <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
-              <label className="saleItemField"><span>Preço</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
+              <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
               <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
               <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
               <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
