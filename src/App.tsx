@@ -1484,6 +1484,8 @@ function App(){
     const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
     return {
       id:v.id,
+      document_kind:v.status==='orcamento'?'orcamento':'venda',
+      document_number:saleCode(v.venda_numero),
       venda_numero:v.venda_numero,
       fatura_numero:v.fatura_numero,
       created_at:v.created_at,
@@ -1516,6 +1518,80 @@ function App(){
       ;(await import('./lib/invoicePdf')).openInvoicePdfForPrint(payload)
     }catch{setMsg('Não foi possível abrir o documento para impressão.')}
   }
+  async function buildFinancialInvoicePayload(invoice:FaturaVenda){
+    const linkedSaleIds=Array.from(new Set([
+      invoice.venda_id,
+      ...faturaVendaItens.filter(item=>item.fatura_id===invoice.id).map(item=>item.venda_id)
+    ].filter(Boolean)))
+    const linkedSales=vendas.filter(v=>linkedSaleIds.includes(v.id))
+    if(!linkedSales.length){setMsg('Não foi possível localizar as vendas desta fatura.');return null}
+
+    const {data:itemRows,error:itemError}=await supabase
+      .from('venda_itens')
+      .select('venda_id,produto_id,quantidade,valor_unitario,desconto,total')
+      .in('venda_id',linkedSaleIds)
+    if(itemError){setMsg(itemError.message);return null}
+
+    const invoiceItemsRows=(itemRows||[]) as Array<VendaItem&{venda_id:string}>
+    const items=invoiceItemsRows.map(item=>{
+      const sale=linkedSales.find(v=>v.id===item.venda_id)
+      const product=produtos.find(p=>p.id===item.produto_id)
+      return {
+        codigo:product?.codigo,
+        descricao:(linkedSales.length>1?(saleCode(sale?.venda_numero)+' • '):'')+(product?.descricao||'Produto'),
+        unidade:product?.unidade||'UN',
+        quantidade:Number(item.quantidade),
+        valor_unitario:Number(item.valor_unitario),
+        desconto:Number(item.desconto),
+        total:Number(item.total)
+      }
+    })
+
+    const firstSale=linkedSales[0]
+    const linkedTitles=titulos
+      .filter(t=>t.fatura_venda_id===invoice.id)
+      .sort((a,b)=>a.vencimento.localeCompare(b.vencimento))
+    const sellers=Array.from(new Set(linkedSales.map(v=>vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome).filter(Boolean)))
+    const subtotal=items.reduce((sum,item)=>sum+item.quantidade*item.valor_unitario,0)
+    const discount=items.reduce((sum,item)=>sum+item.desconto,0)
+
+    return {
+      id:invoice.id,
+      document_kind:'fatura' as const,
+      document_number:financialInvoiceCode(invoice.numero),
+      venda_numero:firstSale.venda_numero,
+      fatura_numero:invoice.numero,
+      created_at:invoice.criada_em,
+      status:'faturado',
+      subtotal,
+      desconto:discount,
+      total:Number(invoice.valor_total),
+      observacoes:linkedSales.length>1?('Fatura consolidada das vendas: '+linkedSales.map(v=>saleCode(v.venda_numero)).join(', ')+'.'):firstSale.observacoes,
+      forma_pagamento:(invoice.forma_pagamento||firstSale.forma_pagamento) as PaymentMethod,
+      parcelas:Number(invoice.parcelas)||Math.max(1,linkedTitles.length),
+      primeiro_vencimento:linkedTitles[0]?.vencimento||firstSale.primeiro_vencimento,
+      rota_entrega:firstSale.rota_entrega,
+      vendedor_nome:sellers.length?sellers.join(' / '):null,
+      cliente:clientes.find(client=>client.id===firstSale.cliente_id)||null,
+      company:empresa||undefined,
+      items
+    }
+  }
+  async function downloadFinancialInvoicePdf(invoice:FaturaVenda){
+    const payload=await buildFinancialInvoicePayload(invoice)
+    if(!payload)return
+    try{
+      ;(await import('./lib/invoicePdf')).generateInvoicePdf(payload)
+    }catch{setMsg('Não foi possível gerar o PDF da fatura.')}
+  }
+  async function printFinancialInvoicePdf(invoice:FaturaVenda){
+    const payload=await buildFinancialInvoicePayload(invoice)
+    if(!payload)return
+    try{
+      ;(await import('./lib/invoicePdf')).openInvoicePdfForPrint(payload)
+    }catch{setMsg('Não foi possível abrir o PDF da fatura para impressão.')}
+  }
+
   async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar venda ${saleCode(v.venda_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
   async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!window.confirm(`Excluir venda ${saleCode(v.venda_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
 
@@ -2682,6 +2758,7 @@ function App(){
                     </div>
                     <div className="rowActions">
                       <button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>{linked?'Classificar':'Editar'}</button>
+                      {t.fatura_venda_id&&(()=>{const invoice=faturasVendas.find(f=>f.id===t.fatura_venda_id);return invoice?<button type="button" className="documentPrintButton" onClick={()=>void printFinancialInvoicePdf(invoice)}><Printer size={15}/>Imprimir PDF da fatura</button>:null})()}
                       {!linked&&<button className="warningBtn" disabled={t.status==='cancelado'} onClick={()=>void cancelTitle(t)}><Ban size={15}/>Cancelar</button>}
                       {!linked&&isAdmin&&canManageFinance&&<button className="dangerAction" onClick={()=>void deleteTitle(t)}><Trash2 size={15}/>Excluir</button>}
                     </div>
@@ -3511,7 +3588,8 @@ function App(){
             <div className="saleDetailTopbar">
               <button type="button" className="ghost" onClick={closeSaleDetail}><ChevronLeft size={16}/>Voltar para lista</button>
               <div className="saleDetailActions">
-                <button type="button" className="ghost" onClick={()=>void downloadSalePdf(v)}><FileDown size={15}/>PDF</button>
+                <button type="button" className="documentPdfButton" onClick={()=>void downloadSalePdf(v)}><FileDown size={16}/>{v.status==='orcamento'?'PDF Orçamento':'PDF Venda'}</button>
+                <button type="button" className="documentPrintButton" onClick={()=>void printSalePdf(v)}><Printer size={16}/>Imprimir</button>
                 {canManageSales&&v.status==='orcamento'&&<button type="button" className="primary advanceSaleBtn" disabled={savingSale||waiting} title={waiting?'Aguardando aprovação administrativa':'Avançar orçamento para pedido'} onClick={()=>void advanceSaleToOrder(v)}><CheckCircle2 size={15}/>{waiting?'Aguardando autorização':'Avançar para pedido'}</button>}
                 {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||waiting} title={waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>Editar</button>}
                 <button type="button" className="ghost" disabled={saleHistoryBusy} onClick={()=>void loadSaleHistory(v)}><RefreshCw size={15}/>{saleHistoryBusy?'Carregando...':'Histórico'}</button>
@@ -3918,6 +3996,8 @@ function App(){
                   <td><div className="billingRowActions">
                     {invoiceState.key==='nao-faturado'&&canManageFinance&&<button className="primary" onClick={()=>openBillingSale(v)}>Criar fatura</button>}
                     {activeInvoice&&<button className="ghost" onClick={()=>openSaleFinancialStatement(v,true)}>Ver fatura</button>}
+                    {activeInvoice&&<button className="documentPdfButton compactDocumentPdf" onClick={()=>void downloadFinancialInvoicePdf(activeInvoice)}><FileDown size={14}/>PDF Fatura</button>}
+                    {activeInvoice&&<button className="documentPrintButton compactDocumentPdf" onClick={()=>void printFinancialInvoicePdf(activeInvoice)}><Printer size={14}/>Imprimir</button>}
                     {activeInvoice&&canManageFinance&&<button className="warningBtn" disabled={billingBusy} onClick={()=>void cancelSaleInvoice(v)}>Cancelar</button>}
                     {invoiceState.key==='cancelado'&&canManageFinance&&['pedido','faturado'].includes(v.status)&&<button className="primary" onClick={()=>openBillingSale(v)}>Refaturar</button>}
                   </div></td>
