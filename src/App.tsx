@@ -1484,7 +1484,7 @@ function App(){
     const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
     return {
       id:v.id,
-      document_kind:v.status==='orcamento'?'orcamento':'venda',
+      document_kind:(v.status==='orcamento'?'orcamento':'venda') as 'orcamento'|'venda',
       document_number:saleCode(v.venda_numero),
       venda_numero:v.venda_numero,
       fatura_numero:v.fatura_numero,
