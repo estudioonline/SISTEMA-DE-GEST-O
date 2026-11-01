@@ -274,7 +274,7 @@ function App(){
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
   const [stockReason,setStockReason]=useState('Ajuste manual')
-  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'>('cadastro')
+  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'|'producao'>('cadastro')
   const [excelToolsOpen,setExcelToolsOpen]=useState(false)
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
@@ -3075,6 +3075,7 @@ function App(){
           <button className={productSubtab==='cadastro'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('cadastro');setMsg('')}}><Package size={16}/>Cadastro / Estoque</button>
           <button className={productSubtab==='movimentos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('movimentos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Entradas e saídas</button>
           <button className={productSubtab==='grupos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('grupos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Package size={16}/>Grupos e subgrupos</button>
+          <button className={productSubtab==='producao'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('producao');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Produtos de produção</button>
         </div>
 
         {productSubtab==='cadastro'&&<>
@@ -3250,6 +3251,54 @@ function App(){
           </div>}
 
           <ProductTable produtos={produtos} groups={gruposProdutos} subgroups={subgruposProdutos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>
+        </>}
+
+        {productSubtab==='producao'&&<>
+          <div className="productionCatalogHead">
+            <div>
+              <span>PRODUÇÃO</span>
+              <h3>Produtos de produção e receitas</h3>
+              <p>Cadastre e edite a ficha técnica de cada produto final. A receita define os materiais necessários para produzir 1 unidade.</p>
+            </div>
+            {canManageProducts&&<button type="button" className="primary" onClick={()=>{startNewProduct();setProductType('produto_final')}}><Plus size={16}/>Novo produto de produção</button>}
+          </div>
+
+          <div className="productionCatalogGrid">
+            {produtos.filter(p=>p.tipo_produto==='produto_final').map(p=>{
+              const recipe=produtoComponentes.filter(row=>row.produto_final_id===p.id)
+              const recipeCost=recipe.reduce((sum,row)=>{
+                const material=produtos.find(item=>item.id===row.componente_id)
+                return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0))
+              },0)
+              return <article className="productionCatalogCard" key={p.id}>
+                <div className="productionCatalogTitle">
+                  <div><span>{p.codigo||'SEM CÓDIGO'}</span><strong>{p.descricao}</strong></div>
+                  <span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span>
+                </div>
+                <div className="productionCatalogMeta">
+                  <div><span>Materiais na receita</span><strong>{recipe.length}</strong></div>
+                  <div><span>Custo dos materiais</span><strong>{money(recipeCost)}</strong></div>
+                  <div><span>Unidade</span><strong>{p.unidade||'UN'}</strong></div>
+                </div>
+                <div className="productionCatalogRecipe">
+                  {recipe.length===0
+                    ? <div className="productionRecipeEmpty">Receita ainda não configurada.</div>
+                    : recipe.map(row=>{
+                      const material=produtos.find(item=>item.id===row.componente_id)
+                      return <div key={row.id}><span>{material?.descricao||'Material não encontrado'}</span><strong>{Number(row.quantidade).toLocaleString('pt-BR')} {material?.unidade||''}</strong></div>
+                    })}
+                </div>
+                <div className="productionCatalogActions">
+                  <button type="button" className="ghost" onClick={()=>startEditProduct(p)} disabled={!canManageProducts}><Pencil size={15}/>Editar receita</button>
+                </div>
+              </article>
+            })}
+            {produtos.filter(p=>p.tipo_produto==='produto_final').length===0&&<div className="productionCatalogEmpty">
+              <Package size={24}/>
+              <strong>Nenhum produto de produção cadastrado</strong>
+              <span>Crie um produto final e configure os materiais da receita.</span>
+            </div>}
+          </div>
         </>}
 
         {productSubtab==='grupos'&&<ProductGroupsManager groups={gruposProdutos} subgroups={subgruposProdutos} canEdit={canManageProducts} onReload={loadData} onMessage={setMsg}/>} 
