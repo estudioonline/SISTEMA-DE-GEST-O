@@ -10,6 +10,7 @@ import './settings-review.css'
 import './hr.css'
 import './bank-reconciliation.css'
 import './light-theme-buttons.css'
+import './infrastructure-usage.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
