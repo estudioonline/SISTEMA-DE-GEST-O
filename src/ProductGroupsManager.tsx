@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {Plus,Pencil,Save,X} from 'lucide-react'
 import {supabase} from './lib/supabase'
+import {SearchableSelect} from './SearchableSelect'
 
 export type ProductGroup={id:string;nome:string;ordem:number;ativo:boolean}
 export type ProductSubgroup={id:string;grupo_id:string;nome:string;ordem:number;ativo:boolean}
@@ -54,7 +55,7 @@ export function ProductGroupsManager({groups,subgroups,canEdit,onReload,onMessag
     {canEdit&&<div className="productGroupCreate">
       <label>Grupo<input value={newGroup} onChange={e=>setNewGroup(e.target.value)} placeholder="Novo grupo"/></label>
       <button type="button" className="ghost" disabled={!newGroup.trim()||busy} onClick={()=>void createGroup()}><Plus size={15}/>Adicionar grupo</button>
-      <label>Grupo do subgrupo<select value={subgroupGroup} onChange={e=>setSubgroupGroup(e.target.value)}><option value="">Selecione</option>{groups.filter(g=>g.ativo).map(g=><option key={g.id} value={g.id}>{g.nome}</option>)}</select></label>
+      <label>Grupo do subgrupo<SearchableSelect value={subgroupGroup} onChange={setSubgroupGroup} placeholder="Selecione" searchPlaceholder="Pesquisar grupo..." options={groups.filter(g=>g.ativo).map(g=>({value:g.id,label:g.nome}))}/></label>
       <label>Subgrupo<input value={newSubgroup} onChange={e=>setNewSubgroup(e.target.value)} placeholder="Novo subgrupo"/></label>
       <button type="button" className="ghost" disabled={!subgroupGroup||!newSubgroup.trim()||busy} onClick={()=>void createSubgroup()}><Plus size={15}/>Adicionar subgrupo</button>
     </div>}
