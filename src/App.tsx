@@ -353,6 +353,8 @@ function App(){
   const [billingBusy,setBillingBusy]=useState(false)
   const [paymentDate,setPaymentDate]=useState(today())
   const [paymentAmount,setPaymentAmount]=useState('')
+  const [changePaymentMethod,setChangePaymentMethod]=useState(false)
+  const [effectivePaymentMethod,setEffectivePaymentMethod]=useState<PaymentMethod|'transferencia'|'ajuste'|'outro'>('pix')
 
   const [editingSeller,setEditingSeller]=useState<Vendedor|null>(null)
   const [sellerPanel,setSellerPanel]=useState<string|null>(null)
@@ -1950,11 +1952,13 @@ function App(){
     if(!Number.isFinite(amount)||amount<=0){setMsg('Informe um valor válido.');return}
     if(amount>balance){setMsg('O valor informado é maior que o saldo em aberto.');return}
 
-    const {error}=await supabase.rpc('registrar_pagamento_titulo',{
+    const method=changePaymentMethod?effectivePaymentMethod:(t.forma_pagamento||'pix')
+    const {error}=await supabase.rpc('registrar_pagamento_titulo_com_forma',{
       p_titulo_id:t.id,
       p_valor:amount,
       p_data_pagamento:paymentDate,
-      p_observacao:t.tipo==='receber'?'Recebimento registrado no financeiro':'Pagamento registrado no financeiro'
+      p_observacao:t.tipo==='receber'?'Recebimento registrado no financeiro':'Pagamento registrado no financeiro',
+      p_forma_pagamento:method
     })
 
     setMsg(error
@@ -1964,6 +1968,8 @@ function App(){
         : 'Pagamento registrado.')
 
     if(!error){
+      setChangePaymentMethod(false)
+      setEffectivePaymentMethod('pix')
       closeFinancePanel()
       await refreshFinance()
       if(active==='comissoes')await loadCommissions()
@@ -2789,6 +2795,18 @@ function App(){
                       <div><strong>{type==='receber'?'Registrar recebimento':'Registrar pagamento'}</strong><span>A data informada será usada no histórico{type==='receber'?' e no período da comissão':''}.</span></div>
                       <label>Data<input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)}/></label>
                       <label>Valor<input type="number" min="0.01" step="0.01" max={balance} value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)}/></label>
+                      {type==='receber'&&<div className="paymentMethodOverride">
+                        <label className="paymentMethodToggle"><input type="checkbox" checked={changePaymentMethod} onChange={e=>{setChangePaymentMethod(e.target.checked);if(e.target.checked)setEffectivePaymentMethod((t.forma_pagamento as PaymentMethod)||'pix')}}/><span>Alterar forma do recebimento</span></label>
+                        {changePaymentMethod&&<label>Forma recebida<select value={effectivePaymentMethod} onChange={e=>setEffectivePaymentMethod(e.target.value as PaymentMethod|'transferencia'|'ajuste'|'outro')}>
+                          <option value="dinheiro">Dinheiro</option>
+                          <option value="pix">PIX</option>
+                          <option value="cartao">Cartão</option>
+                          <option value="boleto">Boleto</option>
+                          <option value="transferencia">Transferência</option>
+                          <option value="ajuste">Ajuste</option>
+                          <option value="outro">Outro</option>
+                        </select></label>}
+                      </div>}
                       <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
                     </div>}
                     <PaymentHistory titleId={t.id} onChanged={refreshFinance}/>
