@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from 'react'
 import {ChevronLeft,ChevronRight,FileDown,Pencil,RefreshCw,Search,Save,ShieldCheck,X} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {parseRhidAttendance,RhidDay} from './lib/rhid'
+import {SearchableSelect} from './SearchableSelect'
 import {jsPDF} from 'jspdf'
 
 type Employee={id:string;nome:string;cargo:string|null;ativo:boolean;rhid_person_id?:number|null;regime_trabalho?:string|null;jornada_semanal_horas?:number|null}
@@ -418,7 +419,7 @@ export function RhPointMirror({employees,month,canEdit}:{employees:Employee[];mo
   <div className="panelHead rhidHead"><div><h3>Espelho de ponto</h3><p>Integração com RHID para conferência e ajustes. Período padrão: dia 26 até dia 25 do mês seguinte.</p></div><div className={'rhidConnection '+(rhidValidated===false?'off':'ok')}><ShieldCheck size={16}/>{rhidValidated===false?'RHID não validado':'RHID validado'}</div></div>
 
   <div className="panel rhidControls rhPointMirrorControls">
-   <div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione</option>{activeEmployees.map(e=><option key={e.id} value={e.id}>{e.nome}{e.rhid_person_id?' · RHID':''}</option>)}</select></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div>
+   <div className="employeePickerNav"><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(-1)} aria-label="Funcionário anterior"><ChevronLeft size={18}/></button><label>Funcionário<SearchableSelect value={employeeId} onChange={setEmployeeId} placeholder="Selecione" searchPlaceholder="Pesquisar funcionário..." options={activeEmployees.map(e=>({value:e.id,label:e.nome+(e.rhid_person_id?' · RHID':''),keywords:[e.nome,e.cargo].filter(Boolean).join(' ')}))}/></label><button type="button" className="ghost iconOnly" disabled={!activeEmployees.length} onClick={()=>moveEmployee(1)} aria-label="Próximo funcionário"><ChevronRight size={18}/></button></div>
    <label>De<input type="date" value={periodStart} onChange={e=>setPeriodStart(e.target.value)}/></label>
    <label>Até<input type="date" value={periodEnd} onChange={e=>setPeriodEnd(e.target.value)}/></label>
    <button className="ghost" disabled={busy} onClick={()=>void testRhidConnection()}><ShieldCheck size={15}/>Testar conexão</button>
