@@ -12,6 +12,7 @@ const descriptions: Partial<Record<AppModule, string>> = {
   documentos: 'Arquivos e comprovantes armazenados na nuvem',
   financeiro: 'Contas, pagamentos e conciliação',
   rh: 'Recursos Humanos, funcionários, salários, FGTS, décimo terceiro e vales',
+  infra: 'Monitoramento do uso do GitHub e da infraestrutura Supabase',
 }
 
 export function AppLauncher({ menu, company, ready, canEdit, onOpen, notifications = {} }: {
