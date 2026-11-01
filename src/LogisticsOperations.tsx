@@ -122,11 +122,12 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
     </section>
   }
 
+  const routeDeliveries=deliveries.filter(d=>Boolean(d.rota_logistica_id))
   const completed=routes.filter(r=>r.status==='concluida')
   const open=routes.filter(r=>r.status!=='concluida'&&r.status!=='cancelada')
-  const received=deliveries.reduce((a,d)=>a+Number(d.valor_recebido_entrega||0),0)
-  const delivered=deliveries.filter(d=>d.status==='entregue').length
-  const failed=deliveries.filter(d=>d.status==='reagendamento'||d.status==='cancelado').length
+  const received=routeDeliveries.reduce((a,d)=>a+Number(d.valor_recebido_entrega||0),0)
+  const delivered=routeDeliveries.filter(d=>d.status==='entregue').length
+  const failed=routeDeliveries.filter(d=>d.status==='reagendamento'||d.status==='cancelado').length
   return <section className="logOps">
     <div className="logOpsHead"><div><span>DASHBOARD</span><h3>Relatório da Logística</h3><p>Resumo das rotas, entregas e valores informados como recebidos na entrega.</p></div><button onClick={()=>void load()}><RefreshCw size={15}/>Atualizar</button></div>
     <div className="logDashCards">
