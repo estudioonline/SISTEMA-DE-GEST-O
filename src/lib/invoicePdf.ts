@@ -90,6 +90,9 @@ const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
 const saleCode=(value:number|null|undefined)=>`S${String(value||0).padStart(5,'0')}`
 const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='dinheiro'?'DINHEIRO':value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
 const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
+const isQuote=(data:InvoiceData)=>data.status==='orcamento'
+const documentLabel=(data:InvoiceData)=>isQuote(data)?'ORÇAMENTO':'Pedido'
+const documentNumber=(data:InvoiceData)=>saleCode(data.venda_numero)
 const deliveryRouteLabel=(value:string|null|undefined)=>value==='norte'?'NORTE':value==='sul'?'SUL':value==='leste'?'LESTE':value==='interestadual'?'INTERESTADUAL':value==='retirada'?'RETIRADA':'-'
 const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'cliente'
 
@@ -179,7 +182,9 @@ function drawBrandHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(18)
-  doc.text(`Pedido ${saleCode(data.venda_numero)}`,196,52,{align:'right'})
+  doc.setFont('helvetica',isQuote(data)?'bold':'normal')
+  doc.setFontSize(isQuote(data)?20:18)
+  doc.text(`${documentLabel(data)} ${documentNumber(data)}`,196,52,{align:'right'})
 }
 
 function drawCustomer(doc:jsPDF,data:InvoiceData){
@@ -209,7 +214,7 @@ function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
   doc.setFontSize(8.7)
-  doc.text('Data do pedido',leftX,y)
+  doc.text(isQuote(data)?'Data do orçamento':'Data do pedido',leftX,y)
   doc.text('Vendedor',sellerX,y)
 
   doc.setTextColor(...text)
@@ -251,7 +256,7 @@ function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(12)
-  doc.text(`Pedido ${saleCode(data.venda_numero)} - continuação`,196,16,{align:'right'})
+  doc.text(`${documentLabel(data)} ${documentNumber(data)} - continuação`,196,16,{align:'right'})
 }
 
 function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
@@ -414,12 +419,21 @@ function addFooters(doc:jsPDF,data:InvoiceData){
 function buildInvoiceDocument(data:InvoiceData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
-    title:`Pedido ${invoiceNo(data.venda_numero)}`,
-    subject:'Pedido / venda',
+    title:`${isQuote(data)?'Orçamento':'Pedido'} ${invoiceNo(data.venda_numero)}`,
+    subject:isQuote(data)?'Orçamento comercial':'Pedido / venda',
     author:data.company?.nome_fantasia||data.company?.razao_social||COMPANY.nome,
   })
 
   drawBrandHeader(doc,data)
+  if(isQuote(data)){
+    doc.setFillColor(...blue)
+    doc.roundedRect(12,59,184,12,2,2,'F')
+    doc.setTextColor(255,255,255)
+    doc.setFont('helvetica','bold')
+    doc.setFontSize(15)
+    doc.text('ORÇAMENTO',105,67,{align:'center'})
+    doc.setTextColor(...text)
+  }
   let y=drawCustomer(doc,data)
   y=drawOrderInfo(doc,data,y)
   y=drawItems(doc,data,y)
