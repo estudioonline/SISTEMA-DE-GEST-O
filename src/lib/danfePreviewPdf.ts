@@ -77,7 +77,7 @@ const fit=(doc:jsPDF,v:unknown,w:number)=>{
   return s+'...'
 }
 function cap(doc:jsPDF,t:string,x:number,y:number){
-  doc.setFont('helvetica','bold');doc.setFontSize(5.4);doc.text(t.toUpperCase(),x,y)
+  doc.setFont('helvetica','bold');doc.setFontSize(6.4);doc.text(t.toUpperCase(),x,y)
 }
 function val(doc:jsPDF,t:unknown,x:number,y:number,size=7,bold=true){
   doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.text(String(t??''),x,y)
@@ -109,29 +109,29 @@ export function generateDanfePreviewPdf(data:DanfePreviewData){
 
   // Receipt strip
   doc.rect(5,5,200,16)
-  doc.setFont('helvetica','normal');doc.setFontSize(6)
+  doc.setFont('helvetica','normal');doc.setFontSize(7)
   doc.text('Recebemos de '+fit(doc,name,115)+' os produtos e/ou servicos constantes deste documento.',7,9)
   doc.line(145,5,145,21)
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('NF-e',175,10,{align:'center'})
-  doc.setFontSize(7);doc.text('No '+nf,175,14,{align:'center'});doc.text('Serie 001',175,18,{align:'center'})
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('NF-e',175,10,{align:'center'})
+  doc.setFontSize(8);doc.text('No '+nf,175,14,{align:'center'});doc.text('Serie 001',175,18,{align:'center'})
   doc.line(5,14,145,14);doc.line(46,14,46,21)
   cap(doc,'Data do recebimento',7,17);cap(doc,'Identificacao e assinatura do recebedor',48,17)
 
   // DANFE header
   doc.rect(5,24,200,34);doc.line(85,24,85,58);doc.line(121,24,121,58)
-  doc.setFont('helvetica','bold');doc.setFontSize(10)
+  doc.setFont('helvetica','bold');doc.setFontSize(11)
   doc.text(doc.splitTextToSize(String(name),74),45,29,{align:'center'})
-  doc.setFont('helvetica','normal');doc.setFontSize(6)
+  doc.setFont('helvetica','normal');doc.setFontSize(7)
   let y=39
   ;[emitAddress,emitCity+(emitCep?' - CEP: '+emitCep:''),empresa.telefone?'Fone: '+empresa.telefone:''].filter(Boolean).forEach(t=>{doc.text(fit(doc,t,72),45,y,{align:'center'});y+=4})
-  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text('DANFE',103,30,{align:'center'})
-  doc.setFontSize(5.6);doc.text('Documento Auxiliar da',103,34,{align:'center'});doc.text('Nota Fiscal Eletronica',103,37,{align:'center'})
-  doc.setFont('helvetica','normal');doc.setFontSize(6.2);doc.text('0 - ENTRADA',89,43);doc.text('1 - SAIDA',89,47)
-  doc.rect(111,41,6,7);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('1',114,46,{align:'center'})
-  doc.setFontSize(7);doc.text('No '+nf,88,53);doc.text('Serie 001',88,57)
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('DANFE',103,30,{align:'center'})
+  doc.setFontSize(6.6);doc.text('Documento Auxiliar da',103,34,{align:'center'});doc.text('Nota Fiscal Eletronica',103,37,{align:'center'})
+  doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.text('0 - ENTRADA',89,43);doc.text('1 - SAIDA',89,47)
+  doc.rect(111,41,6,7);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('1',114,46,{align:'center'})
+  doc.setFontSize(8);doc.text('No '+nf,88,53);doc.text('Serie 001',88,57)
   cap(doc,'Chave de acesso',123,28)
-  doc.setFont('helvetica','bold');doc.setFontSize(6.8);doc.text('NAO GERADA - SEM AUTORIZACAO DA SEFAZ',163,35,{align:'center'})
-  doc.setFont('helvetica','normal');doc.setFontSize(5.5);doc.text('PRE-VISUALIZACAO INTERNA - SEM VALOR FISCAL',163,42,{align:'center'})
+  doc.setFont('helvetica','bold');doc.setFontSize(7.8);doc.text('NAO GERADA - SEM AUTORIZACAO DA SEFAZ',163,35,{align:'center'})
+  doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.text('PRE-VISUALIZACAO INTERNA - SEM VALOR FISCAL',163,42,{align:'center'})
   doc.text('Referencia ERP: '+fit(doc,data.referencia||'-',62),163,49,{align:'center'})
 
   field(doc,5,58,115,12,'Natureza da operacao',String(pv('natureza_operacao')||'VENDA DE MERCADORIA'))
@@ -141,7 +141,7 @@ export function generateDanfePreviewPdf(data:DanfePreviewData){
   field(doc,140,70,65,10,'CNPJ / CPF',cnpj)
 
   // Destinatario
-  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text('DESTINATARIO / REMETENTE',5,83)
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text('DESTINATARIO / REMETENTE',5,83)
   field(doc,5,85,125,11,'Nome / Razao social',cliente?.nome||'-')
   field(doc,130,85,45,11,'CNPJ / CPF',maskDoc(cliente?.documento))
   field(doc,175,85,30,11,'Data da emissao',issueDate)
@@ -156,13 +156,13 @@ export function generateDanfePreviewPdf(data:DanfePreviewData){
   field(doc,175,107,30,11,'Hora da saida',issueTime)
 
   // Pagamento
-  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text('PAGAMENTOS',5,121)
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text('PAGAMENTOS',5,121)
   doc.rect(5,123,200,12)
   cap(doc,'Descricao',7,126.5);val(doc,String(data.venda.forma_pagamento||'Nao informado').toUpperCase(),7,131,7)
   cap(doc,'Valor',85,126.5);val(doc,'R$ '+money(total),85,131,7)
 
   // Impostos
-  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text('CALCULO DO IMPOSTO',5,138)
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text('CALCULO DO IMPOSTO',5,138)
   const w=40
   field(doc,5,140,w,11,'Base de calculo do ICMS','0,00');field(doc,45,140,w,11,'Valor do ICMS','0,00')
   field(doc,85,140,w,11,'Base calculo ICMS subst.','0,00');field(doc,125,140,w,11,'Valor do ICMS subst.','0,00')
@@ -173,13 +173,13 @@ export function generateDanfePreviewPdf(data:DanfePreviewData){
   field(doc,5+w2*4,151,w2,11,'Valor do IPI','0,00');field(doc,5+w2*5,151,w2,11,'Valor total da nota',money(total))
 
   // Transportador
-  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text('TRANSPORTADOR / VOLUMES TRANSPORTADOS',5,165)
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text('TRANSPORTADOR / VOLUMES TRANSPORTADOS',5,165)
   doc.rect(5,167,200,18);[80,115,140,165,180].forEach(x=>doc.line(x,167,x,185))
   cap(doc,'Nome / Razao social',7,170.5);cap(doc,'Frete por conta',82,170.5);val(doc,'9 - SEM FRETE',82,180,6.2)
   cap(doc,'Codigo ANTT',117,170.5);cap(doc,'Placa',142,170.5);cap(doc,'UF',167,170.5);cap(doc,'CNPJ / CPF',182,170.5)
 
   // Produtos
-  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text('DADOS DOS PRODUTOS / SERVICOS',5,189)
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text('DADOS DOS PRODUTOS / SERVICOS',5,189)
   const top=191
   const cols=[
     {x:5,w:16,label:'CODIGO'}, {x:21,w:62,label:'DESCRICAO DO PRODUTO / SERVICO'},
@@ -192,10 +192,10 @@ export function generateDanfePreviewPdf(data:DanfePreviewData){
   doc.rect(5,top,200,12)
   cols.slice(1).forEach(c=>doc.line(c.x,top,c.x,tableBottom))
   doc.line(5,203,205,203)
-  doc.setFont('helvetica','bold');doc.setFontSize(4.5)
+  doc.setFont('helvetica','bold');doc.setFontSize(5.5)
   cols.forEach(c=>doc.text(c.label,c.x+c.w/2,196,{align:'center',maxWidth:c.w-1}))
   let ry=203
-  doc.setFont('helvetica','normal');doc.setFontSize(5.6)
+  doc.setFont('helvetica','normal');doc.setFontSize(6.6)
   data.itens.slice(0,8).forEach(item=>{
     const cfop=String(item.produto.cfop_interno||item.produto.cfop_interestadual||'-')
     const totalItem=Number(item.total??(item.quantidade*item.valor_unitario-item.desconto))
@@ -213,10 +213,10 @@ export function generateDanfePreviewPdf(data:DanfePreviewData){
   doc.rect(5,203,200,57)
 
   // Dados adicionais
-  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text('DADOS ADICIONAIS',5,264)
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text('DADOS ADICIONAIS',5,264)
   doc.rect(5,266,200,24);doc.line(138,266,138,290)
   cap(doc,'Informacoes complementares',7,269.5);cap(doc,'Reservado ao fisco',140,269.5)
-  doc.setFont('helvetica','normal');doc.setFontSize(5.5)
+  doc.setFont('helvetica','normal');doc.setFontSize(6.5)
   const extra='DOCUMENTO DE PRE-VISUALIZACAO. SEM AUTORIZACAO DE USO DA SEFAZ. SEM VALOR FISCAL.'
   doc.text(doc.splitTextToSize(extra,126),7,274)
 
@@ -227,7 +227,7 @@ export function generateDanfePreviewPdf(data:DanfePreviewData){
   doc.setFontSize(18);doc.text('USO DA SEFAZ',105,235,{align:'center'})
   doc.setTextColor(0)
 
-  doc.setFont('helvetica','normal');doc.setFontSize(5)
+  doc.setFont('helvetica','normal');doc.setFontSize(6)
   doc.text('PRE-VISUALIZACAO DANFE - GERADO PELO ERP - SEM VALOR FISCAL',5,296)
 
   doc.save('danfe-previa-'+nf+'.pdf')
