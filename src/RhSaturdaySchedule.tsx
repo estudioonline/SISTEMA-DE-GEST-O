@@ -17,6 +17,9 @@ const saturdays=(month:string)=>{
  return out
 }
 const brDate=(v:string)=>new Date(v+'T12:00:00').toLocaleDateString('pt-BR')
+const shortDate=(v:string)=>new Date(v+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+const monthLabel=(v:string)=>new Date(v+'-01T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})
+const displayName=(name:string)=>name.split(' ')[0]
 type Shift={id:number;name:string}
 function parseShifts(value:unknown):Shift[]{
  const root=(value&&typeof value==='object'?value:{}) as Record<string,unknown>
@@ -75,6 +78,25 @@ export function RhSaturdaySchedule({employees,month,canEdit}:{employees:Employee
   </div>
 
   {message&&<div className="panel noticePanel">{message}</div>}
+
+  <article className="panel rhSaturdayMonthlyView">
+   <div className="rhSaturdayMonthlyHead">
+    <div><span>Escala de sábado</span><h3>{monthLabel(month)}</h3></div>
+    <small>Visão mensal dos funcionários escalados</small>
+   </div>
+   <div className="rhSaturdayTimeline">
+    {dates.map((d,index)=>{
+     const dayRows=rows.filter(r=>r.data===d&&r.trabalha)
+     const names=dayRows.map(r=>employees.find(e=>e.id===r.funcionario_id)?.nome).filter(Boolean) as string[]
+     return <div className="rhSaturdayTimelineRow" key={d}>
+      <div className="rhSaturdayTimelineDate"><strong>{shortDate(d)}</strong><span className="rhSaturdayTimelineDot"/></div>
+      <button type="button" className={'rhSaturdayTimelineCard '+(index%2===0?'toneGreen':'toneOrange')} onClick={()=>setSelectedDate(d)} aria-label={'Editar escala de '+brDate(d)}>
+       {names.length?names.map(name=><span key={name} title={name}>{displayName(name)}</span>):<em>Sem escala definida</em>}
+      </button>
+     </div>
+    })}
+   </div>
+  </article>
 
   <div className="panel rhSaturdayToolbar">
    <label>Sábado<select value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}>{dates.map(d=><option key={d} value={d}>{brDate(d)}</option>)}</select></label>
