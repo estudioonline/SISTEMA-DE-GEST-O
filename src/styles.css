@@ -5437,3 +5437,70 @@
 .productSubgroupRow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;background:rgba(148,163,184,.08)}
 .productSubgroupRow>span,.productSubgroupRow>small{flex:1}
 @media(max-width:760px){.productGroupFilters label,.productGroupCreate label{min-width:100%;width:100%}.productGroupCreate>*{width:100%}}
+
+/* Vendas: layout inspirado no modelo Gemini */
+.saleModalShell{width:min(1420px,100%)}
+.saleModalForm.salesForm{padding:24px 28px 22px;border-radius:20px;gap:0}
+.saleGeminiHeader{display:grid;grid-template-columns:minmax(0,1fr) 390px auto;gap:22px;align-items:start;margin-bottom:24px}
+.saleGeminiTitle h3{margin:0 0 6px;font-size:28px;line-height:1.15}
+.saleGeminiTitle p{margin:0;max-width:820px;color:#64748b;font-size:15px;line-height:1.5}
+.saleGeminiNote{display:flex;gap:10px;align-items:flex-start;padding:13px 15px;border:1px solid #bfd7fb;border-radius:12px;background:#eef6ff;color:#1e3a5f}
+.saleGeminiNote>svg{flex:0 0 auto;color:#2563eb;margin-top:1px}
+.saleGeminiNote strong,.saleGeminiNote span{display:block}
+.saleGeminiNote strong{font-size:14px;margin-bottom:3px}
+.saleGeminiNote span{font-size:12.5px;line-height:1.45}
+.saleGeminiHeader .saleModalClose{position:static}
+.saleHeader.saleHeaderExpanded{grid-template-columns:1.25fr 1.05fr .72fr .82fr .8fr .72fr;gap:16px;margin-bottom:18px}
+.saleHeader label{font-size:12px;color:#1f2937;font-weight:700}
+.saleHeader select,.saleHeader input{height:46px;border-radius:10px;border:1px solid #cbd5e1;background:#fff}
+.saleHeader .saleNotes{grid-column:1/-1}
+.saleHeader .saleNotes textarea{width:100%;min-height:74px;resize:vertical;border:1px solid #cbd5e1;border-radius:10px;padding:12px 14px;background:#fff;color:#172033;font:inherit}
+.saleStageHint{display:none}
+.saleItemsHead{margin-top:10px;padding-top:18px;border-top:1px solid #e5e7eb;margin-bottom:14px}
+.saleItemsHead h3{font-size:22px}
+.saleItemsHead .ghost{height:42px;padding:0 16px;border-color:#bcd0ee;color:#275ea8;background:#fff}
+.saleItems{gap:0}
+.saleItemColumnHead{display:grid;grid-template-columns:minmax(320px,2.6fr) 100px 150px 130px 130px 42px;gap:16px;padding:0 10px 7px;font-size:12px;font-weight:800;color:#334155}
+.saleItemRow{grid-template-columns:minmax(320px,2.6fr) 100px 150px 130px 130px 42px;gap:16px;padding:0 0 14px;margin-bottom:14px;border-bottom:1px solid #e5e7eb;align-items:end}
+.saleProductPicker{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:8px;align-items:end}
+.saleProductPicker select,.saleItemRow input{height:46px;border-radius:10px;border:1px solid #cbd5e1;background:#fff}
+.saleProductPicker .productLookupButton{height:46px;width:48px}
+.saleItemField{display:grid;gap:5px}
+.saleItemField>span{display:none}
+.saleItemRow>strong{display:flex;height:46px;align-items:center;justify-content:flex-end;padding:0 4px;font-size:15px}
+.saleItemRow>.dangerBtn{height:46px;align-self:end}
+.saleStockHint,.saleProductionMaterials{grid-column:1/-1}
+.saleTotals{margin:0 0 4px auto;max-width:420px;width:100%}
+.saleTotals div{padding:9px 6px}
+.saleTotals .grandTotal{font-size:18px}
+.saleActions{border-top:1px solid #e5e7eb;margin-top:8px;padding-top:14px;align-items:center}
+.saleActions .primary{min-width:110px;height:44px}
+.saleActions .ghost{height:44px}
+.dark .saleGeminiTitle p{color:#94a3b8}
+.dark .saleGeminiNote{background:#13243b;border-color:#2d4d78;color:#dbeafe}
+.dark .saleGeminiNote>svg{color:#60a5fa}
+.dark .saleHeader label,.dark .saleItemColumnHead{color:#dbe4f0}
+.dark .saleHeader select,.dark .saleHeader input,.dark .saleHeader .saleNotes textarea,.dark .saleProductPicker select,.dark .saleItemRow input{background:#0f1725;border-color:#334155;color:#f8fafc}
+.dark .saleItemsHead,.dark .saleItemRow,.dark .saleActions{border-color:#293548}
+.dark .saleItemsHead .ghost{background:#111a28;border-color:#375275;color:#dbeafe}
+@media(max-width:1180px){
+ .saleGeminiHeader{grid-template-columns:1fr auto}
+ .saleGeminiNote{grid-column:1/-1}
+ .saleHeader.saleHeaderExpanded{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .saleItemColumnHead,.saleItemRow{grid-template-columns:minmax(260px,2fr) 90px 120px 110px 110px 42px;gap:10px}
+}
+@media(max-width:820px){
+ .saleModalForm.salesForm{padding:18px}
+ .saleGeminiHeader{grid-template-columns:1fr auto;gap:12px}
+ .saleGeminiTitle h3{font-size:22px}
+ .saleGeminiNote{grid-column:1/-1}
+ .saleHeader.saleHeaderExpanded{grid-template-columns:1fr}
+ .saleHeader .saleNotes{grid-column:auto}
+ .saleItemColumnHead{display:none}
+ .saleItemRow{grid-template-columns:1fr 1fr;padding-bottom:16px}
+ .saleProductPicker{grid-column:1/-1}
+ .saleItemField>span{display:block;font-size:11px;font-weight:800;color:#64748b}
+ .saleItemRow>strong{justify-content:flex-start}
+ .saleItemRow>.dangerBtn{justify-self:end}
+ .saleActions{flex-wrap:wrap;justify-content:flex-start}
+}
