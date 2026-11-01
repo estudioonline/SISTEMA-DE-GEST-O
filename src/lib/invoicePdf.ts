@@ -187,16 +187,16 @@ function drawBrandHeader(doc:jsPDF,data:InvoiceData){
   doc.text(`${documentLabel(data)} ${documentNumber(data)}`,196,52,{align:'right'})
 }
 
-function drawCustomer(doc:jsPDF,data:InvoiceData){
+function drawCustomer(doc:jsPDF,data:InvoiceData,startY=66){
   const c=data.cliente
   doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
   doc.setFontSize(9.5)
-  doc.text(c?.nome||'CONSUMIDOR',12,66)
+  doc.text(c?.nome||'CONSUMIDOR',12,startY)
 
   doc.setFont('helvetica','normal')
   doc.setFontSize(8.2)
-  let y=72
+  let y=startY+6
   const lines=[
     c?.email||'',
     c?.telefone||'',
@@ -204,7 +204,7 @@ function drawCustomer(doc:jsPDF,data:InvoiceData){
   ].filter(Boolean)
 
   lines.forEach(v=>{doc.text(v,12,y);y+=5})
-  return Math.max(89,y+4)
+  return Math.max(startY+23,y+4)
 }
 
 function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
@@ -426,15 +426,18 @@ function buildInvoiceDocument(data:InvoiceData){
 
   drawBrandHeader(doc,data)
   if(isQuote(data)){
-    doc.setFillColor(...blue)
-    doc.roundedRect(12,59,184,12,2,2,'F')
-    doc.setTextColor(255,255,255)
+    doc.setFillColor(...paleBlue)
+    doc.roundedRect(12,60,184,10,2,2,'F')
+    doc.setDrawColor(...blue)
+    doc.setLineWidth(0.5)
+    doc.roundedRect(12,60,184,10,2,2,'S')
+    doc.setTextColor(...blue)
     doc.setFont('helvetica','bold')
-    doc.setFontSize(15)
-    doc.text('ORÇAMENTO',105,67,{align:'center'})
+    doc.setFontSize(12)
+    doc.text('ORÇAMENTO',105,66.7,{align:'center'})
     doc.setTextColor(...text)
   }
-  let y=drawCustomer(doc,data)
+  let y=drawCustomer(doc,data,isQuote(data)?80:66)
   y=drawOrderInfo(doc,data,y)
   y=drawItems(doc,data,y)
   drawNotesAndConditions(doc,data,y+5)
