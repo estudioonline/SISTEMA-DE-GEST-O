@@ -3254,51 +3254,59 @@ function App(){
         </>}
 
         {productSubtab==='producao'&&<>
-          <div className="productionCatalogHead">
-            <div>
-              <span>PRODUÇÃO</span>
-              <h3>Produtos de produção e receitas</h3>
-              <p>Cadastre e edite a ficha técnica de cada produto final. A receita define os materiais necessários para produzir 1 unidade.</p>
+          <article className="panel tablePanel productionListPanel">
+            <div className="panelHead">
+              <div>
+                <h3>Produtos de produção</h3>
+                <p>Lista de produtos finais • Clique duplo para abrir a receita e os materiais</p>
+              </div>
+              <div className="productionListActions">
+                <SearchField value={tableSearch['produtos-producao']||''} onChange={v=>setSearch('produtos-producao',v)} placeholder="Pesquisar código, produto ou material"/>
+                {canManageProducts&&<button type="button" className="primary" onClick={()=>{startNewProduct();setProductType('produto_final')}}><Plus size={16}/>Novo produto</button>}
+              </div>
             </div>
-            {canManageProducts&&<button type="button" className="primary" onClick={()=>{startNewProduct();setProductType('produto_final')}}><Plus size={16}/>Novo produto de produção</button>}
-          </div>
-
-          <div className="productionCatalogGrid">
-            {produtos.filter(p=>p.tipo_produto==='produto_final').map(p=>{
-              const recipe=produtoComponentes.filter(row=>row.produto_final_id===p.id)
-              const recipeCost=recipe.reduce((sum,row)=>{
-                const material=produtos.find(item=>item.id===row.componente_id)
-                return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0))
-              },0)
-              return <article className="productionCatalogCard" key={p.id}>
-                <div className="productionCatalogTitle">
-                  <div><span>{p.codigo||'SEM CÓDIGO'}</span><strong>{p.descricao}</strong></div>
-                  <span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span>
-                </div>
-                <div className="productionCatalogMeta">
-                  <div><span>Materiais na receita</span><strong>{recipe.length}</strong></div>
-                  <div><span>Custo dos materiais</span><strong>{money(recipeCost)}</strong></div>
-                  <div><span>Unidade</span><strong>{p.unidade||'UN'}</strong></div>
-                </div>
-                <div className="productionCatalogRecipe">
-                  {recipe.length===0
-                    ? <div className="productionRecipeEmpty">Receita ainda não configurada.</div>
-                    : recipe.map(row=>{
-                      const material=produtos.find(item=>item.id===row.componente_id)
-                      return <div key={row.id}><span>{material?.descricao||'Material não encontrado'}</span><strong>{Number(row.quantidade).toLocaleString('pt-BR')} {material?.unidade||''}</strong></div>
-                    })}
-                </div>
-                <div className="productionCatalogActions">
-                  <button type="button" className="ghost" onClick={()=>startEditProduct(p)} disabled={!canManageProducts}><Pencil size={15}/>Editar receita</button>
-                </div>
-              </article>
-            })}
-            {produtos.filter(p=>p.tipo_produto==='produto_final').length===0&&<div className="productionCatalogEmpty">
-              <Package size={24}/>
-              <strong>Nenhum produto de produção cadastrado</strong>
-              <span>Crie um produto final e configure os materiais da receita.</span>
-            </div>}
-          </div>
+            <div className="tableWrap"><table className="productionListTable">
+              <thead><tr>
+                <th><button className="tableSortBtn" onClick={()=>toggleSort('produtos-producao','codigo')}>Código{sortMark('produtos-producao','codigo')}</button></th>
+                <th><button className="tableSortBtn" onClick={()=>toggleSort('produtos-producao','produto')}>Produto{sortMark('produtos-producao','produto')}</button></th>
+                <th><button className="tableSortBtn" onClick={()=>toggleSort('produtos-producao','materiais')}>Materiais{sortMark('produtos-producao','materiais')}</button></th>
+                <th><button className="tableSortBtn" onClick={()=>toggleSort('produtos-producao','custo')}>Custo da receita{sortMark('produtos-producao','custo')}</button></th>
+                <th>Unidade</th>
+                <th>Status</th>
+              </tr></thead>
+              <tbody>
+                {sortList('produtos-producao',produtos.filter(p=>{
+                  if(p.tipo_produto!=='produto_final')return false
+                  const recipe=produtoComponentes.filter(row=>row.produto_final_id===p.id)
+                  const materials=recipe.map(row=>produtos.find(item=>item.id===row.componente_id)?.descricao||'').join(' ')
+                  return searchMatches('produtos-producao',[p.codigo,p.descricao,p.unidade,materials])
+                }),{
+                  codigo:p=>p.codigo||'',
+                  produto:p=>p.descricao,
+                  materiais:p=>produtoComponentes.filter(row=>row.produto_final_id===p.id).length,
+                  custo:p=>produtoComponentes.filter(row=>row.produto_final_id===p.id).reduce((sum,row)=>{
+                    const material=produtos.find(item=>item.id===row.componente_id)
+                    return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0))
+                  },0)
+                }).map(p=>{
+                  const recipe=produtoComponentes.filter(row=>row.produto_final_id===p.id)
+                  const recipeCost=recipe.reduce((sum,row)=>{
+                    const material=produtos.find(item=>item.id===row.componente_id)
+                    return sum+(Number(material?.custo_medio??material?.custo??0)*Number(row.quantidade||0))
+                  },0)
+                  return <tr key={p.id} onDoubleClick={()=>startEditProduct(p)} title="Clique duplo para abrir a receita">
+                    <td><strong>{p.codigo||'—'}</strong></td>
+                    <td><div className="productNameCell"><span>{p.descricao}</span><small className="productFinalBadge">PRODUÇÃO</small></div></td>
+                    <td><strong>{recipe.length}</strong></td>
+                    <td>{money(recipeCost)}</td>
+                    <td>{p.unidade||'UN'}</td>
+                    <td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td>
+                  </tr>
+                })}
+                {produtos.filter(p=>p.tipo_produto==='produto_final').length===0&&<tr className="emptyTableRow"><td colSpan={6}><EmptyState message="Nenhum produto de produção cadastrado." actionLabel={canManageProducts?'+ Novo produto':undefined} onAction={canManageProducts?()=>{startNewProduct();setProductType('produto_final')}:undefined}/></td></tr>}
+              </tbody>
+            </table></div>
+          </article>
         </>}
 
         {productSubtab==='grupos'&&<ProductGroupsManager groups={gruposProdutos} subgroups={subgruposProdutos} canEdit={canManageProducts} onReload={loadData} onMessage={setMsg}/>} 
