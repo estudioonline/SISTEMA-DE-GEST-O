@@ -49,7 +49,7 @@ export function DeliveryWorkspace({canEdit,canOperate}:{canEdit:boolean;canOpera
     {section==='separacao'&&<LogisticsOperations mode="separacao" canEdit={canEdit}/>}
     {section==='producao'&&<LogisticsOperations mode="producao" canEdit={canEdit}/>}
     {section==='relatorio'&&<LogisticsOperations mode="relatorio" canEdit={canEdit}/>}
-    {section==='rotas'&&<DeliveryManagement key="rotas" canEdit={canEdit} canOperate={canOperate} initialView="rota"/>}
+    {section==='rotas'&&<DeliveryManagement key="rotas" canEdit={canEdit} canOperate={canOperate} initialView="montagem"/>}
     {section==='conferencia'&&<DeliveryManagement key="conferencia" canEdit={canEdit} canOperate={canOperate} initialView="historico"/>}
   </section>
 }
