@@ -8,7 +8,7 @@ type Delivery={
   id:string;venda_id:string;status:DeliveryStatus;rota:string|null;rota_manual:boolean;data_prevista:string;entregador_nome:string|null;
   cobrar_na_entrega:boolean;valor_cobrar:number;observacoes_entrega:string|null;recebedor_nome:string|null;recebedor_documento:string|null;
   comprovante_path:string|null;assinatura_path:string|null;falha_motivo:string|null;falha_detalhes:string|null;em_transito_em:string|null;
-  entregue_em:string|null;falha_em:string|null;rota_logistica_id?:string|null;ordem_rota?:number|null;created_at:string;updated_at:string
+  entregue_em:string|null;falha_em:string|null;valor_recebido_entrega?:number|null;forma_recebimento_entrega?:string|null;rota_logistica_id?:string|null;ordem_rota?:number|null;created_at:string;updated_at:string
 }
 type RoutePlan={id:string;data_rota:string;nome:string;motorista:string|null;veiculo:string|null;status:'montagem'|'liberada'|'concluida'|'cancelada';observacoes:string|null;created_at:string;updated_at:string}
 type Sale={id:string;cliente_id:string|null;status:string;total:number;observacoes:string|null;rota_entrega:string|null;forma_pagamento:string;fatura_numero:number|null;created_at:string}
@@ -54,6 +54,8 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
   const [mode,setMode]=useState<Mode>(null)
   const [receiverName,setReceiverName]=useState('')
   const [receiverDoc,setReceiverDoc]=useState('')
+  const [receivedAmount,setReceivedAmount]=useState('')
+  const [receivedMethod,setReceivedMethod]=useState('')
   const [proofFile,setProofFile]=useState<File|null>(null)
   const [failReason,setFailReason]=useState('cliente_ausente')
   const [failDetails,setFailDetails]=useState('')
@@ -103,7 +105,7 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
   }
 
   function openModal(d:Delivery,next:Mode){
-    setModalDelivery(d);setMode(next);setReceiverName('');setReceiverDoc('');setProofFile(null);setFailReason('cliente_ausente');setFailDetails('')
+    setModalDelivery(d);setMode(next);setReceiverName('');setReceiverDoc('');setReceivedAmount(String(Number(d.valor_recebido_entrega||0)||''));setReceivedMethod(d.forma_recebimento_entrega||'');setProofFile(null);setFailReason('cliente_ausente');setFailDetails('')
     requestAnimationFrame(()=>clearSignature())
   }
   function openDeliveryFromRoute(deliveryId:string){
@@ -174,7 +176,8 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
       const stamp=new Date().toISOString()
       const {error}=await supabase.from('entregas').update({
         status:'entregue',recebedor_nome:receiverName.trim()||null,recebedor_documento:receiverDoc.trim()||null,
-        comprovante_path:proofPath,assinatura_path:signaturePath,entregue_em:stamp,falha_motivo:null,falha_detalhes:null,falha_em:null,updated_at:stamp
+        comprovante_path:proofPath,assinatura_path:signaturePath,entregue_em:stamp,falha_motivo:null,falha_detalhes:null,falha_em:null,
+        valor_recebido_entrega:Math.max(0,Number(receivedAmount||0)),forma_recebimento_entrega:receivedMethod||null,updated_at:stamp
       }).eq('id',d.id)
       if(error)throw error
       await supabase.from('entrega_eventos').insert({entrega_id:d.id,tipo:'entregue',status_anterior:d.status,status_novo:'entregue',detalhes:[receiverName.trim()&&`Recebido por ${receiverName.trim()}`,receiverDoc.trim()&&`Documento ${receiverDoc.trim()}`].filter(Boolean).join(' · ')||null})
@@ -462,6 +465,8 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
         <div className="deliveryModalHead"><div><span>{mode==='entregue'?'CONFIRMAÇÃO':'OCORRÊNCIA'}</span><h3>{mode==='entregue'?'Confirmar entrega':'Registrar não entrega'}</h3></div><button onClick={closeModal}><XCircle size={20}/></button></div>
         {mode==='entregue'?<>
           <div className="deliveryFormGrid"><label>Nome de quem recebeu<input value={receiverName} onChange={e=>setReceiverName(e.target.value)} placeholder="Opcional"/></label><label>CPF / RG<input value={receiverDoc} onChange={e=>setReceiverDoc(e.target.value)} placeholder="Opcional"/></label></div>
+          <div className="deliveryFormGrid"><label>Valor recebido na entrega<input type="number" min="0" step="0.01" value={receivedAmount} onChange={e=>setReceivedAmount(e.target.value)} placeholder="0,00"/></label><label>Forma recebida<select value={receivedMethod} onChange={e=>setReceivedMethod(e.target.value)}><option value="">Não informado</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="outro">Outro</option></select></label></div>
+          <small className="deliveryOperationalNote">Registro operacional da Logística. Não movimenta estoque e não baixa título financeiro.</small>
           <label className="deliveryFile"><Camera size={18}/><span>{proofFile?proofFile.name:'Foto do comprovante / mercadoria (opcional)'}</span><input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={e=>setProofFile(e.target.files?.[0]||null)}/></label>
           <div className="deliverySignature"><div><PenLine size={17}/><strong>Assinatura digital (opcional)</strong><button onClick={clearSignature}>Limpar</button></div><canvas ref={canvasRef} width={900} height={220} onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerCancel={endDraw}/></div>
           <button className="deliverySuccess deliveryModalSave" disabled={busy} onClick={()=>void saveDelivered()}><CheckCircle2 size={18}/>{busy?'Salvando...':'Salvar entrega'}</button>
