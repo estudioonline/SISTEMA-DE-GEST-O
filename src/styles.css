@@ -5555,3 +5555,19 @@
   .documentPdfButton,.documentPrintButton{width:100%}
   .compactDocumentPdf{width:auto}
 }
+
+/* Lista de clientes: colunas e alinhamentos */
+.clientsEntityTable table{table-layout:fixed;min-width:1080px}
+.clientsEntityTable th,.clientsEntityTable td{height:64px;vertical-align:middle}
+.clientsEntityTable th:nth-child(1),.clientsEntityTable td:nth-child(1){width:34%}
+.clientsEntityTable th:nth-child(2),.clientsEntityTable td:nth-child(2){width:13%}
+.clientsEntityTable th:nth-child(3),.clientsEntityTable td:nth-child(3){width:21%}
+.clientsEntityTable th:nth-child(4),.clientsEntityTable td:nth-child(4){width:13%}
+.clientsEntityTable th:nth-child(5),.clientsEntityTable td:nth-child(5){width:8%;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.clientsEntityTable th:nth-child(6),.clientsEntityTable td:nth-child(6){width:6%;text-align:center;white-space:nowrap}
+.clientsEntityTable th:nth-child(7),.clientsEntityTable td:nth-child(7){width:5%;text-align:center}
+.clientsEntityTable td:nth-child(1),.clientsEntityTable td:nth-child(2),.clientsEntityTable td:nth-child(3),.clientsEntityTable td:nth-child(4){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clientsEntityTable th:nth-child(5) .tableSortBtn,.clientsEntityTable th:nth-child(6) .tableSortBtn{width:100%;justify-content:inherit}
+.clientsEntityTable th:nth-child(5) .tableSortBtn{justify-content:flex-end}
+.clientsEntityTable th:nth-child(6) .tableSortBtn{justify-content:center}
+.clientsEntityTable .rowMenuBtn{margin-inline:auto}
