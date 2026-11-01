@@ -5601,3 +5601,14 @@
 .suppliersEntityTable td:nth-child(1),.suppliersEntityTable td:nth-child(2),.suppliersEntityTable td:nth-child(3),.suppliersEntityTable td:nth-child(4){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .suppliersEntityTable th:nth-child(5) .tableSortBtn{width:100%;justify-content:center}
 .suppliersEntityTable .rowMenuBtn{margin-inline:auto}
+
+.deliveryAvailableHead{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border:1px solid #dbe3ef;border-radius:14px;background:#fff}
+.deliveryAvailableHead>div{display:grid;gap:2px}
+.deliveryAvailableHead span{font-size:10px;font-weight:900;letter-spacing:.1em;color:#2563eb}
+.deliveryAvailableHead h3{margin:0;font-size:17px;color:#0f172a}
+.deliveryAvailableHead p{margin:0;font-size:11px;color:#64748b}
+.deliveryAvailableHead>strong{min-width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#eff6ff;color:#1d4ed8;font-size:16px}
+.dark .deliveryAvailableHead{background:#111827;border-color:#334155}
+.dark .deliveryAvailableHead h3{color:#f8fafc}
+.dark .deliveryAvailableHead p{color:#94a3b8}
+@media(max-width:700px){.deliveryAvailableHead{align-items:flex-start}.deliveryAvailableHead>strong{flex:0 0 auto}}
