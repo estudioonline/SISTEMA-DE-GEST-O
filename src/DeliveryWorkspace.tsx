@@ -44,6 +44,6 @@ export function DeliveryWorkspace({canEdit,canOperate}:{canEdit:boolean;canOpera
       <strong>{sections.find(item=>item.key===section)?.title}</strong>
       <span>{sections.find(item=>item.key===section)?.description}</span>
     </div>
-    <DeliveryManagement canEdit={canEdit} canOperate={canOperate}/>
+    <DeliveryManagement key={section} canEdit={canEdit} canOperate={canOperate} initialView={section==='rotas'?'rota':section==='conferencia'||section==='relatorio'?'historico':'montagem'}/>
   </section>
 }
