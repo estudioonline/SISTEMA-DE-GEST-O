@@ -5612,3 +5612,17 @@
 .dark .deliveryAvailableHead h3{color:#f8fafc}
 .dark .deliveryAvailableHead p{color:#94a3b8}
 @media(max-width:700px){.deliveryAvailableHead{align-items:flex-start}.deliveryAvailableHead>strong{flex:0 0 auto}}
+
+.productionCatalogHead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:4px 0 14px}
+.productionCatalogHead>div{display:grid;gap:3px}.productionCatalogHead span{font-size:10px;font-weight:900;letter-spacing:.1em;color:#2563eb}.productionCatalogHead h3{margin:0;font-size:20px;color:#0f172a}.productionCatalogHead p{margin:0;color:#64748b;font-size:12px;max-width:760px}
+.productionCatalogGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.productionCatalogCard{display:grid;gap:12px;padding:14px;border:1px solid #dbe3ef;border-radius:14px;background:#fff;box-shadow:0 5px 16px rgba(15,23,42,.035)}
+.productionCatalogTitle{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.productionCatalogTitle>div{display:grid;gap:3px;min-width:0}.productionCatalogTitle>div>span{font-size:10px;color:#64748b}.productionCatalogTitle strong{font-size:14px;color:#0f172a;overflow:hidden;text-overflow:ellipsis}
+.productionCatalogMeta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.productionCatalogMeta>div{display:grid;gap:2px;padding:9px;border-radius:10px;background:#f8fafc}.productionCatalogMeta span{font-size:9px;color:#64748b}.productionCatalogMeta strong{font-size:12px;color:#0f172a}
+.productionCatalogRecipe{display:grid;gap:6px}.productionCatalogRecipe>div:not(.productionRecipeEmpty){display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:9px;background:#f8fafc}.productionCatalogRecipe span{font-size:11px;color:#334155}.productionCatalogRecipe strong{font-size:11px;color:#0f172a;white-space:nowrap}
+.productionCatalogActions{display:flex;justify-content:flex-end}.productionCatalogActions button{display:inline-flex;align-items:center;gap:6px}
+.productionCatalogEmpty{grid-column:1/-1;display:grid;place-items:center;gap:6px;padding:36px;border:1px dashed #cbd5e1;border-radius:14px;color:#64748b;text-align:center}.productionCatalogEmpty strong{color:#0f172a}.productionCatalogEmpty span{font-size:12px}
+.dark .productionCatalogHead h3,.dark .productionCatalogTitle strong,.dark .productionCatalogMeta strong,.dark .productionCatalogRecipe strong,.dark .productionCatalogEmpty strong{color:#f8fafc}
+.dark .productionCatalogHead p,.dark .productionCatalogTitle>div>span,.dark .productionCatalogMeta span,.dark .productionCatalogRecipe span{color:#94a3b8}
+.dark .productionCatalogCard{background:#111827;border-color:#334155}.dark .productionCatalogMeta>div,.dark .productionCatalogRecipe>div:not(.productionRecipeEmpty){background:#0f172a}
+@media(max-width:760px){.productionCatalogHead{flex-direction:column}.productionCatalogHead>button{width:100%}.productionCatalogGrid{grid-template-columns:1fr}.productionCatalogMeta{grid-template-columns:1fr}}
