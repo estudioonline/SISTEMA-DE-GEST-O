@@ -5435,20 +5435,34 @@
 .productGroupFilters{display:flex;gap:12px;align-items:end;padding:0 16px 14px;flex-wrap:wrap}
 .productGroupFilters label{display:grid;gap:5px;font-size:12px;color:var(--muted,#64748b);min-width:220px}
 .productGroupFilters select{min-height:38px}
-.productGroupsManager{display:grid;gap:16px}
-.productGroupCreate{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
-.productGroupCreate label{display:grid;gap:5px;min-width:210px}
-.productGroupList{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-.productGroupCard{border:1px solid rgba(148,163,184,.25);border-radius:14px;padding:14px;background:rgba(148,163,184,.05)}
-.productGroupTitle{display:flex;align-items:center;gap:8px;min-height:38px}
-.productGroupTitle>strong{flex:1}
-.productGroupTitle>span{font-size:12px;color:var(--muted,#64748b)}
-.productGroupTitle input,.productSubgroupRow input{min-width:0;flex:1}
-.productGroupTitle select,.productSubgroupRow select{width:auto;min-width:90px}
-.productSubgroupList{display:grid;gap:7px;margin-top:10px}
-.productSubgroupRow{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;background:rgba(148,163,184,.08)}
-.productSubgroupRow>span,.productSubgroupRow>small{flex:1}
-@media(max-width:760px){.productGroupFilters label,.productGroupCreate label{min-width:100%;width:100%}.productGroupCreate>*{width:100%}}
+.productGroupsManager{display:grid;gap:14px}
+.productGroupCreate{display:grid;grid-template-columns:minmax(180px,1fr) auto minmax(190px,1fr) minmax(180px,1fr) auto;gap:10px;align-items:end}
+.productGroupCreate label{display:grid;gap:5px;min-width:0}
+.productGroupCreate input,.productGroupCreate select{min-height:38px}
+.productGroupCreate .ghost{min-height:38px;white-space:nowrap}
+.productGroupList{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start}
+.productGroupCard{align-self:start;border:1px solid rgba(148,163,184,.25);border-radius:14px;padding:12px 14px;background:rgba(148,163,184,.05)}
+.productGroupTitle{display:flex;align-items:center;gap:8px;min-height:34px}
+.productGroupTitle>strong{flex:1;line-height:1.25}
+.productGroupTitle>span{font-size:11px;color:var(--muted,#64748b)}
+.productGroupTitle .iconBtn,.productSubgroupRow .iconBtn{width:34px;height:34px;min-width:34px}
+.productGroupTitle input,.productSubgroupRow input{min-width:0;flex:1;height:36px}
+.productGroupTitle select,.productSubgroupRow select{width:auto;min-width:86px;height:36px}
+.productSubgroupList{display:grid;gap:6px;margin-top:8px}
+.productSubgroupList>small{padding:2px 0;color:var(--muted,#64748b)}
+.productSubgroupRow{display:flex;align-items:center;gap:8px;min-height:42px;padding:5px 8px;border-radius:9px;background:rgba(148,163,184,.08)}
+.productSubgroupRow>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.productSubgroupRow>small{flex:0 0 auto;font-size:11px;color:var(--muted,#64748b)}
+@media(max-width:1100px){
+  .productGroupCreate{grid-template-columns:1fr auto 1fr}
+  .productGroupCreate label:nth-of-type(2){grid-column:1}
+  .productGroupCreate label:nth-of-type(3){grid-column:2}
+}
+@media(max-width:760px){
+  .productGroupFilters label,.productGroupCreate label{min-width:100%;width:100%}
+  .productGroupCreate{grid-template-columns:1fr}
+  .productGroupCreate>*{width:100%;grid-column:auto!important}
+}
 
 /* Vendas: layout inspirado no modelo Gemini */
 .saleModalShell{width:min(1420px,100%)}
