@@ -5511,3 +5511,42 @@
  .saleItemRow>.dangerBtn{justify-self:end}
  .saleActions{flex-wrap:wrap;justify-content:flex-start}
 }
+
+
+/* PDFs de Orçamento, Venda e Fatura: ações destacadas e padronizadas */
+.documentPdfButton,.documentPrintButton{
+  min-height:38px;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:0 12px;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.documentPdfButton{
+  border:1px solid #2563eb;
+  background:#2563eb;
+  color:#fff;
+  box-shadow:0 5px 14px rgba(37,99,235,.18);
+}
+.documentPdfButton:hover{background:#1d4ed8;border-color:#1d4ed8}
+.documentPrintButton{
+  border:1px solid #93c5fd;
+  background:#eff6ff;
+  color:#1d4ed8;
+}
+.documentPrintButton:hover{background:#dbeafe;border-color:#60a5fa}
+.compactDocumentPdf{min-height:34px;padding:0 9px;font-size:10px}
+.dark .documentPdfButton{background:#2563eb;border-color:#3b82f6;color:#fff}
+.dark .documentPrintButton{background:rgba(59,130,246,.14);border-color:#3b82f6;color:#bfdbfe}
+.dark .documentPrintButton:hover{background:rgba(59,130,246,.24)}
+.billingRowActions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+@media(max-width:700px){
+  .documentPdfButton,.documentPrintButton{width:100%}
+  .compactDocumentPdf{width:auto}
+}
