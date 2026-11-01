@@ -1009,18 +1009,9 @@ function App(){
     e.preventDefault()
     if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return}
     const f=new FormData(e.currentTarget)
-    let complemento:Record<string,unknown>={}
-    const complementoRaw=String(f.get('complemento_tributario')||'').trim()
-    if(complementoRaw){
-      try{
-        const parsed=JSON.parse(complementoRaw)
-        if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error()
-        complemento=parsed as Record<string,unknown>
-      }catch{
-        setMsg('Complemento tributário deve ser um objeto JSON válido.')
-        return
-      }
-    }
+    const complemento:Record<string,unknown>=editingProduct?.complemento_tributario&&typeof editingProduct.complemento_tributario==='object'&&!Array.isArray(editingProduct.complemento_tributario)
+      ? editingProduct.complemento_tributario as Record<string,unknown>
+      : {}
     const base={
       codigo:String(f.get('codigo')||'').trim(),
       descricao:String(f.get('descricao')||'').trim(),
@@ -3265,9 +3256,6 @@ function App(){
               <label className="fieldLabel">CST / CSOSN<input name="cst_icms" inputMode="numeric" maxLength={3} defaultValue={editingProduct?.cst_icms||''} placeholder="2 ou 3 dígitos"/></label>
               <label className="fieldLabel">CST PIS<input name="cst_pis" inputMode="numeric" maxLength={2} defaultValue={editingProduct?.cst_pis||''} placeholder="2 dígitos"/></label>
               <label className="fieldLabel">CST COFINS<input name="cst_cofins" inputMode="numeric" maxLength={2} defaultValue={editingProduct?.cst_cofins||''} placeholder="2 dígitos"/></label>
-              <label className="fieldLabel fieldLabelWide">Complementos tributários (JSON)
-                <textarea name="complemento_tributario" rows={3} defaultValue={editingProduct?.complemento_tributario&&Object.keys(editingProduct.complemento_tributario).length?JSON.stringify(editingProduct.complemento_tributario,null,2):''} placeholder="Opcional. Somente quando orientado pelo contador."/>
-              </label>
             </div>
             <label className="fieldLabel">Status
               <select name="ativo" defaultValue={editingProduct?.ativo===false?'false':'true'}>
