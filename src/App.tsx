@@ -3178,22 +3178,34 @@ function App(){
             </label>
             {productType==='produto_final'&&<div className="productionRecipeSection">
               <div className="productionRecipeHead">
-                <div><strong>Ficha técnica de produção</strong><span>Materiais consumidos para produzir 1 unidade deste produto.</span></div>
-                <button type="button" className="ghost" onClick={addProductComponent}><Plus size={15}/>Adicionar material</button>
+                <div className="productionRecipeHeadText">
+                  <span className="productionRecipeEyebrow">PRODUÇÃO</span>
+                  <strong>Ficha técnica de produção</strong>
+                  <span>Materiais consumidos para produzir 1 unidade deste produto.</span>
+                </div>
+                <div className="productionRecipeHeadActions">
+                  <span className="productionRecipeCounter">{productComponentDrafts.length} material(is)</span>
+                  <button type="button" className="ghost" onClick={addProductComponent}><Plus size={15}/>Adicionar material</button>
+                </div>
               </div>
               {productComponentDrafts.length===0&&<div className="productionRecipeEmpty">Nenhum material configurado. Adicione os insumos usados na produção.</div>}
               <div className="productionRecipeRows">
-                {productComponentDrafts.map(row=><div className="productionRecipeRow" key={row.key}>
-                  <label className="fieldLabel">Material
-                    <select value={row.componente_id} onChange={e=>updateProductComponent(row.key,'componente_id',e.target.value)} required>
-                      <option value="">Selecione um material</option>
-                      {produtos.filter(p=>p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} ({p.unidade})</option>)}
-                    </select>
-                  </label>
-                  <label className="fieldLabel">Quantidade por unidade
-                    <input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateProductComponent(row.key,'quantidade',e.target.value)} required/>
-                  </label>
-                  <button type="button" className="iconBtn dangerBtn productionRecipeRemove" onClick={()=>removeProductComponent(row.key)} title="Remover material"><Trash2 size={16}/></button>
+                {productComponentDrafts.map((row,index)=><div className="productionRecipeRow" key={row.key}>
+                  <div className="productionRecipeRowHead">
+                    <strong>Material {index+1}</strong>
+                    <button type="button" className="iconBtn dangerBtn productionRecipeRemove" onClick={()=>removeProductComponent(row.key)} title="Remover material"><Trash2 size={16}/></button>
+                  </div>
+                  <div className="productionRecipeRowGrid">
+                    <label className="fieldLabel productionRecipeMaterial">Material
+                      <select value={row.componente_id} onChange={e=>updateProductComponent(row.key,'componente_id',e.target.value)} required>
+                        <option value="">Selecione um material</option>
+                        {produtos.filter(p=>p.ativo&&p.tipo_produto!=='produto_final'&&p.id!==editingProduct?.id).map(p=><option key={p.id} value={p.id}>{p.codigo} — {p.descricao} ({p.unidade})</option>)}
+                      </select>
+                    </label>
+                    <label className="fieldLabel productionRecipeQuantity">Quantidade por unidade
+                      <input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateProductComponent(row.key,'quantidade',e.target.value)} required/>
+                    </label>
+                  </div>
                 </div>)}
               </div>
               {productComponentDrafts.length>0&&<div className="productionRecipeCost">
