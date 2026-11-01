@@ -119,7 +119,7 @@ export function InfrastructureUsage() {
 
       <article className="panel infraProvider">
         <div className="infraProviderHead">
-          <div className="infraProviderTitle"><span className="infraLogo supabaseMark"><Database size={24}/></span><div><h3>Supabase</h3><p>Projeto ORGJSS1 · sa-east / produção</p></div></div>
+          <div className="infraProviderTitle"><span className="infraLogo supabaseMark"><Database size={24}/></span><div><h3>Supabase</h3><p>Projeto ORGJSS1 · us-east-1 / produção</p></div></div>
         </div>
         <div className="infraMetricGrid">
           <div className="infraMetric"><Database size={18}/><span>Banco de dados</span><strong>{infra ? bytes(Number(infra.database_bytes)) : '—'}</strong></div>
