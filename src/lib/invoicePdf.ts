@@ -155,7 +155,7 @@ function drawBrandHeader(doc:jsPDF,data:InvoiceData){
 
   const brandSubtitleY=brandLines.length>1?29:23
   doc.setTextColor(...blue)
-  doc.setFontSize(7.5)
+  doc.setFontSize(8.5)
   doc.setCharSpace(1.5)
   doc.text('SISTEMA DE GESTÃO',brandLeft,brandSubtitleY)
   doc.setCharSpace(0)
@@ -195,11 +195,11 @@ function drawCustomer(doc:jsPDF,data:InvoiceData,startY=66){
   const c=data.cliente
   doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(9.5)
+  doc.setFontSize(10.5)
   doc.text(c?.nome||'CONSUMIDOR',12,startY)
 
   doc.setFont('helvetica','normal')
-  doc.setFontSize(8.2)
+  doc.setFontSize(9.2)
   let y=startY+6
   const lines=[
     c?.email||'',
@@ -217,13 +217,13 @@ function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
 
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8.7)
+  doc.setFontSize(9.7)
   doc.text(isQuote(data)?'Data do orçamento':isFinancialInvoice(data)?'Data da fatura':'Data da venda',leftX,y)
   doc.text('Vendedor',sellerX,y)
 
   doc.setTextColor(...text)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(8.2)
+  doc.setFontSize(9.2)
   doc.text(dateTime(data.created_at),leftX,y+5)
   doc.text(data.vendedor_nome||'Equipe de vendas',sellerX,y+5)
 
@@ -239,7 +239,7 @@ function drawOrderInfo(doc:jsPDF,data:InvoiceData,y:number){
 function drawTableHeader(doc:jsPDF,y:number){
   doc.setTextColor(...text)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(8.2)
+  doc.setFontSize(9.2)
   doc.text('Descrição',14,y)
   doc.text('Quantidade',130,y,{align:'right'})
   doc.text('Preço unitário',166,y,{align:'right'})
@@ -255,11 +255,11 @@ function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
   doc.rect(0,0,210,24,'F')
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(11)
+  doc.setFontSize(12)
   doc.text(companyData(data).nome,12,10)
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(12)
+  doc.setFontSize(13)
   doc.text(`${documentLabel(data)} ${documentNumber(data)} - continuação`,196,16,{align:'right'})
 }
 
@@ -284,14 +284,14 @@ function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
 
     doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(8.1)
+    doc.setFontSize(9.1)
     doc.text(lines,14,y+4.3)
     doc.text(`${num(item.quantidade)} ${item.unidade}`,130,y+4.3,{align:'right'})
     doc.text(brl(item.valor_unitario),166,y+4.3,{align:'right'})
     doc.text(brl(item.total),196,y+4.3,{align:'right'})
 
     if(item.desconto>0){
-      doc.setFontSize(6.7)
+      doc.setFontSize(7.7)
       doc.setTextColor(...muted)
       doc.text(`Desconto: ${brl(item.desconto)}`,14,y+rowH-1.5)
     }
@@ -312,14 +312,14 @@ function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
   doc.rect(105,y,91,7,'F')
   doc.setTextColor(...blue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8.5)
+  doc.setFontSize(9.5)
   doc.text('Total',130,y+4.8,{align:'right'})
   doc.text(brl(data.total),196,y+4.8,{align:'right'})
 
   if(data.desconto>0){
     doc.setFont('helvetica','normal')
     doc.setTextColor(...muted)
-    doc.setFontSize(6.7)
+    doc.setFontSize(7.7)
     doc.text(`Subtotal ${brl(data.subtotal)} | Desconto ${brl(data.desconto)}`,196,y+10,{align:'right'})
     return y+14
   }
@@ -341,13 +341,13 @@ function drawNotesAndConditions(doc:jsPDF,data:InvoiceData,startY:number){
   y=ensureSpace(doc,data,y,18)
   doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(8.3)
+  doc.setFontSize(9.3)
   doc.text('Anotações:',12,y)
   y+=6
 
   if(notes){
     doc.setFont('helvetica','normal')
-    doc.setFontSize(7.5)
+    doc.setFontSize(8.5)
     const noteLines=doc.splitTextToSize(notes,184) as string[]
     if(y+noteLines.length*4.1>272){
       doc.addPage()
@@ -363,7 +363,7 @@ function drawNotesAndConditions(doc:jsPDF,data:InvoiceData,startY:number){
   y=ensureSpace(doc,data,y,22)
   doc.setFont('helvetica','bold')
   doc.setTextColor(...text)
-  doc.setFontSize(8.3)
+  doc.setFontSize(9.3)
   doc.text('Condições Gerais:',12,y)
   y+=5
 
@@ -372,7 +372,7 @@ function drawNotesAndConditions(doc:jsPDF,data:InvoiceData,startY:number){
     : CONDITIONS
 
   doc.setFont('helvetica','normal')
-  doc.setFontSize(6.9)
+  doc.setFontSize(7.9)
   doc.setTextColor(...text)
 
   for(const condition of conditions){
@@ -383,7 +383,7 @@ function drawNotesAndConditions(doc:jsPDF,data:InvoiceData,startY:number){
       drawContinuationHeader(doc,data)
       y=34
       doc.setFont('helvetica','normal')
-      doc.setFontSize(6.9)
+      doc.setFontSize(7.9)
       doc.setTextColor(...text)
     }
     doc.text(lines,12,y)
@@ -397,7 +397,7 @@ function drawNotesAndConditions(doc:jsPDF,data:InvoiceData,startY:number){
     y=34
   }
   doc.setFont('helvetica','normal')
-  doc.setFontSize(7.2)
+  doc.setFontSize(8.2)
   doc.text(declaration,12,y+3)
 }
 
@@ -412,7 +412,7 @@ function addFooters(doc:jsPDF,data:InvoiceData){
 
     doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
-    doc.setFontSize(7.2)
+    doc.setFontSize(8.2)
     const left=[company.email,company.cnpj].filter(Boolean).join('   ')
     doc.text(left,12,289)
     doc.setTextColor(...muted)
@@ -436,7 +436,7 @@ function buildInvoiceDocument(data:InvoiceData){
   doc.roundedRect(12,60,184,10,2,2,'S')
   doc.setTextColor(...blue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(12)
+  doc.setFontSize(13)
   doc.text(documentLabel(data),105,66.7,{align:'center'})
   doc.setTextColor(...text)
   let y=drawCustomer(doc,data,80)
