@@ -286,3 +286,18 @@
   .documentsTable thead th,.documentsTable tbody td { padding:11px 12px; }
 }
 @media(prefers-reduced-motion:reduce) { .documentsSpin { animation:none; } }
+
+
+/* Modal interno para justificativas e confirmações no tema do SG */
+.sgPromptOverlay{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:20px;background:rgba(2,6,23,.68);backdrop-filter:blur(8px)}
+.sgPromptDialog{width:min(520px,100%);border:1px solid var(--ds-border);border-radius:18px;background:var(--ds-surface);color:var(--ds-text);box-shadow:0 24px 70px rgba(2,6,23,.32);padding:22px}
+.sgPromptHead{display:flex;align-items:flex-start;gap:14px}
+.sgPromptIcon{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:12px;background:color-mix(in srgb,var(--ds-blue) 16%,var(--ds-surface));color:var(--ds-blue);font-size:20px;font-weight:800;border:1px solid color-mix(in srgb,var(--ds-blue) 34%,var(--ds-border))}
+.sgPromptHead strong{display:block;font-size:17px;line-height:1.2;margin-bottom:6px}
+.sgPromptHead p{margin:0;color:var(--ds-muted);font-size:13px;line-height:1.55}
+.sgPromptInput{width:100%;min-height:92px;margin-top:18px;padding:12px 14px;border:1px solid var(--ds-border);border-radius:12px;background:var(--ds-bg);color:var(--ds-text);resize:vertical;font:inherit;line-height:1.45;outline:none}
+.sgPromptInput:focus{border-color:var(--ds-blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--ds-blue) 18%,transparent)}
+.sgPromptActions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.sgPromptActions button{min-height:40px}
+.sgPromptActions .primary:disabled{opacity:.5;cursor:not-allowed}
+@media (max-width:560px){.sgPromptDialog{padding:18px;border-radius:15px}.sgPromptActions{flex-direction:column-reverse}.sgPromptActions button{width:100%}}
