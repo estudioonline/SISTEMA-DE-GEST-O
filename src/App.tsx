@@ -29,6 +29,7 @@ import { HumanResources } from './HumanResources'
 import { appPermission } from './lib/hr'
 import type { AppModule } from './lib/hr'
 import { BankReconciliation } from './BankReconciliation'
+import { CashClosing } from './CashClosing'
 import { DocumentsLibrary } from './DocumentsLibrary'
 import { InfrastructureUsage } from './InfrastructureUsage'
 import { DeliveryWorkspace } from './DeliveryWorkspace'
@@ -78,7 +79,7 @@ type SaleHistoryEvent={evento_id:string;fonte:string;acao:string;usuario_id:stri
 const menu=[
   ['vendas','Vendas',ReceiptText],['dashboard','Dashboard',LayoutDashboard],['clientes','Clientes',Users],['fornecedores','Fornecedores',Building2],
   ['produtos','Produtos / Estoque',Package],['compras','Compras',ShoppingCart],
-  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['documentos','Documentos',FolderOpen],['rh','RH',Users],['entregas','Logística',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['infra','GitHub & Supabase',Database],['config','Configurações',Settings]
+  ['comissoes','Comissões',BadgeDollarSign],['financeiro','Financeiro',WalletCards],['fechamento','Fechamento de Caixa',CheckCircle2],['documentos','Documentos',FolderOpen],['rh','RH',Users],['entregas','Logística',Truck],['autorizacoes','Autorizações',ShieldCheck],['relatorios','Relatórios',BarChart3],['infra','GitHub & Supabase',Database],['config','Configurações',Settings]
 ] as const
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
@@ -3016,6 +3017,7 @@ function App(){
       {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
       {active==='rh'&&<HumanResources titles={titulos} canEdit={canEditModule('rh')} company={empresa} onChanged={refreshFinance} onOpen={t=>{closeForms();setActive('financeiro');setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');setFinancePanel(t.id);setFinancePanelTab('pagamentos');setPaymentDate(today());setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))}}/>}
       {active==='entregas'&&<DeliveryWorkspace canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
+      {active==='fechamento'&&<CashClosing canEdit={canEditModule('fechamento')} isAdmin={isAdmin}/>} 
       {active==='documentos'&&<DocumentsLibrary/>}
       {active==='infra'&&<InfrastructureUsage/>}
       {active==='dashboard'&&<section>
