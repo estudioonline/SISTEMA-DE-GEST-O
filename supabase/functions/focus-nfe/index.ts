@@ -91,6 +91,19 @@ Deno.serve(async(req:Request)=>{
   }
   const note=source.nota
   if(!note?.payload)throw Error('Esta venda ainda não foi enviada à Focus.')
+  if(body.action==='cancel'){
+   if(note.status!=='autorizado')throw Error('Somente uma NF-e autorizada pode ser cancelada.')
+   const justificativa=String(body.justificativa??'').trim()
+   if(justificativa.length<15||justificativa.length>255)throw Error('A justificativa do cancelamento deve ter entre 15 e 255 caracteres.')
+   const r=await fetchFocus('/v2/nfe/'+encodeURIComponent(String(note.referencia)),'DELETE',{justificativa})
+   const data=await r.json()
+   if(!r.ok||String(data.status)!=='cancelado'){
+    const detalhe=String(data.mensagem_sefaz??data.mensagem??'A SEFAZ não confirmou o cancelamento.')
+    throw Error(detalhe)
+   }
+   const nota=await rpc('result',{venda_id:body.venda_id,status:'cancelado',retorno:safeResult(data)})
+   return json({nota,message:'NF-e cancelada com sucesso na SEFAZ.'},200,cors)
+  }
   if(body.action==='consult'){
    // Avoid treating a concurrent first transmission as absent.
    if(note.status==='enviando'&&Date.now()-new Date(String(note.updated_at)).getTime()<60000)return json({nota:note,message:'Envio em andamento. Aguarde um minuto antes de consultar.'},200,cors)
