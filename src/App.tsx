@@ -3942,7 +3942,7 @@ function App(){
           </div>
         })():<article id="sales-table" tabIndex={-1} className="panel tablePanel salesTable salesModernTable">
           <div className="salesModernHead">
-            <div><h3>Orçamentos, vendas e faturas</h3><p>Lista de Vendas • Clique duplo para abrir</p></div>
+            <div><h3>Pedidos / Vendas</h3><p>Gerencie e acompanhe os orçamentos, pedidos e vendas da empresa.</p></div>
             <div className="salesModernActions">
               <div className="salesSearchBox"><Search size={16}/><input value={tableSearch.vendas||''} onChange={e=>{setSearch('vendas',e.target.value);setSalePage(1)}} placeholder="Pesquisar em todas as colunas..."/></div>
               <button type="button" className={saleFiltersOpen?'salesFilterButton active':'salesFilterButton'} onClick={()=>setSaleFiltersOpen(v=>!v)}><SlidersHorizontal size={16}/>Filtros avançados</button>
@@ -3961,12 +3961,12 @@ function App(){
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','data')}>Data{sortMark('vendas','data')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','cliente')}>Cliente{sortMark('vendas','cliente')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','vendedor')}>Vendedor{sortMark('vendas','vendedor')}</button></th>
-              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Status{sortMark('vendas','status')}</button></th>
-              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Pagamento{sortMark('vendas','pagamento')}</button></th>
-              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','faturamento')}>Faturamento{sortMark('vendas','faturamento')}</button></th>
-              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status pagto{sortMark('vendas','statuspag')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','status')}>Tipo{sortMark('vendas','status')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','pagamento')}>Forma de pagamento{sortMark('vendas','pagamento')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','faturamento')}>Status de faturamento{sortMark('vendas','faturamento')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','statuspag')}>Status de pagamento{sortMark('vendas','statuspag')}</button></th>
               <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','rota')}>Rota{sortMark('vendas','rota')}</button></th>
-              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Total{sortMark('vendas','total')}</button></th>
+              <th><button className="tableSortBtn" onClick={()=>toggleSort('vendas','total')}>Valor total{sortMark('vendas','total')}</button></th>
               <th>Ações</th>
             </tr></thead>
             <tbody>
