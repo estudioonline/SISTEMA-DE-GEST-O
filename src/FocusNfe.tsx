@@ -125,16 +125,21 @@ export function FocusNfeSale({saleId}:{saleId:string}){
   if(!source)return
   setBusy(true);setError('')
   try{
-   const payload=(note?.payload&&typeof note.payload==='object'&&!Array.isArray(note.payload)?note.payload:{}) as Record<string,unknown>
-   ;(await import('./lib/danfePreviewPdf')).generateDanfePreviewPdf({
-    venda:source.venda,
-    cliente:source.cliente,
-    empresa:source.empresa as any,
-    itens:source.itens as any,
-    payload,
-    referencia:note?.referencia||null
-   })
-  }catch(e){setError((e as Error).message||'Não foi possível gerar a prévia DANFE.')}finally{setBusy(false)}
+   const {data}=await supabase.auth.getSession()
+   const dadosFiscais={
+    modalidade_frete:Number(freightMode),
+    observacao_nfe:nfeObservation.trim(),
+    parcelas:source.venda.forma_pagamento==='boleto'?nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)})):undefined,
+    volumes:nfeVolumes.map(v=>({quantidade:Number(v.quantidade),peso_liquido:Number(v.peso_liquido),peso_bruto:Number(v.peso_bruto)}))
+   }
+   const r=await fetch(supabaseUrl+'/functions/v1/focus-nfe',{method:'POST',headers:{Authorization:'Bearer '+data.session?.access_token,apikey:supabasePublishableKey,'Content-Type':'application/json'},body:JSON.stringify({action:'preview',venda_id:saleId,dados_fiscais:dadosFiscais})})
+   if(!r.ok){const detail=await r.json().catch(()=>({}));throw Error(detail.error??'Não foi possível gerar a prévia DANFE na Focus.')}
+   const url=URL.createObjectURL(await r.blob()),a=document.createElement('a')
+   a.href=url
+   a.download='danfe-previa-focus-'+String(note?.retorno.numero??source.venda.fatura_numero??saleId)+'.pdf'
+   a.click()
+   setTimeout(()=>URL.revokeObjectURL(url),1000)
+  }catch(e){setError((e as Error).message||'Não foi possível gerar a prévia DANFE na Focus.')}finally{setBusy(false)}
  }
  async function download(kind:'xml'|'danfe'){
   setBusy(true);setError('')
@@ -183,7 +188,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
       <button type="button" className="primary" disabled={busy||!configured||!cadastroCompleto||!vendaLiberada} title={!vendaLiberada?'Confirme o pedido antes de emitir a NF-e de teste.':undefined} onClick={()=>setEmitModal(true)}>Emitir NF-e de teste</button>
       <button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Recarregar cadastros</button>
       {!!note?.payload&&<button type="button" className="ghost" disabled={busy} onClick={()=>void act('consult')}>Consultar situação</button>}
-      <button type="button" className="ghost" disabled={busy||!source} onClick={()=>void previewDanfe()}>Prévia DANFE</button>
+      <button type="button" className="ghost" disabled={busy||!source||!configured||!cadastroCompleto||!vendaLiberada} title={!cadastroCompleto?'Complete os dados fiscais antes de gerar a prévia.':!vendaLiberada?'Confirme o pedido antes de gerar a prévia.':undefined} onClick={()=>void previewDanfe()}>Prévia DANFE</button>
       {note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button><button type="button" className="warningBtn" disabled={busy} onClick={()=>void cancelNfe()}>Cancelar NF-e</button></>}
     </div>
    </>}
