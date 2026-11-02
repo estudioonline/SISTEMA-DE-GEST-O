@@ -160,6 +160,7 @@ export function providerStatus(result:Record<string,unknown>,httpStatus:number){
 }
 export function documentUrl(path:unknown){
  const u=new URL(String(path??''),FOCUS_BASE)
- if(u.origin!==FOCUS_BASE||!u.pathname.startsWith('/arquivos/')||u.username||u.password)throw Error('Arquivo fiscal indisponível ou endereço inválido.')
+ const allowedPath=u.pathname.startsWith('/arquivos/')||u.pathname.startsWith('/arquivos_development/')
+ if(u.origin!==FOCUS_BASE||!allowedPath||u.username||u.password)throw Error('Arquivo fiscal indisponível ou endereço inválido.')
  return u.href
 }
