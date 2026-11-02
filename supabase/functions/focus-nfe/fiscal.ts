@@ -1,6 +1,6 @@
 export const FOCUS_BASE='https://homologacao.focusnfe.com.br'
 export type Fields=Record<string,string>
-export type FiscalDraft={modalidade_frete?:number|string;observacao_nfe?:string}
+export type FiscalDraft={modalidade_frete?:number|string;observacao_nfe?:string;parcelas?:{numero?:number;vencimento:string;valor:number}[];volumes?:{quantidade:number;peso_liquido?:number;peso_bruto?:number}[]}
 export type SaleSource={venda:Record<string,unknown>;cliente:Record<string,unknown>|null;empresa:Record<string,unknown>|null;itens:{id:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;produto:Record<string,unknown>}[];parcelas?:{id:string;numero:number;vencimento:string;valor:number;status:string}[];source_hash:string;nota?:Record<string,unknown>|null}
 const digits=(v:unknown)=>String(v??'').replace(/\D/g,'')
 const required=(v:unknown,label:string)=>{const s=String(v??'').trim();if(!s)throw Error('Preencha '+label+'.');return s}
@@ -78,13 +78,25 @@ export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={
  const additionalInfo=String(draft.observacao_nfe??'').trim()
  if(additionalInfo.length>5000)throw Error('A observação da NF-e deve ter no máximo 5000 caracteres.')
 
- const parcelas=(source.parcelas||[]).filter(p=>Number(p.valor)>0)
+ const sourceParcelas=(source.parcelas||[]).filter(p=>Number(p.valor)>0)
  const paymentMethod=String(v.forma_pagamento)
  const installments=Math.max(1,Number(v.parcelas)||1)
  const isAtSight=(paymentMethod==='pix'||paymentMethod==='dinheiro')&&installments===1
+ const draftParcelas=Array.isArray(draft.parcelas)?draft.parcelas.map((p,index)=>({
+  id:'draft-'+index,
+  numero:Number(p.numero||index+1),
+  vencimento:String(p.vencimento||''),
+  valor:Number(p.valor),
+  status:'aberto'
+ })).filter(p=>Number(p.valor)>0):null
+ const parcelas=paymentMethod==='boleto'&&draftParcelas?draftParcelas:sourceParcelas
  const parcelasCobranca=isAtSight?[]:parcelas
  const parcelasTotal=parcelasCobranca.reduce((sum,p)=>sum+cash(Number(p.valor)),0)
- if(parcelasCobranca.length&&parcelasTotal!==total)throw Error('A soma das parcelas da fatura diverge do total da venda. Revise o financeiro antes de emitir.')
+ if(parcelasCobranca.length&&parcelasTotal!==total)throw Error('A soma das parcelas da fatura diverge do total da venda. Revise as parcelas antes de emitir.')
+ for(const [index,p] of parcelasCobranca.entries()){
+  required(p.vencimento,'vencimento da parcela '+(index+1))
+  if(!Number.isFinite(Number(p.valor))||Number(p.valor)<=0)throw Error('Valor inválido na parcela '+(index+1)+'.')
+ }
 
  const paymentMap:Record<string,string>={dinheiro:'01',cartao:'03',boleto:'15',pix:'20'}
  const fiscalPayment=paymentMap[paymentMethod]||'91'
@@ -108,6 +120,19 @@ export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={
   indicador_inscricao_estadual_destinatario:indicadorIe,
   modalidade_frete:freightMode,valor_produtos:gross/100,valor_desconto:discount/100,valor_total:total/100,itens:items,
   formas_pagamento:formasPagamento}
+ const volumes=(Array.isArray(draft.volumes)?draft.volumes:[]).map((volume,index)=>({
+  quantidade:Number(volume.quantidade),
+  peso_liquido:Number(volume.peso_liquido||0),
+  peso_bruto:Number(volume.peso_bruto||0),
+  _index:index
+ })).filter(volume=>volume.quantidade>0||volume.peso_liquido>0||volume.peso_bruto>0)
+ for(const volume of volumes){
+  if(!Number.isFinite(volume.quantidade)||volume.quantidade<=0)throw Error('Informe uma quantidade válida no volume '+(volume._index+1)+'.')
+  if(!Number.isFinite(volume.peso_liquido)||volume.peso_liquido<0)throw Error('Peso líquido inválido no volume '+(volume._index+1)+'.')
+  if(!Number.isFinite(volume.peso_bruto)||volume.peso_bruto<0)throw Error('Peso bruto inválido no volume '+(volume._index+1)+'.')
+  if(volume.peso_bruto>0&&volume.peso_liquido>volume.peso_bruto)throw Error('O peso líquido não pode ser maior que o peso bruto no volume '+(volume._index+1)+'.')
+ }
+ if(volumes.length)payload.volumes=volumes.map(({_index,...volume})=>volume)
  if(parcelasCobranca.length){
   payload.numero_fatura=String(v.fatura_numero??source.venda.id??'').slice(0,60)
   payload.valor_original_fatura=total/100
@@ -125,7 +150,7 @@ export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={
  return payload
 }
 export function safeResult(input:Record<string,unknown>):Record<string,unknown>{
- const keys=['status','status_sefaz','mensagem_sefaz','codigo','mensagem','numero','serie','chave_nfe','caminho_xml_nota_fiscal','caminho_danfe','erros']
+ const keys=['status','status_sefaz','mensagem_sefaz','codigo','mensagem','numero','serie','chave_nfe','caminho_xml_nota_fiscal','caminho_danfe','caminho_xml_cancelamento','numero_protocolo','erros']
  return Object.fromEntries(keys.filter(k=>k in input).map(k=>[k,input[k]]))
 }
 export function providerStatus(result:Record<string,unknown>,httpStatus:number){
