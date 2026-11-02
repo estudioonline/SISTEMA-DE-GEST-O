@@ -6203,3 +6203,242 @@ small{font-size:11px}
   .panel,.card{border-radius:var(--ds-radius-lg)}
   .topbar h1{font-size:21px}
 }
+
+
+/* Lista de Vendas - layout inspirado no conceito visual aprovado */
+.salesModernTable{
+  padding:0;
+  border:1px solid var(--ds-border);
+  border-radius:18px;
+  overflow:visible;
+  background:var(--ds-surface);
+}
+.salesModernTable .salesModernHead{
+  padding:16px 18px 14px;
+  align-items:center;
+  border-bottom:0;
+}
+.salesModernTable .salesModernHead h3{
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:-.01em;
+}
+.salesModernTable .salesModernHead p{
+  margin-top:3px;
+  font-size:12px;
+  color:var(--ds-muted);
+}
+.salesModernTable .salesSearchBox{
+  height:40px;
+  border-radius:10px;
+  background:var(--ds-surface-soft);
+  border-color:var(--ds-border);
+}
+.salesModernTable .salesFilterButton{
+  height:40px;
+  border-radius:10px;
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  border-color:var(--ds-border);
+}
+.salesModernTable .salesAdvancedFilters{
+  margin:0 14px 12px;
+  padding:10px;
+  border:1px solid var(--ds-border);
+  border-radius:12px;
+  background:var(--ds-surface-soft);
+}
+.salesModernTable .salesAdvancedFilters label{
+  color:var(--ds-muted);
+}
+.salesModernTable .tableWrap{
+  padding:0 12px 4px;
+  overflow-x:auto;
+}
+.salesModernTable .salesUxTable{
+  border-collapse:separate;
+  border-spacing:0 7px;
+  table-layout:fixed;
+}
+.salesModernTable .salesUxTable thead th{
+  height:34px;
+  padding:4px 10px;
+  border:0;
+  background:transparent;
+  color:var(--ds-muted);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.035em;
+  vertical-align:bottom;
+}
+.salesModernTable .salesUxTable tbody tr{
+  background:transparent;
+}
+.salesModernTable .salesUxTable tbody tr td{
+  height:54px;
+  padding:8px 10px;
+  background:color-mix(in srgb,var(--ds-surface) 92%,var(--ds-blue) 8%);
+  border-top:1px solid var(--ds-border)!important;
+  border-bottom:1px solid var(--ds-border)!important;
+  color:var(--ds-text);
+  transition:background var(--ds-transition),border-color var(--ds-transition),transform var(--ds-transition);
+}
+.salesModernTable .salesUxTable tbody tr td:first-child{
+  border-left:1px solid var(--ds-border)!important;
+  border-radius:13px 0 0 13px!important;
+}
+.salesModernTable .salesUxTable tbody tr td:last-child{
+  border-right:1px solid var(--ds-border)!important;
+  border-radius:0 13px 13px 0!important;
+}
+.salesModernTable .salesUxTable tbody tr:hover td{
+  background:var(--ds-blue-soft);
+  border-color:color-mix(in srgb,var(--ds-blue) 44%,var(--ds-border))!important;
+}
+.dark .salesModernTable .salesUxTable tbody tr td{
+  background:#101a2b;
+  border-color:#2b3a51!important;
+}
+.dark .salesModernTable .salesUxTable tbody tr:hover td{
+  background:#14233a;
+  border-color:#3b82f6!important;
+}
+.salesModernTable .salesDocument{
+  color:var(--ds-text);
+  font-size:12px;
+  font-weight:900;
+}
+.dark .salesModernTable .salesDocument{color:#fff}
+.salesModernTable .salesIdentity{
+  min-width:0;
+  gap:8px;
+}
+.salesModernTable .salesIdentity>span:last-child{
+  font-size:11px;
+  font-weight:600;
+}
+.salesModernTable .salesAvatar{
+  width:27px;
+  height:27px;
+  flex:0 0 27px;
+  font-size:9px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+}
+.salesModernTable .salesStatus,
+.salesModernTable .salesPaymentStatus,
+.salesModernTable .billingInvoiceBadge{
+  min-height:24px;
+  border-radius:999px;
+  padding:4px 9px;
+  font-size:9px;
+  line-height:1;
+  font-weight:900;
+}
+.salesModernTable .billingInvoiceBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+}
+.salesModernTable .salesStatus-pedido{
+  background:rgba(37,99,235,.28);
+  color:#60a5fa;
+}
+.salesModernTable .salesStatus-orcamento{
+  background:rgba(100,116,139,.22);
+  color:#d8e0ec;
+}
+.salesModernTable .billingInvoice-faturado{
+  background:rgba(16,185,129,.22);
+  color:#34d399;
+}
+.salesModernTable .billingInvoice-nao-faturado{
+  background:rgba(239,68,68,.20);
+  color:#f87171;
+}
+.salesModernTable .salesPaymentStatus-pago{
+  background:rgba(16,185,129,.22);
+  color:#34d399;
+}
+.salesModernTable .salesPaymentStatus-nao-pago{
+  background:rgba(239,68,68,.20);
+  color:#f87171;
+}
+.salesModernTable .salesPaymentStatus-parcial{
+  background:rgba(245,158,11,.24);
+  color:#fbbf24;
+}
+.salesModernTable .salesPaymentText{
+  font-size:11px;
+  font-weight:800;
+  color:var(--ds-text);
+}
+.salesModernTable .salesRoute{
+  font-size:10px;
+  color:var(--ds-text-soft);
+}
+.salesModernTable .salesRoute svg{
+  width:13px;
+  height:13px;
+}
+.salesModernTable .salesTotal{
+  font-size:12px;
+  font-weight:900;
+}
+.salesModernTable .rowMenuBtn{
+  width:30px;
+  height:30px;
+  border:1px solid var(--ds-border);
+  border-radius:9px;
+  background:transparent;
+  color:var(--ds-text-soft);
+}
+.salesModernTable .rowMenuBtn:hover{
+  background:var(--ds-surface-soft);
+  border-color:var(--ds-border-strong);
+}
+.salesModernTable .salesPagination{
+  padding:12px 18px 14px;
+  border-top:0;
+  color:var(--ds-muted);
+}
+.salesModernTable .salesPager button{
+  background:var(--ds-surface-soft);
+  border-color:var(--ds-border);
+  color:var(--ds-text-soft);
+}
+.salesModernTable .salesPager button.active{
+  background:linear-gradient(180deg,#2f8cff,#1769df);
+  border-color:#4298ff;
+  box-shadow:0 4px 12px rgba(37,99,235,.28);
+  color:#fff;
+}
+
+/* Larguras mais próximas do mockup aprovado */
+.salesModernTable .salesUxTable th:nth-child(1),
+.salesModernTable .salesUxTable td:nth-child(1){width:8.5%}
+.salesModernTable .salesUxTable th:nth-child(2),
+.salesModernTable .salesUxTable td:nth-child(2){width:7%}
+.salesModernTable .salesUxTable th:nth-child(3),
+.salesModernTable .salesUxTable td:nth-child(3){width:18%}
+.salesModernTable .salesUxTable th:nth-child(4),
+.salesModernTable .salesUxTable td:nth-child(4){width:10%}
+.salesModernTable .salesUxTable th:nth-child(5),
+.salesModernTable .salesUxTable td:nth-child(5){width:8.5%}
+.salesModernTable .salesUxTable th:nth-child(6),
+.salesModernTable .salesUxTable td:nth-child(6){width:9.5%}
+.salesModernTable .salesUxTable th:nth-child(7),
+.salesModernTable .salesUxTable td:nth-child(7){width:11%}
+.salesModernTable .salesUxTable th:nth-child(8),
+.salesModernTable .salesUxTable td:nth-child(8){width:10.5%}
+.salesModernTable .salesUxTable th:nth-child(9),
+.salesModernTable .salesUxTable td:nth-child(9){width:7.5%}
+.salesModernTable .salesUxTable th:nth-child(10),
+.salesModernTable .salesUxTable td:nth-child(10){width:7%}
+.salesModernTable .salesUxTable th:nth-child(11),
+.salesModernTable .salesUxTable td:nth-child(11){width:2.5%}
+
+@media(max-width:1180px){
+  .salesModernTable .salesUxTable{min-width:1120px}
+  .salesModernTable .tableWrap{overflow-x:auto}
+}
