@@ -119,7 +119,7 @@ const maskCep=(value:string)=>{
 const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0,receita_producao:[]})
 const newPurchaseItem=():PurchaseItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,custo_unitario:0})
 
-function themedPrompt(message:string,title='Solicitar autorização'){
+function themedPrompt(message:string,title='Solicitar autorização',blockers:Array<{tipo?:string;label:string;detalhe:string}>=[]){
   return new Promise<string|null>(resolve=>{
     const overlay=document.createElement('div')
     overlay.className='sgPromptOverlay'
@@ -145,6 +145,37 @@ function themedPrompt(message:string,title='Solicitar autorização'){
     heading.append(h,p)
     head.append(icon,heading)
 
+    let blockerBox:HTMLDivElement|null=null
+    if(blockers.length){
+      blockerBox=document.createElement('div')
+      blockerBox.className='sgPromptBlockers'
+      const blockerTitle=document.createElement('div')
+      blockerTitle.className='sgPromptBlockersTitle'
+      const blockerTitleStrong=document.createElement('strong')
+      blockerTitleStrong.textContent=blockers.length===1?'Bloqueio identificado':'Bloqueios identificados'
+      const blockerTitleCount=document.createElement('span')
+      blockerTitleCount.textContent=String(blockers.length)
+      blockerTitle.append(blockerTitleStrong,blockerTitleCount)
+      const blockerList=document.createElement('div')
+      blockerList.className='sgPromptBlockerList'
+      blockers.forEach((blocker,index)=>{
+        const item=document.createElement('div')
+        item.className='sgPromptBlockerItem'
+        const number=document.createElement('span')
+        number.className='sgPromptBlockerIndex'
+        number.textContent=String(index+1)
+        const content=document.createElement('div')
+        const label=document.createElement('strong')
+        label.textContent=blocker.label
+        const detail=document.createElement('span')
+        detail.textContent=blocker.detalhe
+        content.append(label,detail)
+        item.append(number,content)
+        blockerList.append(item)
+      })
+      blockerBox.append(blockerTitle,blockerList)
+    }
+
     const input=document.createElement('textarea')
     input.className='sgPromptInput'
     input.rows=3
@@ -164,7 +195,8 @@ function themedPrompt(message:string,title='Solicitar autorização'){
     confirm.disabled=true
     actions.append(cancel,confirm)
 
-    dialog.append(head,input,actions)
+    if(blockerBox)dialog.append(head,blockerBox,input,actions)
+    else dialog.append(head,input,actions)
     overlay.append(dialog)
     document.body.append(overlay)
 
@@ -1434,7 +1466,7 @@ function App(){
 
       if(blockers.length){
         if(saleApprovals.some(a=>a.entidade_id===v.id)){setMsg('Este orçamento já está aguardando autorização.');return}
-        const motivo=await themedPrompt(`Este orçamento possui ${blockers.length} bloqueio(s). Informe o motivo para solicitar autorização.`,'Autorização necessária')
+        const motivo=await themedPrompt(`Este orçamento possui ${blockers.length} bloqueio(s). Informe o motivo para solicitar autorização.`,'Autorização necessária',blockers)
         if(!motivo)return
         const {error}=await supabase.rpc('solicitar_autorizacao_venda',{p_motivo:motivo,p_payload:{...payload,p_bloqueios:blockers}})
         if(error)throw error
@@ -1474,7 +1506,7 @@ function App(){
       return
     }
 
-    const motivo=await themedPrompt('Justifique a solicitação para o responsável pela autorização. O motivo deve ter pelo menos 5 caracteres.','Solicitar autorização')
+    const motivo=await themedPrompt(`Esta venda possui ${saleApprovalBlockers.length} bloqueio(s). Informe o motivo para solicitar autorização.`,'Autorização necessária',saleApprovalBlockers)
     if(!motivo)return
 
     setSavingSale(true)
