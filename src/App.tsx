@@ -3812,7 +3812,9 @@ function App(){
                   {saleDetailItems.map((item,index)=>{
                     const product=produtos.find(p=>p.id===item.produto_id)
                     return <tr key={item.produto_id+'-'+index}>
-                      <td><strong>{product?.descricao||'Produto'}</strong><br/><small>{product?.codigo||''}</small></td>
+                      <td>{product&&isAdmin&&canManageProducts
+                        ? <><button type="button" className="saleProductLink" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product)}} title="Abrir produto para editar">{product.descricao}</button><br/><small>{product.codigo||''}</small></>
+                        : <><strong>{product?.descricao||'Produto'}</strong><br/><small>{product?.codigo||''}</small></>}</td>
                       <td>{Number(item.quantidade).toLocaleString('pt-BR')}</td>
                       <td>{money(Number(item.valor_unitario))}</td>
                       <td>{money(Number(item.desconto))}</td>
