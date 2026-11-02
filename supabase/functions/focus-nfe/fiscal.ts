@@ -22,11 +22,15 @@ function fiscalExtra(value:unknown,label:string){
  if(value==null)return {} as Record<string,unknown>
  if(typeof value!=='object'||Array.isArray(value))throw Error('Complemento tributário inválido'+label+'.')
  const extra=value as Record<string,unknown>
+ const fiscal:Record<string,unknown>={}
  for(const [k,v] of Object.entries(extra)){
+  // Metadados internos de migração ficam preservados no produto, mas nunca são enviados para a NF-e.
+  if(k==='importacao_odoo')continue
   if(!/^(icms_|pis_|cofins_|ipi_|ibs_cbs_|cbs_|ibs_)/.test(k)||['icms_situacao_tributaria','icms_origem','pis_situacao_tributaria','cofins_situacao_tributaria'].includes(k))throw Error('Campo tributário não permitido: '+k+'.')
   if(typeof v!=='string'&&(typeof v!=='number'||!Number.isFinite(v)))throw Error('Valor tributário inválido: '+k+'.')
+  fiscal[k]=v
  }
- return extra
+ return fiscal
 }
 export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={},now=new Date()):Record<string,unknown>{
  const c=validateConfig(config),v=source.venda,client=source.cliente
