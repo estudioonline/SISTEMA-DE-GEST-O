@@ -35,6 +35,10 @@ create table if not exists public.fechamentos_caixa_diario_itens (
 alter table public.fechamentos_caixa_diario enable row level security;
 alter table public.fechamentos_caixa_diario_itens enable row level security;
 
+create index if not exists fechamentos_caixa_fechado_por_idx on public.fechamentos_caixa_diario(fechado_por);
+create index if not exists fechamentos_caixa_reaberto_por_idx on public.fechamentos_caixa_diario(reaberto_por);
+create index if not exists fechamentos_caixa_itens_diario_idx on public.fechamentos_caixa_diario_itens(diario_id);
+
 grant select,insert,update on public.fechamentos_caixa_diario to authenticated;
 grant select,insert,update,delete on public.fechamentos_caixa_diario_itens to authenticated;
 
