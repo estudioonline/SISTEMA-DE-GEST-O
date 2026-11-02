@@ -5726,3 +5726,18 @@
 .dark .saleProductionRecipeEditor{background:#0f172a;border-color:#1d4ed8}.dark .saleProductionRecipeRow{background:#111827;border-color:#334155}.dark .saleProductionRecipeRow.productionMaterialShort{background:#2a1c08;border-color:#d97706}.dark .saleProductionRecipeIndex{background:#172554;color:#93c5fd}
 @media(max-width:950px){.saleProductionRecipeRow{grid-template-columns:28px minmax(0,1fr) 110px 38px}.saleProductionRecipeTotal{grid-column:2/4}.saleProductionRecipeActions{width:100%;margin-left:0}}
 @media(max-width:650px){.saleProductionRecipeRow{grid-template-columns:28px minmax(0,1fr) 38px}.saleProductionRecipeRow label{grid-column:2/3}.saleProductionRecipeTotal{grid-column:2/3}.saleProductionRecipeRow>.dangerBtn{grid-column:3;grid-row:1;align-self:start}}
+
+.sgPromptBlockers{display:grid;gap:8px;margin-top:2px;padding:10px;border:1px solid #fed7aa;border-radius:12px;background:#fff7ed;color:#9a3412}
+.sgPromptBlockersTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sgPromptBlockersTitle strong{font-size:12px}
+.sgPromptBlockersTitle span{display:grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#f59e0b;color:#fff;font-size:11px;font-weight:900}
+.sgPromptBlockerList{display:grid;gap:7px}
+.sgPromptBlockerItem{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;align-items:start;padding:8px 9px;border:1px solid #fed7aa;border-radius:9px;background:#fff}
+.sgPromptBlockerIndex{display:grid;place-items:center;width:22px;height:22px;border-radius:999px;background:#ffedd5;color:#c2410c;font-size:10px;font-weight:900}
+.sgPromptBlockerItem>div{display:grid;gap:2px}
+.sgPromptBlockerItem strong{font-size:11px;color:#9a3412}
+.sgPromptBlockerItem span{font-size:10px;line-height:1.35;color:#9a3412}
+.dark .sgPromptBlockers{background:#3a2608;border-color:#8a5b12;color:#fed7aa}
+.dark .sgPromptBlockerItem{background:#271c0c;border-color:#6b4e12}
+.dark .sgPromptBlockerItem strong,.dark .sgPromptBlockerItem span{color:#fed7aa}
+.dark .sgPromptBlockerIndex{background:#4a2f0c;color:#fdba74}
