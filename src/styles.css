@@ -1149,10 +1149,74 @@
 
 
 
-/* Financeiro - subaba de vencidos */
+/* Financeiro - navegação principal */
 .financeSubTabs{
-  margin-bottom:14px;
+  width:100%;
+  margin-bottom:18px;
+  padding:8px;
+  gap:8px;
+  border-radius:16px;
+  overflow-x:auto;
 }
+.financeSubTabs .subTab{
+  flex:1 1 0;
+  min-width:150px;
+  height:52px;
+  padding:0 18px;
+  justify-content:center;
+  gap:9px;
+  border-radius:11px;
+  font-size:13px;
+  font-weight:800;
+  white-space:nowrap;
+  transition:background .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.financeSubTabs .subTab svg{
+  width:18px;
+  height:18px;
+  flex:0 0 auto;
+}
+.financeSubTabs .subTab:hover{
+  transform:translateY(-1px);
+}
+.financeSubTabs .subTab.active{
+  box-shadow:0 5px 14px rgba(37,99,235,.18);
+}
+.dark .financeSubTabs .subTab{
+  color:#D7E2F1;
+}
+.dark .financeSubTabs .subTab.active{
+  background:#245FD1;
+  color:#FFFFFF;
+  box-shadow:0 5px 16px rgba(37,99,235,.24);
+}
+.financeSubTabs .subTabCount{
+  min-width:24px;
+  height:24px;
+  padding:0 7px;
+  font-size:11px;
+}
+@media(max-width:1100px){
+  .financeSubTabs{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    width:100%;
+  }
+  .financeSubTabs .subTab{
+    min-width:0;
+    width:100%;
+  }
+}
+@media(max-width:700px){
+  .financeSubTabs{
+    grid-template-columns:1fr;
+  }
+  .financeSubTabs .subTab{
+    height:48px;
+  }
+}
+
+/* Financeiro - subaba de vencidos */
 .subTabCount{
   min-width:22px;
   height:22px;
