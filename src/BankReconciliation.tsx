@@ -13,7 +13,7 @@ type Suggestion={title:Title;score:number;reasons:string[]}
 type ClosedPeriod={id:string;inicio:string;fim:string;motivo:string;fechado_em:string;reaberto_em:string|null;reabertura_motivo:string|null}
 type ReconcileModel={id:string;nome:string;texto_correspondencia:string;tipo_correspondencia:'contem'|'comeca'|'exato';tipo_transacao:'ANY'|'CREDIT'|'DEBIT';parceiro_nome:string|null;parceiro_tipo:'cliente'|'fornecedor'|'outro'|null;conta_categoria:string|null;centro_custo:string|null;aplicar_automaticamente:boolean;prioridade:number;ativo:boolean}
 type TransferCandidate={saida_id:string;entrada_id:string;diario_saida_id:string;diario_entrada_id:string;diario_saida:string;diario_entrada:string;valor:number;data_saida:string;data_entrada:string;dias_diferenca:number}
-type BankImport={id:string;diario_id:string;arquivo:string;total_linhas:number;inseridas:number;duplicadas:number;importado_em:string;arquivo_path:string|null;arquivo_tipo:string|null;arquivo_tamanho:number|null}
+type BankImport={id:string;diario_id:string;arquivo:string;total_linhas:number;inseridas:number;duplicadas:number;importado_em:string;arquivo_path:string|null;arquivo_tipo:string|null;arquivo_tamanho:number|null;saldo_extrato:number|null;data_saldo:string|null}
 
 const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0)
 const dateBr=(v:string)=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR')}
@@ -42,6 +42,13 @@ function tag(block:string,name:string){
  if(xml)return xml[1].trim()
  const sgml=block.match(new RegExp('<'+name+'>([^<\\r\\n]+)','i'))
  return sgml?.[1]?.trim()||''
+}
+function parseOfxStatementMeta(text:string){
+ const balanceBlock=(text.match(/<LEDGERBAL>([\s\S]*?)(?:<\/LEDGERBAL>|$)/i)||[])[1]||''
+ const rawBalance=tag(balanceBlock,'BALAMT').replace(',','.')
+ const rawDate=tag(balanceBlock,'DTASOF')
+ const balance=Number(rawBalance)
+ return {saldo:Number.isFinite(balance)?balance:null,data_saldo:ofxDate(rawDate)||null}
 }
 function parseOfx(text:string){
  const blocks=text.split(/<STMTTRN>/i).slice(1)
@@ -132,7 +139,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50),
    supabase.from('modelos_conciliacao_bancaria').select('*').order('prioridade',{ascending:true}).order('created_at',{ascending:true}),
    supabase.rpc('detectar_transferencias_bancarias_internas',{p_dias:2}),
-   supabase.from('importacoes_bancarias').select('id,diario_id,arquivo,total_linhas,inseridas,duplicadas,importado_em,arquivo_path,arquivo_tipo,arquivo_tamanho').order('importado_em',{ascending:false}).limit(300)
+   supabase.from('importacoes_bancarias').select('id,diario_id,arquivo,total_linhas,inseridas,duplicadas,importado_em,arquivo_path,arquivo_tipo,arquivo_tamanho,saldo_extrato,data_saldo').order('importado_em',{ascending:false}).limit(300)
   ])
   if(j.error||t.error||a.error||p.error||m.error||x.error||i.error){setMessage((j.error||t.error||a.error||p.error||m.error||x.error||i.error)!.message);return}
   const journalRows=((j.data||[]) as Journal[]).sort((a,b)=>{
@@ -230,6 +237,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   try{
    const text=await file.text(),ext=file.name.toLowerCase().split('.').pop()
    const rows=ext==='csv'?parseCsv(text):parseOfx(text)
+   const statementMeta=ext==='csv'?{saldo:null as number|null,data_saldo:null as string|null}:parseOfxStatementMeta(text)
    if(!rows.length)throw Error('Nenhuma transação válida encontrada no arquivo.')
    const {data,error}=await supabase.rpc('importar_transacoes_bancarias',{p_diario_id:journalId,p_arquivo:file.name,p_transacoes:rows})
    if(error)throw error
@@ -242,6 +250,10 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     else{
       const {error:metaError}=await supabase.from('importacoes_bancarias').update({arquivo_path:path,arquivo_tipo:file.type||null,arquivo_tamanho:file.size}).eq('id',importId)
       if(metaError)archiveWarning=' O extrato foi importado, mas o vínculo do arquivo original falhou: '+metaError.message
+    }
+    if(statementMeta.saldo!=null&&statementMeta.data_saldo){
+      const {error:balanceError}=await supabase.rpc('registrar_saldo_extrato_bancario',{p_importacao_id:importId,p_saldo:statementMeta.saldo,p_data_saldo:statementMeta.data_saldo})
+      if(balanceError)archiveWarning+=' O saldo do extrato não pôde ser carregado: '+balanceError.message
     }
    }
    const {data:modelResult,error:modelError}=await supabase.rpc('aplicar_modelos_conciliacao_bancaria',{p_transacao_id:null})
@@ -492,7 +504,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       {canEdit&&!manual&&<button className="bankLoadButton" disabled={busy} onClick={()=>openUploadForJournal(j.id)}><Upload size={17}/>{busy?'Importando…':'Carregar OFX'}</button>}
     </div>
     {canEdit&&!manual&&<small className="bankDropHint">{dragJournal===j.id?'Solte o arquivo para importar nesta conta':'Arraste um arquivo OFX para esta conta'}</small>}
-   </article>
+   </article></>
   })}</div>
   {modelsOpen&&<div className="bankModalBackdrop"><div className="bankModal bankModelsModal" role="dialog" aria-modal="true" aria-label="Modelos de conciliação"><div className="bankModalHead"><div><strong>Modelos de conciliação</strong><small>Automatize tarifas, IOF, adquirentes, parceiros e classificações recorrentes.</small></div><button onClick={()=>{setModelsOpen(false);setEditingModel(null)}}><XCircle size={18}/></button></div>
     <form onSubmit={saveReconcileModel}>
@@ -525,17 +537,20 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     </div>
   </div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
-  {visibleImports.length>0&&<div className="bankStatementFiles"><div className="bankStatementFilesHead"><div><strong>Documentos dos extratos importados</strong><span>Arquivo original usado para gerar as linhas bancárias.</span></div><b>{visibleImports.length}</b></div><div className="bankStatementFileList">{visibleImports.slice(0,8).map(row=><button type="button" key={row.id} className="bankStatementFile" disabled={busy} onClick={()=>void openImportedFile(row)} title={row.arquivo_path?'Abrir arquivo original':'Arquivo original não armazenado'}><FileText size={17}/><span><strong>{row.arquivo}</strong><small>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(row.importado_em))} · {row.total_linhas} linha(s) · {row.inseridas} nova(s){row.duplicadas?' · '+row.duplicadas+' duplicada(s)':''}</small></span><em>{row.arquivo_path?'Abrir':'Histórico'}</em></button>)}</div></div>}
   <div className="bankFilterBar bankSearchOnly">
     <label className="bankBulkSelect"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisibleTransactions} disabled={!canEdit||busy||deletableVisible.length===0}/><span>Selecionar linhas</span></label>
     <div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div>
     {selectedTransactionCount>0&&<button className="bankBulkDelete" disabled={!canEdit||busy} onClick={()=>void deleteSelectedTransactions()}><Trash2 size={15}/>Excluir selecionadas ({selectedTransactionCount})</button>}
   </div>
 
-  <div className="bankTxList">{visible.map(tx=>{
+  <div className="bankTxList">{visible.map((tx,index)=>{
    const sugg=suggestions(tx),top=sugg[0],high=(top?.score||0)>=80,partial=(top?.score||0)>=45
    const txJournal=journals.find(j=>j.id===tx.diario_id)
-   return <article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')+(selectedTransactions[tx.id]?' bankTxSelected':'')} key={tx.id}>
+   const txImport=tx.importacao_id?imports.find(row=>row.id===tx.importacao_id):null
+   const previousImport=index>0?visible[index-1]?.importacao_id:null
+   const showStatementHeader=Boolean(txImport&&tx.importacao_id!==previousImport)
+   const statementLabel=txImport?((txJournal?.nome||'Diário')+' Extrato '+(txImport.data_saldo||tx.data_lancamento)):''
+   return <>{showStatementHeader&&<div className="bankStatementGroupHeader"><button type="button" disabled={busy||!txImport?.arquivo_path} onClick={()=>txImport&&void openImportedFile(txImport)} title={txImport?.arquivo_path?'Abrir documento original do extrato':'Documento original não armazenado'}><FileText size={15}/><strong>{statementLabel}</strong></button><span>{txImport?.saldo_extrato!=null?money(Number(txImport.saldo_extrato)):'Saldo não informado no arquivo'}</span></div>}<article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')+(selectedTransactions[tx.id]?' bankTxSelected':'')} key={tx.id}>
     <div className="bankTxMain"><label className="bankTxSelect" title={tx.status==='conciliado'?'Desfaça a conciliação antes de excluir':'Selecionar linha para exclusão'}><input type="checkbox" checked={Boolean(selectedTransactions[tx.id])} disabled={!canEdit||busy||tx.status==='conciliado'} onChange={()=>toggleTransactionSelection(tx)}/></label><div className="bankTxDate"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span>{tx.importacao_id&&imports.find(row=>row.id===tx.importacao_id)&&<small className="bankTxSource"><FileText size={11}/>{imports.find(row=>row.id===tx.importacao_id)!.arquivo}</small>}{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong><span>{tx.historico||'—'}</span></div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
     {screen==='matching'&&tx.status!=='conciliado'&&<div className="bankMatchArea bankOdooMatch">
       {top?<div className={'bankSuggestion '+(high?'high':partial?'partial':'low')}><div><CheckCircle2 size={16}/><strong>{high?'Correspondência forte':partial?'Correspondência possível':'Sugestão'}</strong><span>{top.score}% · {top.reasons.join(' • ')}</span></div><span className="bankSuggestedTitle">{top.title.descricao} · {money(Math.max(0,Number(top.title.valor)-Number(top.title.valor_pago)))}</span></div>:<div className="bankNoMatch"><XCircle size={16}/><span>Sem correspondência automática.</span></div>}
