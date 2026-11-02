@@ -301,6 +301,7 @@ function App(){
   const [statementBusy,setStatementBusy]=useState<string|null>(null)
 
   const [editingProduct,setEditingProduct]=useState<Produto|null>(null)
+  const [productReturnSaleId,setProductReturnSaleId]=useState<string|null>(null)
   const [productType,setProductType]=useState<'insumo'|'produto_final'>('insumo')
   const [productGroupId,setProductGroupId]=useState('')
   const [productSubgroupId,setProductSubgroupId]=useState('')
@@ -1020,11 +1021,11 @@ function App(){
   }
   function startNewProduct(){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setEditingProduct(null);setProductType('insumo');setProductGroupId('');setProductSubgroupId('');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setProductReturnSaleId(null);setEditingProduct(null);setProductType('insumo');setProductGroupId('');setProductSubgroupId('');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
-  function startEditProduct(p:Produto){
+  function startEditProduct(p:Produto,returnSaleId:string|null=null){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setProductReturnSaleId(returnSaleId);setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function addProductComponent(){
     const key=crypto.randomUUID()
@@ -1096,8 +1097,15 @@ function App(){
       const clearComposition=await supabase.from('produto_componentes').delete().eq('produto_final_id',productId)
       if(clearComposition.error){setMsg('Produto salvo, mas não foi possível limpar a ficha técnica antiga: '+clearComposition.error.message);await loadData();return}
     }
+    const returnSaleId=productReturnSaleId
     setMsg(editingProduct?'Produto atualizado.':'Produto cadastrado.')
     setEditingProduct(null);setProductComponentDrafts([]);setShowForm(false);await loadData()
+    if(returnSaleId){
+      setProductReturnSaleId(null)
+      setActive('vendas')
+      const returnSale=vendas.find(v=>v.id===returnSaleId)
+      if(returnSale)await openSaleDetail(returnSale)
+    }
   }
   function startAdjustStock(p:Produto){if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setMsg('')}
   async function adjustStock(e:FormEvent<HTMLFormElement>){
@@ -3813,7 +3821,7 @@ function App(){
                     const product=produtos.find(p=>p.id===item.produto_id)
                     return <tr key={item.produto_id+'-'+index}>
                       <td>{product&&isAdmin&&canManageProducts
-                        ? <><button type="button" className="saleProductLink" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product)}} title="Abrir produto para editar">{product.descricao}</button><br/><small>{product.codigo||''}</small></>
+                        ? <><button type="button" className="saleProductLink" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product,v.id)}} title="Abrir produto para editar">{product.descricao}</button><br/><small>{product.codigo||''}</small></>
                         : <><strong>{product?.descricao||'Produto'}</strong><br/><small>{product?.codigo||''}</small></>}</td>
                       <td>{Number(item.quantidade).toLocaleString('pt-BR')}</td>
                       <td>{money(Number(item.valor_unitario))}</td>
