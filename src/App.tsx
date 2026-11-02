@@ -3851,7 +3851,7 @@ function App(){
 
             {saleDetailTab==='documentos'&&<div className="saleDetailSection saleDocumentsGrid">
               <div>{proofPanel('venda',v.id)}</div>
-              <div>{isAdmin&&canManageConfig&&canManageSales?<FocusNfeSale saleId={v.id}/>:<div className="paymentNotice">NF-e disponível apenas para usuários autorizados.</div>}</div>
+              <div>{isAdmin?<FocusNfeSale saleId={v.id}/>:<div className="paymentNotice">Emissão de NF-e disponível somente para o Administrador.</div>}</div>
             </div>}
             {saleDetailTab==='historico'&&<div className="saleDetailSection saleHistoryPanel">
               <div className="saleHistoryHead"><div><h4>Histórico completo</h4><p>Registro somente leitura de alterações, pagamentos, estoque, autorizações e documentos.</p></div><button type="button" className="ghost" disabled={saleHistoryBusy} onClick={()=>void loadSaleHistory(v)}><RefreshCw size={14}/>{saleHistoryBusy?'Atualizando...':'Atualizar'}</button></div>
