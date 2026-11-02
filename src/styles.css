@@ -691,6 +691,26 @@
 .dark .semanticNegative strong{color:#F87171!important}
 .dark .semanticBlue strong{color:#60A5FA!important}
 .dark .semanticNeutral strong{color:#E2E8F0!important}
+
+/* Comissões: contraste correto no tema escuro */
+.dark .commissionsPage .commissionFilters>div>strong{
+  color:#F8FAFC;
+}
+.dark .commissionsPage .commissionFilters>div>span{
+  color:#AFC0D8;
+}
+.dark .commissionsPage .commissionFilters label{
+  color:#DCE6F5;
+}
+.dark .commissionsPage .commissionFilters .searchableSelectLabel,
+.dark .commissionsPage .commissionFilters .searchableSelectLabel span{
+  color:#DCE6F5;
+}
+.dark .commissionsPage .panelHead p,
+.dark .commissionsPage .sellerForm label{
+  color:#AFC0D8;
+}
+
 .dark .financeReceivableGroup .panelHead h3{color:#34D399!important}
 .dark .financePayableGroup .panelHead h3{color:#F87171!important}
 .dark .reportsPage .grid2 .tablePanel:first-child .panelHead h3{color:#60A5FA!important}
