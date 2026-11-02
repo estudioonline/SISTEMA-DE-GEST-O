@@ -1144,6 +1144,35 @@ function App(){
     }
   }
 
+  async function exportSelectedProducts(ids:string[]){
+    const selected=produtos.filter(p=>ids.includes(p.id))
+    if(!selected.length){setMsg('Selecione pelo menos um produto para exportar.');return}
+    try{
+      (await import('./lib/productsExcel')).exportProductsExcel(selected,gruposProdutos,subgruposProdutos)
+      setMsg('Excel exportado com '+selected.length+' produto(s) selecionado(s).')
+    }catch{
+      setMsg('Não foi possível exportar os produtos selecionados.')
+    }
+  }
+
+  async function deleteSelectedProducts(ids:string[]){
+    if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return}
+    const selected=produtos.filter(p=>ids.includes(p.id))
+    if(!selected.length){setMsg('Selecione pelo menos um produto para excluir.');return}
+    if(!window.confirm('Excluir '+selected.length+' produto(s) selecionado(s)? Produtos com histórico serão apenas desativados.'))return
+    let deleted=0,deactivated=0,failed=0
+    for(const p of selected){
+      const r=await supabase.from('produtos').delete().eq('id',p.id)
+      if(r.error?.code==='23503'){
+        const d=await supabase.from('produtos').update({ativo:false}).eq('id',p.id)
+        if(d.error)failed++;else deactivated++
+      }else if(r.error)failed++
+      else deleted++
+    }
+    setMsg('Ação concluída: '+deleted+' excluído(s), '+deactivated+' desativado(s)'+(failed?', '+failed+' com erro':'')+'.')
+    await loadData()
+  }
+
   async function downloadProductModel(){
     try{
       (await import('./lib/productsExcel')).downloadProductsTemplate()
@@ -3356,7 +3385,7 @@ function App(){
             </div>
           </div>}
 
-          <ProductTable produtos={produtos} groups={gruposProdutos} subgroups={subgruposProdutos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>
+          <ProductTable produtos={produtos} groups={gruposProdutos} subgroups={subgruposProdutos} onCreate={startNewProduct} openId={productPanel} onToggle={id=>setProductPanel(productPanel===id?null:id)} onEdit={startEditProduct} onAdjust={startAdjustStock} onDelete={deleteProduct} onBulkDelete={deleteSelectedProducts} onBulkExport={exportSelectedProducts} canDelete={isAdmin&&canManageProducts} readOnly={!canManageProducts}/>
         </>}
 
         {productSubtab==='producao'&&<>
@@ -4406,10 +4435,11 @@ function EditableEntityTable({title,headers,rows,readOnly=false,emptyActionLabel
   return <article className={'panel tablePanel '+className}><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map((h,i)=><th key={h}>{i===headers.length-1?h:<button className="tableSortBtn" onClick={()=>toggle(i)}>{h}{sort?.index===i?(sort.dir==='asc'?' ▲':' ▼'):''}</button>}</th>)}</tr></thead><tbody>{sorted.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{sorted.map(r=><Fragment key={r.id}><tr {...recordRow(()=>{if(!r.opened)r.onToggle()},String(r.cells[0]))}>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td><button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button></td></tr>{r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={String(r.cells[0])}><div className="recordDetailBackdrop" onClick={r.onToggle}/><div className="recordDetailSheet"><div className="recordDetailHeader"><strong>{String(r.cells[0])}</strong><button type="button" className="recordDetailClose" onClick={r.onToggle}><X size={17}/>Fechar</button></div><div className="actionPanel">{r.panel}</div></div></div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
-function ProductTable({produtos,groups,subgroups,onCreate,onEdit,readOnly=false}:{produtos:Produto[];groups:ProductGroup[];subgroups:ProductSubgroup[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;canDelete:boolean;readOnly?:boolean}){
+function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,onBulkExport,canDelete,readOnly=false}:{produtos:Produto[];groups:ProductGroup[];subgroups:ProductSubgroup[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;onBulkDelete:(ids:string[])=>Promise<void>|void;onBulkExport:(ids:string[])=>Promise<void>|void;canDelete:boolean;readOnly?:boolean}){
   const [query,setQuery]=useState('')
   const [groupFilter,setGroupFilter]=useState('todos')
   const [subgroupFilter,setSubgroupFilter]=useState('todos')
+  const [selectedIds,setSelectedIds]=useState<string[]>([])
   const [sort,setSort]=useState<{key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda';dir:'asc'|'desc'}|null>(null)
   const groupName=(p:Produto)=>groups.find(g=>g.id===p.grupo_id)?.nome||'Sem grupo'
   const subgroupName=(p:Produto)=>subgroups.find(s=>s.id===p.subgrupo_id)?.nome||'—'
@@ -4430,13 +4460,24 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,readOnly=false}
   const toggle=(key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>setSort(v=>({key,dir:v?.key===key&&v.dir==='asc'?'desc':'asc'}))
   const mark=(key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>sort?.key===key?(sort.dir==='asc'?' ▲':' ▼'):''
   const visibleSubgroups=subgroups.filter(s=>groupFilter==='todos'||groupFilter==='sem-grupo'||s.grupo_id===groupFilter)
+  const visibleIds=sorted.map(p=>p.id)
+  const allVisibleSelected=visibleIds.length>0&&visibleIds.every(id=>selectedIds.includes(id))
+  const toggleSelected=(id:string)=>setSelectedIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])
+  const toggleAllVisible=()=>setSelectedIds(prev=>allVisibleSelected?prev.filter(id=>!visibleIds.includes(id)):Array.from(new Set([...prev,...visibleIds])))
   return <article className="panel tablePanel">
     <div className="panelHead"><div>{produtos.some(p=>Number(p.estoque_atual)<0)&&<p role="status">Há produtos com saldo negativo. Confira as entradas e saídas e registre a reposição ou um ajuste justificado após a contagem física.</p>}<h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div>
+    {selectedIds.length>0&&<div className="productBulkActions">
+      <strong>{selectedIds.length} selecionado(s)</strong>
+      <button type="button" className="ghost" onClick={()=>void onBulkExport(selectedIds)}><Download size={15}/>Exportar selecionados</button>
+      {canDelete&&<button type="button" className="dangerAction" onClick={()=>void onBulkDelete(selectedIds)}><Trash2 size={15}/>Excluir selecionados</button>}
+      <button type="button" className="ghost" onClick={()=>setSelectedIds([])}>Limpar seleção</button>
+    </div>}
     <div className="productGroupFilters">
       <label>Grupo<SearchableSelect value={groupFilter==='todos'?'':groupFilter} onChange={value=>{setGroupFilter(value||'todos');setSubgroupFilter('todos')}} placeholder="Todos os grupos" searchPlaceholder="Pesquisar grupo..." options={[{value:'sem-grupo',label:'Sem grupo'},...groups.filter(g=>g.ativo).map(g=>({value:g.id,label:g.nome}))]}/></label>
       <label>Subgrupo<SearchableSelect value={subgroupFilter==='todos'?'':subgroupFilter} onChange={value=>setSubgroupFilter(value||'todos')} placeholder="Todos os subgrupos" searchPlaceholder="Pesquisar subgrupo..." options={[{value:'sem-subgrupo',label:'Sem subgrupo'},...visibleSubgroups.filter(s=>s.ativo).map(s=>({value:s.id,label:s.nome}))]}/></label>
     </div>
     <div className="tableWrap"><table><thead><tr>
+      <th className="productSelectCell"><input type="checkbox" aria-label="Selecionar todos os produtos visíveis" checked={allVisibleSelected} onChange={toggleAllVisible}/></th>
       <th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th>
       <th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th>
       <th><button className="tableSortBtn" onClick={()=>toggle('grupo')}>Grupo{mark('grupo')}</button></th>
@@ -4448,8 +4489,8 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,readOnly=false}
       <th><button className="tableSortBtn" onClick={()=>toggle('custo')}>Custo{mark('custo')}</button></th>
       <th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th>
     </tr></thead><tbody>
-      {filtered.length===0&&<tr className="emptyTableRow"><td colSpan={10}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para estes filtros.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}
-      {sorted.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <tr key={p.id} {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}</div></td><td>{groupName(p)}</td><td>{subgroupName(p)}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>})}
+      {filtered.length===0&&<tr className="emptyTableRow"><td colSpan={11}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para estes filtros.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}
+      {sorted.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <tr key={p.id} {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td className="productSelectCell" onDoubleClick={e=>e.stopPropagation()}><input type="checkbox" aria-label={'Selecionar '+p.codigo+' - '+p.descricao} checked={selectedIds.includes(p.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelected(p.id)}/></td><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}</div></td><td>{groupName(p)}</td><td>{subgroupName(p)}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>})}
     </tbody></table></div>
   </article>
 }
