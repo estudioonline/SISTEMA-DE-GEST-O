@@ -5902,3 +5902,54 @@
  .nfeVolumeRow label{grid-column:2}
  .nfeVolumeRow>button{grid-column:3;grid-row:1}
 }
+
+
+/* Fechamento diário de caixa */
+.cashClosingPage{display:grid;gap:16px}
+.cashClosingHero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;padding:20px}
+.cashClosingHero h2{margin:4px 0 6px;font-size:26px}
+.cashClosingHero p{margin:0;color:#64748B;max-width:760px}
+.cashClosingEyebrow{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#2563EB}
+.cashClosingDate{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.cashClosingDate label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#475569}
+.cashClosingDate input{min-height:40px}
+.cashClosingTotals{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.cashClosingTotals .card{display:grid;gap:6px;padding:16px}
+.cashClosingTotals .card span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748B}
+.cashClosingTotals .card strong{font-size:18px;color:#0F172A}
+.cashClosingPositive strong,.cashAmountPositive{color:#059669!important}
+.cashClosingNegative strong,.cashAmountNegative{color:#DC2626!important}
+.cashClosingExpected strong{color:#2563EB!important}
+.cashClosingOk strong,.cashDiffOk{color:#059669!important;font-weight:800}
+.cashClosingWarning strong,.cashDiffWarn{color:#D97706!important;font-weight:800}
+.cashClosingAccounts,.cashClosingHistory{display:grid;gap:14px}
+.cashClosingAccounts table,.cashClosingHistory table,.cashClosingDetail table{min-width:980px}
+.cashClosingAccounts td,.cashClosingHistory td,.cashClosingDetail td{vertical-align:middle}
+.cashAccountName{display:flex;align-items:center;gap:10px;min-width:180px}
+.cashAccountName>div{display:grid;gap:2px}
+.cashAccountName span{font-size:11px;color:#64748B}
+.cashClosingValue{width:150px;min-height:36px;text-align:right;font-weight:800}
+.cashClosingFooter{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:end}
+.cashClosingFooter label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#475569}
+.cashClosingFooter textarea{min-height:76px;resize:vertical}
+.cashClosingButton{min-height:44px}
+.cashClosingEmpty{display:grid;place-items:center;gap:8px;padding:30px;color:#64748B}
+.cashClosingDetail{max-width:1180px}
+.dark .cashClosingHero p,
+.dark .cashClosingDate label,
+.dark .cashClosingFooter label,
+.dark .cashAccountName span,
+.dark .cashClosingTotals .card span{color:#94A3B8}
+.dark .cashClosingTotals .card strong{color:#E2E8F0}
+.dark .cashClosingEyebrow{color:#60A5FA}
+@media(max-width:1200px){
+  .cashClosingTotals{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .cashClosingHero{align-items:stretch;flex-direction:column}
+  .cashClosingDate{align-items:stretch}
+  .cashClosingDate label,.cashClosingDate input,.cashClosingDate button{width:100%}
+  .cashClosingTotals{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cashClosingFooter{grid-template-columns:1fr}
+  .cashClosingButton{width:100%}
+}
