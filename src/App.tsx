@@ -218,6 +218,65 @@ function themedPrompt(message:string,title='Solicitar autorização',blockers:Ar
     requestAnimationFrame(()=>input.focus())
   })
 }
+function themedConfirm(message:string,title='Confirmar ação',confirmLabel='Confirmar',tone:'default'|'danger'='default'){
+  return new Promise<boolean>(resolve=>{
+    const overlay=document.createElement('div')
+    overlay.className='sgConfirmOverlay'
+    overlay.setAttribute('role','presentation')
+
+    const dialog=document.createElement('div')
+    dialog.className='sgConfirmDialog'
+    dialog.setAttribute('role','dialog')
+    dialog.setAttribute('aria-modal','true')
+    dialog.setAttribute('aria-labelledby','sg-confirm-title')
+
+    const head=document.createElement('div')
+    head.className='sgConfirmHead'
+    const icon=document.createElement('div')
+    icon.className='sgConfirmIcon'+(tone==='danger'?' danger':'')
+    icon.textContent=tone==='danger'?'!':'?'
+    const heading=document.createElement('div')
+    const h=document.createElement('strong')
+    h.id='sg-confirm-title'
+    h.textContent=title
+    const p=document.createElement('p')
+    p.textContent=message
+    heading.append(h,p)
+    head.append(icon,heading)
+
+    const actions=document.createElement('div')
+    actions.className='sgConfirmActions'
+    const cancel=document.createElement('button')
+    cancel.type='button'
+    cancel.className='ghost'
+    cancel.textContent='Cancelar'
+    const confirm=document.createElement('button')
+    confirm.type='button'
+    confirm.className=tone==='danger'?'dangerAction sgConfirmDanger':'primary'
+    confirm.textContent=confirmLabel
+    actions.append(cancel,confirm)
+
+    dialog.append(head,actions)
+    overlay.append(dialog)
+    document.body.append(overlay)
+
+    const finish=(value:boolean)=>{
+      document.removeEventListener('keydown',onKey)
+      overlay.remove()
+      resolve(value)
+    }
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape')finish(false)
+      if(event.key==='Enter')finish(true)
+    }
+    cancel.addEventListener('click',()=>finish(false))
+    confirm.addEventListener('click',()=>finish(true))
+    overlay.addEventListener('mousedown',event=>{if(event.target===overlay)finish(false)})
+    document.addEventListener('keydown',onKey)
+    requestAnimationFrame(()=>confirm.focus())
+  })
+}
+
 const addMonthsIso=(base:string,months:number)=>{
   const [y,m,d]=base.split('-').map(Number)
   const first=new Date(y,m-1+months,1,12)
@@ -855,7 +914,7 @@ function App(){
 
   async function deleteProof(p:Comprovante){
     if(!canManageFinance){setMsg('Sem permissão para excluir comprovantes.');return}
-    if(!window.confirm('Excluir este comprovante?'))return
+    if(!await themedConfirm('Excluir este comprovante?'))return
     const storage=await supabase.storage.from('comprovantes-pagamento').remove([p.storage_path])
     if(storage.error){setMsg(storage.error.message);return}
     const meta=await supabase.from('comprovantes_pagamento').delete().eq('id',p.id)
@@ -981,7 +1040,7 @@ function App(){
   }
   async function deleteClient(c:Cliente){
     if(!(isAdmin&&canManageClients)){setMsg('Sem permissão para excluir clientes.');return}
-    if(!window.confirm(`Excluir o cliente "${c.nome}"?`))return
+    if(!await themedConfirm(`Excluir o cliente "${c.nome}"?`))return
     const r=await supabase.from('clientes').delete().eq('id',c.id)
     if(r.error?.code==='23503'){
       const d=await supabase.from('clientes').update({ativo:false}).eq('id',c.id)
@@ -1008,7 +1067,7 @@ function App(){
   }
   async function deleteSupplier(f:Fornecedor){
     if(!(isAdmin&&canManageSuppliers)){setMsg('Sem permissão para excluir fornecedores.');return}
-    if(!window.confirm(`Excluir o fornecedor "${f.nome}"?`))return
+    if(!await themedConfirm(`Excluir o fornecedor "${f.nome}"?`))return
     const r=await supabase.from('fornecedores').delete().eq('id',f.id)
     if(r.error?.code==='23503'){
       const d=await supabase.from('fornecedores').update({ativo:false}).eq('id',f.id)
@@ -1146,7 +1205,7 @@ function App(){
   }
   async function deleteProduct(p:Produto){
     if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return}
-    if(!window.confirm(`Excluir o produto "${p.descricao}"?`))return
+    if(!await themedConfirm(`Excluir o produto "${p.descricao}"?`))return
     const r=await supabase.from('produtos').delete().eq('id',p.id)
     if(r.error?.code==='23503'){
       const d=await supabase.from('produtos').update({ativo:false}).eq('id',p.id)
@@ -1179,7 +1238,7 @@ function App(){
     if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return false}
     const selected=produtos.filter(p=>ids.includes(p.id))
     if(!selected.length){setMsg('Selecione pelo menos um produto para excluir.');return false}
-    if(!window.confirm('Excluir '+selected.length+' produto(s) selecionado(s)? Produtos com histórico serão apenas desativados.'))return false
+    if(!await themedConfirm('Excluir '+selected.length+' produto(s) selecionado(s)? Produtos com histórico serão apenas desativados.'))return false
     let deleted=0,deactivated=0,failed=0
     for(const p of selected){
       const r=await supabase.from('produtos').delete().eq('id',p.id)
@@ -1242,7 +1301,7 @@ function App(){
       })
       if(invalid.length)throw new Error(invalid.slice(0,8).join('\n'))
 
-      const confirmed=window.confirm(
+      const confirmed=await themedConfirm(
         `Importar ${rows.length} linha(s)?\n\nProdutos com o mesmo código serão atualizados. Grupo e Subgrupo também serão atualizados pelos nomes da planilha. O valor da coluna "Estoque Atual" substituirá o saldo atual e a diferença ficará registrada no histórico.`
       )
       if(!confirmed){
@@ -1718,8 +1777,8 @@ function App(){
     }catch{setMsg('Não foi possível abrir o PDF da fatura para impressão.')}
   }
 
-  async function cancelSale(v:Venda){if(v.status==='cancelado'||!window.confirm(`Cancelar venda ${saleCode(v.venda_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
-  async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!window.confirm(`Excluir venda ${saleCode(v.venda_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
+  async function cancelSale(v:Venda){if(v.status==='cancelado'||!await themedConfirm(`Cancelar venda ${saleCode(v.venda_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
+  async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!await themedConfirm(`Excluir venda ${saleCode(v.venda_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
 
   // COMPRAS
   function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('cotacao');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
@@ -1930,7 +1989,7 @@ function App(){
   async function receivePurchase(c:Compra){
     if(!canManagePurchases){setMsg('Sem permissão para receber compras.');return}
     if(c.status!=='pedido_aprovado')return
-    if(!window.confirm(`Confirmar o recebimento da compra #${invoiceNo(c.fatura_numero)}? Os itens serão adicionados ao estoque.`))return
+    if(!await themedConfirm(`Confirmar o recebimento da compra #${invoiceNo(c.fatura_numero)}? Os itens serão adicionados ao estoque.`))return
 
     const r=await supabase.from('compras')
       .update({status:'pedido_recebido'})
@@ -1954,12 +2013,12 @@ function App(){
       : c.status==='pedido_aprovado'
         ? 'As contas a pagar em aberto serão canceladas. O estoque não será alterado.'
         : 'A cotação será cancelada sem alterar financeiro ou estoque.'
-    if(c.status==='cancelada'||!window.confirm(`Cancelar esta compra? ${detail}`))return
+    if(c.status==='cancelada'||!await themedConfirm(`Cancelar esta compra? ${detail}`))return
     const r=await supabase.from('compras').update({status:'cancelada'}).eq('id',c.id)
     setMsg(r.error?r.error.message:c.status==='pedido_recebido'?'Pedido cancelado, estoque estornado e contas a pagar em aberto canceladas.':c.status==='pedido_aprovado'?'Pedido cancelado e contas a pagar em aberto canceladas.':'Cotação cancelada.')
     if(!r.error){setPurchasePanel(null);await loadData()}
   }
-  async function deletePurchase(c:Compra){if(!(isAdmin&&canManagePurchases)){setMsg('Sem permissão para excluir compra.');return}if(!window.confirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
+  async function deletePurchase(c:Compra){if(!(isAdmin&&canManagePurchases)){setMsg('Sem permissão para excluir compra.');return}if(!await themedConfirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
 
   // FINANCEIRO
   function startNewTitle(){
@@ -2119,7 +2178,7 @@ function App(){
   async function deleteTitle(t:Titulo){
     if(t.venda_id||t.compra_id||Number(t.valor_pago)>0){setMsg('Título vinculado ou com pagamento não pode ser excluído. Altere o documento de origem.');return}
     if(!(isAdmin&&canManageFinance)){setMsg('Sem permissão para excluir lançamento.');return}
-    if(!window.confirm('Excluir este lançamento?'))return
+    if(!await themedConfirm('Excluir este lançamento?'))return
     const r=await supabase.from('titulos_financeiros').delete().eq('id',t.id)
     setMsg(r.error?r.error.message:'Lançamento excluído.')
     if(!r.error)await loadData()
@@ -2253,8 +2312,8 @@ function App(){
     if(!canManageConfig||savingUserId){setMsg('Aguarde a gravação atual.');return}
     const draft=userEdits[u.user_id]||{nome:u.nome,perfil:u.perfil,ativo:u.ativo}
     if(!draft.nome.trim()){setMsg('Informe o nome do usuário.');return}
-    if(draft.perfil!==u.perfil&&!window.confirm('Alterar o perfil restaura as permissões padrão deste usuário. Continuar?'))return
-    if(!draft.ativo&&u.ativo&&!window.confirm(`Desativar o acesso de "${u.nome}" ao sistema?`))return
+    if(draft.perfil!==u.perfil&&!await themedConfirm('Alterar o perfil restaura as permissões padrão deste usuário. Continuar?'))return
+    if(!draft.ativo&&u.ativo&&!await themedConfirm(`Desativar o acesso de "${u.nome}" ao sistema?`))return
 
     setSavingUserId(u.user_id)
     setMsg('')
