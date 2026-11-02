@@ -828,3 +828,74 @@
   font-size:10px;
   font-weight:600;
 }
+
+
+/* Integracao do Financeiro ao Design System global */
+.bankRecon{
+  --bg-primary:var(--ds-bg);
+  --card-bg:var(--ds-surface);
+  --bank-border:var(--ds-border);
+  --bank-text:var(--ds-text);
+  --bank-muted:var(--ds-muted);
+  --bank-balance:var(--ds-text);
+  --bank-positive:var(--ds-success);
+  --bank-negative:var(--ds-danger);
+  --bank-primary:var(--ds-blue);
+  --bank-secondary:var(--ds-surface-muted);
+  --bank-secondary-text:var(--ds-text-soft);
+  --bank-pending-bg:var(--ds-warning-bg);
+  --bank-pending-text:var(--ds-warning-text);
+  --bank-clear-bg:var(--ds-success-bg);
+  --bank-clear-text:var(--ds-success-text);
+  --bank-line:var(--ds-blue);
+  --bank-drop-bg:var(--ds-blue-soft);
+  --bank-drop-border:var(--ds-blue);
+  --bank-soft:var(--ds-surface-soft);
+  --bank-shadow:var(--ds-shadow-sm);
+  background:transparent;
+  color:var(--ds-text);
+  border-radius:var(--ds-radius-xl);
+  font-family:var(--ds-font);
+}
+.dark .bankRecon{
+  --bg-primary:var(--ds-bg);
+  --card-bg:var(--ds-surface);
+  --bank-border:var(--ds-border);
+  --bank-text:var(--ds-text);
+  --bank-muted:var(--ds-muted);
+  --bank-balance:var(--ds-text);
+  --bank-positive:var(--ds-success);
+  --bank-negative:var(--ds-danger);
+  --bank-primary:var(--ds-blue);
+  --bank-secondary:var(--ds-surface-muted);
+  --bank-secondary-text:var(--ds-text-soft);
+  --bank-pending-bg:var(--ds-warning-bg);
+  --bank-pending-text:var(--ds-warning-text);
+  --bank-clear-bg:var(--ds-success-bg);
+  --bank-clear-text:var(--ds-success-text);
+  --bank-line:var(--ds-blue);
+  --bank-drop-bg:var(--ds-blue-soft);
+  --bank-drop-border:var(--ds-blue);
+  --bank-soft:var(--ds-surface-soft);
+  --bank-shadow:var(--ds-shadow-sm);
+}
+.bankRecon .bankTx,
+.bankRecon .bankFilterBar,
+.bankRecon .bankJournalCard,
+.bankRecon .bankTransferSuggestions,
+.bankRecon .bankStatementFiles{
+  border-radius:var(--ds-radius-lg);
+  border-color:var(--ds-border);
+  background:var(--ds-surface);
+}
+.bankRecon .bankModal{
+  border-radius:var(--ds-radius-xl);
+  background:var(--ds-surface);
+  border-color:var(--ds-border);
+  box-shadow:var(--ds-shadow-md);
+}
+.bankRecon button,
+.bankRecon input,
+.bankRecon select{
+  border-radius:var(--ds-radius-sm);
+}
