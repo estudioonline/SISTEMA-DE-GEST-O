@@ -55,8 +55,8 @@ type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:numb
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
-type SaleRecipeDraft={key:string;componente_id:string;quantidade:number}
-type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;receita_producao?:Array<{componente_id:string;quantidade:number}>|null}
+type SaleRecipeDraft={key:string;componente_id:string;quantidade:number;valor_unitario:number}
+type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;receita_producao?:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>|null}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;receita_producao:SaleRecipeDraft[]}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
@@ -1400,15 +1400,18 @@ function App(){
     setSaleItems(items.map(i=>{
       const product=produtos.find(p=>p.id===i.produto_id)
       const saved=Array.isArray(i.receita_producao)&&i.receita_producao.length?i.receita_producao:null
-      const recipe=saved||((product?.tipo_produto==='produto_final')
+      const recipe=saved||((product?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id))
         ? produtoComponentes.filter(row=>row.produto_final_id===i.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade)}))
         : [])
-      return {key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),receita_producao:recipe.map(row=>({key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade)}))}
+      return {key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),receita_producao:recipe.map(row=>{const componente=produtos.find(p=>p.id===row.componente_id);return {key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade),valor_unitario:Number(row.valor_unitario??componente?.preco_venda??0)}})}
     }))
     setSalePanel(null);setSaleDetailItems([]);setShowForm(true);setMsg('')
   }
   function defaultSaleRecipe(productId:string):SaleRecipeDraft[]{
-    return produtoComponentes.filter(row=>row.produto_final_id===productId).map(row=>({key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade)}))
+    return produtoComponentes.filter(row=>row.produto_final_id===productId).map(row=>{
+      const componente=produtos.find(p=>p.id===row.componente_id)
+      return {key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade),valor_unitario:Number(componente?.preco_venda??0)}
+    })
   }
   function chooseProduct(key:string,id:string){
     const p=produtos.find(x=>x.id===id)
@@ -1416,15 +1419,22 @@ function App(){
       ...i,
       produto_id:id,
       valor_unitario:p?Number(p.preco_venda):0,
-      receita_producao:p?.tipo_produto==='produto_final'?defaultSaleRecipe(id):[]
+      receita_producao:(p?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===id))?defaultSaleRecipe(id):[]
     }:i))
   }
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
-  function updateSaleRecipeItem(itemKey:string,recipeKey:string,field:'componente_id'|'quantidade',value:string|number){
-    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:item.receita_producao.map(row=>row.key===recipeKey?{...row,[field]:field==='componente_id'?String(value):Math.max(0,Number(value)||0)}:row)}:item))
+  function updateSaleRecipeItem(itemKey:string,recipeKey:string,field:'componente_id'|'quantidade'|'valor_unitario',value:string|number){
+    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:item.receita_producao.map(row=>{
+      if(row.key!==recipeKey)return row
+      if(field==='componente_id'){
+        const componente=produtos.find(p=>p.id===String(value))
+        return {...row,componente_id:String(value),valor_unitario:Number(componente?.preco_venda??row.valor_unitario??0)}
+      }
+      return {...row,[field]:Math.max(0,Number(value)||0)}
+    })}:item))
   }
   function addSaleRecipeItem(itemKey:string){
-    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:[...item.receita_producao,{key:crypto.randomUUID(),componente_id:'',quantidade:1}]}:item))
+    setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:[...item.receita_producao,{key:crypto.randomUUID(),componente_id:'',quantidade:1,valor_unitario:0}]}:item))
   }
   function removeSaleRecipeItem(itemKey:string,recipeKey:string){
     setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:item.receita_producao.filter(row=>row.key!==recipeKey)}:item))
@@ -1473,7 +1483,7 @@ function App(){
       p_primeiro_vencimento:today(),
       p_vencimentos:buildInstallmentDates(today(),saleInstallments),
       p_observacoes:saleNotes,
-      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto,receita_producao:i.receita_producao.map(row=>({componente_id:row.componente_id,quantidade:row.quantidade}))}))
+      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto,receita_producao:i.receita_producao.map(row=>({componente_id:row.componente_id,quantidade:row.quantidade,valor_unitario:row.valor_unitario}))}))
     }
     const r=await supabase.rpc('salvar_venda_erp',{
       p_requisicao:saleRequestId,
@@ -2582,7 +2592,9 @@ function App(){
     return item.receita_producao
       .map(row=>{
         const componente=produtos.find(p=>p.id===row.componente_id)
-        return {row,componente,quantidade:Number(row.quantidade)*Number(item.quantidade||0)}
+        const quantidade=Number(row.quantidade)*Number(item.quantidade||0)
+        const valorUnitario=Number(row.valor_unitario||0)
+        return {row,componente,quantidade,valorUnitario,total:quantidade*valorUnitario}
       })
   }
   function saleItemStockInfo(item:SaleItemDraft){
@@ -3867,21 +3879,24 @@ function App(){
               <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
               <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
               {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
-              {produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'&&<div className="saleProductionMaterials saleProductionRecipeEditor">
+              {(produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id)||i.receita_producao.length>0)&&<div className="saleProductionMaterials saleProductionRecipeEditor">
                 <div className="saleProductionMaterialsTitle">
                   <Boxes size={15}/>
-                  <div><strong>Receita deste item</strong><span>Uma cópia da ficha técnica padrão. Alterações valem somente para esta venda.</span></div>
+                  <div><strong>Receita deste item</strong><span>Materiais, quantidades e preços podem ser ajustados somente para esta venda.</span></div>
                   <div className="saleProductionRecipeActions">
+                    <span className="saleRecipeValue">Receita/un.: <strong>{money(i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}</strong></span>
+                    <button type="button" className="ghost compactBtn" onClick={()=>updateSaleItem(i.key,'valor_unitario',i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}>Usar total como preço</button>
                     <button type="button" className="ghost compactBtn" onClick={()=>resetSaleRecipe(i.key,i.produto_id)}>Restaurar padrão</button>
                     <button type="button" className="ghost compactBtn" onClick={()=>addSaleRecipeItem(i.key)}><Plus size={14}/>Material</button>
                   </div>
                 </div>
                 {i.receita_producao.length===0?<div className="saleProductionRecipeEmpty">Este produto de produção está sem receita configurada. Adicione os materiais necessários.</div>:<div className="saleProductionRecipeRows">
-                  {productionMaterials.map(({row,componente,quantidade},idx)=><div key={row.key} className={'saleProductionRecipeRow'+(componente&&Number(componente.estoque_atual)<quantidade?' productionMaterialShort':'')}>
+                  {productionMaterials.map(({row,componente,quantidade,total},idx)=><div key={row.key} className={'saleProductionRecipeRow'+(componente&&Number(componente.estoque_atual)<quantidade?' productionMaterialShort':'')}>
                     <span className="saleProductionRecipeIndex">{idx+1}</span>
-                    <ProductLookup products={produtos.filter(p=>p.ativo&&p.tipo_produto!=='produto_final')} value={row.componente_id} onSelect={id=>updateSaleRecipeItem(i.key,row.key,'componente_id',id)} fullWidth/>
+                    <ProductLookup products={produtos.filter(p=>p.ativo&&p.id!==i.produto_id)} value={row.componente_id} onSelect={id=>updateSaleRecipeItem(i.key,row.key,'componente_id',id)} fullWidth/>
                     <label><span>Qtd./un.</span><input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateSaleRecipeItem(i.key,row.key,'quantidade',Number(e.target.value))}/></label>
-                    <div className="saleProductionRecipeTotal"><span>Total</span><strong>{quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {componente?.unidade||''}</strong><small>{componente?'Estoque '+Number(componente.estoque_atual).toLocaleString('pt-BR')+' '+componente.unidade:'Selecione o material'}</small></div>
+                    <label><span>Preço unit.</span><input type="number" min="0" step="0.01" value={row.valor_unitario||''} onChange={e=>updateSaleRecipeItem(i.key,row.key,'valor_unitario',Number(e.target.value))}/></label>
+                    <div className="saleProductionRecipeTotal"><span>Total na venda</span><strong>{money(total)}</strong><small>{quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {componente?.unidade||''}{componente?' · Estoque '+Number(componente.estoque_atual).toLocaleString('pt-BR')+' '+componente.unidade:''}</small></div>
                     <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleRecipeItem(i.key,row.key)} title="Remover material"><Trash2 size={15}/></button>
                   </div>)}
                 </div>}
