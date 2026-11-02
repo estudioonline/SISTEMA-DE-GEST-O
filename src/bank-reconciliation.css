@@ -734,3 +734,35 @@
 .dark .bankStatementGroupHeader{background:rgba(2,6,23,.32)}
 .dark .bankStatementGroupHeader button{color:#f87171}
 .dark .bankStatementGroupHeader>span{color:#34d399}
+
+
+/* Linhas do extrato mais compactas verticalmente */
+.bankRecon .bankTxList{gap:7px}
+.bankRecon .bankTxMain{
+  padding:8px 12px;
+  gap:10px;
+  min-height:62px;
+}
+.bankRecon .bankTxDate,
+.bankRecon .bankTxDesc{
+  gap:2px;
+}
+.bankRecon .bankTxMain strong{
+  line-height:1.15;
+}
+.bankRecon .bankTxMain span,
+.bankRecon .bankTxMain small{
+  line-height:1.2;
+}
+.bankRecon .bankStatus{
+  padding:3px 8px;
+}
+.bankRecon .bankUndoCompact{
+  margin:3px 12px 5px auto;
+  min-height:26px;
+  padding:0 9px;
+}
+.bankRecon .bankStatementGroupHeader{
+  min-height:34px;
+  padding:6px 10px;
+}
