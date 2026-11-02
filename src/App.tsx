@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen, Info, Database
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen, Info, Database, KeyRound
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -289,6 +289,10 @@ function App(){
   const [userEdits,setUserEdits]=useState<Record<string,{nome:string;perfil:PerfilRole;ativo:boolean}>>({})
   const [userPermissionEdits,setUserPermissionEdits]=useState<Record<string,PermissionMap>>({})
   const [savingUserId,setSavingUserId]=useState<string|null>(null)
+  const [passwordUserId,setPasswordUserId]=useState<string|null>(null)
+  const [newManagedPassword,setNewManagedPassword]=useState('')
+  const [confirmManagedPassword,setConfirmManagedPassword]=useState('')
+  const [savingPasswordUserId,setSavingPasswordUserId]=useState<string|null>(null)
   const [savingPermissionUserId,setSavingPermissionUserId]=useState<string|null>(null)
   const [profilePermissions,setProfilePermissions]=useState<Record<PerfilRole,Record<PermissionModule,boolean>>|null>(null)
   const [savingProfileRole,setSavingProfileRole]=useState<PerfilRole|null>(null)
@@ -2200,6 +2204,49 @@ function App(){
     if(error){setMsg(error.message);return}
     setMsg('Permissões de edição do perfil atualizadas.')
     await loadManagedUsers()
+  }
+
+  function openManagedUserPassword(u:ManagedUser){
+    setPasswordUserId(u.user_id)
+    setNewManagedPassword('')
+    setConfirmManagedPassword('')
+    setMsg('')
+  }
+
+  function closeManagedUserPassword(){
+    if(savingPasswordUserId)return
+    setPasswordUserId(null)
+    setNewManagedPassword('')
+    setConfirmManagedPassword('')
+  }
+
+  async function saveManagedUserPassword(){
+    if(!canManageConfig){setMsg('Sem permissão para alterar senhas.');return}
+    if(!passwordUserId||savingPasswordUserId)return
+    if(newManagedPassword.length<8){setMsg('A nova senha deve ter pelo menos 8 caracteres.');return}
+    if(newManagedPassword!==confirmManagedPassword){setMsg('A confirmação da senha não confere.');return}
+
+    setSavingPasswordUserId(passwordUserId)
+    setMsg('')
+    const {data,error}=await supabase.functions.invoke('admin-reset-password',{
+      body:{user_id:passwordUserId,password:newManagedPassword}
+    })
+    setSavingPasswordUserId(null)
+
+    if(error){
+      setMsg(error.message||'Não foi possível alterar a senha.')
+      return
+    }
+    if(data?.error){
+      setMsg(String(data.error))
+      return
+    }
+
+    const changedUser=managedUsers.find(row=>row.user_id===passwordUserId)
+    setMsg('Senha de '+(changedUser?.nome||'usuário')+' alterada com sucesso.')
+    setPasswordUserId(null)
+    setNewManagedPassword('')
+    setConfirmManagedPassword('')
   }
 
   async function saveManagedUser(u:ManagedUser){
@@ -4315,7 +4362,7 @@ function App(){
                   <option value="inativo">Inativo</option>
                 </select></td>
                 <td>{u.ultimo_acesso?new Date(u.ultimo_acesso).toLocaleString('pt-BR'):'Nunca acessou'}</td>
-                <td><button type="button" className="primary userSaveBtn" disabled={!changed||savingUserId===u.user_id} onClick={()=>void saveManagedUser(u)}>{savingUserId===u.user_id?'Salvando...':'Salvar'}</button></td>
+                <td><div className="userRowActions"><button type="button" className="ghost userPasswordBtn" onClick={e=>{e.stopPropagation();openManagedUserPassword(u)}} title="Alterar senha"><KeyRound size={14}/>Senha</button><button type="button" className="primary userSaveBtn" disabled={!changed||savingUserId===u.user_id} onClick={()=>void saveManagedUser(u)}>{savingUserId===u.user_id?'Salvando...':'Salvar'}</button></div></td>
               </tr>
               {managedUserCard===u.user_id&&<tr className="manageRow"><td colSpan={6}>
                 <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={`Permissões de ${u.nome}`}>
@@ -4370,6 +4417,26 @@ function App(){
             })}</tbody>
           </table></div>
         </article>}
+
+        {configSection==='usuarios'&&canManageConfig&&passwordUserId&&(()=>{
+          const passwordUser=managedUsers.find(row=>row.user_id===passwordUserId)
+          if(!passwordUser)return null
+          const passwordBusy=savingPasswordUserId===passwordUserId
+          return <div className="recordDetailOverlay passwordResetOverlay" role="dialog" aria-modal="true" aria-labelledby="password-reset-title">
+            <div className="recordDetailBackdrop" onClick={closeManagedUserPassword}/>
+            <div className="recordDetailSheet passwordResetSheet">
+              <div className="recordDetailHeader"><strong id="password-reset-title">Alterar senha</strong><button type="button" className="recordDetailClose" disabled={passwordBusy} onClick={closeManagedUserPassword}><X size={17}/>Fechar</button></div>
+              <div className="passwordResetContent">
+                <div className="passwordResetUser"><span className="passwordResetIcon"><KeyRound size={20}/></span><div><strong>{passwordUser.nome}</strong><span>{passwordUser.email}</span></div></div>
+                <div className="permissionSafetyNotice"><ShieldCheck size={16}/><span>A senha é alterada diretamente no login do usuário. O sistema nunca exibe nem armazena a senha atual.</span></div>
+                <label className="fieldLabel">Nova senha<input type="password" autoComplete="new-password" minLength={8} maxLength={128} value={newManagedPassword} onChange={e=>setNewManagedPassword(e.target.value)} placeholder="Mínimo de 8 caracteres" disabled={passwordBusy}/></label>
+                <label className="fieldLabel">Confirmar nova senha<input type="password" autoComplete="new-password" minLength={8} maxLength={128} value={confirmManagedPassword} onChange={e=>setConfirmManagedPassword(e.target.value)} placeholder="Digite novamente" disabled={passwordBusy}/></label>
+                {confirmManagedPassword&&newManagedPassword!==confirmManagedPassword&&<small className="passwordMismatch">As senhas não coincidem.</small>}
+                <div className="passwordResetActions"><button type="button" className="ghost" disabled={passwordBusy} onClick={closeManagedUserPassword}>Cancelar</button><button type="button" className="primary" disabled={passwordBusy||newManagedPassword.length<8||newManagedPassword!==confirmManagedPassword} onClick={()=>void saveManagedUserPassword()}>{passwordBusy?'Alterando...':'Alterar senha'}</button></div>
+              </div>
+            </div>
+          </div>
+        })()}
 
         {configSection==='usuarios'&&canManageConfig&&profilePermissions&&<article className="panel profilePermissionPanel">
           <div className="panelHead"><div><h3>O que cada perfil pode editar</h3><p>Todos os perfis podem visualizar todos os apps. Marque somente os apps que cada perfil poderá alterar.</p></div></div>
