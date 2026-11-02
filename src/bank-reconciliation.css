@@ -816,3 +816,15 @@
     column-gap:9px;
   }
 }
+
+.bankRecon .bankTxDateLine{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  white-space:nowrap;
+}
+.bankRecon .bankTxDateLine span{
+  color:var(--bank-muted);
+  font-size:10px;
+  font-weight:600;
+}
