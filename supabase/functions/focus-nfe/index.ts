@@ -89,6 +89,23 @@ Deno.serve(async(req:Request)=>{
     return json({nota},200,cors)
    }
   }
+  if(body.action==='preview'){
+   if(!token)throw Error('Cadastre o token de homologação nas configurações.')
+   const payload=buildPayload(source,credentials.config,draft)
+   let r:Response
+   try{
+    r=await fetch(FOCUS_BASE+'/v2/nfe/danfe',{method:'POST',headers:{Authorization:'Basic '+btoa(token+':'),'Content-Type':'application/json',Accept:'application/pdf'},body:JSON.stringify(payload),signal:AbortSignal.timeout(25000),redirect:'error'})
+   }catch{throw Error('Não foi possível gerar a prévia DANFE na Focus.')}
+   if(!r.ok){
+    let detail='A Focus não conseguiu gerar a prévia DANFE.'
+    try{
+     const data=await r.json()
+     detail=String(data.mensagem??data.error??detail)
+    }catch{/* mantém mensagem segura */}
+    throw Error(detail)
+   }
+   return new Response(r.body,{headers:{...cors,'Cache-Control':'no-store','Content-Type':'application/pdf','Content-Disposition':'attachment; filename="danfe-previa-focus.pdf"'}})
+  }
   const note=source.nota
   if(!note?.payload)throw Error('Esta venda ainda não foi enviada à Focus.')
   if(body.action==='cancel'){
