@@ -5706,7 +5706,7 @@
 
 .partyLookupField{width:100%;min-height:42px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a;text-align:left;cursor:pointer}
 .partyLookupField svg{color:#64748b}.partyLookupField span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.partyLookupField strong{font-size:11px;color:#2563eb}
-.partyLookupOverlay{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:22px;background:rgba(15,23,42,.48);backdrop-filter:blur(2px)}
+.partyLookupOverlay{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;padding:22px;background:rgba(15,23,42,.58);backdrop-filter:blur(3px);isolation:isolate;pointer-events:auto}
 .partyLookupDialog{width:min(720px,96vw);max-height:82vh;display:grid;grid-template-rows:auto auto auto minmax(0,1fr);gap:12px;padding:16px;border:1px solid #dbe3ef;border-radius:16px;background:#fff;box-shadow:0 24px 70px rgba(15,23,42,.28)}
 .partyLookupHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.partyLookupHeader h2{margin:0;font-size:18px;color:#0f172a}.partyLookupHeader p{margin:3px 0 0;font-size:12px;color:#64748b}
 .partyLookupSearch{display:flex;align-items:center;gap:8px;min-height:42px;padding:0 11px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}.partyLookupSearch input{flex:1;min-width:0;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding:0!important}.partyLookupSearch button{display:grid;place-items:center;width:26px;height:26px;border:0;background:transparent;color:#64748b;cursor:pointer}
