@@ -5741,3 +5741,25 @@
 .dark .sgPromptBlockerItem{background:#271c0c;border-color:#6b4e12}
 .dark .sgPromptBlockerItem strong,.dark .sgPromptBlockerItem span{color:#fed7aa}
 .dark .sgPromptBlockerIndex{background:#4a2f0c;color:#fdba74}
+
+/* Faturamento: linhas mais compactas */
+.billingSalesTable tbody tr{height:auto}
+.billingSalesTable tbody td{padding-top:8px!important;padding-bottom:8px!important;vertical-align:middle}
+.billingSalesTable tbody tr>td:first-child{padding-left:12px!important}
+.billingSalesTable tbody tr>td:last-child{padding-right:12px!important}
+.billingSalesTable tbody td{line-height:1.25}
+.billingRowActions{display:flex;flex-direction:column;gap:5px;align-items:stretch;min-width:96px}
+.billingRowActions button{min-height:30px!important;height:30px;padding:0 10px!important;font-size:10px!important;border-radius:9px!important}
+.billingRowActions .compactDocumentPdf{min-height:30px!important;height:30px!important}
+.billingSalesTable .salesStatus,
+.billingSalesTable .billingInvoiceBadge,
+.billingSalesTable .salesPaymentStatus{min-height:22px;padding:3px 8px;font-size:10px}
+.billingSalesTable td strong{line-height:1.15}
+.billingSalesTable td:nth-child(5){max-width:150px}
+.billingSalesTable td:nth-child(5),
+.billingSalesTable td:nth-child(6){white-space:normal}
+@media(max-width:900px){
+  .billingSalesTable tbody td{padding-top:7px!important;padding-bottom:7px!important}
+  .billingRowActions{min-width:88px}
+  .billingRowActions button{height:28px!important;min-height:28px!important;padding:0 8px!important}
+}
