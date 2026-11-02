@@ -3017,7 +3017,7 @@ function App(){
       {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
       {active==='rh'&&<HumanResources titles={titulos} canEdit={canEditModule('rh')} company={empresa} onChanged={refreshFinance} onOpen={t=>{closeForms();setActive('financeiro');setFinanceSubtab('pagar');setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-pagar','');setFinancePanel(t.id);setFinancePanelTab('pagamentos');setPaymentDate(today());setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))}}/>}
       {active==='entregas'&&<DeliveryWorkspace canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
-      {active==='fechamento'&&<CashClosing canEdit={canEditModule('fechamento')} isAdmin={isAdmin}/>} 
+      {active==='fechamento'&&<CashClosing canEdit={canEditModule('fechamento')} isAdmin={isAdmin} company={empresa}/>} 
       {active==='documentos'&&<DocumentsLibrary/>}
       {active==='infra'&&<InfrastructureUsage/>}
       {active==='dashboard'&&<section>
