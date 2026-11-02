@@ -5953,3 +5953,253 @@
   .cashClosingFooter{grid-template-columns:1fr}
   .cashClosingButton{width:100%}
 }
+
+
+/* =========================================================
+   SG DESIGN SYSTEM GLOBAL
+   Camada unificada de tema, tipografia, densidade e componentes
+   ========================================================= */
+:root{
+  --ds-bg:#F4F6F9;
+  --ds-surface:#FFFFFF;
+  --ds-surface-soft:#F8FAFC;
+  --ds-surface-muted:#EEF2F7;
+  --ds-text:#172033;
+  --ds-text-soft:#475569;
+  --ds-muted:#718096;
+  --ds-disabled:#9AA6B2;
+  --ds-border:#D9E1EB;
+  --ds-border-strong:#B8C4D3;
+  --ds-blue:#2563EB;
+  --ds-blue-hover:#1D4ED8;
+  --ds-blue-soft:#E8F0FF;
+  --ds-indigo:#4F46E5;
+  --ds-success:#059669;
+  --ds-success-bg:#E8F7F0;
+  --ds-success-text:#047857;
+  --ds-warning:#D97706;
+  --ds-warning-bg:#FFF4D6;
+  --ds-warning-text:#9A5B00;
+  --ds-danger:#DC2626;
+  --ds-danger-bg:#FDECEC;
+  --ds-danger-text:#B42318;
+  --ds-radius-sm:8px;
+  --ds-radius-md:10px;
+  --ds-radius-lg:12px;
+  --ds-radius-xl:16px;
+  --ds-shadow-sm:0 4px 14px rgba(15,23,42,.06);
+  --ds-shadow-md:0 10px 28px rgba(15,23,42,.10);
+  --ds-shadow-blue:0 8px 22px rgba(37,99,235,.18);
+  --ds-transition:160ms ease;
+  --ds-font:"Roboto",Arial,sans-serif;
+}
+.dark{
+  --ds-bg:#0E1420;
+  --ds-surface:#151D2B;
+  --ds-surface-soft:#111927;
+  --ds-surface-muted:#1B2535;
+  --ds-text:#F1F5F9;
+  --ds-text-soft:#D7E0EC;
+  --ds-muted:#94A3B8;
+  --ds-disabled:#64748B;
+  --ds-border:#2A3648;
+  --ds-border-strong:#40506A;
+  --ds-blue:#3B82F6;
+  --ds-blue-hover:#60A5FA;
+  --ds-blue-soft:#172B4D;
+  --ds-success:#34D399;
+  --ds-success-bg:rgba(16,185,129,.16);
+  --ds-success-text:#6EE7B7;
+  --ds-warning:#F59E0B;
+  --ds-warning-bg:rgba(245,158,11,.16);
+  --ds-warning-text:#FCD34D;
+  --ds-danger:#F87171;
+  --ds-danger-bg:rgba(239,68,68,.16);
+  --ds-danger-text:#FCA5A5;
+  --ds-shadow-sm:0 5px 18px rgba(0,0,0,.22);
+  --ds-shadow-md:0 14px 36px rgba(0,0,0,.28);
+  --ds-shadow-blue:0 8px 24px rgba(37,99,235,.20);
+}
+
+/* Base */
+html,body,#root{background:var(--ds-bg)}
+body,button,input,select,textarea,table{font-family:var(--ds-font)}
+.app{background:var(--ds-bg);color:var(--ds-text)}
+.main{color:var(--ds-text)}
+h1,h2,h3,h4,h5,h6{color:var(--ds-text)}
+p,small,.muted{color:var(--ds-muted)}
+
+/* Cards e superfícies */
+.card,.panel,.modulePlaceholder,.actionPanel,.recordDetailSheet{
+  background:var(--ds-surface);
+  border-color:var(--ds-border);
+  color:var(--ds-text);
+}
+.card,.panel,.modulePlaceholder{
+  border-radius:var(--ds-radius-xl);
+  box-shadow:var(--ds-shadow-sm);
+}
+.card span,.card small,.panelHead p,.formTitle p,.actionMeta span{
+  color:var(--ds-muted);
+}
+
+/* Botões */
+.iconBtn,.primary,.ghost,.warningBtn,.dangerAction{
+  border-radius:var(--ds-radius-md);
+  font-weight:700;
+  transition:background var(--ds-transition),border-color var(--ds-transition),color var(--ds-transition),box-shadow var(--ds-transition),transform var(--ds-transition);
+}
+.primary{
+  background:var(--ds-blue);
+  border-color:var(--ds-blue);
+  color:#fff;
+  box-shadow:var(--ds-shadow-blue);
+}
+.primary:hover:not(:disabled){
+  background:var(--ds-blue-hover);
+  border-color:var(--ds-blue-hover);
+}
+.ghost,.iconBtn{
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  border-color:var(--ds-border);
+}
+.ghost:hover:not(:disabled),.iconBtn:hover:not(:disabled){
+  background:var(--ds-surface-soft);
+  border-color:var(--ds-border-strong);
+}
+.warningBtn{
+  background:var(--ds-warning-bg);
+  border-color:color-mix(in srgb,var(--ds-warning) 42%,var(--ds-border));
+  color:var(--ds-warning-text);
+}
+.dangerAction{
+  background:var(--ds-danger-bg);
+  border-color:color-mix(in srgb,var(--ds-danger) 40%,var(--ds-border));
+  color:var(--ds-danger-text);
+}
+
+/* Formulários */
+input,select,textarea,
+.dataForm input,.dataForm select,
+.saleHeader input,.saleHeader select,
+.saleItemRow input,.saleItemRow select,
+.purchaseItemRow input,.purchaseItemRow select,
+.reportFilters input,.reportFilters select,
+.configForm input,.configForm textarea,
+.stockForm input,.viewerUserForm input,.viewerUserForm select{
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  border-color:var(--ds-border);
+  border-radius:var(--ds-radius-sm);
+}
+input:focus,select:focus,textarea:focus{
+  outline:none;
+  border-color:var(--ds-blue);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ds-blue) 16%,transparent);
+}
+label,.saleHeader label,.stockForm label,.reportFilters label{
+  color:var(--ds-text-soft);
+}
+
+/* Tabelas: padrão normal */
+.tableWrap table{
+  border-spacing:0 8px;
+}
+.tableWrap thead th{
+  color:var(--ds-muted);
+  font-size:11px;
+  letter-spacing:.02em;
+}
+.tableWrap tbody tr:not(.manageRow) td{
+  background:var(--ds-surface);
+  border-color:var(--ds-border);
+  color:var(--ds-text);
+  padding-top:11px;
+  padding-bottom:11px;
+}
+.tableWrap tbody tr:not(.manageRow):nth-child(even) td,
+.tableWrap tbody tr:not(.manageRow):nth-child(4n+3) td{
+  background:var(--ds-surface-soft);
+}
+.tableWrap tbody tr:not(.manageRow):hover td{
+  background:var(--ds-blue-soft);
+  border-color:color-mix(in srgb,var(--ds-blue) 30%,var(--ds-border));
+}
+.tableWrap tbody tr:not(.manageRow) td:first-child{border-radius:var(--ds-radius-lg) 0 0 var(--ds-radius-lg)}
+.tableWrap tbody tr:not(.manageRow) td:last-child{border-radius:0 var(--ds-radius-lg) var(--ds-radius-lg) 0}
+
+/* Densidade compacta para áreas de alto volume */
+.financePage .tableWrap tbody tr:not(.manageRow) td,
+.employeeFinance .tableWrap tbody tr:not(.manageRow) td,
+.recordDetailSheet .tableWrap tbody tr:not(.manageRow) td{
+  padding-top:8px;
+  padding-bottom:8px;
+}
+.financePage .tableWrap table,
+.employeeFinance .tableWrap table,
+.recordDetailSheet .tableWrap table{
+  border-spacing:0 6px;
+}
+
+/* Status */
+.statusBadge,.pill,.readOnlyTag{
+  border-radius:999px;
+  font-weight:800;
+}
+.status-pedido{background:var(--ds-warning-bg);color:var(--ds-warning-text)}
+.status-orcamento{background:var(--ds-blue-soft);color:var(--ds-blue)}
+.status-faturado{background:var(--ds-success-bg);color:var(--ds-success-text)}
+.status-cancelado{background:var(--ds-danger-bg);color:var(--ds-danger-text)}
+
+/* Modais e detalhes */
+.saleModalOverlay,.recordDetailOverlay,.sgPromptOverlay{
+  backdrop-filter:blur(4px);
+}
+.saleModalShell,.recordDetailSheet,.sgPromptDialog{
+  border-color:var(--ds-border);
+  background:var(--ds-surface);
+  box-shadow:var(--ds-shadow-md);
+}
+.recordDetailHeader{
+  background:var(--ds-surface);
+  border-color:var(--ds-border);
+}
+
+/* Navegação */
+.navItem{
+  border-radius:var(--ds-radius-md);
+  transition:background var(--ds-transition),color var(--ds-transition);
+}
+.navItem.active{
+  box-shadow:inset 3px 0 var(--ds-blue);
+}
+.search{
+  background:var(--ds-surface);
+  border-color:var(--ds-border);
+}
+.search input{color:var(--ds-text)}
+
+/* Tema claro: bordas mais definidas */
+:not(.dark) .panel,
+:not(.dark) .card,
+:not(.dark) .tableWrap tbody tr:not(.manageRow) td,
+:not(.dark) input,
+:not(.dark) select,
+:not(.dark) textarea{
+  border-color:var(--ds-border-strong);
+}
+
+/* Tipografia global */
+.topbar h1{font-size:24px}
+.panelHead h3,.formTitle h3{font-size:16px}
+body,button,input,select,textarea,table{font-size:13px}
+label{font-size:12px}
+small{font-size:11px}
+
+/* Responsividade */
+@media(max-width:760px){
+  .main{padding:14px}
+  .panel,.card{border-radius:var(--ds-radius-lg)}
+  .topbar h1{font-size:21px}
+}
