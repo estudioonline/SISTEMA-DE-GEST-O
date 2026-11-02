@@ -3,7 +3,7 @@ import type {FormEvent} from 'react'
 import {supabase,supabasePublishableKey,supabaseUrl} from './lib/supabase'
 
 type Fields=Record<string,string>
-type Draft={destinatario:Fields;itens:Record<string,Fields>;natureza_operacao:string;consumidor_final:string;presenca_comprador:string;forma_pagamento:string;modalidade_frete?:number|string;observacao_nfe?:string}
+type Draft={destinatario:Fields;itens:Record<string,Fields>;natureza_operacao:string;consumidor_final:string;presenca_comprador:string;forma_pagamento:string;modalidade_frete?:number|string;observacao_nfe?:string;parcelas?:{numero?:number;vencimento:string;valor:number}[];volumes?:{quantidade:number;peso_liquido?:number;peso_bruto?:number}[]}
 type Note={id:string;status:string;dados_fiscais:Draft;payload:unknown;retorno:Record<string,unknown>;referencia:string;updated_at:string}
 type Source={venda:{status:string;total:number;forma_pagamento:string;subtotal?:number;desconto?:number;created_at?:string;fatura_numero?:number|null};cliente:{nome:string;documento:string;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;uf?:string|null;cep?:string|null;inscricao_estadual?:string|null}|null;empresa?:Record<string,unknown>|null;itens:{id:string;quantidade:number;valor_unitario:number;desconto:number;total?:number;produto:{descricao:string;codigo:string;unidade?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;cst_icms?:string|null}}[];nota:Note|null}
 async function focus(action:string,body:Record<string,unknown>={}){
@@ -74,9 +74,15 @@ function productMissing(product: FiscalProduct){
 export function FocusNfeSale({saleId}:{saleId:string}){
  const [opened,setOpened]=useState(false),[source,setSource]=useState<SaleSource|null>(null),[note,setNote]=useState<Note|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[configured,setConfigured]=useState(false)
  const [emitModal,setEmitModal]=useState(false),[freightMode,setFreightMode]=useState('9'),[nfeObservation,setNfeObservation]=useState('')
+ const [nfeInstallments,setNfeInstallments]=useState<{key:string;numero:number;vencimento:string;valor:number}[]>([])
+ const [nfeVolumes,setNfeVolumes]=useState<{key:string;quantidade:number;peso_liquido:number;peso_bruto:number}[]>([{key:'volume-1',quantidade:1,peso_liquido:0,peso_bruto:0}])
  const load=useCallback(async()=>{
   setBusy(true);setError('')
-  try{const r=await focus('sale',{venda_id:saleId});setSource(r.source);setNote(r.source.nota);setConfigured(r.configured)}catch(e){setError((e as Error).message)}finally{setBusy(false)}
+  try{
+   const r=await focus('sale',{venda_id:saleId})
+   setSource(r.source);setNote(r.source.nota);setConfigured(r.configured)
+   setNfeInstallments((r.source.parcelas||[]).map((p:any,index:number)=>({key:String(p.id||index),numero:Number(p.numero||index+1),vencimento:String(p.vencimento||''),valor:Number(p.valor||0)})))
+  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  },[saleId])
  useEffect(()=>{if(opened)void load()},[opened,load])
 
@@ -90,9 +96,29 @@ export function FocusNfeSale({saleId}:{saleId:string}){
   if(action==='emit'&&!window.confirm('Enviar esta venda para emitir uma NF-e de TESTE, sem valor fiscal?'))return
   setBusy(true);setError('');setMessage('')
   try{
-   const r=await focus(action,{venda_id:saleId,dados_fiscais:action==='emit'?{modalidade_frete:Number(freightMode),observacao_nfe:nfeObservation.trim()}:{}})
+   const dadosFiscais=action==='emit'?{
+    modalidade_frete:Number(freightMode),
+    observacao_nfe:nfeObservation.trim(),
+    parcelas:source?.venda.forma_pagamento==='boleto'?nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)})):undefined,
+    volumes:nfeVolumes.map(v=>({quantidade:Number(v.quantidade),peso_liquido:Number(v.peso_liquido),peso_bruto:Number(v.peso_bruto)}))
+   }:{}
+   const r=await focus(action,{venda_id:saleId,dados_fiscais:dadosFiscais})
    setNote(r.nota??r)
    setMessage(r.message??(action==='emit'?'Solicitação enviada em homologação. Consulte a situação para acompanhar.':'Situação atualizada.'))
+  }catch(e){setError((e as Error).message)}finally{setBusy(false)}
+ }
+ async function cancelNfe(){
+  if(busy||note?.status!=='autorizado')return
+  const justificativa=window.prompt('Informe a justificativa do cancelamento da NF-e (15 a 255 caracteres):')
+  if(justificativa===null)return
+  const motivo=justificativa.trim()
+  if(motivo.length<15||motivo.length>255){setError('A justificativa deve ter entre 15 e 255 caracteres.');return}
+  if(!window.confirm('Confirmar o cancelamento desta NF-e na SEFAZ? Esta ação não pode ser desfeita.'))return
+  setBusy(true);setError('');setMessage('')
+  try{
+   const r=await focus('cancel',{venda_id:saleId,justificativa:motivo})
+   setNote(r.nota??r)
+   setMessage(r.message??'NF-e cancelada.')
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
  async function previewDanfe(){
@@ -158,7 +184,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
       <button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Recarregar cadastros</button>
       {!!note?.payload&&<button type="button" className="ghost" disabled={busy} onClick={()=>void act('consult')}>Consultar situação</button>}
       <button type="button" className="ghost" disabled={busy||!source} onClick={()=>void previewDanfe()}>Prévia DANFE</button>
-      {note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button></>}
+      {note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button><button type="button" className="warningBtn" disabled={busy} onClick={()=>void cancelNfe()}>Cancelar NF-e</button></>}
     </div>
    </>}
    {busy&&<p role="status">Processando…</p>}
@@ -172,8 +198,30 @@ export function FocusNfeSale({saleId}:{saleId:string}){
           <div><span>Itens</span><strong>{source?.itens.length??0}</strong></div>
         </div>
         <div className="nfeInstallmentsBox">
-          <div className="nfeInstallmentsHead"><strong>Parcelas da fatura</strong><span>{source?.parcelas?.length||0} parcela(s)</span></div>
-          {(source?.parcelas?.length||0)>0?<div className="nfeInstallmentsList">{source?.parcelas?.map((p,index)=><div key={p.id}><span>{String(index+1).padStart(3,'0')}</span><span>{new Date(p.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span><strong>{Number(p.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>)}</div>:<p>Nenhuma parcela financeira encontrada para esta venda.</p>}
+          <div className="nfeInstallmentsHead"><strong>Parcelas da cobrança</strong><span>{source?.venda.forma_pagamento==='boleto'?'Editáveis para esta NF-e':(source?.parcelas?.length||0)+' parcela(s)'}</span></div>
+          {source?.venda.forma_pagamento==='boleto'?<div className="nfeEditableInstallments">
+            {nfeInstallments.map((p,index)=><div className="nfeEditableInstallment" key={p.key}>
+              <span>{String(index+1).padStart(3,'0')}</span>
+              <input type="date" value={p.vencimento} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,vencimento:e.target.value}:row))}/>
+              <input type="number" min="0.01" step="0.01" value={p.valor} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,valor:Number(e.target.value)}:row))}/>
+              <button type="button" className="iconBtn" onClick={()=>setNfeInstallments(rows=>rows.length>1?rows.filter(row=>row.key!==p.key):rows)} aria-label="Remover parcela">×</button>
+            </div>)}
+            <button type="button" className="ghost" onClick={()=>setNfeInstallments(rows=>[...rows,{key:crypto.randomUUID(),numero:rows.length+1,vencimento:rows.at(-1)?.vencimento||new Date().toISOString().slice(0,10),valor:0}])}>+ Adicionar parcela</button>
+            <small>A soma das parcelas precisa ser igual ao total da venda. A edição vale para os dados de cobrança enviados nesta NF-e.</small>
+          </div>:(source?.parcelas?.length||0)>0?<div className="nfeInstallmentsList">{source?.parcelas?.map((p,index)=><div key={p.id}><span>{String(index+1).padStart(3,'0')}</span><span>{new Date(p.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span><strong>{Number(p.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>)}</div>:<p>Pagamento à vista ou sem parcelas de cobrança para a NF-e.</p>}
+        </div>
+        <div className="nfeVolumesBox">
+          <div className="nfeInstallmentsHead"><strong>Volumes transportados</strong><span>{nfeVolumes.length} volume(s)</span></div>
+          <div className="nfeVolumesList">
+            {nfeVolumes.map((volume,index)=><div className="nfeVolumeRow" key={volume.key}>
+              <span>{index+1}</span>
+              <label>Quantidade<input type="number" min="1" step="1" value={volume.quantidade} onChange={e=>setNfeVolumes(rows=>rows.map(row=>row.key===volume.key?{...row,quantidade:Number(e.target.value)}:row))}/></label>
+              <label>Peso líquido (kg)<input type="number" min="0" step="0.001" value={volume.peso_liquido||''} onChange={e=>setNfeVolumes(rows=>rows.map(row=>row.key===volume.key?{...row,peso_liquido:Number(e.target.value)}:row))}/></label>
+              <label>Peso bruto (kg)<input type="number" min="0" step="0.001" value={volume.peso_bruto||''} onChange={e=>setNfeVolumes(rows=>rows.map(row=>row.key===volume.key?{...row,peso_bruto:Number(e.target.value)}:row))}/></label>
+              <button type="button" className="iconBtn" onClick={()=>setNfeVolumes(rows=>rows.length>1?rows.filter(row=>row.key!==volume.key):rows)} aria-label="Remover volume">×</button>
+            </div>)}
+            <button type="button" className="ghost" onClick={()=>setNfeVolumes(rows=>[...rows,{key:crypto.randomUUID(),quantidade:1,peso_liquido:0,peso_bruto:0}])}>+ Adicionar volume</button>
+          </div>
         </div>
         <label className="fieldLabel">Modelo de frete
           <select value={freightMode} onChange={e=>setFreightMode(e.target.value)}>
