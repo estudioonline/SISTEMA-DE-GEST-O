@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { CheckCircle2, FileText, Link2, Plus, Upload, X } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { parseNfeXml } from './lib/nfeXml'
-import { SearchableSelect } from './SearchableSelect'
+import { ProductLookup } from './ProductLookup'
 import type { ParsedNfe, ParsedNfeItem } from './lib/nfeXml'
 
 type ProductOption={
@@ -11,6 +11,9 @@ type ProductOption={
   codigo:string
   descricao:string
   unidade:string
+  custo:number
+  preco_venda:number
+  estoque_atual:number
   ativo:boolean
 }
 
@@ -366,7 +369,15 @@ export function NfeImportModal({
                 <span>{item.quantidade.toLocaleString('pt-BR')} {item.unidade} × {money(item.valor_unitario)} = {money(item.valor_total)}</span>
               </div>
               <label className="nfeMappingSelect">Produto interno
-                <SearchableSelect value={item.createNew?'__new__':item.productId} onChange={value=>setMapping(index,value)} placeholder="Selecione o produto correspondente" searchPlaceholder="Pesquisar código ou produto..." options={[...activeProducts.map(product=>({value:product.id,label:`${product.codigo} — ${product.descricao}`,keywords:`${product.codigo} ${product.descricao} ${product.unidade}`})),{value:'__new__',label:'+ Criar novo produto'}]}/>
+                <ProductLookup
+                  products={activeProducts}
+                  value={item.createNew?'':item.productId}
+                  onSelect={value=>setMapping(index,value)}
+                  fullWidth
+                />
+                <button type="button" className="ghost" onClick={()=>setMapping(index,'__new__')} disabled={item.createNew}>
+                  <Plus size={14}/>{item.createNew?'Novo produto selecionado':'Criar novo produto'}
+                </button>
                 {item.autoMapped&&<small className="nfeAutoMapped"><CheckCircle2 size={13}/>De/Para reconhecido automaticamente</small>}
               </label>
 
