@@ -78,27 +78,50 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
   }
 
   if(mode==='separacao'){
-    return <section className="logOps">
-      <div className="logOpsHead"><div><span>SEPARAÇÃO</span><h3>Pedidos para separar</h3><p>Confirmação operacional dos itens. Não movimenta estoque.</p></div><button onClick={()=>void load()}><RefreshCw size={15}/>Atualizar</button></div>
-      {msg&&<div className="logOpsNotice">{msg}</div>}
-      <div className="logOrderList">
-        {saleGroups.map(({sale,items:groupItems})=><article className="logOrderCard" key={sale.id}>
-          <header><div><strong>{saleNumber(sale)}</strong><span>{clientName(sale.cliente_id)}</span></div><span>{groupItems.length} item(ns)</span></header>
-          <div className="logItemList">
-            {groupItems.map(item=>{
-              const p=productFor(item.produto_id),sep=sepFor(item.id),current=Number(sep?.quantidade_separada||0),total=Number(item.quantidade||0)
-              return <div className="logItemRow" key={item.id}>
-                <div><strong>{p?.descricao||'Produto'}</strong><small>{p?.codigo||'Sem código'} · {total} {p?.unidade||''}</small></div>
-                <div className={'logStatus '+(sep?.status||'pendente')}>{sep?.status==='separado'?'Separado':sep?.status==='parcial'?'Parcial':'Pendente'}</div>
-                <input type="number" min="0" max={total} step="0.01" defaultValue={current} aria-label="Quantidade separada" onBlur={e=>void saveSeparation(item,Number(e.target.value||0))} disabled={!canEdit||busy}/>
-                <button className="ghost" disabled={!canEdit||busy} onClick={()=>{const q=window.prompt('Quantidade separada:',String(current||Math.min(1,total)));if(q!==null)void saveSeparation(item,Number(q))}}>Parcial</button>
-                <button className="primary" disabled={!canEdit||busy} onClick={()=>void saveSeparation(item,total,true)}><CheckCircle2 size={14}/>Confirmar</button>
-              </div>
-            })}
+    const separatedGroups=saleGroups.filter(({items:groupItems})=>groupItems.every(item=>sepFor(item.id)?.status==='separado'))
+    const pendingGroups=saleGroups.filter(({items:groupItems})=>!groupItems.every(item=>sepFor(item.id)?.status==='separado'))
+
+    const renderSeparationGroup=({sale,items:groupItems}:{sale:Sale;items:SaleItem[]},completed=false)=><article className={'logOrderCard'+(completed?' isSeparated':'')} key={sale.id}>
+      <header><div><strong>{saleNumber(sale)}</strong><span>{clientName(sale.cliente_id)}</span></div><div className="logOrderHeaderMeta"><span>{groupItems.length} item(ns)</span>{completed&&<span className="logOrderDone"><CheckCircle2 size={12}/>Separado</span>}</div></header>
+      <div className="logItemList">
+        {groupItems.map(item=>{
+          const p=productFor(item.produto_id),sep=sepFor(item.id),current=Number(sep?.quantidade_separada||0),total=Number(item.quantidade||0)
+          return <div className="logItemRow" key={item.id}>
+            <div><strong>{p?.descricao||'Produto'}</strong><small>{p?.codigo||'Sem código'} · {total} {p?.unidade||''}</small></div>
+            <div className={'logStatus '+(sep?.status||'pendente')}>{sep?.status==='separado'?'Separado':sep?.status==='parcial'?'Parcial':'Pendente'}</div>
+            <input type="number" min="0" max={total} step="0.01" defaultValue={current} aria-label="Quantidade separada" onBlur={e=>void saveSeparation(item,Number(e.target.value||0))} disabled={!canEdit||busy||completed}/>
+            <button className="ghost" disabled={!canEdit||busy||completed} onClick={()=>{const q=window.prompt('Quantidade separada:',String(current||Math.min(1,total)));if(q!==null)void saveSeparation(item,Number(q))}}>Parcial</button>
+            <button className="primary" disabled={!canEdit||busy||completed} onClick={()=>void saveSeparation(item,total,true)}><CheckCircle2 size={14}/>{completed?'Separado':'Confirmar'}</button>
           </div>
-        </article>)}
-        {!saleGroups.length&&<div className="logEmpty">Nenhum pedido aguardando separação.</div>}
+        })}
       </div>
+    </article>
+
+    return <section className="logOps">
+      <div className="logOpsHead"><div><span>SEPARAÇÃO</span><h3>Separar pedidos</h3><p>Pedidos pendentes ficam separados dos já concluídos. Não movimenta estoque.</p></div><button onClick={()=>void load()}><RefreshCw size={15}/>Atualizar</button></div>
+      {msg&&<div className="logOpsNotice">{msg}</div>}
+
+      <section className="logSeparationSection">
+        <div className="logSectionHead">
+          <div><span className="logSectionDot pending"/><div><strong>Falta separar</strong><small>Pedidos com item pendente ou parcialmente separado.</small></div></div>
+          <b>{pendingGroups.length}</b>
+        </div>
+        <div className="logOrderList">
+          {pendingGroups.map(group=>renderSeparationGroup(group))}
+          {!pendingGroups.length&&<div className="logEmpty">Nenhum pedido pendente de separação.</div>}
+        </div>
+      </section>
+
+      <section className="logSeparationSection completed">
+        <div className="logSectionHead">
+          <div><span className="logSectionDot done"/><div><strong>Separados</strong><small>Pedidos com todos os itens já confirmados.</small></div></div>
+          <b>{separatedGroups.length}</b>
+        </div>
+        <div className="logOrderList">
+          {separatedGroups.map(group=>renderSeparationGroup(group,true))}
+          {!separatedGroups.length&&<div className="logEmpty">Nenhum pedido totalmente separado ainda.</div>}
+        </div>
+      </section>
     </section>
   }
 
