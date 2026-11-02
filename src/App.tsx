@@ -4466,7 +4466,7 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,on
   const toggleAllVisible=()=>setSelectedIds(prev=>allVisibleSelected?prev.filter(id=>!visibleIds.includes(id)):Array.from(new Set([...prev,...visibleIds])))
   return <article className="panel tablePanel">
     <div className="panelHead"><div>{produtos.some(p=>Number(p.estoque_atual)<0)&&<p role="status">Há produtos com saldo negativo. Confira as entradas e saídas e registre a reposição ou um ajuste justificado após a contagem física.</p>}<h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div>
-    {selectedIds.length>0&&<div className="productBulkActions">
+    {selectedIds.length>0&&<div className="productBulkActions" style={{position:'fixed',right:16,bottom:16,zIndex:1200,maxWidth:'calc(100vw - 32px)',boxShadow:'0 10px 30px rgba(0,0,0,.28)'}}>
       <strong>{selectedIds.length} selecionado(s)</strong>
       <button type="button" className="ghost" onClick={()=>void onBulkExport(selectedIds)}><Download size={15}/>Exportar selecionados</button>
       {canDelete&&<button type="button" className="dangerAction" onClick={()=>void onBulkDelete(selectedIds)}><Trash2 size={15}/>Excluir selecionados</button>}
