@@ -1400,8 +1400,8 @@ function App(){
     setSaleItems(items.map(i=>{
       const product=produtos.find(p=>p.id===i.produto_id)
       const saved=Array.isArray(i.receita_producao)&&i.receita_producao.length?i.receita_producao:null
-      const recipe=saved||((product?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id))
-        ? produtoComponentes.filter(row=>row.produto_final_id===i.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade)}))
+      const recipe:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>=saved||((product?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id))
+        ? produtoComponentes.filter(row=>row.produto_final_id===i.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade),valor_unitario:produtos.find(p=>p.id===row.componente_id)?.preco_venda}))
         : [])
       return {key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),receita_producao:recipe.map(row=>{const componente=produtos.find(p=>p.id===row.componente_id);return {key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade),valor_unitario:Number(row.valor_unitario??componente?.preco_venda??0)}})}
     }))
