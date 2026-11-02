@@ -5763,3 +5763,16 @@
   .billingRowActions{min-width:88px}
   .billingRowActions button{height:28px!important;min-height:28px!important;padding:0 8px!important}
 }
+
+/* Faturamento de vendas: pagina mais compacta */
+.billingSalesPage{display:grid;gap:9px}
+.billingSalesHead{margin-bottom:0!important;gap:10px}
+.billingSalesHead h2{margin-bottom:2px!important}
+.billingSalesHead p{margin:0!important;line-height:1.3}
+.billingInfoBanner{min-height:auto!important;padding:8px 11px!important;margin:0!important}
+.billingStatusTabs{gap:6px!important;margin:0!important}
+.billingStatusTabs button{min-height:32px!important;height:32px;padding:0 11px!important;font-size:11px!important}
+.billingSearch{margin:0!important;min-height:36px!important;height:36px;padding:0 10px!important}
+.billingSearch input{min-height:0!important;height:auto!important;padding:0!important}
+.billingSalesPage .tableWrap{margin-top:0!important}
+.billingSalesTable thead th{padding-top:7px!important;padding-bottom:7px!important}
