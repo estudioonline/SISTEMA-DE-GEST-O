@@ -74,6 +74,7 @@ function productMissing(product: FiscalProduct){
 export function FocusNfeSale({saleId}:{saleId:string}){
  const [opened,setOpened]=useState(false),[source,setSource]=useState<SaleSource|null>(null),[note,setNote]=useState<Note|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[configured,setConfigured]=useState(false)
  const [emitModal,setEmitModal]=useState(false),[freightMode,setFreightMode]=useState('9'),[nfeObservation,setNfeObservation]=useState('')
+ const [cancelModal,setCancelModal]=useState(false),[cancelReason,setCancelReason]=useState('')
  const [nfeInstallments,setNfeInstallments]=useState<{key:string;numero:number;vencimento:string;valor:number}[]>([])
  const [nfeVolumes,setNfeVolumes]=useState<{key:string;quantidade:number;peso_liquido:number;peso_bruto:number}[]>([{key:'volume-1',quantidade:1,peso_liquido:0,peso_bruto:0}])
  const load=useCallback(async()=>{
@@ -93,7 +94,6 @@ export function FocusNfeSale({saleId}:{saleId:string}){
 
  async function act(action:'emit'|'consult'){
   if(busy)return
-  if(action==='emit'&&!window.confirm('Enviar esta venda para emitir uma NF-e de TESTE, sem valor fiscal?'))return
   setBusy(true);setError('');setMessage('')
   try{
    const dadosFiscais=action==='emit'?{
@@ -109,16 +109,15 @@ export function FocusNfeSale({saleId}:{saleId:string}){
  }
  async function cancelNfe(){
   if(busy||note?.status!=='autorizado')return
-  const justificativa=window.prompt('Informe a justificativa do cancelamento da NF-e (15 a 255 caracteres):')
-  if(justificativa===null)return
-  const motivo=justificativa.trim()
+  const motivo=cancelReason.trim()
   if(motivo.length<15||motivo.length>255){setError('A justificativa deve ter entre 15 e 255 caracteres.');return}
-  if(!window.confirm('Confirmar o cancelamento desta NF-e na SEFAZ? Esta ação não pode ser desfeita.'))return
   setBusy(true);setError('');setMessage('')
   try{
    const r=await focus('cancel',{venda_id:saleId,justificativa:motivo})
    setNote(r.nota??r)
    setMessage(r.message??'NF-e cancelada.')
+   setCancelModal(false)
+   setCancelReason('')
   }catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
  async function previewDanfe(){
@@ -189,10 +188,30 @@ export function FocusNfeSale({saleId}:{saleId:string}){
       <button type="button" className="ghost" disabled={busy} onClick={()=>void load()}>Recarregar cadastros</button>
       {!!note?.payload&&<button type="button" className="ghost" disabled={busy} onClick={()=>void act('consult')}>Consultar situação</button>}
       <button type="button" className="ghost" disabled={busy||!source||!configured||!cadastroCompleto||!vendaLiberada} title={!cadastroCompleto?'Complete os dados fiscais antes de gerar a prévia.':!vendaLiberada?'Confirme o pedido antes de gerar a prévia.':undefined} onClick={()=>void previewDanfe()}>Prévia DANFE</button>
-      {note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button><button type="button" className="warningBtn" disabled={busy} onClick={()=>void cancelNfe()}>Cancelar NF-e</button></>}
+      {note?.status==='autorizado'&&<><button type="button" className="ghost" disabled={busy} onClick={()=>void download('danfe')}>DANFE de teste</button><button type="button" className="ghost" disabled={busy} onClick={()=>void download('xml')}>XML de teste</button><button type="button" className="warningBtn" disabled={busy} onClick={()=>{setCancelReason('');setError('');setCancelModal(true)}}>Cancelar NF-e</button></>}
     </div>
    </>}
    {busy&&<p role="status">Processando…</p>}
+   {cancelModal&&<div className="saleModalOverlay nfeEmissionOverlay" role="dialog" aria-modal="true" aria-labelledby="nfe-cancel-title">
+    <div className="saleModalShell nfeCancelShell">
+      <div className="panel nfeCancelPanel">
+        <div className="formTitle saleModalTitle"><div><h3 id="nfe-cancel-title">Cancelar NF-e</h3><p>O cancelamento será enviado à SEFAZ e não poderá ser desfeito pelo SG.</p></div><button type="button" className="iconBtn saleModalClose" disabled={busy} onClick={()=>setCancelModal(false)}>×</button></div>
+        <div className="fiscalCadastroWarning nfeCancelWarning" role="alert">
+          <strong>Ação irreversível</strong>
+          <p>Confirme somente se esta NF-e realmente deve ser cancelada.</p>
+        </div>
+        <label className="fieldLabel">Justificativa do cancelamento
+          <textarea value={cancelReason} onChange={e=>setCancelReason(e.target.value)} minLength={15} maxLength={255} placeholder="Informe o motivo do cancelamento (15 a 255 caracteres)" disabled={busy}/>
+        </label>
+        <div className="nfeCancelCounter"><span>{cancelReason.trim().length}/255 caracteres</span><small>Mínimo de 15 caracteres</small></div>
+        <div className="formActions">
+          <button type="button" className="ghost" disabled={busy} onClick={()=>setCancelModal(false)}>Voltar</button>
+          <button type="button" className="dangerAction nfeCancelConfirm" disabled={busy||cancelReason.trim().length<15||cancelReason.trim().length>255} onClick={()=>void cancelNfe()}>{busy?'Cancelando...':'Confirmar cancelamento'}</button>
+        </div>
+      </div>
+    </div>
+   </div>}
+
    {emitModal&&<div className="saleModalOverlay nfeEmissionOverlay" role="dialog" aria-modal="true" aria-label="Emitir NF-e de teste">
     <div className="saleModalShell nfeEmissionShell">
       <div className="panel nfeEmissionPanel">
