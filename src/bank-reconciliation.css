@@ -698,3 +698,39 @@
 }
 .dark .bankStatementFilesHead>b{background:#163a72;color:#bfdbfe}
 .dark .bankTxSource{color:#94a3b8!important}
+
+
+/* Cabecalho do extrato no padrao Odoo */
+.bankStatementGroupHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:38px;
+  padding:8px 10px;
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  background:rgba(15,23,42,.04);
+}
+.bankStatementGroupHeader button{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  border:0;
+  background:transparent;
+  padding:0;
+  font:inherit;
+  color:#dc2626;
+  cursor:pointer;
+}
+.bankStatementGroupHeader button:disabled{cursor:default;opacity:.75}
+.bankStatementGroupHeader strong{font-size:13px;font-weight:800}
+.bankStatementGroupHeader>span{
+  font-size:13px;
+  font-weight:900;
+  color:#059669;
+  white-space:nowrap;
+}
+.dark .bankStatementGroupHeader{background:rgba(2,6,23,.32)}
+.dark .bankStatementGroupHeader button{color:#f87171}
+.dark .bankStatementGroupHeader>span{color:#34d399}
