@@ -630,3 +630,71 @@
   .bankTransferRow{grid-template-columns:1fr auto 1fr}
   .bankTransferRow>b,.bankTransferRow>button{grid-column:1/-1}
 }
+
+
+/* Documento original do extrato importado */
+.bankStatementFiles{
+  margin:0 0 14px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel);
+  overflow:hidden;
+}
+.bankStatementFilesHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+}
+.bankStatementFilesHead>div{display:grid;gap:2px}
+.bankStatementFilesHead strong{font-size:13px}
+.bankStatementFilesHead span{font-size:11px;color:var(--muted)}
+.bankStatementFilesHead>b{
+  min-width:26px;height:26px;border-radius:999px;
+  display:grid;place-items:center;
+  background:#dbeafe;color:#1d4ed8;font-size:11px
+}
+.bankStatementFileList{display:grid}
+.bankStatementFile{
+  width:100%;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:10px;
+  padding:11px 14px;
+  border:0;
+  border-top:1px solid var(--line);
+  background:transparent;
+  text-align:left;
+  color:inherit;
+}
+.bankStatementFile:first-child{border-top:0}
+.bankStatementFile:hover{background:rgba(37,99,235,.06)}
+.bankStatementFile>span{display:grid;gap:2px;min-width:0}
+.bankStatementFile strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px
+}
+.bankStatementFile small{font-size:10px;color:var(--muted)}
+.bankStatementFile em{
+  font-style:normal;
+  font-size:11px;
+  font-weight:800;
+  color:#2563eb
+}
+.bankTxSource{
+  display:flex!important;
+  align-items:center;
+  gap:4px;
+  max-width:150px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#64748b!important;
+}
+.dark .bankStatementFilesHead>b{background:#163a72;color:#bfdbfe}
+.dark .bankTxSource{color:#94a3b8!important}
