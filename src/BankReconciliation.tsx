@@ -11,6 +11,8 @@ type Title={id:string;tipo:'receber'|'pagar';descricao:string;entidade_nome:stri
 type Partner={nome:string;documento:string|null}
 type Suggestion={title:Title;score:number;reasons:string[]}
 type ClosedPeriod={id:string;inicio:string;fim:string;motivo:string;fechado_em:string;reaberto_em:string|null;reabertura_motivo:string|null}
+type ReconcileModel={id:string;nome:string;texto_correspondencia:string;tipo_correspondencia:'contem'|'comeca'|'exato';tipo_transacao:'ANY'|'CREDIT'|'DEBIT';parceiro_nome:string|null;parceiro_tipo:'cliente'|'fornecedor'|'outro'|null;conta_categoria:string|null;centro_custo:string|null;aplicar_automaticamente:boolean;prioridade:number;ativo:boolean}
+type TransferCandidate={saida_id:string;entrada_id:string;diario_saida_id:string;diario_entrada_id:string;diario_saida:string;diario_entrada:string;valor:number;data_saida:string;data_entrada:string;dias_diferenca:number}
 
 const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0)
 const dateBr=(v:string)=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR')}
@@ -92,6 +94,8 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const [suppliers,setSuppliers]=useState<Partner[]>([])
  const [reconcileAccounts,setReconcileAccounts]=useState<{id:string;nome:string}[]>([])
  const [closedPeriods,setClosedPeriods]=useState<ClosedPeriod[]>([])
+ const [models,setModels]=useState<ReconcileModel[]>([])
+ const [transferCandidates,setTransferCandidates]=useState<TransferCandidate[]>([])
  const [activeJournal,setActiveJournal]=useState<string|null>(null)
  const [screen,setScreen]=useState<'dashboard'|'matching'|'transactions'>('dashboard')
  const [search,setSearch]=useState('')
@@ -110,25 +114,29 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const [reconcileTx,setReconcileTx]=useState<BankTx|null>(null)
  const [reconcileSearch,setReconcileSearch]=useState('')
  const [adjustmentOpen,setAdjustmentOpen]=useState(false)
+ const [modelsOpen,setModelsOpen]=useState(false)
+ const [editingModel,setEditingModel]=useState<ReconcileModel|null>(null)
  const [selectedTransactions,setSelectedTransactions]=useState<Record<string,boolean>>({})
  const uploadLock=useRef(false)
  const fileRef=useRef<HTMLInputElement|null>(null)
 
  const load=useCallback(async()=>{
-  const [j,t,c,s,a,p]=await Promise.all([
+  const [j,t,c,s,a,p,m,x]=await Promise.all([
    supabase.from('diarios_bancarios').select('*').eq('ativo',true).order('nome'),
    supabase.from('transacoes_bancarias').select('*').order('data_lancamento',{ascending:false}).order('criado_em',{ascending:false}).limit(5000),
    supabase.from('clientes').select('nome,documento').eq('ativo',true),
    supabase.from('fornecedores').select('nome,documento').eq('ativo',true),
    supabase.from('contas_conciliacao_bancaria').select('id,nome').eq('ativo',true).order('nome'),
-   supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50)
+   supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50),
+   supabase.from('modelos_conciliacao_bancaria').select('*').order('prioridade',{ascending:true}).order('created_at',{ascending:true}),
+   supabase.rpc('detectar_transferencias_bancarias_internas',{p_dias:2})
   ])
-  if(j.error||t.error||a.error||p.error){setMessage((j.error||t.error||a.error||p.error)!.message);return}
+  if(j.error||t.error||a.error||p.error||m.error||x.error){setMessage((j.error||t.error||a.error||p.error||m.error||x.error)!.message);return}
   const journalRows=((j.data||[]) as Journal[]).sort((a,b)=>{
    const rank=(row:Journal)=>normalize(row.nome)==='dinheiro'?0:normalize(row.nome)==='ajustes'?2:1
    return rank(a)-rank(b)||a.nome.localeCompare(b.nome,'pt-BR')
   })
-  setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[])
+  setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[]);setModels((m.data||[]) as ReconcileModel[]);setTransferCandidates((x.data||[]) as TransferCandidate[])
  },[])
  useEffect(()=>{void load()},[load])
 
@@ -206,10 +214,68 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    if(!rows.length)throw Error('Nenhuma transação válida encontrada no arquivo.')
    const {data,error}=await supabase.rpc('importar_transacoes_bancarias',{p_diario_id:journalId,p_arquivo:file.name,p_transacoes:rows})
    if(error)throw error
-   setMessage('Importação concluída: '+Number(data?.inseridas||0)+' nova(s), '+Number(data?.duplicadas||0)+' duplicada(s) descartada(s).')
+   const {data:modelResult,error:modelError}=await supabase.rpc('aplicar_modelos_conciliacao_bancaria',{p_transacao_id:null})
+   if(modelError)throw modelError
+   const auto=Number(modelResult?.conciliados_automaticamente||0)
+   const classified=Number(modelResult?.aplicados||0)
+   setMessage('Importação concluída: '+Number(data?.inseridas||0)+' nova(s), '+Number(data?.duplicadas||0)+' duplicada(s) descartada(s). '+classified+' regra(s) aplicada(s)'+(auto?', '+auto+' conciliada(s) automaticamente.':'.'))
    setUploadOpen(false);await load()
   }catch(e){setMessage((e as Error).message)}finally{uploadLock.current=false;setBusy(false);if(fileRef.current)fileRef.current.value=''}
  }
+ async function saveReconcileModel(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();if(!canEdit||busy)return
+  const f=new FormData(e.currentTarget)
+  const payload={
+   nome:String(f.get('nome')||'').trim(),
+   texto_correspondencia:String(f.get('texto')||'').trim(),
+   tipo_correspondencia:String(f.get('tipo_correspondencia')||'contem'),
+   tipo_transacao:String(f.get('tipo_transacao')||'ANY'),
+   parceiro_nome:String(f.get('parceiro_nome')||'').trim()||null,
+   parceiro_tipo:String(f.get('parceiro_tipo')||'').trim()||null,
+   conta_categoria:String(f.get('conta_categoria')||'').trim()||null,
+   centro_custo:String(f.get('centro_custo')||'').trim()||null,
+   aplicar_automaticamente:f.get('automatico')==='on',
+   prioridade:Number(f.get('prioridade')||100),
+   ativo:true
+  }
+  if(payload.nome.length<2||payload.texto_correspondencia.length<2){setMessage('Informe nome e texto de correspondência da regra.');return}
+  setBusy(true);setMessage('')
+  try{
+   const q=editingModel
+    ? supabase.from('modelos_conciliacao_bancaria').update(payload).eq('id',editingModel.id)
+    : supabase.from('modelos_conciliacao_bancaria').insert(payload)
+   const {error}=await q
+   if(error)throw error
+   setEditingModel(null);setMessage(editingModel?'Modelo atualizado.':'Modelo de conciliação criado.');await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function deleteReconcileModel(model:ReconcileModel){
+  if(!canEdit||busy||!window.confirm('Excluir o modelo "'+model.nome+'"?'))return
+  setBusy(true);setMessage('')
+  try{const {error}=await supabase.from('modelos_conciliacao_bancaria').delete().eq('id',model.id);if(error)throw error;setEditingModel(null);setMessage('Modelo excluído.');await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function applyModelsNow(){
+  if(!canEdit||busy)return
+  setBusy(true);setMessage('')
+  try{
+   const {data,error}=await supabase.rpc('aplicar_modelos_conciliacao_bancaria',{p_transacao_id:null})
+   if(error)throw error
+   setMessage(Number(data?.aplicados||0)+' regra(s) aplicada(s); '+Number(data?.conciliados_automaticamente||0)+' transação(ões) conciliada(s) automaticamente.')
+   await Promise.all([load(),onChanged()])
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function reconcileInternalTransfer(candidate:TransferCandidate){
+  if(!canEdit||busy)return
+  if(!window.confirm('Conciliar '+money(Number(candidate.valor))+' como transferência interna de '+candidate.diario_saida+' para '+candidate.diario_entrada+'?'))return
+  setBusy(true);setMessage('')
+  try{
+   const {error}=await supabase.rpc('conciliar_transferencia_bancaria_interna',{p_saida_id:candidate.saida_id,p_entrada_id:candidate.entrada_id})
+   if(error)throw error
+   setMessage('Transferência interna conciliada sem gerar receita ou despesa.')
+   await load()
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+
  async function reconcile(tx:BankTx,score?:number){
   const links=Object.entries(selected).filter(([,v])=>v>0).map(([titulo_id,valor])=>({titulo_id,valor}))
   if(!links.length){setMessage('Selecione ao menos um título para conciliar.');return}
@@ -371,9 +437,10 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   return Number(scores.get(b.id)||0)-Number(scores.get(a.id)||0)
  }):[]
  if(screen==='dashboard')return <section className="bankRecon">
-  <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div></div>
+  <div className="bankReconTop"><div><span>FINANCEIRO / DIÁRIOS</span><h3>Diários e Conciliação</h3><p>Contas bancárias, extratos importados e pendências de conciliação.</p></div><div className="bankActions">{canEdit&&<button onClick={()=>setModelsOpen(true)}><SlidersHorizontal size={15}/>Modelos de conciliação</button>}{canEdit&&<button className="bankPrimary" disabled={busy} onClick={()=>void applyModelsNow()}><RefreshCw size={15}/>Aplicar regras</button>}</div></div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
   {journals.length===0&&<div className="bankEmpty"><Landmark size={30}/><strong>Nenhum diário bancário cadastrado</strong><span>Cadastre uma conta para começar a importar OFX.</span></div>}
+  {transferCandidates.length>0&&<div className="bankTransferSuggestions"><div className="bankTransferHead"><div><strong>Transferências internas sugeridas</strong><span>Mesmo valor entre bancos diferentes, com datas próximas. Não entram como receita ou despesa.</span></div><b>{transferCandidates.length}</b></div>{transferCandidates.slice(0,6).map(candidate=><div className="bankTransferRow" key={candidate.saida_id+'-'+candidate.entrada_id}><div><span>{dateBr(candidate.data_saida)}</span><strong>{candidate.diario_saida}</strong></div><Link2 size={16}/><div><span>{dateBr(candidate.data_entrada)}</span><strong>{candidate.diario_entrada}</strong></div><b>{money(Number(candidate.valor))}</b>{canEdit&&<button className="bankReconcileButton" disabled={busy} onClick={()=>void reconcileInternalTransfer(candidate)}>Conciliar transferência</button>}</div>)}</div>}
   <div className="bankJournalGrid">{journals.map(j=>{
    const rows=transactions.filter(t=>t.diario_id===j.id),pendingRows=rows.filter(isPending),pendingPayments=pendingRows.filter(t=>t.trntype==='DEBIT').reduce((s,t)=>s+Math.abs(Number(t.valor)),0)
    const manual=isManualJournal(j),cash=normalize(j.nome)==='dinheiro'
@@ -397,6 +464,15 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     {canEdit&&!manual&&<small className="bankDropHint">{dragJournal===j.id?'Solte o arquivo para importar nesta conta':'Arraste um arquivo OFX para esta conta'}</small>}
    </article>
   })}</div>
+  {modelsOpen&&<div className="bankModalBackdrop"><div className="bankModal bankModelsModal" role="dialog" aria-modal="true" aria-label="Modelos de conciliação"><div className="bankModalHead"><div><strong>Modelos de conciliação</strong><small>Automatize tarifas, IOF, adquirentes, parceiros e classificações recorrentes.</small></div><button onClick={()=>{setModelsOpen(false);setEditingModel(null)}}><XCircle size={18}/></button></div>
+    <form onSubmit={saveReconcileModel}>
+      <div className="bankFormGrid"><label>Nome<input name="nome" required defaultValue={editingModel?.nome||''} placeholder="Ex.: Tarifa bancária"/></label><label>Texto que identifica<input name="texto" required defaultValue={editingModel?.texto_correspondencia||''} placeholder="Ex.: TARIFA"/></label><label>Correspondência<select name="tipo_correspondencia" defaultValue={editingModel?.tipo_correspondencia||'contem'}><option value="contem">Contém</option><option value="comeca">Começa com</option><option value="exato">Texto exato</option></select></label><label>Tipo<select name="tipo_transacao" defaultValue={editingModel?.tipo_transacao||'ANY'}><option value="ANY">Entrada ou saída</option><option value="CREDIT">Somente entrada</option><option value="DEBIT">Somente saída</option></select></label></div>
+      <div className="bankFormGrid"><label>Conta / categoria<input name="conta_categoria" defaultValue={editingModel?.conta_categoria||''} placeholder="Ex.: Tarifas bancárias"/></label><label>Centro de custo<input name="centro_custo" defaultValue={editingModel?.centro_custo||''} placeholder="Opcional"/></label><label>Parceiro<input name="parceiro_nome" defaultValue={editingModel?.parceiro_nome||''} placeholder="Opcional"/></label><label>Tipo do parceiro<select name="parceiro_tipo" defaultValue={editingModel?.parceiro_tipo||''}><option value="">Não definir</option><option value="cliente">Cliente</option><option value="fornecedor">Fornecedor</option><option value="outro">Outro</option></select></label></div>
+      <div className="bankModelOptions"><label>Prioridade<input name="prioridade" type="number" min="1" step="1" defaultValue={editingModel?.prioridade||100}/></label><label className="bankCheck"><input name="automatico" type="checkbox" defaultChecked={editingModel?.aplicar_automaticamente||false}/><span>Conciliar automaticamente quando houver conta/categoria</span></label></div>
+      <div className="bankModalActions"><button type="button" onClick={()=>setEditingModel(null)}>Limpar</button><button className="bankPrimary" disabled={busy}>{editingModel?'Salvar modelo':'Criar modelo'}</button></div>
+    </form>
+    <div className="bankModelList">{models.map(model=><div key={model.id}><div><strong>{model.nome}</strong><span>{model.tipo_transacao==='ANY'?'Entrada/saída':model.tipo_transacao==='CREDIT'?'Entrada':'Saída'} · {model.tipo_correspondencia} “{model.texto_correspondencia}”{model.conta_categoria?' · '+model.conta_categoria:''}{model.aplicar_automaticamente?' · automático':''}</span></div><div><button onClick={()=>setEditingModel(model)}>Editar</button>{canEdit&&<button className="bankDangerMenu" onClick={()=>void deleteReconcileModel(model)}>Excluir</button>}</div></div>)}</div>
+  </div></div>}
   {adjustmentOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createAdjustment}><div className="bankModalHead"><strong>Novo ajuste</strong><button type="button" onClick={()=>setAdjustmentOpen(false)}><XCircle size={18}/></button></div><p>Crie uma entrada ou saída manual exclusivamente no diário Ajustes.</p><div className="bankFormGrid"><label>Tipo<select name="tipo" defaultValue="entrada"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label><label>Data<input name="data" type="date" required defaultValue={new Date().toISOString().slice(0,10)}/></label><label>Valor<input name="valor" type="number" min="0.01" step="0.01" required/></label><label>Categoria<input name="categoria" placeholder="Opcional"/></label></div><label>Descrição<input name="descricao" minLength={3} required placeholder="Motivo do ajuste"/></label><label>Centro de custo<input name="centro_custo" placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAdjustmentOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar ajuste</button></div></form></div>}
   {uploadOpen&&<div className="bankModalBackdrop"><div className="bankModal" role="dialog" aria-modal="true" aria-label="Carregar extrato"><div className="bankModalHead"><strong>Carregar extrato</strong><button onClick={()=>setUploadOpen(false)}><XCircle size={18}/></button></div>{showingAllJournals?<p>Selecione um diário específico antes de carregar um extrato.</p>:<><p>O arquivo será atribuído automaticamente ao diário <strong>{journal?.nome}</strong>. FITIDs já importados serão descartados.</p><input ref={fileRef} type="file" disabled={busy} accept=".ofx,.qfx,.csv" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file)}}/><div className="bankUploadHint"><FileUp size={18}/><span>Formatos aceitos: OFX, QFX e CSV.</span></div></>}</div></div>}
   {canClosePeriods&&closedPeriods.length>0&&<div className="bankClosedPeriods"><strong>Períodos financeiros</strong>{closedPeriods.slice(0,6).map(p=><div key={p.id}><span>{dateBr(p.inicio)} a {dateBr(p.fim)} · {p.reaberto_em?'Reaberto':'Fechado'}</span>{!p.reaberto_em&&<button disabled={busy} onClick={()=>void reopenPeriod(p.id)}>Reabrir</button>}</div>)}</div>}
