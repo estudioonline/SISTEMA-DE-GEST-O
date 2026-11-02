@@ -1278,7 +1278,8 @@ function App(){
   }
   async function startEditSale(v:Venda){
     if(!canManageSales){setMsg('Seu perfil não tem permissão para editar vendas.');return}
-    if(v.status==='faturado'){setMsg('Venda faturada não pode ser alterada. Faça os ajustes necessários por meio de um procedimento financeiro autorizado.');return}
+    const saleHasActiveInvoice=faturasVendas.some(f=>f.venda_id===v.id&&f.status==='ativa')
+    if(saleHasActiveInvoice||v.status==='faturado'){setMsg('Venda faturada não pode ser alterada. Cancele a fatura pelo fluxo financeiro antes de editar a venda.');return}
     if(v.status==='cancelado'){setMsg('Venda cancelada não pode ser editada.');return}
     if(saleApprovals.some(a=>a.entidade_id===v.id)){setMsg('Este orçamento está aguardando aprovação e não pode ser alterado até a decisão do administrador.');return}
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
@@ -1339,7 +1340,7 @@ function App(){
     e.preventDefault();if(!session)return
     if(savingSale)return
     if(!canManageSales){setMsg('Seu perfil não tem permissão para criar ou editar vendas.');return}
-    if(editingSale?.status==='faturado'){setMsg('Venda faturada não pode ser alterada.');return}
+    if(editingSale&&(editingSale.status==='faturado'||faturasVendas.some(f=>f.venda_id===editingSale.id&&f.status==='ativa'))){setMsg('Venda faturada não pode ser alterada. Cancele a fatura pelo fluxo financeiro antes de editar a venda.');return}
     setMsg('');setSaleNotice('')
 
     const items=saleItems.filter(i=>i.produto_id&&i.quantidade>0)
@@ -3775,7 +3776,7 @@ function App(){
                 <button type="button" className="documentPdfButton" onClick={()=>void downloadSalePdf(v)}><FileDown size={16}/>{v.status==='orcamento'?'PDF Orçamento':'PDF Venda'}</button>
                 <button type="button" className="documentPrintButton" onClick={()=>void printSalePdf(v)}><Printer size={16}/>Imprimir</button>
                 {canManageSales&&v.status==='orcamento'&&<button type="button" className="primary advanceSaleBtn" disabled={savingSale||waiting} title={waiting?'Aguardando aprovação administrativa':'Avançar orçamento para pedido'} onClick={()=>void advanceSaleToOrder(v)}><CheckCircle2 size={15}/>{waiting?'Aguardando autorização':'Avançar para pedido'}</button>}
-                {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||v.status==='faturado'||waiting} title={v.status==='faturado'?'Venda faturada não pode ser alterada.':waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>{v.status==='faturado'?'Faturada':'Editar'}</button>}
+                {canManageSales&&<button type="button" className="ghost" disabled={v.status==='cancelado'||v.status==='faturado'||faturasVendas.some(f=>f.venda_id===v.id&&f.status==='ativa')||waiting} title={(v.status==='faturado'||faturasVendas.some(f=>f.venda_id===v.id&&f.status==='ativa'))?'Venda faturada não pode ser alterada.':waiting?'Aguardando aprovação administrativa':''} onClick={()=>void startEditSale(v)}><Pencil size={15}/>{(v.status==='faturado'||faturasVendas.some(f=>f.venda_id===v.id&&f.status==='ativa'))?'Faturada':'Editar'}</button>}
                 <button type="button" className="ghost" disabled={saleHistoryBusy} onClick={()=>void loadSaleHistory(v)}><RefreshCw size={15}/>{saleHistoryBusy?'Carregando...':'Histórico'}</button>
                 {isAdmin&&canManageConfig&&canManageSales&&<button type="button" className="ghost" onClick={()=>setSaleDetailTab('documentos')}><ReceiptText size={15}/>NF-e / documentos</button>}
                 {canManageSales&&<button type="button" className="warningBtn" disabled={v.status==='cancelado'} onClick={()=>void cancelSale(v)}><Ban size={15}/>Cancelar</button>}
