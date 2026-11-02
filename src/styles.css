@@ -5776,3 +5776,28 @@
 .billingSearch input{min-height:0!important;height:auto!important;padding:0!important}
 .billingSalesPage .tableWrap{margin-top:0!important}
 .billingSalesTable thead th{padding-top:7px!important;padding-bottom:7px!important}
+
+
+/* Link do produto dentro dos detalhes da venda, no padrão Odoo */
+.saleProductLink{
+  appearance:none;
+  border:0;
+  background:transparent;
+  padding:0;
+  margin:0;
+  color:#2563eb;
+  font:inherit;
+  font-weight:700;
+  text-align:left;
+  cursor:pointer;
+  text-decoration:none;
+}
+.saleProductLink:hover,
+.saleProductLink:focus-visible{
+  color:#1d4ed8;
+  text-decoration:underline;
+  outline:none;
+}
+.dark .saleProductLink{color:#60a5fa}
+.dark .saleProductLink:hover,
+.dark .saleProductLink:focus-visible{color:#93c5fd}
