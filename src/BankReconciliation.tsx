@@ -1,18 +1,19 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowLeft,Banknote,Building2,CheckCircle2,FileUp,Landmark,Link2,List,RefreshCw,Search,SlidersHorizontal,Trash2,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
+import {ArrowLeft,Banknote,Building2,CheckCircle2,FileText,FileUp,Landmark,Link2,List,RefreshCw,Search,SlidersHorizontal,Trash2,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {bankBrand,balanceTrend,isPending,sparkPoints} from './lib/bankPresentation'
 import {SearchableSelect} from './SearchableSelect'
 import type {CSSProperties} from 'react'
 
 type Journal={id:string;nome:string;banco:string|null;agencia:string|null;conta:string|null;saldo_inicial:number;saldo_atual:number;ativo:boolean}
-type BankTx={id:string;diario_id:string;fitid:string;trntype:'CREDIT'|'DEBIT';valor:number;data_lancamento:string;nome:string|null;historico:string|null;status:'pendente'|'parcial'|'conciliado'|'ignorado';criado_em:string;parceiro_nome?:string|null;parceiro_tipo?:'cliente'|'fornecedor'|'outro'|null;conta_categoria?:string|null;centro_custo?:string|null}
+type BankTx={id:string;diario_id:string;importacao_id:string|null;fitid:string;trntype:'CREDIT'|'DEBIT';valor:number;data_lancamento:string;nome:string|null;historico:string|null;status:'pendente'|'parcial'|'conciliado'|'ignorado';criado_em:string;parceiro_nome?:string|null;parceiro_tipo?:'cliente'|'fornecedor'|'outro'|null;conta_categoria?:string|null;centro_custo?:string|null}
 type Title={id:string;tipo:'receber'|'pagar';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:string;categoria:string|null;centro_custo:string|null;forma_pagamento:string|null;venda_id:string|null;compra_id:string|null}
 type Partner={nome:string;documento:string|null}
 type Suggestion={title:Title;score:number;reasons:string[]}
 type ClosedPeriod={id:string;inicio:string;fim:string;motivo:string;fechado_em:string;reaberto_em:string|null;reabertura_motivo:string|null}
 type ReconcileModel={id:string;nome:string;texto_correspondencia:string;tipo_correspondencia:'contem'|'comeca'|'exato';tipo_transacao:'ANY'|'CREDIT'|'DEBIT';parceiro_nome:string|null;parceiro_tipo:'cliente'|'fornecedor'|'outro'|null;conta_categoria:string|null;centro_custo:string|null;aplicar_automaticamente:boolean;prioridade:number;ativo:boolean}
 type TransferCandidate={saida_id:string;entrada_id:string;diario_saida_id:string;diario_entrada_id:string;diario_saida:string;diario_entrada:string;valor:number;data_saida:string;data_entrada:string;dias_diferenca:number}
+type BankImport={id:string;diario_id:string;arquivo:string;total_linhas:number;inseridas:number;duplicadas:number;importado_em:string;arquivo_path:string|null;arquivo_tipo:string|null;arquivo_tamanho:number|null}
 
 const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0)
 const dateBr=(v:string)=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('pt-BR')}
@@ -90,6 +91,7 @@ function isManualJournal(j:Pick<Journal,'nome'|'banco'>){
 export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged}:{titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
  const [journals,setJournals]=useState<Journal[]>([])
  const [transactions,setTransactions]=useState<BankTx[]>([])
+ const [imports,setImports]=useState<BankImport[]>([])
  const [clients,setClients]=useState<Partner[]>([])
  const [suppliers,setSuppliers]=useState<Partner[]>([])
  const [reconcileAccounts,setReconcileAccounts]=useState<{id:string;nome:string}[]>([])
@@ -121,7 +123,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const fileRef=useRef<HTMLInputElement|null>(null)
 
  const load=useCallback(async()=>{
-  const [j,t,c,s,a,p,m,x]=await Promise.all([
+  const [j,t,c,s,a,p,m,x,i]=await Promise.all([
    supabase.from('diarios_bancarios').select('*').eq('ativo',true).order('nome'),
    supabase.from('transacoes_bancarias').select('*').order('data_lancamento',{ascending:false}).order('criado_em',{ascending:false}).limit(5000),
    supabase.from('clientes').select('nome,documento').eq('ativo',true),
@@ -129,14 +131,15 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    supabase.from('contas_conciliacao_bancaria').select('id,nome').eq('ativo',true).order('nome'),
    supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50),
    supabase.from('modelos_conciliacao_bancaria').select('*').order('prioridade',{ascending:true}).order('created_at',{ascending:true}),
-   supabase.rpc('detectar_transferencias_bancarias_internas',{p_dias:2})
+   supabase.rpc('detectar_transferencias_bancarias_internas',{p_dias:2}),
+   supabase.from('importacoes_bancarias').select('id,diario_id,arquivo,total_linhas,inseridas,duplicadas,importado_em,arquivo_path,arquivo_tipo,arquivo_tamanho').order('importado_em',{ascending:false}).limit(300)
   ])
-  if(j.error||t.error||a.error||p.error||m.error||x.error){setMessage((j.error||t.error||a.error||p.error||m.error||x.error)!.message);return}
+  if(j.error||t.error||a.error||p.error||m.error||x.error||i.error){setMessage((j.error||t.error||a.error||p.error||m.error||x.error||i.error)!.message);return}
   const journalRows=((j.data||[]) as Journal[]).sort((a,b)=>{
    const rank=(row:Journal)=>normalize(row.nome)==='dinheiro'?0:normalize(row.nome)==='ajustes'?2:1
    return rank(a)-rank(b)||a.nome.localeCompare(b.nome,'pt-BR')
   })
-  setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[]);setModels((m.data||[]) as ReconcileModel[]);setTransferCandidates((x.data||[]) as TransferCandidate[])
+  setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setImports((i.data||[]) as BankImport[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[]);setModels((m.data||[]) as ReconcileModel[]);setTransferCandidates((x.data||[]) as TransferCandidate[])
  },[])
  useEffect(()=>{void load()},[load])
 
@@ -144,6 +147,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const showingAllJournals=activeJournal==='all'
  const journalTx=useMemo(()=>showingAllJournals?transactions:transactions.filter(t=>t.diario_id===activeJournal),[transactions,activeJournal,showingAllJournals])
  const pending=journalTx.filter(isPending)
+ const visibleImports=useMemo(()=>showingAllJournals?imports:imports.filter(row=>row.diario_id===activeJournal),[imports,activeJournal,showingAllJournals])
  const journalSupportsOfx=Boolean(journal&&!isManualJournal(journal))
  const visible=journalTx.filter(t=>!search||normalize([t.fitid,t.nome||'',t.historico||'',String(t.valor),dateBr(t.data_lancamento)].join(' ')).includes(normalize(search)))
 
@@ -202,6 +206,21 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   e.preventDefault();if(!canEdit)return;setBusy(true);setMessage('')
   try{const f=new FormData(e.currentTarget);const {error}=await supabase.rpc('criar_diario_bancario',{p_nome:f.get('nome'),p_banco:f.get('banco'),p_agencia:f.get('agencia'),p_conta:f.get('conta'),p_saldo_inicial:Number(f.get('saldo')||0)});if(error)throw error;setNewJournalOpen(false);await load()}catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
+ async function openImportedFile(row:BankImport){
+  if(!row.arquivo_path){setMessage('Este extrato foi importado antes do armazenamento do arquivo original.');return}
+  setBusy(true);setMessage('')
+  try{
+   const {data,error}=await supabase.storage.from('extratos-bancarios').download(row.arquivo_path)
+   if(error)throw error
+   const url=URL.createObjectURL(data)
+   window.open(url,'_blank','noopener,noreferrer')
+   window.setTimeout(()=>URL.revokeObjectURL(url),60000)
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ function safeStatementFileName(name:string){
+  const clean=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/-+/g,'-')
+  return clean||'extrato'
+ }
  async function upload(file:File,journalId=activeJournal){
   const targetJournal=journals.find(j=>j.id===journalId)
   if(targetJournal&&isManualJournal(targetJournal)){setMessage('Os diários Dinheiro e Ajustes são alimentados pelo próprio ERP e não recebem OFX.');return}
@@ -214,11 +233,22 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    if(!rows.length)throw Error('Nenhuma transação válida encontrada no arquivo.')
    const {data,error}=await supabase.rpc('importar_transacoes_bancarias',{p_diario_id:journalId,p_arquivo:file.name,p_transacoes:rows})
    if(error)throw error
+   const importId=String(data?.importacao_id||'')
+   let archiveWarning=''
+   if(importId){
+    const path=journalId+'/'+importId+'/'+safeStatementFileName(file.name)
+    const {error:storageError}=await supabase.storage.from('extratos-bancarios').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false})
+    if(storageError)archiveWarning=' O arquivo original não pôde ser arquivado: '+storageError.message
+    else{
+      const {error:metaError}=await supabase.from('importacoes_bancarias').update({arquivo_path:path,arquivo_tipo:file.type||null,arquivo_tamanho:file.size}).eq('id',importId)
+      if(metaError)archiveWarning=' O extrato foi importado, mas o vínculo do arquivo original falhou: '+metaError.message
+    }
+   }
    const {data:modelResult,error:modelError}=await supabase.rpc('aplicar_modelos_conciliacao_bancaria',{p_transacao_id:null})
    if(modelError)throw modelError
    const auto=Number(modelResult?.conciliados_automaticamente||0)
    const classified=Number(modelResult?.aplicados||0)
-   setMessage('Importação concluída: '+Number(data?.inseridas||0)+' nova(s), '+Number(data?.duplicadas||0)+' duplicada(s) descartada(s). '+classified+' regra(s) aplicada(s)'+(auto?', '+auto+' conciliada(s) automaticamente.':'.'))
+   setMessage('Importação concluída: '+Number(data?.inseridas||0)+' nova(s), '+Number(data?.duplicadas||0)+' duplicada(s) descartada(s). '+classified+' regra(s) aplicada(s)'+(auto?', '+auto+' conciliada(s) automaticamente.':'.')+archiveWarning)
    setUploadOpen(false);await load()
   }catch(e){setMessage((e as Error).message)}finally{uploadLock.current=false;setBusy(false);if(fileRef.current)fileRef.current.value=''}
  }
@@ -495,6 +525,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     </div>
   </div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
+  {visibleImports.length>0&&<div className="bankStatementFiles"><div className="bankStatementFilesHead"><div><strong>Documentos dos extratos importados</strong><span>Arquivo original usado para gerar as linhas bancárias.</span></div><b>{visibleImports.length}</b></div><div className="bankStatementFileList">{visibleImports.slice(0,8).map(row=><button type="button" key={row.id} className="bankStatementFile" disabled={busy} onClick={()=>void openImportedFile(row)} title={row.arquivo_path?'Abrir arquivo original':'Arquivo original não armazenado'}><FileText size={17}/><span><strong>{row.arquivo}</strong><small>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(row.importado_em))} · {row.total_linhas} linha(s) · {row.inseridas} nova(s){row.duplicadas?' · '+row.duplicadas+' duplicada(s)':''}</small></span><em>{row.arquivo_path?'Abrir':'Histórico'}</em></button>)}</div></div>}
   <div className="bankFilterBar bankSearchOnly">
     <label className="bankBulkSelect"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisibleTransactions} disabled={!canEdit||busy||deletableVisible.length===0}/><span>Selecionar linhas</span></label>
     <div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div>
@@ -505,7 +536,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    const sugg=suggestions(tx),top=sugg[0],high=(top?.score||0)>=80,partial=(top?.score||0)>=45
    const txJournal=journals.find(j=>j.id===tx.diario_id)
    return <article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')+(selectedTransactions[tx.id]?' bankTxSelected':'')} key={tx.id}>
-    <div className="bankTxMain"><label className="bankTxSelect" title={tx.status==='conciliado'?'Desfaça a conciliação antes de excluir':'Selecionar linha para exclusão'}><input type="checkbox" checked={Boolean(selectedTransactions[tx.id])} disabled={!canEdit||busy||tx.status==='conciliado'} onChange={()=>toggleTransactionSelection(tx)}/></label><div className="bankTxDate"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span>{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong><span>{tx.historico||'—'}</span></div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
+    <div className="bankTxMain"><label className="bankTxSelect" title={tx.status==='conciliado'?'Desfaça a conciliação antes de excluir':'Selecionar linha para exclusão'}><input type="checkbox" checked={Boolean(selectedTransactions[tx.id])} disabled={!canEdit||busy||tx.status==='conciliado'} onChange={()=>toggleTransactionSelection(tx)}/></label><div className="bankTxDate"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span>{tx.importacao_id&&imports.find(row=>row.id===tx.importacao_id)&&<small className="bankTxSource"><FileText size={11}/>{imports.find(row=>row.id===tx.importacao_id)!.arquivo}</small>}{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong><span>{tx.historico||'—'}</span></div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
     {screen==='matching'&&tx.status!=='conciliado'&&<div className="bankMatchArea bankOdooMatch">
       {top?<div className={'bankSuggestion '+(high?'high':partial?'partial':'low')}><div><CheckCircle2 size={16}/><strong>{high?'Correspondência forte':partial?'Correspondência possível':'Sugestão'}</strong><span>{top.score}% · {top.reasons.join(' • ')}</span></div><span className="bankSuggestedTitle">{top.title.descricao} · {money(Math.max(0,Number(top.title.valor)-Number(top.title.valor_pago)))}</span></div>:<div className="bankNoMatch"><XCircle size={16}/><span>Sem correspondência automática.</span></div>}
       <div className="bankOdooActions">
