@@ -1,7 +1,7 @@
 import type { PermissionModule } from './permissions'
 
-export type AppModule=PermissionModule|'rh'|'documentos'|'infra'
-export const appPermission=(module:AppModule):PermissionModule=>module==='rh'||module==='documentos'?'financeiro':module==='infra'?'config':module
+export type AppModule=PermissionModule|'rh'|'documentos'|'infra'|'fechamento'
+export const appPermission=(module:AppModule):PermissionModule=>module==='rh'||module==='documentos'||module==='fechamento'?'financeiro':module==='infra'?'config':module
 export type HrSection='geral'|'funcionarios'|'folha'|'fgts'|'decimo'|'vales'|'ponto'|'espelho'|'escala_sabado'|'beneficios'
 export type HrTitle={tipo_funcionario?:'gasto'|'vale'|null;categoria:string|null;valor:number;valor_pago:number;status:string;salario_bruto?:number|null;descontos_folha?:number|null;vales_folha?:number|null;vale_descontado_em?:string|null}
 const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
