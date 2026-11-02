@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useMemo,useState} from 'react'
-import {Banknote,CheckCircle2,Landmark,RefreshCw,RotateCcw,WalletCards} from 'lucide-react'
+import {Banknote,CheckCircle2,FileDown,Landmark,RefreshCw,RotateCcw,WalletCards} from 'lucide-react'
 import {supabase} from './lib/supabase'
+import {generateCashClosingPdf} from './lib/cashClosingPdf'
 
 type CashSummaryRow={
   diario_id:string
@@ -45,7 +46,7 @@ const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMon
 const dateBr=(value:string)=>new Intl.DateTimeFormat('pt-BR').format(new Date(value+'T12:00:00'))
 const dateTimeBr=(value:string)=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value))
 
-export function CashClosing({canEdit,isAdmin}:{canEdit:boolean;isAdmin:boolean}){
+export function CashClosing({canEdit,isAdmin,company}:{canEdit:boolean;isAdmin:boolean;company?:{nome_fantasia?:string|null;razao_social?:string|null;cnpj?:string|null;email?:string|null}|null}){
   const [date,setDate]=useState(today())
   const [summary,setSummary]=useState<CashSummaryRow[]>([])
   const [history,setHistory]=useState<CashClosing[]>([])
@@ -114,6 +115,25 @@ export function CashClosing({canEdit,isAdmin}:{canEdit:boolean;isAdmin:boolean})
     const {data,error}=await supabase.from('fechamentos_caixa_diario_itens').select('*').eq('fechamento_id',row.id).order('diario_nome')
     if(error){setMessage(error.message);return}
     setItems((data||[]) as CashClosingItem[])
+  }
+
+  async function exportPdf(row:CashClosing){
+    setBusy(true);setMessage('')
+    try{
+      const {data,error}=await supabase.from('fechamentos_caixa_diario_itens').select('*').eq('fechamento_id',row.id).order('diario_nome')
+      if(error)throw error
+      const pdfItems=(data||[]) as CashClosingItem[]
+      if(!pdfItems.length)throw new Error('Este fechamento não possui contas registradas para gerar o PDF.')
+      generateCashClosingPdf({
+        data_caixa:row.data_caixa,
+        company,
+        status:row.status,
+        fechado_em:row.fechado_em,
+        observacao:row.observacao,
+        items:pdfItems
+      })
+    }catch(error){setMessage((error as Error).message)}
+    finally{setBusy(false)}
   }
 
   async function reopen(row:CashClosing){
@@ -194,13 +214,13 @@ export function CashClosing({canEdit,isAdmin}:{canEdit:boolean;isAdmin:boolean})
           <td className={Math.abs(Number(row.total_diferenca))<.01?'cashDiffOk':'cashDiffWarn'}>{money(Number(row.total_diferenca))}</td>
           <td><span className={'status '+(row.status==='fechado'?'approved':'pending')}>{row.status==='fechado'?'Fechado':'Reaberto'}</span></td>
           <td>{dateTimeBr(row.fechado_em)}</td>
-          <td><div className="rowActions"><button className="ghost" onClick={()=>void openClosing(row)}>Detalhes</button>{isAdmin&&row.status==='fechado'&&<button className="ghost" disabled={busy} onClick={()=>void reopen(row)}><RotateCcw size={14}/>Reabrir</button>}</div></td>
+          <td><div className="rowActions"><button className="ghost" onClick={()=>void openClosing(row)}>Detalhes</button><button className="ghost" disabled={busy} onClick={()=>void exportPdf(row)}><FileDown size={14}/>PDF</button>{isAdmin&&row.status==='fechado'&&<button className="ghost" disabled={busy} onClick={()=>void reopen(row)}><RotateCcw size={14}/>Reabrir</button>}</div></td>
         </tr>)}</tbody>
       </table></div>
     </article>
 
     {selectedClosing&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label="Detalhes do fechamento"><div className="saleModalShell cashClosingDetail">
-      <div className="formTitle saleModalTitle"><div><h3>Detalhes do fechamento</h3><p>Conferência individual de cada conta no fechamento selecionado.</p></div><button className="iconBtn saleModalClose" onClick={()=>setSelectedClosing(null)}>×</button></div>
+      <div className="formTitle saleModalTitle"><div><h3>Detalhes do fechamento</h3><p>Conferência individual de cada conta no fechamento selecionado.</p></div><div className="rowActions">{history.find(row=>row.id===selectedClosing)&&<button className="ghost" disabled={busy} onClick={()=>void exportPdf(history.find(row=>row.id===selectedClosing)!)}><FileDown size={15}/>Gerar PDF</button>}<button className="iconBtn saleModalClose" onClick={()=>setSelectedClosing(null)}>×</button></div></div>
       <div className="tableWrap"><table><thead><tr><th>Conta</th><th>Inicial</th><th>Entradas</th><th>Saídas</th><th>Esperado</th><th>Conferido</th><th>Diferença</th></tr></thead><tbody>
         {items.map(row=><tr key={row.id}><td><strong>{row.diario_nome}</strong></td><td>{money(Number(row.saldo_inicial))}</td><td>{money(Number(row.entradas))}</td><td>{money(Number(row.saidas))}</td><td>{money(Number(row.saldo_esperado))}</td><td>{money(Number(row.saldo_conferido))}</td><td className={Math.abs(Number(row.diferenca))<.01?'cashDiffOk':'cashDiffWarn'}>{money(Number(row.diferenca))}</td></tr>)}
       </tbody></table></div>
