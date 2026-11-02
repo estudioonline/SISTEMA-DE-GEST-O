@@ -1204,14 +1204,17 @@ function App(){
     }
   }
   async function deleteProduct(p:Produto){
-    if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return}
-    if(!await themedConfirm(`Excluir o produto "${p.descricao}"?`))return
+    if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return false}
+    if(!await themedConfirm(`Excluir o produto "${p.descricao}"?`,'Excluir produto','Excluir','danger'))return false
     const r=await supabase.from('produtos').delete().eq('id',p.id)
     if(r.error?.code==='23503'){
       const d=await supabase.from('produtos').update({ativo:false}).eq('id',p.id)
-      setMsg(d.error?d.error.message:'Produto com histórico foi desativado.')
-    }else setMsg(r.error?r.error.message:'Produto excluído.')
+      if(d.error){setMsg(d.error.message);return false}
+      setMsg('Produto com histórico foi desativado.')
+    }else if(r.error){setMsg(r.error.message);return false}
+    else setMsg('Produto excluído.')
     await loadData()
+    return true
   }
 
   async function exportProducts(){
@@ -3500,10 +3503,13 @@ function App(){
               </select>
             </label>
 
-            <div className="formActions">
-              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null);setDuplicatingProduct(false);setProductComponentDrafts([])}}>Cancelar</button>
-              {editingProduct&&!duplicatingProduct&&<button type="button" className="ghost" onClick={()=>startDuplicateProduct(editingProduct)}><Plus size={15}/>Duplicar produto</button>}
-              <button className="primary">{duplicatingProduct?'Cadastrar cópia':editingProduct?'Salvar alterações':'Cadastrar produto'}</button>
+            <div className="formActions productFormActions">
+              {editingProduct&&!duplicatingProduct&&isAdmin&&canManageProducts&&<button type="button" className="dangerAction productDeleteBtn" onClick={async()=>{const ok=await deleteProduct(editingProduct);if(ok){setShowForm(false);setEditingProduct(null);setProductComponentDrafts([])}}}><Trash2 size={15}/>Excluir produto</button>}
+              <div className="productFormActionsRight">
+                <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null);setDuplicatingProduct(false);setProductComponentDrafts([])}}>Cancelar</button>
+                {editingProduct&&!duplicatingProduct&&<button type="button" className="ghost" onClick={()=>startDuplicateProduct(editingProduct)}><Plus size={15}/>Duplicar produto</button>}
+                <button className="primary">{duplicatingProduct?'Cadastrar cópia':editingProduct?'Salvar alterações':'Cadastrar produto'}</button>
+              </div>
             </div>
           </form></div></div>}
 
