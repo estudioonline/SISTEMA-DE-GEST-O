@@ -7,6 +7,14 @@ const required=(v:unknown,label:string)=>{const s=String(v??'').trim();if(!s)thr
 const code=(v:unknown,pattern:RegExp,label:string)=>{const s=required(v,label);if(!pattern.test(s))throw Error(label+' inválido.');return s}
 const cash=(v:number)=>Math.round((v+Number.EPSILON)*100)
 const uf=(v:unknown,label:string)=>code(v,/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/,label)
+function saoPauloIso(date:Date){
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(date).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]))
+ const localAsUtc=Date.UTC(Number(parts.year),Number(parts.month)-1,Number(parts.day),Number(parts.hour),Number(parts.minute),Number(parts.second))
+ const offsetMinutes=Math.round((localAsUtc-date.getTime())/60000)
+ const sign=offsetMinutes>=0?'+':'-'
+ const abs=Math.abs(offsetMinutes),oh=String(Math.floor(abs/60)).padStart(2,'0'),om=String(abs%60).padStart(2,'0')
+ return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${oh}:${om}`
+}
 export function validateConfig(input:unknown):Fields{
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Configuração inválida.')
  const c=input as Fields
@@ -81,7 +89,7 @@ export function buildPayload(source:SaleSource,config:Fields,draft:FiscalDraft={
   :[{forma_pagamento:fiscalPayment,indicador_pagamento:Number(v.parcelas)>1?1:0,valor_pagamento:total/100}]
  const payload:Record<string,unknown>={...c,
   nome_emitente:required(source.empresa?.razao_social,'razão social nas configurações da empresa'),
-  natureza_operacao:'Venda de mercadoria',data_emissao:now.toISOString(),tipo_documento:1,
+  natureza_operacao:'Venda de mercadoria',data_emissao:saoPauloIso(now),tipo_documento:1,
   local_destino:sameState?1:2,finalidade_emissao:1,
   consumidor_final:client.consumidor_final?1:0,
   presenca_comprador:presenca,
