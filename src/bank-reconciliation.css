@@ -737,32 +737,32 @@
 
 
 /* Linhas do extrato mais compactas verticalmente */
-.bankRecon .bankTxList{gap:7px}
+.bankRecon .bankTxList{gap:5px}
 .bankRecon .bankTxMain{
-  padding:8px 12px;
-  gap:10px;
-  min-height:62px;
+  padding:6px 10px;
+  gap:9px;
+  min-height:54px;
 }
 .bankRecon .bankTxDate,
 .bankRecon .bankTxDesc{
-  gap:2px;
+  gap:1px;
 }
 .bankRecon .bankTxMain strong{
-  line-height:1.15;
+  line-height:1.1;
 }
 .bankRecon .bankTxMain span,
 .bankRecon .bankTxMain small{
-  line-height:1.2;
+  line-height:1.1;
 }
 .bankRecon .bankStatus{
-  padding:3px 8px;
+  padding:2px 7px;
 }
 .bankRecon .bankUndoCompact{
-  margin:3px 12px 5px auto;
-  min-height:26px;
-  padding:0 9px;
+  margin:2px 10px 3px auto;
+  min-height:23px;
+  padding:0 8px;
 }
 .bankRecon .bankStatementGroupHeader{
-  min-height:34px;
-  padding:6px 10px;
+  min-height:31px;
+  padding:5px 8px;
 }
