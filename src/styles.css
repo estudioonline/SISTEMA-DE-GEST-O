@@ -6616,3 +6616,29 @@ small{font-size:11px}
 .saleRecipeValue strong{font-size:11px;color:#1d4ed8}
 .dark .saleRecipeValue{background:#172554;border-color:#1d4ed8;color:#bfdbfe}
 .dark .saleRecipeValue strong{color:#93c5fd}
+
+
+/* Ações do formulário de produto */
+.productFormActions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.productFormActionsRight{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-left:auto;
+}
+.productDeleteBtn{
+  min-height:38px;
+}
+@media(max-width:700px){
+  .productFormActions,.productFormActionsRight{width:100%}
+  .productFormActionsRight{margin-left:0}
+  .productFormActions button{flex:1}
+}
