@@ -301,6 +301,7 @@ function App(){
   const [statementBusy,setStatementBusy]=useState<string|null>(null)
 
   const [editingProduct,setEditingProduct]=useState<Produto|null>(null)
+  const [duplicatingProduct,setDuplicatingProduct]=useState(false)
   const [productReturnSaleId,setProductReturnSaleId]=useState<string|null>(null)
   const [productType,setProductType]=useState<'insumo'|'produto_final'>('insumo')
   const [productGroupId,setProductGroupId]=useState('')
@@ -1021,11 +1022,24 @@ function App(){
   }
   function startNewProduct(){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setProductReturnSaleId(null);setEditingProduct(null);setProductType('insumo');setProductGroupId('');setProductSubgroupId('');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setProductReturnSaleId(null);setEditingProduct(null);setDuplicatingProduct(false);setProductType('insumo');setProductGroupId('');setProductSubgroupId('');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function startEditProduct(p:Produto,returnSaleId:string|null=null){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setProductReturnSaleId(returnSaleId);setEditingProduct(p);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setProductReturnSaleId(returnSaleId);setEditingProduct(p);setDuplicatingProduct(false);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
+  }
+  function startDuplicateProduct(p:Produto){
+    if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
+    setProductReturnSaleId(null)
+    setEditingProduct(p)
+    setDuplicatingProduct(true)
+    setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo')
+    setProductGroupId(p.grupo_id||'')
+    setProductSubgroupId(p.subgrupo_id||'')
+    setProductComponentDrafts(componentDraftsForProduct(p.id).map(row=>({...row,key:crypto.randomUUID()})))
+    setAdjustingProduct(null)
+    setShowForm(true)
+    setMsg('Produto duplicado em modo de cópia. Altere o código e o nome antes de salvar.')
   }
   function addProductComponent(){
     const key=crypto.randomUUID()
@@ -1079,11 +1093,12 @@ function App(){
       setMsg('A ficha técnica possui o mesmo material mais de uma vez. Una as quantidades em uma única linha.')
       return
     }
-    const r=editingProduct
+    const isDuplicate=Boolean(editingProduct&&duplicatingProduct)
+    const r=editingProduct&&!isDuplicate
       ? await supabase.from('produtos').update(base).eq('id',editingProduct.id).select('id').single()
       : await supabase.from('produtos').insert({...base,estoque_atual:Number(f.get('estoque_atual')||0)}).select('id').single()
     if(r.error){setMsg(r.error.message);return}
-    const productId=editingProduct?.id||String(r.data?.id||'')
+    const productId=editingProduct&&!duplicatingProduct?editingProduct.id:String(r.data?.id||'')
     if(!productId){setMsg('Produto salvo, mas não foi possível identificar o cadastro para gravar a ficha técnica.');await loadData();return}
     if(productType==='produto_final'){
       const composition=productComponentDrafts.map(row=>({
@@ -1098,8 +1113,8 @@ function App(){
       if(clearComposition.error){setMsg('Produto salvo, mas não foi possível limpar a ficha técnica antiga: '+clearComposition.error.message);await loadData();return}
     }
     const returnSaleId=productReturnSaleId
-    setMsg(editingProduct?'Produto atualizado.':'Produto cadastrado.')
-    setEditingProduct(null);setProductComponentDrafts([]);setShowForm(false);await loadData()
+    setMsg(editingProduct&&!duplicatingProduct?'Produto atualizado.':duplicatingProduct?'Produto duplicado e cadastrado com sucesso.':'Produto cadastrado.')
+    setEditingProduct(null);setDuplicatingProduct(false);setProductComponentDrafts([]);setShowForm(false);await loadData()
     if(returnSaleId){
       setProductReturnSaleId(null)
       setActive('vendas')
@@ -3206,13 +3221,13 @@ function App(){
             <small className="excelWarning">Na importação, o <strong>Estoque Atual</strong> da planilha substitui o saldo existente. Toda diferença é registrada como ajuste de estoque.</small>
           </div>}
 
-          {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingProduct?'Editar produto':'Novo produto'}><div className="saleModalShell productModalShell"><form className="panel dataForm saleModalForm productModalForm" onSubmit={saveProduct}>
+          {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={duplicatingProduct?'Duplicar produto':editingProduct?'Editar produto':'Novo produto'}><div className="saleModalShell productModalShell"><form className="panel dataForm saleModalForm productModalForm" onSubmit={saveProduct}>
             <div className="formTitle saleModalTitle">
               <div>
-                <h3>{editingProduct?'Editar produto':'Novo produto'}</h3>
+                <h3>{duplicatingProduct?'Duplicar produto':editingProduct?'Editar produto':'Novo produto'}</h3>
                 <p>Preencha os dados do produto. O estoque de produtos já cadastrados é alterado pela opção “Ajustar estoque”.</p>
               </div>
-              <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de produto" onClick={()=>{setShowForm(false);setEditingProduct(null);setProductComponentDrafts([])}}><X size={18}/></button>
+              <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de produto" onClick={()=>{setShowForm(false);setEditingProduct(null);setDuplicatingProduct(false);setProductComponentDrafts([])}}><X size={18}/></button>
             </div>
 
             <label className="fieldLabel">Código
@@ -3247,13 +3262,13 @@ function App(){
               <input name="percentual_minimo_custo_venda" type="number" min="0" max="1000" step="0.01" defaultValue={editingProduct?.percentual_minimo_custo_venda??100} required/>
               <small>100% = custo × 2 (R$ 100 de custo → R$ 200 de preço mínimo). 0% = igual ao custo. Considera descontos da venda.</small>
             </label>
-            {!editingProduct&&<label className="fieldLabel">Estoque inicial
+            {(!editingProduct||duplicatingProduct)&&<label className="fieldLabel">Estoque inicial
               <input name="estoque_atual" type="number" min="0" step="0.001" placeholder="0" defaultValue="0"/>
             </label>}
             <label className="fieldLabel">Estoque mínimo
               <input name="estoque_minimo" type="number" min="0" step="0.001" placeholder="0" defaultValue={editingProduct?.estoque_minimo??''}/>
             </label>
-            {editingProduct&&<div className="productStockAdjustmentBox fieldLabelWide">
+            {editingProduct&&!duplicatingProduct&&<div className="productStockAdjustmentBox fieldLabelWide">
               <div className="productStockAdjustmentInfo">
                 <span>Estoque atual</span>
                 <strong>{Number(editingProduct.estoque_atual).toLocaleString('pt-BR')} {editingProduct.unidade||'UN'}</strong>
@@ -3366,8 +3381,9 @@ function App(){
             </label>
 
             <div className="formActions">
-              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null);setProductComponentDrafts([])}}>Cancelar</button>
-              <button className="primary">{editingProduct?'Salvar alterações':'Cadastrar produto'}</button>
+              <button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingProduct(null);setDuplicatingProduct(false);setProductComponentDrafts([])}}>Cancelar</button>
+              {editingProduct&&!duplicatingProduct&&<button type="button" className="ghost" onClick={()=>startDuplicateProduct(editingProduct)}><Plus size={15}/>Duplicar produto</button>}
+              <button className="primary">{duplicatingProduct?'Cadastrar cópia':editingProduct?'Salvar alterações':'Cadastrar produto'}</button>
             </div>
           </form></div></div>}
 
