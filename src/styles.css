@@ -5801,14 +5801,14 @@
 .saleProductionRecipeEditor{grid-column:1/-1;display:grid;gap:10px;padding:12px;border:1px solid #bfdbfe;border-radius:14px;background:#f8fbff}
 .saleProductionMaterialsTitle{display:flex;align-items:flex-start;gap:8px}.saleProductionMaterialsTitle>div:first-of-type{display:grid;gap:2px;min-width:0}.saleProductionMaterialsTitle strong{font-size:12px}.saleProductionMaterialsTitle span{font-size:10px;color:#64748b}
 .saleProductionRecipeActions{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}.compactBtn{min-height:32px;padding:0 10px;font-size:11px}
-.saleProductionRecipeRows{display:grid;gap:8px}.saleProductionRecipeRow{display:grid;grid-template-columns:28px minmax(0,1fr) 120px 145px 38px;gap:8px;align-items:end;padding:9px;border:1px solid #dbe3ef;border-radius:10px;background:#fff}
+.saleProductionRecipeRows{display:grid;gap:8px}.saleProductionRecipeRow{display:grid;grid-template-columns:28px minmax(0,1fr) 105px 110px 160px 38px;gap:8px;align-items:end;padding:9px;border:1px solid #dbe3ef;border-radius:10px;background:#fff}
 .saleProductionRecipeIndex{display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:#eff6ff;color:#2563eb;font-size:11px;font-weight:800;align-self:center}
 .saleProductionRecipeRow label{display:grid;gap:4px}.saleProductionRecipeRow label>span,.saleProductionRecipeTotal>span{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:800}
 .saleProductionRecipeRow input{width:100%}.saleProductionRecipeTotal{display:grid;gap:2px}.saleProductionRecipeTotal strong{font-size:11px}.saleProductionRecipeTotal small{font-size:9px;color:#64748b}
 .saleProductionRecipeEmpty{padding:12px;border:1px dashed #cbd5e1;border-radius:10px;color:#64748b;text-align:center;font-size:11px}
 .saleProductionRecipeRow.productionMaterialShort{border-color:#f59e0b;background:#fffbeb}
 .dark .saleProductionRecipeEditor{background:#0f172a;border-color:#1d4ed8}.dark .saleProductionRecipeRow{background:#111827;border-color:#334155}.dark .saleProductionRecipeRow.productionMaterialShort{background:#2a1c08;border-color:#d97706}.dark .saleProductionRecipeIndex{background:#172554;color:#93c5fd}
-@media(max-width:950px){.saleProductionRecipeRow{grid-template-columns:28px minmax(0,1fr) 110px 38px}.saleProductionRecipeTotal{grid-column:2/4}.saleProductionRecipeActions{width:100%;margin-left:0}}
+@media(max-width:950px){.saleProductionRecipeRow{grid-template-columns:28px minmax(0,1fr) 100px 100px 38px}.saleProductionRecipeTotal{grid-column:2/5}.saleProductionRecipeActions{width:100%;margin-left:0}}
 @media(max-width:650px){.saleProductionRecipeRow{grid-template-columns:28px minmax(0,1fr) 38px}.saleProductionRecipeRow label{grid-column:2/3}.saleProductionRecipeTotal{grid-column:2/3}.saleProductionRecipeRow>.dangerBtn{grid-column:3;grid-row:1;align-self:start}}
 
 .sgPromptBlockers{display:grid;gap:8px;margin-top:2px;padding:10px;border:1px solid #fed7aa;border-radius:12px;background:#fff7ed;color:#9a3412}
@@ -6611,3 +6611,8 @@ small{font-size:11px}
   border-color:#334155;
   color:#f1f5f9;
 }
+
+.saleRecipeValue{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 9px;border:1px solid #bfdbfe;border-radius:9px;background:#eff6ff;color:#1e3a8a;font-size:10px;font-weight:700}
+.saleRecipeValue strong{font-size:11px;color:#1d4ed8}
+.dark .saleRecipeValue{background:#172554;border-color:#1d4ed8;color:#bfdbfe}
+.dark .saleRecipeValue strong{color:#93c5fd}
