@@ -6459,3 +6459,44 @@ small{font-size:11px}
 .passwordMismatch{color:var(--ds-danger-text);font-weight:700}
 .passwordResetActions{display:flex;justify-content:flex-end;gap:8px;padding-top:2px}
 @media(max-width:760px){.userRowActions{justify-content:flex-start;flex-wrap:wrap}.passwordResetActions{justify-content:stretch}.passwordResetActions button{flex:1}}
+
+
+/* Correção NF-e no tema escuro: volumes transportados */
+.nfeEmissionPanel .nfeVolumesBox{
+  background:var(--ds-bg);
+  border-color:var(--ds-border);
+  color:var(--ds-text);
+}
+.nfeEmissionPanel .nfeVolumesBox .nfeInstallmentsHead strong{
+  color:var(--ds-text);
+}
+.nfeEmissionPanel .nfeVolumesBox .nfeInstallmentsHead span,
+.nfeEmissionPanel .nfeVolumeRow>span,
+.nfeEmissionPanel .nfeVolumeRow label{
+  color:var(--ds-muted);
+}
+.nfeEmissionPanel .nfeVolumeRow input{
+  background:var(--ds-surface);
+  border-color:var(--ds-border);
+  color:var(--ds-text);
+}
+.nfeEmissionPanel .nfeVolumeRow input::placeholder{
+  color:var(--ds-muted);
+}
+.nfeEmissionPanel .nfeVolumesList>.ghost,
+.nfeEmissionPanel .nfeVolumeRow>.iconBtn{
+  background:var(--ds-surface);
+  border-color:var(--ds-border);
+  color:var(--ds-text);
+}
+.dark .nfeEmissionPanel .nfeVolumesBox{
+  background:#0f172a;
+  border-color:#2a3648;
+}
+.dark .nfeEmissionPanel .nfeVolumeRow input,
+.dark .nfeEmissionPanel .nfeVolumesList>.ghost,
+.dark .nfeEmissionPanel .nfeVolumeRow>.iconBtn{
+  background:#111827;
+  border-color:#334155;
+  color:#f1f5f9;
+}
