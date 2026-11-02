@@ -1155,11 +1155,11 @@ function App(){
     }
   }
 
-  async function deleteSelectedProducts(ids:string[]){
-    if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return}
+  async function deleteSelectedProducts(ids:string[]):Promise<boolean>{
+    if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return false}
     const selected=produtos.filter(p=>ids.includes(p.id))
-    if(!selected.length){setMsg('Selecione pelo menos um produto para excluir.');return}
-    if(!window.confirm('Excluir '+selected.length+' produto(s) selecionado(s)? Produtos com histórico serão apenas desativados.'))return
+    if(!selected.length){setMsg('Selecione pelo menos um produto para excluir.');return false}
+    if(!window.confirm('Excluir '+selected.length+' produto(s) selecionado(s)? Produtos com histórico serão apenas desativados.'))return false
     let deleted=0,deactivated=0,failed=0
     for(const p of selected){
       const r=await supabase.from('produtos').delete().eq('id',p.id)
@@ -1171,6 +1171,7 @@ function App(){
     }
     setMsg('Ação concluída: '+deleted+' excluído(s), '+deactivated+' desativado(s)'+(failed?', '+failed+' com erro':'')+'.')
     await loadData()
+    return true
   }
 
   async function downloadProductModel(){
@@ -4435,7 +4436,7 @@ function EditableEntityTable({title,headers,rows,readOnly=false,emptyActionLabel
   return <article className={'panel tablePanel '+className}><div className="panelHead"><h3>{title}</h3><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div><div className="tableWrap"><table><thead><tr>{headers.map((h,i)=><th key={h}>{i===headers.length-1?h:<button className="tableSortBtn" onClick={()=>toggle(i)}>{h}{sort?.index===i?(sort.dir==='asc'?' ▲':' ▼'):''}</button>}</th>)}</tr></thead><tbody>{sorted.length===0&&<tr className="emptyTableRow"><td colSpan={headers.length}><EmptyState message={rows.length===0?`Nenhum registro em ${title.toLowerCase()}.`:'Nenhum resultado encontrado.'} actionLabel={rows.length===0&&!readOnly?emptyActionLabel:undefined} onAction={onEmptyAction}/></td></tr>}{sorted.map(r=><Fragment key={r.id}><tr {...recordRow(()=>{if(!r.opened)r.onToggle()},String(r.cells[0]))}>{r.cells.map((cell,i)=><td key={i}>{cell}</td>)}<td><button className="rowMenuBtn" onClick={r.onToggle} title="Opções" aria-label="Abrir opções" aria-expanded={r.opened}><MoreVertical size={18}/></button></td></tr>{r.opened&&<tr className="manageRow"><td colSpan={headers.length}><div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={String(r.cells[0])}><div className="recordDetailBackdrop" onClick={r.onToggle}/><div className="recordDetailSheet"><div className="recordDetailHeader"><strong>{String(r.cells[0])}</strong><button type="button" className="recordDetailClose" onClick={r.onToggle}><X size={17}/>Fechar</button></div><div className="actionPanel">{r.panel}</div></div></div></td></tr>}</Fragment>)}</tbody></table></div></article>
 }
 
-function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,onBulkExport,canDelete,readOnly=false}:{produtos:Produto[];groups:ProductGroup[];subgroups:ProductSubgroup[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;onBulkDelete:(ids:string[])=>Promise<void>|void;onBulkExport:(ids:string[])=>Promise<void>|void;canDelete:boolean;readOnly?:boolean}){
+function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,onBulkExport,canDelete,readOnly=false}:{produtos:Produto[];groups:ProductGroup[];subgroups:ProductSubgroup[];onCreate:()=>void;openId:string|null;onToggle:(id:string)=>void;onEdit:(p:Produto)=>void;onAdjust:(p:Produto)=>void;onDelete:(p:Produto)=>void;onBulkDelete:(ids:string[])=>Promise<boolean>|boolean;onBulkExport:(ids:string[])=>Promise<void>|void;canDelete:boolean;readOnly?:boolean}){
   const [query,setQuery]=useState('')
   const [groupFilter,setGroupFilter]=useState('todos')
   const [subgroupFilter,setSubgroupFilter]=useState('todos')
@@ -4469,7 +4470,7 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,on
     {selectedIds.length>0&&<div className="productBulkActions" style={{position:'fixed',right:16,bottom:16,zIndex:1200,maxWidth:'calc(100vw - 32px)',boxShadow:'0 10px 30px rgba(0,0,0,.28)'}}>
       <strong>{selectedIds.length} selecionado(s)</strong>
       <button type="button" className="ghost" onClick={()=>void onBulkExport(selectedIds)}><Download size={15}/>Exportar selecionados</button>
-      {canDelete&&<button type="button" className="dangerAction" onClick={()=>void onBulkDelete(selectedIds)}><Trash2 size={15}/>Excluir selecionados</button>}
+      {canDelete&&<button type="button" className="dangerAction" onClick={async()=>{const completed=await onBulkDelete(selectedIds);if(completed)setSelectedIds([])}}><Trash2 size={15}/>Excluir selecionados</button>}
       <button type="button" className="ghost" onClick={()=>setSelectedIds([])}>Limpar seleção</button>
     </div>}
     <div className="productGroupFilters">
