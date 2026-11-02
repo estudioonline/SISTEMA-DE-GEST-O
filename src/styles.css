@@ -5801,3 +5801,20 @@
 .dark .saleProductLink{color:#60a5fa}
 .dark .saleProductLink:hover,
 .dark .saleProductLink:focus-visible{color:#93c5fd}
+
+
+/* NF-e: parcelas editáveis, volumes e cancelamento */
+.nfeEditableInstallments,.nfeVolumesList{display:grid;gap:10px;margin-top:10px}
+.nfeEditableInstallment{display:grid;grid-template-columns:44px minmax(150px,1fr) minmax(130px,.8fr) 42px;gap:10px;align-items:center}
+.nfeEditableInstallment>span,.nfeVolumeRow>span{font-weight:700;color:var(--muted,#64748b);text-align:center}
+.nfeEditableInstallment input,.nfeVolumeRow input{width:100%;min-height:40px;border:1px solid var(--line,#cbd5e1);border-radius:9px;padding:8px 10px;background:var(--panel,#fff);color:inherit}
+.nfeVolumesBox{margin-top:14px;padding:14px;border:1px solid var(--line,#d7deea);border-radius:12px;background:color-mix(in srgb,var(--panel,#fff) 94%,transparent)}
+.nfeVolumeRow{display:grid;grid-template-columns:36px repeat(3,minmax(120px,1fr)) 42px;gap:10px;align-items:end}
+.nfeVolumeRow label{display:grid;gap:5px;font-size:.78rem;font-weight:600;color:var(--muted,#64748b)}
+.nfeEditableInstallments small{color:var(--muted,#64748b);line-height:1.35}
+@media (max-width:760px){
+ .nfeEditableInstallment{grid-template-columns:36px 1fr 1fr 40px}
+ .nfeVolumeRow{grid-template-columns:36px 1fr 40px}
+ .nfeVolumeRow label{grid-column:2}
+ .nfeVolumeRow>button{grid-column:3;grid-row:1}
+}
