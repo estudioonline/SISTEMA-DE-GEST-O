@@ -51,7 +51,7 @@ type BeforeInstallPromptEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null;latitude?:number|null;longitude?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';grupo_id?:string|null;subgrupo_id?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';rastrear_estoque?:boolean;grupo_id?:string|null;subgrupo_id?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
@@ -368,6 +368,7 @@ function App(){
   const [duplicatingProduct,setDuplicatingProduct]=useState(false)
   const [productReturnSaleId,setProductReturnSaleId]=useState<string|null>(null)
   const [productType,setProductType]=useState<'insumo'|'produto_final'>('insumo')
+  const [productTrackStock,setProductTrackStock]=useState(true)
   const [productGroupId,setProductGroupId]=useState('')
   const [productSubgroupId,setProductSubgroupId]=useState('')
   const [productComponentDrafts,setProductComponentDrafts]=useState<ProdutoComponenteDraft[]>([])
@@ -1089,11 +1090,11 @@ function App(){
   }
   function startNewProduct(){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setProductReturnSaleId(null);setEditingProduct(null);setDuplicatingProduct(false);setProductType('insumo');setProductGroupId('');setProductSubgroupId('');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setProductReturnSaleId(null);setEditingProduct(null);setDuplicatingProduct(false);setProductType('insumo');setProductTrackStock(true);setProductGroupId('');setProductSubgroupId('');setProductComponentDrafts([]);setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function startEditProduct(p:Produto,returnSaleId:string|null=null){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setProductReturnSaleId(returnSaleId);setEditingProduct(p);setDuplicatingProduct(false);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setProductReturnSaleId(returnSaleId);setEditingProduct(p);setDuplicatingProduct(false);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductTrackStock(p.tipo_produto==='produto_final'?false:p.rastrear_estoque!==false);setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function startDuplicateProduct(p:Produto){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
@@ -1101,6 +1102,7 @@ function App(){
     setEditingProduct(p)
     setDuplicatingProduct(true)
     setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo')
+    setProductTrackStock(p.tipo_produto==='produto_final'?false:p.rastrear_estoque!==false)
     setProductGroupId(p.grupo_id||'')
     setProductSubgroupId(p.subgrupo_id||'')
     setProductComponentDrafts(componentDraftsForProduct(p.id).map(row=>({...row,key:crypto.randomUUID()})))
@@ -1149,6 +1151,7 @@ function App(){
       grupo_id:productGroupId||null,
       subgrupo_id:productSubgroupId&&subgruposProdutos.some(row=>row.id===productSubgroupId&&row.grupo_id===productGroupId)?productSubgroupId:null,
       tipo_produto:productType,
+      rastrear_estoque:productType==='produto_final'?false:productTrackStock,
       ativo:String(f.get('ativo')||'true')==='true'
     }
     if(productType==='produto_final'&&productComponentDrafts.some(row=>!row.componente_id||Number(row.quantidade)<=0)){
@@ -1175,6 +1178,10 @@ function App(){
       }))
       const savedComposition=await supabase.rpc('salvar_ficha_tecnica_produto',{p_produto_final_id:productId,p_componentes:composition})
       if(savedComposition.error){setMsg('Produto salvo, mas houve erro na ficha técnica: '+savedComposition.error.message);await loadData();return}
+      if(componentIds.length){
+        const tracked=await supabase.from('produtos').update({rastrear_estoque:true}).in('id',componentIds)
+        if(tracked.error){setMsg('Ficha técnica salva, mas não foi possível ativar o rastreamento dos materiais: '+tracked.error.message);await loadData();return}
+      }
     }else{
       const clearComposition=await supabase.from('produto_componentes').delete().eq('produto_final_id',productId)
       if(clearComposition.error){setMsg('Produto salvo, mas não foi possível limpar a ficha técnica antiga: '+clearComposition.error.message);await loadData();return}
@@ -2559,14 +2566,27 @@ function App(){
   const saleDiscount=saleItems.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
   const saleTotal=Math.max(0,saleSubtotal-saleDiscount)
   const saleConsumesStock=saleStatus==='pedido'||saleStatus==='faturado'
-  const saleDemandByProduct=saleItems.reduce<Record<string,number>>((acc,item)=>{
-    if(item.produto_id)acc[item.produto_id]=(acc[item.produto_id]||0)+Number(item.quantidade||0)
+  const stockDemandForSaleItems=(items:Array<SaleItemDraft|VendaItem>)=>items.reduce<Record<string,number>>((acc,item)=>{
+    const product=produtos.find(p=>p.id===item.produto_id)
+    const qty=Number(item.quantidade||0)
+    if(!product||qty<=0)return acc
+    if(product.rastrear_estoque!==false){
+      acc[item.produto_id]=(acc[item.produto_id]||0)+qty
+      return acc
+    }
+    const recipe=Array.isArray(item.receita_producao)&&item.receita_producao.length
+      ? item.receita_producao
+      : produtoComponentes.filter(row=>row.produto_final_id===item.produto_id)
+    recipe.forEach(row=>{
+      const component=produtos.find(p=>p.id===row.componente_id)
+      if(!component||component.rastrear_estoque===false)return
+      const demand=qty*Number(row.quantidade||0)
+      if(demand>0)acc[row.componente_id]=(acc[row.componente_id]||0)+demand
+    })
     return acc
   },{})
-  const originalSaleQtyByProduct=originalSaleItems.reduce<Record<string,number>>((acc,item)=>{
-    acc[item.produto_id]=(acc[item.produto_id]||0)+Number(item.quantidade||0)
-    return acc
-  },{})
+  const saleDemandByProduct=stockDemandForSaleItems(saleItems)
+  const originalSaleQtyByProduct=stockDemandForSaleItems(originalSaleItems)
   const saleStockShortages=Object.entries(saleDemandByProduct).flatMap(([produtoId,demand])=>{
     const produto=produtos.find(p=>p.id===produtoId)
     if(!produto)return []
@@ -2630,6 +2650,7 @@ function App(){
   function saleItemStockInfo(item:SaleItemDraft){
     const produto=produtos.find(p=>p.id===item.produto_id)
     if(!produto)return null
+    if(produto.rastrear_estoque===false)return {kind:'ok',label:'Estoque pela receita',detail:'O produto final não mantém saldo próprio; os materiais da receita serão baixados.'}
     const available=Number(produto.estoque_atual)+(editingSale?Number(originalSaleQtyByProduct[item.produto_id]||0):0)
     const demand=Number(saleDemandByProduct[item.produto_id]||0)
     if(available<=0)return {kind:'none',label:'Sem estoque',detail:`Disponível: ${available.toLocaleString('pt-BR')} ${produto.unidade}`}
@@ -3393,7 +3414,7 @@ function App(){
               <SearchableSelect value={productSubgroupId} onChange={setProductSubgroupId} disabled={!productGroupId} placeholder="Sem subgrupo" searchPlaceholder="Pesquisar subgrupo..." options={subgruposProdutos.filter(s=>s.grupo_id===productGroupId&&(s.ativo||s.id===editingProduct?.subgrupo_id)).map(s=>({value:s.id,label:s.nome+(s.ativo?'':' (inativo)')}))}/>
             </label>
             <label className="fieldLabel">Tipo de produto
-              <select name="tipo_produto" value={productType} onChange={e=>{const next=e.target.value as 'insumo'|'produto_final';setProductType(next);if(next==='insumo')setProductComponentDrafts([])}}>
+              <select name="tipo_produto" value={productType} onChange={e=>{const next=e.target.value as 'insumo'|'produto_final';setProductType(next);setProductTrackStock(next!=='produto_final');if(next==='insumo')setProductComponentDrafts([])}}>
                 <option value="insumo">Insumo / material</option>
                 <option value="produto_final">Produto final (produção)</option>
               </select>
@@ -3402,6 +3423,14 @@ function App(){
             <label className="fieldLabel">Unidade
               <input name="unidade" placeholder="Ex.: UN" defaultValue={editingProduct?.unidade||'UN'}/>
             </label>
+            <label className="productTrackingField fieldLabelWide">
+              <span className="productTrackingControl">
+                <input type="checkbox" checked={productTrackStock} disabled={productType==='produto_final'} onChange={e=>setProductTrackStock(e.target.checked)}/>
+                <span><strong>Rastrear estoque</strong><small>{productType==='produto_final'?'Produto de produção não mantém saldo próprio. O estoque é baixado pelos materiais da receita.':'Controla entradas, saídas, saldo atual e disponibilidade deste produto.'}</small></span>
+              </span>
+              {productType==='produto_final'&&<span className="productTrackingRecipeNote"><Boxes size={14}/>Os materiais da ficha técnica ficam com rastreamento de estoque ativo.</span>}
+            </label>
+
             <label className="fieldLabel">Custo
               <input name="custo" type="number" min="0" step="0.01" placeholder="0,00" defaultValue={editingProduct?.custo??''}/>
             </label>
@@ -3418,7 +3447,7 @@ function App(){
             <label className="fieldLabel">Estoque mínimo
               <input name="estoque_minimo" type="number" min="0" step="0.001" placeholder="0" defaultValue={editingProduct?.estoque_minimo??''}/>
             </label>
-            {editingProduct&&!duplicatingProduct&&<div className="productStockAdjustmentBox fieldLabelWide">
+            {editingProduct&&!duplicatingProduct&&productTrackStock&&<div className="productStockAdjustmentBox fieldLabelWide">
               <div className="productStockAdjustmentInfo">
                 <span>Estoque atual</span>
                 <strong>{Number(editingProduct.estoque_atual).toLocaleString('pt-BR')} {editingProduct.unidade||'UN'}</strong>
