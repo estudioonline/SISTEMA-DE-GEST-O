@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Database, ExternalLink, GitBranch, GitCommit, Github, HardDrive, RefreshCw, Users, Gauge, Globe2, Zap, Radio, Layers3 } from 'lucide-react'
+import { Activity, Database, ExternalLink, GitBranch, GitCommit, Github, HardDrive, RefreshCw, Users, Gauge, Globe2, Zap, Radio, Layers3, ShieldCheck, LockKeyhole, ShieldAlert } from 'lucide-react'
 import { supabase } from './lib/supabase'
 
 type InfraMetrics = {
@@ -11,6 +11,15 @@ type InfraMetrics = {
   storage_objects: number
   storage_bytes: number
   postgres_version: string
+}
+
+type SecurityMetrics = {
+  public_tables_without_rls: number
+  public_security_definer_functions: number
+  anon_executable_public_functions: number
+  anon_accessible_public_tables: number
+  score: number
+  checked_at: string
 }
 
 type RepoInfo = {
@@ -48,6 +57,7 @@ export function InfrastructureUsage() {
   const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null)
   const [participation, setParticipation] = useState<Participation | null>(null)
   const [commits, setCommits] = useState<CommitItem[]>([])
+  const [security, setSecurity] = useState<SecurityMetrics | null>(null)
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')
 
@@ -55,8 +65,9 @@ export function InfrastructureUsage() {
     setBusy(true)
     setError('')
     try {
-      const [infraResult, repoResponse, participationResponse, commitsResponse] = await Promise.all([
+      const [infraResult, securityResult, repoResponse, participationResponse, commitsResponse] = await Promise.all([
         supabase.rpc('monitoramento_infraestrutura_erp'),
+        supabase.rpc('monitoramento_seguranca_erp'),
         fetch(api, { headers: { Accept: 'application/vnd.github+json' } }),
         fetch(api + '/stats/participation', { headers: { Accept: 'application/vnd.github+json' } }),
         fetch(api + '/commits?per_page=6', { headers: { Accept: 'application/vnd.github+json' } }),
@@ -65,6 +76,7 @@ export function InfrastructureUsage() {
       if (!repoResponse.ok) throw new Error('GitHub indisponível (' + repoResponse.status + ').')
       const repoJson = await repoResponse.json() as RepoInfo
       setInfra(infraResult.data as InfraMetrics)
+      setSecurity(securityResult.error ? null : securityResult.data as SecurityMetrics)
       setRepoInfo(repoJson)
 
       if (participationResponse.ok) setParticipation(await participationResponse.json() as Participation)
@@ -178,5 +190,20 @@ export function InfrastructureUsage() {
         <p className="infraNote">Os limites acima são referências do plano Free. Egress, MAU, Edge Functions e Realtime não são medidos por este painel; consulte o Usage oficial do Supabase para o consumo mensal completo.</p>
       </article>
     </div>
+
+    <article className="panel infraSecurityPanel">
+      <div className="infraSecurityHead">
+        <div><span className="infraLogo securityMark"><ShieldCheck size={23}/></span><div><h3>Segurança do SG</h3><p>Verificação ao vivo das proteções do banco e da API.</p></div></div>
+        <strong className={security&&security.score===100?'securityScore good':'securityScore warning'}>{security ? security.score + '/100' : '—'}</strong>
+      </div>
+      <div className="infraSecurityGrid">
+        <div><ShieldCheck size={17}/><span>RLS nas tabelas públicas</span><strong>{security ? (security.public_tables_without_rls===0?'Protegido':security.public_tables_without_rls+' pendência(s)') : '—'}</strong><small>{security?.public_tables_without_rls===0?'Nenhuma tabela pública sem Row Level Security.':'Revisar tabelas sem RLS.'}</small></div>
+        <div><LockKeyhole size={17}/><span>RPCs privilegiadas públicas</span><strong>{security ? (security.public_security_definer_functions===0?'0 expostas':security.public_security_definer_functions+' expostas') : '—'}</strong><small>Implementações privilegiadas ficam no schema privado.</small></div>
+        <div><ShieldCheck size={17}/><span>Acesso anônimo a RPCs</span><strong>{security ? (security.anon_executable_public_functions===0?'Bloqueado':security.anon_executable_public_functions+' liberadas') : '—'}</strong><small>O SG exige autenticação para executar funções do ERP.</small></div>
+        <div><ShieldCheck size={17}/><span>Acesso anônimo a dados</span><strong>{security ? (security.anon_accessible_public_tables===0?'Bloqueado':security.anon_accessible_public_tables+' tabelas') : '—'}</strong><small>Tabelas do ERP não ficam disponíveis para visitantes sem login.</small></div>
+        <div className="securityPlanNotice"><ShieldAlert size={17}/><span>Senhas vazadas</span><strong>Indisponível no Free</strong><small>O Supabase oferece bloqueio via HaveIBeenPwned apenas no Pro+. No SG, redefinições administrativas exigem 12+ caracteres, maiúscula, minúscula, número e símbolo.</small></div>
+      </div>
+      <p className="infraNote">Última verificação interna: {security ? dateTime(security.checked_at) : '—'}.</p>
+    </article>
   </section>
 }
