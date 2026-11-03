@@ -7055,3 +7055,82 @@ small{font-size:11px}
   color:#fcd34d!important;
   border:1px solid #92400e!important;
 }
+
+
+/* PADRAO GLOBAL 2026-11-03: todas as listas continuas */
+/* Todas as tabelas de listagem do SG seguem o mesmo padrão visual:
+   tabela contínua, zebra suave e divisória horizontal forte. */
+.tableWrap table,
+.billingSalesTable{
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+
+/* Cabeçalhos permanecem limpos e separados do conteúdo. */
+.tableWrap thead th,
+.billingSalesTable thead th{
+  border-bottom:1px solid var(--ds-border-strong,#cbd5e1)!important;
+}
+
+/* Tema claro: linhas contínuas, sem aparência de cards. */
+.app:not(.dark) .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow) > td,
+.app:not(.dark) .billingSalesTable tbody > tr:not(.manageRow):not(.emptyTableRow) > td{
+  background:#ffffff!important;
+  border-top:0!important;
+  border-bottom:2px solid #111827!important;
+  border-left:0!important;
+  border-right:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+/* Zebra discreta no tema claro. */
+.app:not(.dark) .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow):nth-child(even) > td,
+.app:not(.dark) .billingSalesTable tbody > tr:not(.manageRow):not(.emptyTableRow):nth-child(even) > td{
+  background:#f1f5f9!important;
+}
+
+/* Hover comum para qualquer lista. */
+.app:not(.dark) .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow):hover > td,
+.app:not(.dark) .billingSalesTable tbody > tr:not(.manageRow):not(.emptyTableRow):hover > td{
+  background:#e8f0fa!important;
+  border-bottom-color:#111827!important;
+  box-shadow:none!important;
+}
+
+/* Tema escuro: mesmo conceito contínuo, com separação visível. */
+.dark .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow) > td,
+.dark .billingSalesTable tbody > tr:not(.manageRow):not(.emptyTableRow) > td{
+  background:#0f172a!important;
+  border-top:0!important;
+  border-bottom:2px solid #334155!important;
+  border-left:0!important;
+  border-right:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  color:var(--ds-text,#e2e8f0);
+}
+
+.dark .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow):nth-child(even) > td,
+.dark .billingSalesTable tbody > tr:not(.manageRow):not(.emptyTableRow):nth-child(even) > td{
+  background:#111c2d!important;
+}
+
+.dark .tableWrap tbody > tr:not(.manageRow):not(.emptyTableRow):hover > td,
+.dark .billingSalesTable tbody > tr:not(.manageRow):not(.emptyTableRow):hover > td{
+  background:#172554!important;
+  border-bottom-color:#475569!important;
+  box-shadow:none!important;
+}
+
+/* Linhas de detalhe/expansão continuam funcionais, mas sem arredondamento de card. */
+.tableWrap .manageRow > td{
+  border-radius:0!important;
+}
+
+/* Estados vazios não recebem a divisória de registro. */
+.tableWrap .emptyTableRow > td,
+.billingSalesTable .emptyTableRow > td{
+  border-bottom:0!important;
+  border-radius:0!important;
+}
