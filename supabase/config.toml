@@ -1,4 +1,11 @@
 [functions.focus-nfe]
-# The handler validates the session with Auth getUser and checks the active
-# administrator profile and module permissions before every operation.
-verify_jwt = false
+verify_jwt = true
+
+[functions.cnpj-lookup]
+verify_jwt = true
+
+[functions.rhid-proxy]
+verify_jwt = true
+
+[functions.admin-reset-password]
+verify_jwt = true
