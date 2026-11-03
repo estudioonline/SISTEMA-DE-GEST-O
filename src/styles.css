@@ -7389,3 +7389,71 @@ small{font-size:11px}
 @media(max-width:640px){
   .entityFinanceDash{grid-template-columns:1fr}
 }
+
+
+/* RH: previa automatica de encargos e direitos */
+.rhEntitlementPreview{
+  grid-column:1/-1;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+  margin-top:4px;
+}
+.rhEntitlementPreview>div{
+  display:grid;
+  gap:3px;
+  min-width:0;
+  padding:10px 11px;
+  border:1px solid var(--ds-border);
+  border-radius:11px;
+  background:var(--ds-bg);
+}
+.rhEntitlementPreview span{
+  font-size:9px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--ds-muted);
+}
+.rhEntitlementPreview strong{
+  font-size:15px;
+  line-height:1.2;
+  color:var(--ds-text);
+}
+.rhEntitlementPreview small{
+  font-size:9px;
+  line-height:1.4;
+  color:var(--ds-muted);
+}
+.rhEntitlementPreview>div:nth-child(2),
+.rhEntitlementPreview>div:nth-child(4){
+  border-color:rgba(16,185,129,.28);
+  background:rgba(16,185,129,.07);
+}
+.rhEntitlementPreview>div:nth-child(3),
+.rhEntitlementPreview>div:nth-child(5),
+.rhEntitlementPreview>div:nth-child(6){
+  border-color:rgba(59,130,246,.28);
+  background:rgba(59,130,246,.07);
+}
+.rhEntitlementsPanel .employeeCategory{
+  margin-top:3px;
+  font-size:9px;
+}
+.app.light .rhEntitlementPreview>div{
+  background:#fff;
+  border-color:#dbe3ee;
+}
+.app.light .rhEntitlementPreview>div:nth-child(2),
+.app.light .rhEntitlementPreview>div:nth-child(4){
+  background:#ecfdf5;
+  border-color:#a7f3d0;
+}
+.app.light .rhEntitlementPreview>div:nth-child(3),
+.app.light .rhEntitlementPreview>div:nth-child(5),
+.app.light .rhEntitlementPreview>div:nth-child(6){
+  background:#eff6ff;
+  border-color:#bfdbfe;
+}
+@media(max-width:900px){.rhEntitlementPreview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.rhEntitlementPreview{grid-template-columns:1fr}}
