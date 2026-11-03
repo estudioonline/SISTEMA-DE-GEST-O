@@ -6669,3 +6669,99 @@ small{font-size:11px}
 .salesModernTable .salesUxTable td:nth-child(5){
   min-width:86px;
 }
+
+
+/* Venda: seções e modelos de cotação */
+.saleItemQuickActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.quoteModelBtn{border-color:var(--ds-blue)!important;color:var(--ds-blue)!important}
+.saleQuoteSections{display:grid;gap:7px;margin-top:10px}
+.saleQuoteSectionRow{
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr) 38px;
+  gap:8px;
+  align-items:center;
+  padding:7px 8px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:var(--ds-surface-soft);
+}
+.saleQuoteSectionHandle{display:grid;place-items:center;color:var(--ds-muted);font-weight:900;letter-spacing:-2px}
+.saleQuoteSectionRow input{
+  height:34px;
+  border:0;
+  background:transparent;
+  font-weight:800;
+  color:var(--ds-text);
+  padding:0 4px;
+}
+.saleQuoteSectionRow input:focus{box-shadow:none;border:0}
+.quoteModelOverlay{z-index:6100}
+.quoteModelDialog{
+  width:min(720px,calc(100vw - 28px));
+  max-height:min(78vh,720px);
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr);
+  overflow:hidden;
+  border:1px solid var(--ds-border);
+  border-radius:16px;
+  background:var(--ds-surface);
+  box-shadow:var(--ds-shadow-md);
+}
+.quoteModelHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 18px 12px;
+  border-bottom:1px solid var(--ds-border);
+}
+.quoteModelHeader>div{display:grid;gap:4px}
+.quoteModelHeader strong{font-size:16px;color:var(--ds-text)}
+.quoteModelHeader span{font-size:11px;color:var(--ds-muted)}
+.quoteModelSearch{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:12px 14px;
+  padding:0 11px;
+  height:40px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:var(--ds-surface-soft);
+  color:var(--ds-muted);
+}
+.quoteModelSearch input{
+  flex:1;
+  height:100%;
+  border:0;
+  background:transparent;
+  box-shadow:none!important;
+}
+.quoteModelList{display:grid;gap:7px;padding:0 14px 14px;overflow:auto}
+.quoteModelProduct{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:10px 11px;
+  border:1px solid var(--ds-border);
+  border-radius:11px;
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  text-align:left;
+  cursor:pointer;
+}
+.quoteModelProduct:hover{background:var(--ds-blue-soft);border-color:color-mix(in srgb,var(--ds-blue) 45%,var(--ds-border))}
+.quoteModelProduct>span:nth-child(2){display:grid;gap:3px;min-width:0}
+.quoteModelProduct strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quoteModelProduct small{font-size:10px;color:var(--ds-muted)}
+.quoteModelProductIcon{
+  width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+  background:var(--ds-blue-soft);color:var(--ds-blue)
+}
+.quoteModelEmpty{padding:28px;text-align:center;color:var(--ds-muted);border:1px dashed var(--ds-border);border-radius:11px}
+@media(max-width:700px){
+  .saleItemQuickActions{width:100%}
+  .saleItemQuickActions button{flex:1}
+  .quoteModelProduct{grid-template-columns:34px minmax(0,1fr) auto}
+}
