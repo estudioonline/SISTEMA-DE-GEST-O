@@ -304,3 +304,188 @@
 .sgPromptActions button{min-height:40px}
 .sgPromptActions .primary:disabled{opacity:.5;cursor:not-allowed}
 @media (max-width:560px){.sgPromptDialog{padding:18px;border-radius:15px}.sgPromptActions{flex-direction:column-reverse}.sgPromptActions button{width:100%}}
+
+
+/* Central de aplicativos inspirada no painel visual de referência */
+.appsWorkspace.launcherWorkspace{
+  background:
+    radial-gradient(circle at 15% 0%,rgba(37,99,235,.18),transparent 30%),
+    radial-gradient(circle at 85% 10%,rgba(124,58,237,.16),transparent 28%),
+    #081120;
+}
+.appsWorkspace.launcherWorkspace .workspaceBar{
+  min-height:92px;
+  padding:16px 30px;
+  background:linear-gradient(180deg,rgba(11,22,43,.98),rgba(10,18,36,.96));
+  border-bottom:1px solid rgba(96,165,250,.16);
+  box-shadow:0 14px 34px rgba(2,6,23,.28);
+}
+.appsWorkspace.launcherWorkspace .workspaceBrandMark{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  font-size:18px;
+  background:linear-gradient(145deg,#3dd6ff 0%,#4f7cff 48%,#8b5cf6 100%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.12),0 0 24px rgba(59,130,246,.42);
+}
+.appsWorkspace.launcherWorkspace .workspaceBrandText strong{
+  font-size:18px;
+  letter-spacing:.01em;
+}
+.appsWorkspace.launcherWorkspace .workspaceBrandText small{
+  color:#67e8f9;
+  font-size:11px;
+  letter-spacing:.12em;
+}
+.appsWorkspace.launcherWorkspace .main{
+  position:relative;
+  padding:54px 24px 42px;
+  min-height:calc(100dvh - 92px);
+  background:
+    linear-gradient(rgba(59,130,246,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,130,246,.035) 1px,transparent 1px),
+    radial-gradient(circle at 50% 15%,rgba(37,99,235,.08),transparent 32%),
+    transparent;
+  background-size:34px 34px,34px 34px,auto,auto;
+}
+.appsWorkspace.launcherWorkspace .appLauncher{
+  max-width:1580px;
+  padding:28px 24px 30px;
+  border:1px solid rgba(148,163,184,.24);
+  border-radius:24px;
+  background:linear-gradient(180deg,rgba(30,41,59,.84),rgba(23,30,50,.82));
+  box-shadow:0 24px 60px rgba(2,6,23,.34),inset 0 1px 0 rgba(255,255,255,.03);
+  backdrop-filter:blur(18px);
+}
+.appsWorkspace.launcherWorkspace .launcherToolbar{
+  justify-content:center;
+  margin:0 0 28px;
+}
+.appsWorkspace.launcherWorkspace .launcherSearch{
+  width:min(470px,100%);
+  min-height:50px;
+  padding:0 16px;
+  background:rgba(15,23,42,.82);
+  border:1px solid rgba(96,165,250,.58);
+  color:#94a3b8;
+  box-shadow:0 0 0 1px rgba(59,130,246,.08),0 8px 24px rgba(2,6,23,.26);
+}
+.appsWorkspace.launcherWorkspace .launcherSearch input{
+  color:#e5eefc;
+  font-size:14px;
+}
+.appsWorkspace.launcherWorkspace .launcherSearch input::placeholder{
+  color:#8fa3c1;
+}
+.appsWorkspace.launcherWorkspace .launcherGrid{
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:18px;
+  align-items:stretch;
+}
+.appsWorkspace.launcherWorkspace .launcherApp{
+  position:relative;
+  min-height:172px;
+  padding:18px 14px 16px;
+  gap:10px;
+  justify-content:flex-start;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--app-color,#2563eb) 72%,#94a3b8 28%);
+  border-radius:18px;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--app-color,#2563eb) 15%,rgba(15,23,42,.96)),rgba(15,23,42,.88));
+  color:#f8fafc;
+  box-shadow:
+    inset 0 0 36px color-mix(in srgb,var(--app-color,#2563eb) 10%,transparent),
+    0 12px 28px rgba(2,6,23,.24);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.appsWorkspace.launcherWorkspace .launcherApp::before{
+  content:"";
+  position:absolute;
+  inset:-45% 18% 45%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--app-color,#2563eb) 36%,transparent),transparent 68%);
+  opacity:.6;
+  pointer-events:none;
+}
+.appsWorkspace.launcherWorkspace .launcherApp:hover{
+  transform:translateY(-4px);
+  border-color:color-mix(in srgb,var(--app-color,#2563eb) 92%,white 8%);
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--app-color,#2563eb) 21%,rgba(15,23,42,.95)),rgba(15,23,42,.9));
+  box-shadow:
+    inset 0 0 42px color-mix(in srgb,var(--app-color,#2563eb) 14%,transparent),
+    0 18px 34px rgba(2,6,23,.32),
+    0 0 22px color-mix(in srgb,var(--app-color,#2563eb) 18%,transparent);
+}
+.appsWorkspace.launcherWorkspace .launcherIcon{
+  width:76px;
+  height:76px;
+  border-radius:19px;
+  background:
+    linear-gradient(145deg,color-mix(in srgb,var(--app-color,#2563eb) 54%,#dbeafe 46%),var(--app-color,#2563eb));
+  border:1px solid color-mix(in srgb,var(--app-color,#2563eb) 65%,white 35%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    inset 0 -10px 20px rgba(2,6,23,.16),
+    0 0 22px color-mix(in srgb,var(--app-color,#2563eb) 38%,transparent);
+  z-index:1;
+}
+.appsWorkspace.launcherWorkspace .launcherIcon svg{
+  filter:drop-shadow(0 3px 5px rgba(2,6,23,.28));
+}
+.appsWorkspace.launcherWorkspace .launcherApp strong{
+  z-index:1;
+  max-width:100%;
+  color:#fff;
+  font-size:15px;
+  font-weight:800;
+  line-height:1.15;
+  text-shadow:0 2px 6px rgba(2,6,23,.38);
+}
+.launcherDescription{
+  z-index:1;
+  max-width:190px;
+  color:#c7d2e3;
+  font-size:11px;
+  line-height:1.35;
+}
+.appsWorkspace.launcherWorkspace .launcherReadOnly{
+  z-index:1;
+  margin-top:auto;
+  padding:3px 7px;
+  border-radius:999px;
+  background:rgba(148,163,184,.12);
+  color:#cbd5e1;
+  font-size:9px;
+}
+.appsWorkspace.launcherWorkspace .launcherNotification{
+  top:-8px;
+  right:-10px;
+  min-width:24px;
+  height:24px;
+  border-color:#101827;
+  box-shadow:0 6px 14px rgba(2,6,23,.35);
+}
+.appsWorkspace.launcherWorkspace .appColor-fechamento{--app-color:#315de8}
+.appsWorkspace.launcherWorkspace .appColor-documentos{--app-color:#375a9f}
+.appsWorkspace.launcherWorkspace .appColor-rh{--app-color:#9b6bd5}
+.appsWorkspace.launcherWorkspace .appColor-infra{--app-color:#273e76}
+.appsWorkspace.launcherWorkspace .appColor-config{--app-color:#8b93a8}
+@media(max-width:1250px){
+  .appsWorkspace.launcherWorkspace .launcherGrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  .appsWorkspace.launcherWorkspace .launcherGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .appsWorkspace.launcherWorkspace .main{padding-top:28px}
+}
+@media(max-width:640px){
+  .appsWorkspace.launcherWorkspace .workspaceBar{min-height:74px}
+  .appsWorkspace.launcherWorkspace .main{padding:18px 12px 28px;min-height:calc(100dvh - 74px)}
+  .appsWorkspace.launcherWorkspace .appLauncher{padding:18px 12px;border-radius:18px}
+  .appsWorkspace.launcherWorkspace .launcherToolbar{margin-bottom:18px}
+  .appsWorkspace.launcherWorkspace .launcherGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .appsWorkspace.launcherWorkspace .launcherApp{min-height:150px;padding:14px 10px}
+  .appsWorkspace.launcherWorkspace .launcherIcon{width:62px;height:62px;border-radius:16px}
+  .appsWorkspace.launcherWorkspace .launcherApp strong{font-size:13px}
+  .launcherDescription{font-size:10px}
+}
