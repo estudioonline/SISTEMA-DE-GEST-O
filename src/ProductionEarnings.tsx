@@ -25,11 +25,12 @@ export function ProductionEarnings({canEdit}:{canEdit:boolean}){
   const [busy,setBusy]=useState(false)
   const [msg,setMsg]=useState('')
   const [showConfig,setShowConfig]=useState(false)
+  const [savedRule,setSavedRule]=useState<string|null>(null)
 
   const load=useCallback(async()=>{
     setMsg('')
     const [rr,p,s,c,i,e]=await Promise.all([
-      supabase.from('producao_regras').select('*').eq('ativo',true).order('funcionario_nome').order('servico_nome'),
+      supabase.from('producao_regras').select('*').order('funcionario_nome').order('servico_nome'),
       supabase.from('produtos').select('id,descricao,unidade,tipo_produto'),
       supabase.from('vendas').select('id,venda_numero,fatura_numero,cliente_id,status,created_at').eq('status','pedido').order('created_at',{ascending:false}),
       supabase.from('clientes').select('id,nome'),
@@ -54,6 +55,7 @@ export function ProductionEarnings({canEdit}:{canEdit:boolean}){
       const p=product(item.produto_id)
       if(!s||!p)continue
       for(const rule of rules){
+        if(!rule.ativo)continue
         if(!normalize(p.descricao).includes(normalize(rule.descricao_contem)))continue
         if(rule.chave.startsWith('moises_')&&p.tipo_produto!=='produto_final')continue
         if((rule.chave.startsWith('abimael_')||rule.chave.startsWith('andre_'))&&p.tipo_produto!=='servico')continue
@@ -69,9 +71,9 @@ export function ProductionEarnings({canEdit}:{canEdit:boolean}){
   },[items,rules,sales,products,entries])
 
   const workers=useMemo(()=>{
-    const names=[...new Set([...rules.map(r=>r.funcionario_nome),...entries.map(e=>e.funcionario_nome)])]
+    const names=[...new Set([...rules.filter(r=>r.ativo).map(r=>r.funcionario_nome),...entries.map(e=>e.funcionario_nome)])]
     return names.map(name=>{
-      const rs=rules.filter(r=>r.funcionario_nome===name)
+      const rs=rules.filter(r=>r.ativo&&r.funcionario_nome===name)
       const pending=candidates.filter(c=>c.rule.funcionario_nome===name)
       const done=entries.filter(e=>e.funcionario_nome===name)
       return {
@@ -118,6 +120,8 @@ export function ProductionEarnings({canEdit}:{canEdit:boolean}){
     try{
       const {error}=await supabase.from('producao_regras').update({...patch,atualizado_em:new Date().toISOString()}).eq('id',rule.id)
       if(error)throw error
+      setSavedRule(rule.id)
+      window.setTimeout(()=>setSavedRule(current=>current===rule.id?null:current),1800)
       await load()
     }catch(e){setMsg((e as Error).message)}finally{setBusy(false)}
   }
@@ -134,15 +138,22 @@ export function ProductionEarnings({canEdit}:{canEdit:boolean}){
     {msg&&<div className="prodEarnNotice">{msg}</div>}
 
     {showConfig&&<section className="prodConfig">
-      <header><div><strong>Valores de produção</strong><small>Os valores ficam editáveis e cada tipo de solda do Abimael é calculado separadamente.</small></div></header>
+      <header>
+        <div><strong>Regras e valores de produção</strong><small>Todos os campos são editáveis. As alterações são salvas automaticamente ao sair do campo.</small></div>
+        <span className="prodConfigHint">“Identifica produto” é o texto que o SG procura no nome do item da venda.</span>
+      </header>
       <div className="prodConfigRows">
-        {rules.map(rule=><div className="prodConfigRow" key={rule.id}>
-          <div><strong>{rule.funcionario_nome}</strong><small>{rule.servico_nome}</small></div>
-          <span className="prodRuleUnit">{rule.criterio==='valor_percentual'?'% do valor':rule.unidade}</span>
+        {rules.map(rule=><div className={'prodConfigRow'+(!rule.ativo?' inactive':'')} key={rule.id}>
+          <label><span>Responsável</span><input defaultValue={rule.funcionario_nome} disabled={!canEdit||busy} onBlur={e=>{const value=e.target.value.trim();if(value&&value!==rule.funcionario_nome)void saveRule(rule,{funcionario_nome:value})}}/></label>
+          <label><span>Serviço</span><input defaultValue={rule.servico_nome} disabled={!canEdit||busy} onBlur={e=>{const value=e.target.value.trim();if(value&&value!==rule.servico_nome)void saveRule(rule,{servico_nome:value})}}/></label>
+          <label className="prodMatchField"><span>Identifica produto</span><input defaultValue={rule.descricao_contem} title="Texto usado para localizar automaticamente os produtos/serviços da venda" disabled={!canEdit||busy} onBlur={e=>{const value=e.target.value.trim();if(value&&value!==rule.descricao_contem)void saveRule(rule,{descricao_contem:value})}}/></label>
+          <label><span>Unidade</span><select value={rule.unidade} disabled={!canEdit||busy} onChange={e=>void saveRule(rule,{unidade:e.target.value})}><option value="UN">UN</option><option value="MT">MT</option><option value="PERCENTUAL">% do valor</option></select></label>
+          <label><span>Cálculo</span><select value={rule.criterio} disabled={!canEdit||busy} onChange={e=>void saveRule(rule,{criterio:e.target.value as Rule['criterio']})}><option value="quantidade">Por quantidade</option><option value="valor_percentual">% do valor</option></select></label>
           {rule.criterio==='valor_percentual'
-            ? <label><span>Percentual</span><input type="number" min="0" step="0.01" defaultValue={rule.percentual} disabled={!canEdit||busy} onBlur={e=>void saveRule(rule,{percentual:Number(e.target.value||0)})}/></label>
-            : <label><span>R$ / {rule.unidade.toLowerCase()}</span><input type="number" min="0" step="0.01" defaultValue={rule.valor_unitario} disabled={!canEdit||busy} onBlur={e=>void saveRule(rule,{valor_unitario:Number(e.target.value||0)})}/></label>}
-          <Save size={15}/>
+            ? <label><span>Percentual (%)</span><input type="number" min="0" step="0.01" defaultValue={rule.percentual} disabled={!canEdit||busy} onBlur={e=>{const value=Number(e.target.value||0);if(value!==Number(rule.percentual))void saveRule(rule,{percentual:value})}}/></label>
+            : <label><span>R$ / {rule.unidade.toLowerCase()}</span><input type="number" min="0" step="0.01" defaultValue={rule.valor_unitario} disabled={!canEdit||busy} onBlur={e=>{const value=Number(e.target.value||0);if(value!==Number(rule.valor_unitario))void saveRule(rule,{valor_unitario:value})}}/></label>}
+          <label className="prodActiveField"><span>Regra</span><span className="prodToggle"><input type="checkbox" checked={rule.ativo} disabled={!canEdit||busy} onChange={e=>void saveRule(rule,{ativo:e.target.checked})}/>{rule.ativo?'Ativa':'Inativa'}</span></label>
+          <span className={'prodAutoSave'+(savedRule===rule.id?' saved':'')}><Save size={14}/>{savedRule===rule.id?'Salvo':'Auto'}</span>
         </div>)}
       </div>
     </section>}
