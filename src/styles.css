@@ -6923,3 +6923,10 @@ small{font-size:11px}
   background:#0f172a;
   border-color:#334155;
 }
+
+
+.serviceProductBadge{
+  color:#22c55e;
+  border-color:rgba(34,197,94,.35);
+  background:rgba(34,197,94,.08);
+}
