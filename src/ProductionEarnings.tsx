@@ -262,8 +262,16 @@ export function ProductionEarnings({canEdit,management=false}:{canEdit:boolean;m
         <div className="prodRows">
           {candidates.map(c=><div className="prodRow" key={c.item.id+'-'+c.rule.id}>
             <div className="prodMain"><strong>{c.rule.funcionario_nome} · {c.rule.servico_nome}</strong><small>{saleNo(c.sale)} · {client(c.sale.cliente_id)} · {c.product.descricao}</small></div>
-            <div><span>Produção</span><strong>{c.rule.criterio==='valor_percentual'?money(Number(c.item.total||0)):qty(c.item.quantidade)+' '+c.product.unidade}</strong></div>
-            <div><span>Regra</span><strong>{c.rule.criterio==='valor_percentual'?qty(c.rule.percentual)+'%':money(c.rule.valor_unitario)+' / '+c.product.unidade}</strong></div>
+            <div><span>Produção</span><strong>{c.rule.chave==='israel_aluminio'
+              ? qty(c.item.quantidade)+' '+c.product.unidade+' · '+money(Number(c.item.total||0))
+              : c.rule.criterio==='valor_percentual'
+                ? money(Number(c.item.total||0))
+                : qty(c.item.quantidade)+' '+c.product.unidade}</strong></div>
+            <div><span>Regra</span><strong>{c.rule.chave==='israel_aluminio'
+              ? qty(c.rule.percentual)+'% do valor definido na venda'
+              : c.rule.criterio==='valor_percentual'
+                ? qty(c.rule.percentual)+'%'
+                : money(c.rule.valor_unitario)+' / '+c.product.unidade}</strong></div>
             <div><span>A receber</span><strong>{money(c.amount)}</strong></div>
             <button className="prodConfirm" disabled={!canEdit||busy} onClick={()=>void register(c)}><CheckCircle2 size={15}/>Concluir</button>
           </div>)}
