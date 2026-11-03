@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {appPermission,calculatePayroll,hrSectionForTitle,summarizeHr} from '../src/lib/hr.ts'
+import {appPermission,calculatePayroll,calculateHrEntitlements,hrSectionForTitle,summarizeHr} from '../src/lib/hr.ts'
 import {canViewPermission,canEditPermission,defaultPermissionsForRole} from '../src/lib/permissions.ts'
 
 test('RH reuses Financeiro access; every profile can view and only configured profiles can edit',()=>{
@@ -24,6 +24,7 @@ test('legacy salary entries stay in payroll; FGTS, 13th and advances have distin
  assert.equal(hrSectionForTitle({...base,categoria:'FGTS'}),'fgts')
  assert.equal(hrSectionForTitle({...base,categoria:'13º salário'}),'decimo')
  assert.equal(hrSectionForTitle({...base,categoria:'Décimo terceiro'}),'decimo')
+ assert.equal(hrSectionForTitle({...base,categoria:'Férias'}),'ferias')
  assert.equal(hrSectionForTitle({...base,categoria:null,tipo_funcionario:'vale'}),'vales')
  assert.equal(hrSectionForTitle({...base,categoria:'Salário',tipo_funcionario:null}),null)
 })
@@ -47,4 +48,20 @@ test('gross is reference only: net payroll, FGTS and advances enter totals once 
  assert.equal(totals.fgts,160)
  assert.equal(totals.decimo,800)
  assert.equal(totals.valesPendentes,60)
+})
+
+
+test('automatic HR entitlements calculate FGTS, 13th and vacation projections',()=>{
+ const ref=new Date('2026-11-03T12:00:00')
+ const calc=calculateHrEntitlements(2235,'2025-01-01',8,ref)
+ assert.equal(calc.remuneracaoBase,2235)
+ assert.equal(calc.fgtsMensal,178.8)
+ assert.equal(calc.decimoAvos,12)
+ assert.equal(calc.decimo,2235)
+ assert.equal(calc.fgtsDecimo,178.8)
+ assert.equal(calc.tercoFerias,745)
+ assert.equal(calc.feriasIntegrais,2980)
+ assert.equal(calc.feriasAvos,10)
+ assert.equal(calc.feriasProporcionais,2483.33)
+ assert.equal(calc.fgtsFerias,238.4)
 })
