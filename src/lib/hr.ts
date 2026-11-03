@@ -2,7 +2,7 @@ import type { PermissionModule } from './permissions'
 
 export type AppModule=PermissionModule|'rh'|'documentos'|'infra'|'fechamento'
 export const appPermission=(module:AppModule):PermissionModule=>module==='rh'||module==='documentos'||module==='fechamento'?'financeiro':module==='infra'?'config':module
-export type HrSection='geral'|'funcionarios'|'folha'|'fgts'|'decimo'|'vales'|'ponto'|'espelho'|'escala_sabado'|'beneficios'
+export type HrSection='geral'|'funcionarios'|'folha'|'fgts'|'decimo'|'ferias'|'vales'|'ponto'|'espelho'|'escala_sabado'|'beneficios'
 export type HrTitle={tipo_funcionario?:'gasto'|'vale'|null;categoria:string|null;valor:number;valor_pago:number;status:string;salario_bruto?:number|null;descontos_folha?:number|null;vales_folha?:number|null;vale_descontado_em?:string|null}
 const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
 export function hrSectionForTitle(title:HrTitle):Exclude<HrSection,'geral'|'funcionarios'|'ponto'|'espelho'|'escala_sabado'|'beneficios'>|null{
@@ -11,6 +11,7 @@ export function hrSectionForTitle(title:HrTitle):Exclude<HrSection,'geral'|'func
   const category=normalize(title.categoria||'')
   if(category==='fgts')return 'fgts'
   if(category.includes('13')||category.includes('decimo terceiro'))return 'decimo'
+  if(category==='ferias')return 'ferias'
   return 'folha'
 }
 export function cents(value:unknown){
@@ -62,6 +63,41 @@ export function calculate13thAvos(admission:string|null|undefined,year:number,th
   }
   return avos
 }
+export function calculateVacationAvos(admission:string|null|undefined,reference=new Date()){
+  if(!admission)return 12
+  const admitted=new Date(admission+'T12:00:00')
+  const ref=new Date(reference);ref.setHours(12,0,0,0)
+  if(admitted>ref)return 0
+  let cycleStart=new Date(ref.getFullYear(),admitted.getMonth(),admitted.getDate(),12)
+  if(cycleStart>ref)cycleStart=new Date(ref.getFullYear()-1,admitted.getMonth(),admitted.getDate(),12)
+  if(cycleStart<admitted)cycleStart=admitted
+  let avos=0
+  for(let i=0;i<12;i++){
+    const start=new Date(cycleStart.getFullYear(),cycleStart.getMonth()+i,cycleStart.getDate(),12)
+    if(start>ref)break
+    const end=new Date(cycleStart.getFullYear(),cycleStart.getMonth()+i+1,cycleStart.getDate()-1,12)
+    const effectiveEnd=end<ref?end:ref
+    const days=Math.floor((effectiveEnd.getTime()-start.getTime())/86400000)+1
+    if(days>=15)avos++
+  }
+  return Math.max(0,Math.min(12,avos))
+}
+export function calculateHrEntitlements(remuneration:number,admission:string|null|undefined,fgtsRate=8,reference=new Date()){
+  const base=Math.max(0,Number(remuneration)||0)
+  const rate=Math.max(0,Number(fgtsRate)||0)/100
+  const year=reference.getFullYear()
+  const decimoAvos=calculate13thAvos(admission,year,12)
+  const decimo=Math.round(base*decimoAvos/12*100)/100
+  const fgtsMensal=Math.round(base*rate*100)/100
+  const fgtsDecimo=Math.round(decimo*rate*100)/100
+  const tercoFerias=Math.round(base/3*100)/100
+  const feriasIntegrais=Math.round((base+tercoFerias)*100)/100
+  const feriasAvos=calculateVacationAvos(admission,reference)
+  const feriasProporcionais=Math.round(feriasIntegrais*feriasAvos/12*100)/100
+  const fgtsFerias=Math.round(feriasIntegrais*rate*100)/100
+  return {remuneracaoBase:base,fgtsMensal,decimoAvos,decimo,fgtsDecimo,feriasAvos,tercoFerias,feriasIntegrais,feriasProporcionais,fgtsFerias}
+}
+
 export function calculateAutomaticPayroll2026(gross:number,dependents=0,otherDeductions=0,advances=0,fgtsRate=8){
   const inss=calculateInss2026(gross)
   const irrf=calculateIrrf2026(gross,inss,dependents)
