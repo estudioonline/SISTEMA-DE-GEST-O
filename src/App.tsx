@@ -3749,7 +3749,7 @@ function App(){
                   preco:p=>Number(p.preco_venda)
                 }).map(p=><tr key={p.id} onDoubleClick={()=>{setProductSubtab('cadastro');startEditProduct(p)}} title="Clique duplo para editar o serviço">
                   <td><strong>{p.codigo||'—'}</strong></td>
-                  <td><div className="productNameCell"><span>{p.descricao}</span><small className="productFinalBadge serviceProductBadge">SERVIÇO</small></div></td>
+                  <td><div className="serviceNameCell"><span className="serviceNameText">{p.descricao}</span><small className="productFinalBadge serviceProductBadge">SERVIÇO</small></div></td>
                   <td>{p.unidade||'UN'}</td>
                   <td><strong>{money(Number(p.preco_venda))}</strong></td>
                   <td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td>
