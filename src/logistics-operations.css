@@ -71,3 +71,104 @@
 .dark .logProductionSale{background:#173b6b;color:#93c5fd}
 .dark .logProductionClient{color:#e2e8f0}
 .dark .logProductionQty{color:#94a3b8}
+
+
+/* Detalhes da produção em clique duplo */
+.logProductionCard{cursor:pointer}
+.logProductionDetailOverlay{
+  position:fixed;
+  inset:0;
+  z-index:6500;
+  display:grid;
+  place-items:center;
+  padding:18px;
+}
+.logProductionDetailBackdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(2,6,23,.62);
+  backdrop-filter:blur(5px);
+}
+.logProductionDetail{
+  position:relative;
+  z-index:1;
+  width:min(980px,calc(100vw - 32px));
+  max-height:min(88vh,900px);
+  overflow:auto;
+  border:1px solid var(--ds-border);
+  border-radius:16px;
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  box-shadow:var(--ds-shadow-md);
+}
+.logProductionDetail>header{
+  position:sticky;
+  top:0;
+  z-index:2;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 18px;
+  border-bottom:1px solid var(--ds-border);
+  background:var(--ds-surface);
+}
+.logProductionDetail>header>div{display:grid;gap:3px}
+.logProductionDetail>header>div>span{font-size:9px;font-weight:900;letter-spacing:.08em;color:var(--ds-blue)}
+.logProductionDetail>header h3{margin:0;font-size:18px}
+.logProductionDetail>header p{margin:0;color:var(--ds-muted);font-size:11px}
+.logProductionSaleInfo{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  padding:14px 18px 6px;
+}
+.logProductionSaleInfo>div{
+  display:grid;
+  grid-template-columns:22px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  column-gap:7px;
+  padding:10px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:var(--ds-surface-soft);
+}
+.logProductionSaleInfo svg,.logDetailCurrency{
+  grid-row:1/3;
+  align-self:center;
+  color:var(--ds-blue);
+}
+.logDetailCurrency{font-size:11px;font-weight:900}
+.logProductionSaleInfo span{font-size:9px;color:var(--ds-muted);text-transform:uppercase;font-weight:800}
+.logProductionSaleInfo strong{font-size:11px;color:var(--ds-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logProductionMaterials{padding:12px 18px 6px}
+.logProductionMaterialsHead{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:8px}
+.logProductionMaterialsHead>div{display:grid;gap:2px}
+.logProductionMaterialsHead span{font-size:9px;font-weight:900;letter-spacing:.08em;color:var(--ds-blue)}
+.logProductionMaterialsHead h4{margin:0;font-size:14px}
+.logProductionMaterialsHead b{font-size:10px;padding:5px 8px;border-radius:999px;background:var(--ds-blue-soft);color:var(--ds-blue)}
+.logProductionMaterialsList{display:grid;gap:6px}
+.logProductionMaterialRow{
+  display:grid;
+  grid-template-columns:28px minmax(220px,1.6fr) .75fr .95fr .9fr;
+  gap:8px;
+  align-items:center;
+  padding:9px 10px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:var(--ds-surface-soft);
+}
+.logMaterialIndex{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;background:var(--ds-blue-soft);color:var(--ds-blue);font-size:10px;font-weight:900}
+.logProductionMaterialRow>div{display:grid;gap:2px;min-width:0}
+.logProductionMaterialRow>div:first-of-type strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logProductionMaterialRow small,.logProductionMaterialRow>div>span{font-size:9px;color:var(--ds-muted)}
+.logProductionMaterialRow>div>strong{font-size:10px}
+.logProductionMaterialRow strong.short{color:var(--ds-danger-text)}
+.logProductionNotes{margin:8px 18px 18px;padding:11px;border:1px solid var(--ds-border);border-radius:10px;background:var(--ds-surface-soft)}
+.logProductionNotes>span{font-size:9px;text-transform:uppercase;font-weight:900;color:var(--ds-muted)}
+.logProductionNotes p{margin:5px 0 0;color:var(--ds-text-soft);font-size:11px;line-height:1.45}
+@media(max-width:760px){
+  .logProductionSaleInfo{grid-template-columns:1fr 1fr}
+  .logProductionMaterialRow{grid-template-columns:28px minmax(0,1fr)}
+  .logProductionMaterialRow>div:nth-of-type(n+2){grid-column:2}
+}
