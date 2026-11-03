@@ -7256,3 +7256,73 @@ small{font-size:11px}
     grid-column:auto;
   }
 }
+
+
+/* Detalhes globais: acoes compactas e grade sem espacos mortos */
+/* Aproveita melhor a largura útil do modal nas fichas. */
+.recordDetailSheet .actionPanel:has(.entityDetailGrid){
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:14px;
+}
+.recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailActions{
+  flex:0 0 auto;
+  width:auto;
+  max-width:150px;
+  gap:7px;
+  margin-top:0;
+}
+.recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailActions>button{
+  min-height:34px;
+  padding:0 10px;
+  font-size:10px;
+  white-space:normal;
+  line-height:1.2;
+}
+
+/* Grade com preenchimento denso para evitar buracos após campos que ocupam mais colunas. */
+.entityDetailGrid,
+.financeDetailGrid,
+.saleDetailSummaryGrid{
+  grid-auto-flow:dense;
+}
+.entityDetailGrid>div,
+.financeDetailGrid>div,
+.saleDetailSummaryGrid>div{
+  align-self:stretch;
+}
+
+/* Endereços e textos longos usam mais largura; os demais campos sobem automaticamente. */
+.clientsEntityTable .entityDetailGrid>div:nth-child(7),
+.clientsEntityTable .entityDetailGrid>div:nth-child(9),
+.clientsEntityTable .entityDetailGrid>div:nth-child(16),
+.clientsEntityTable .entityDetailGrid>div:nth-child(19){
+  grid-column:span 2;
+}
+
+/* Quando sobra espaço no fim da grade, campos menores podem completar a linha sem desalinhamento visual. */
+.entityDetailGrid>div{
+  min-height:52px;
+}
+.entityDetailGrid strong{
+  display:block;
+}
+
+@media(max-width:1100px){
+  .recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailActions{
+    max-width:138px;
+  }
+}
+@media(max-width:900px){
+  .recordDetailSheet .actionPanel:has(.entityDetailGrid){
+    grid-template-columns:1fr;
+  }
+  .recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailActions{
+    max-width:none;
+    width:100%;
+    display:flex;
+    flex-wrap:wrap;
+  }
+  .recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailActions>button{
+    flex:0 1 auto;
+  }
+}
