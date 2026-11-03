@@ -31,21 +31,41 @@ export function ProductionEarnings({canEdit,management=false}:{canEdit:boolean;m
   const [newEmployee,setNewEmployee]=useState({nome:'',cargo:''})
   const [newRule,setNewRule]=useState({funcionario_id:'',servico_nome:'',produto_id:'',criterio:'quantidade' as Rule['criterio'],valor_unitario:0,percentual:0})
 
+  const loadAllProducts=useCallback(async()=>{
+    const pageSize=1000
+    const all:Product[]=[]
+    for(let from=0;;from+=pageSize){
+      const {data,error}=await supabase
+        .from('produtos')
+        .select('id,codigo,descricao,unidade,tipo_produto,preco_venda,custo,estoque_atual,ativo')
+        .eq('ativo',true)
+        .order('descricao')
+        .range(from,from+pageSize-1)
+      if(error)throw error
+      const page=(data||[]) as Product[]
+      all.push(...page)
+      if(page.length<pageSize)break
+    }
+    return all
+  },[])
+
   const load=useCallback(async()=>{
     setMsg('')
+    try{
     const [rr,p,em,s,c,i,e]=await Promise.all([
       supabase.from('producao_regras').select('*').order('funcionario_nome').order('servico_nome'),
-      supabase.from('produtos').select('id,codigo,descricao,unidade,tipo_produto,preco_venda,custo,estoque_atual,ativo').eq('ativo',true).order('descricao'),
+      loadAllProducts(),
       supabase.from('funcionarios').select('id,nome,cargo,ativo').eq('ativo',true).order('nome'),
       supabase.from('vendas').select('id,venda_numero,fatura_numero,cliente_id,status,created_at').eq('status','pedido').order('created_at',{ascending:false}),
       supabase.from('clientes').select('id,nome'),
       supabase.from('venda_itens').select('id,venda_id,produto_id,quantidade,valor_unitario,total'),
       supabase.from('producao_apontamentos').select('*').order('criado_em',{ascending:false})
     ])
-    const error=rr.error||p.error||em.error||s.error||c.error||i.error||e.error
-    if(error){setMsg(error.message);return}
-    setRules((rr.data||[]) as Rule[]);setProducts((p.data||[]) as Product[]);setEmployees((em.data||[]) as Employee[]);setSales((s.data||[]) as Sale[]);setClients((c.data||[]) as Client[]);setItems((i.data||[]) as Item[]);setEntries((e.data||[]) as Entry[])
-  },[])
+    const error=rr.error||em.error||s.error||c.error||i.error||e.error
+    if(error)throw error
+    setRules((rr.data||[]) as Rule[]);setProducts(p);setEmployees((em.data||[]) as Employee[]);setSales((s.data||[]) as Sale[]);setClients((c.data||[]) as Client[]);setItems((i.data||[]) as Item[]);setEntries((e.data||[]) as Entry[])
+    }catch(e){setMsg((e as Error).message)}
+  },[loadAllProducts])
 
   useEffect(()=>{void load()},[load])
 
