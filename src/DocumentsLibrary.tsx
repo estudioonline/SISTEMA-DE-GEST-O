@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import {
   AlertCircle, ChevronRight, Cloud, Download, ExternalLink, FileImage, FileSpreadsheet,
-  FileText, FolderOpen, FolderPlus, HardDrive, MoreVertical, Pencil, RefreshCw, Search, ShoppingCart, ReceiptText, Trash2
+  FileText, FolderOpen, FolderPlus, HardDrive, MoreVertical, Pencil, RefreshCw, Search, ShoppingCart, ReceiptText, Trash2, Upload
 } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { readAllRows } from './lib/readAllRows'
@@ -60,6 +60,7 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
   const [error, setError] = useState('')
   const [openingId, setOpeningId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   async function loadDocuments() {
     setLoading(true)
@@ -224,6 +225,65 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
     return folders.filter(folder => !blocked.has(folder.id))
   }
 
+  async function uploadLibraryDocument(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !canEdit || uploading) return
+
+    const allowed = new Set([
+      'application/pdf',
+      'image/jpeg','image/png','image/webp',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ])
+    if (!allowed.has(file.type)) {
+      setError('Formato não permitido. Use PDF, JPG, PNG, WEBP, Excel, CSV, Word ou TXT.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('O arquivo deve ter no máximo 10 MB.')
+      return
+    }
+
+    setUploading(true)
+    setError('')
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g,'') || 'bin'
+    const location = currentFolderId || 'sem-pasta'
+    const path = `biblioteca/${location}/${Date.now()}-${crypto.randomUUID()}.${ext}`
+
+    try {
+      const upload = await supabase.storage.from('comprovantes-pagamento').upload(path, file, {
+        contentType: file.type,
+        upsert: false
+      })
+      if (upload.error) throw new Error('Falha ao enviar arquivo: ' + upload.error.message)
+
+      const meta = await supabase.from('comprovantes_pagamento').insert({
+        venda_id: null,
+        compra_id: null,
+        folder_id: currentFolderId,
+        storage_path: path,
+        nome_arquivo: file.name,
+        mime_type: file.type,
+        tamanho: file.size
+      })
+      if (meta.error) {
+        await supabase.storage.from('comprovantes-pagamento').remove([path])
+        throw new Error('Falha ao registrar arquivo: ' + meta.error.message)
+      }
+
+      await loadDocuments()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar o arquivo.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function openDocument(file: CloudDocument) {
     const tab = window.open('about:blank', '_blank')
     if (!tab) {
@@ -319,7 +379,13 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
           <button type="button" className={!currentFolderId?'active':''} onClick={()=>setCurrentFolderId(null)}><FolderOpen size={15}/>Documentos</button>
           {breadcrumb.map(folder=><span key={folder.id}><ChevronRight size={14}/><button type="button" className={folder.id===currentFolderId?'active':''} onClick={()=>setCurrentFolderId(folder.id)}>{folder.nome}</button></span>)}
         </nav>
-        {canEdit&&<button type="button" className="primary documentsNewFolder" onClick={openCreateFolder}><FolderPlus size={16}/>Nova pasta</button>}
+        {canEdit&&<div className="documentsFolderActions">
+          <label className="ghost documentsUploadButton" aria-disabled={uploading}>
+            <Upload size={16}/><span>{uploading?'Carregando...':'Carregar arquivo'}</span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.xls,.xlsx,.csv,.doc,.docx,.txt" disabled={uploading} onChange={event=>void uploadLibraryDocument(event)}/>
+          </label>
+          <button type="button" className="primary documentsNewFolder" onClick={openCreateFolder}><FolderPlus size={16}/>Nova pasta</button>
+        </div>}
       </div>
 
       {childFolders.length>0&&<div className="documentsFolderGrid">
