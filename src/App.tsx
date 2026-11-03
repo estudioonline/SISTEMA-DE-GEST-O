@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen, Info, Database, KeyRound
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen, Info, Database, KeyRound, GripVertical
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -398,6 +398,7 @@ function App(){
   const [saleInstallmentDates,setSaleInstallmentDates]=useState<string[]>([today()])
   const [saleItems,setSaleItems]=useState<SaleItemDraft[]>([newSaleItem()])
   const [saleSections,setSaleSections]=useState<Array<{key:string;titulo:string}>>([])
+  const [saleOrder,setSaleOrder]=useState<string[]>([])
   const [quoteModelPicker,setQuoteModelPicker]=useState(false)
   const [quoteModelSearch,setQuoteModelSearch]=useState('')
   const [originalSaleItems,setOriginalSaleItems]=useState<VendaItem[]>([])
@@ -1339,7 +1340,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()]);setSaleSections([]);setQuoteModelPicker(false);setQuoteModelSearch('')}
+  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()]);setSaleSections([]);setSaleOrder([]);setQuoteModelPicker(false);setQuoteModelSearch('')}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}setSalePanel(null);setSaleDetailItems([]);resetSaleForm();setShowForm(true);setMsg('')}
   async function openSaleDetail(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,receita_producao').eq('venda_id',v.id)
@@ -1455,16 +1456,51 @@ function App(){
   function resetSaleRecipe(itemKey:string,productId:string){
     setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:defaultSaleRecipe(productId)}:item))
   }
-  function removeSaleItem(key:string){setSaleItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
+  function saleLayoutEntriesFor(order:string[]){
+    const valid=new Set([
+      ...saleItems.map(item=>'item:'+item.key),
+      ...saleSections.map(section=>'section:'+section.key)
+    ])
+    const current=order.filter(key=>valid.has(key))
+    for(const item of saleItems){const key='item:'+item.key;if(!current.includes(key))current.push(key)}
+    for(const section of saleSections){const key='section:'+section.key;if(!current.includes(key))current.push(key)}
+    return current
+  }
+  function addSaleItem(){
+    const item=newSaleItem()
+    setSaleItems(items=>[...items,item])
+    setSaleOrder(order=>[...saleLayoutEntriesFor(order),'item:'+item.key])
+  }
+  function removeSaleItem(key:string){
+    setSaleItems(items=>items.length===1?items:items.filter(i=>i.key!==key))
+    setSaleOrder(order=>order.filter(entry=>entry!=='item:'+key))
+  }
   async function addSaleSection(){
     const title=await themedPrompt('Nome da seção:','Adicionar seção')
     if(title===null)return
     const clean=title.trim()
     if(!clean)return
-    setSaleSections(rows=>[...rows,{key:crypto.randomUUID(),titulo:clean}])
+    const section={key:crypto.randomUUID(),titulo:clean}
+    setSaleSections(rows=>[...rows,section])
+    setSaleOrder(order=>[...saleLayoutEntriesFor(order),'section:'+section.key])
   }
   function updateSaleSection(key:string,titulo:string){setSaleSections(rows=>rows.map(row=>row.key===key?{...row,titulo}:row))}
-  function removeSaleSection(key:string){setSaleSections(rows=>rows.filter(row=>row.key!==key))}
+  function removeSaleSection(key:string){
+    setSaleSections(rows=>rows.filter(row=>row.key!==key))
+    setSaleOrder(order=>order.filter(entry=>entry!=='section:'+key))
+  }
+  function moveSaleLayout(source:string,target:string){
+    if(source===target)return
+    setSaleOrder(order=>{
+      const entries=saleLayoutEntriesFor(order)
+      const from=entries.indexOf(source),to=entries.indexOf(target)
+      if(from<0||to<0)return entries
+      const next=[...entries]
+      const [moved]=next.splice(from,1)
+      next.splice(to,0,moved)
+      return next
+    })
+  }
   function addQuoteModelProduct(productId:string){
     const product=produtos.find(p=>p.id===productId)
     if(!product)return
@@ -1474,7 +1510,9 @@ function App(){
     item.receita_producao=defaultSaleRecipe(product.id)
     setSaleItems(rows=>{
       const reusable=rows.length===1&&!rows[0].produto_id&&Number(rows[0].valor_unitario||0)===0
-      return reusable?[{...item,key:rows[0].key}]:[...rows,item]
+      if(reusable)return [{...item,key:rows[0].key}]
+      setSaleOrder(order=>[...saleLayoutEntriesFor(order),'item:'+item.key])
+      return [...rows,item]
     })
     setQuoteModelPicker(false)
     setQuoteModelSearch('')
@@ -2562,6 +2600,20 @@ function App(){
   const overdueTitles=titulos.filter(t=>t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0)
   const overdueReceivables=overdueTitles.filter(t=>t.tipo==='receber').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   const overduePayables=overdueTitles.filter(t=>t.tipo==='pagar').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const saleLayoutEntries=saleLayoutEntriesFor(saleOrder)
+  const saleSectionTotal=(sectionKey:string)=>{
+    const sectionIndex=saleLayoutEntries.indexOf('section:'+sectionKey)
+    if(sectionIndex<0)return 0
+    let total=0
+    for(let index=sectionIndex+1;index<saleLayoutEntries.length;index++){
+      const entry=saleLayoutEntries[index]
+      if(entry.startsWith('section:'))break
+      if(!entry.startsWith('item:'))continue
+      const item=saleItems.find(row=>'item:'+row.key===entry)
+      if(item)total+=Math.max(0,Number(item.quantidade||0)*Number(item.valor_unitario||0)-Number(item.desconto||0))
+    }
+    return total
+  }
   const saleSubtotal=saleItems.reduce((s,i)=>s+i.quantidade*i.valor_unitario,0)
   const saleDiscount=saleItems.reduce((s,i)=>s+Math.min(i.desconto,i.quantidade*i.valor_unitario),0)
   const saleTotal=Math.max(0,saleSubtotal-saleDiscount)
@@ -3788,20 +3840,68 @@ function App(){
             <button type="button" className="ghost" onClick={()=>setPurchaseItems(x=>[...x,newPurchaseItem()])}><Plus size={16}/>Adicionar item</button>
           </div>
 
-          <div className="saleItems">
-            {purchaseItems.map(i=><div className="purchaseItemRow" key={i.key}>
-              <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>choosePurchaseProduct(i.key,id)} fullWidth/></div>
-              <input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updatePurchaseItem(i.key,'quantidade',Number(e.target.value))}/>
-              <input type="number" min="0" step="0.01" value={i.custo_unitario} onChange={e=>updatePurchaseItem(i.key,'custo_unitario',Number(e.target.value))}/>
-              <strong>{money(i.quantidade*i.custo_unitario)}</strong>
-              <button type="button" className="iconBtn dangerBtn" onClick={()=>removePurchaseItem(i.key)}><Trash2 size={16}/></button>
-            </div>)}
-          </div>
+          <div className="saleItems saleItemsSortable">
+            <div className="saleItemColumnHead" aria-hidden="true"><span></span><span>Produto</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
+            {saleLayoutEntries.map(entry=>{
+              if(entry.startsWith('section:')){
+                const section=saleSections.find(row=>'section:'+row.key===entry)
+                if(!section)return null
+                return <div
+                  className="saleQuoteSectionRow saleQuoteSectionInline"
+                  key={section.key}
+                  onDragOver={e=>e.preventDefault()}
+                  onDrop={e=>{e.preventDefault();moveSaleLayout(e.dataTransfer.getData('text/plain'),entry)}}
+                >
+                  <span className="saleQuoteSectionHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para mover a seção"><GripVertical size={16}/></span>
+                  <input value={section.titulo} onChange={e=>updateSaleSection(section.key,e.target.value)} placeholder="Nome da seção" aria-label="Nome da seção"/>
+                  <div className="saleQuoteSectionTotal"><span>Total da seção</span><strong>{money(saleSectionTotal(section.key))}</strong></div>
+                  <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleSection(section.key)} title="Remover seção"><Trash2 size={14}/></button>
+                </div>
+              }
 
-          {saleConsumesStock&&saleStockShortages.length>0&&<div className="stockAuthorizationWarning">
-            <strong>Estoque insuficiente em {saleStockShortages.length} produto(s)</strong>
-            <span>{canManageAuthorizations?'Você possui permissão de autorização. Ao salvar, será solicitada uma confirmação extra para estoque negativo.':'A venda não pode ser concluída por este usuário. Solicite autorização a um usuário autorizado.'}</span>
-          </div>}
+              const i=saleItems.find(row=>'item:'+row.key===entry)
+              if(!i)return null
+              const stock=saleItemStockInfo(i)
+              const productionMaterials=productionMaterialsForItem(i)
+              return <div
+                className="saleItemRow saleItemSortableRow"
+                key={i.key}
+                onDragOver={e=>e.preventDefault()}
+                onDrop={e=>{e.preventDefault();moveSaleLayout(e.dataTransfer.getData('text/plain'),entry)}}
+              >
+                <span className="saleItemDragHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para reorganizar"><GripVertical size={17}/></span>
+                <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)} fullWidth/></div>
+                <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
+                <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
+                <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
+                <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
+                <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
+                {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
+                {(produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id)||i.receita_producao.length>0)&&<div className="saleProductionMaterials saleProductionRecipeEditor">
+                  <div className="saleProductionMaterialsTitle">
+                    <Boxes size={15}/>
+                    <div><strong>Receita deste item</strong><span>Materiais, quantidades e preços podem ser ajustados somente para esta venda.</span></div>
+                    <div className="saleProductionRecipeActions">
+                      <span className="saleRecipeValue">Receita/un.: <strong>{money(i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}</strong></span>
+                      <button type="button" className="ghost compactBtn" onClick={()=>updateSaleItem(i.key,'valor_unitario',i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}>Usar total como preço</button>
+                      <button type="button" className="ghost compactBtn" onClick={()=>resetSaleRecipe(i.key,i.produto_id)}>Restaurar padrão</button>
+                      <button type="button" className="ghost compactBtn" onClick={()=>addSaleRecipeItem(i.key)}><Plus size={14}/>Material</button>
+                    </div>
+                  </div>
+                  {i.receita_producao.length===0?<div className="saleProductionRecipeEmpty">Este produto de produção está sem receita configurada. Adicione os materiais necessários.</div>:<div className="saleProductionRecipeRows">
+                    {productionMaterials.map(({row,componente,quantidade,total},idx)=><div key={row.key} className={'saleProductionRecipeRow'+(componente&&Number(componente.estoque_atual)<quantidade?' productionMaterialShort':'')}>
+                      <span className="saleProductionRecipeIndex">{idx+1}</span>
+                      <ProductLookup products={produtos.filter(p=>p.ativo&&p.id!==i.produto_id)} value={row.componente_id} onSelect={id=>updateSaleRecipeItem(i.key,row.key,'componente_id',id)} fullWidth/>
+                      <label><span>Qtd./un.</span><input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateSaleRecipeItem(i.key,row.key,'quantidade',Number(e.target.value))}/></label>
+                      <label><span>Preço unit.</span><input type="number" min="0" step="0.01" value={row.valor_unitario||''} onChange={e=>updateSaleRecipeItem(i.key,row.key,'valor_unitario',Number(e.target.value))}/></label>
+                      <div className="saleProductionRecipeTotal"><span>Total na venda</span><strong>{money(total)}</strong><small>{quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {componente?.unidade||''}{componente?' · Estoque '+Number(componente.estoque_atual).toLocaleString('pt-BR')+' '+componente.unidade:''}</small></div>
+                      <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleRecipeItem(i.key,row.key)} title="Remover material"><Trash2 size={15}/></button>
+                    </div>)}
+                  </div>}
+                </div>}
+              </div>
+            })}
+          </div>
 
           <div className="saleTotals">
             <div className="grandTotal"><span>Total a pagar</span><strong>{money(purchaseTotal)}</strong></div>
@@ -3929,7 +4029,7 @@ function App(){
           <div className="saleItemsHead">
             <h3>Itens</h3>
             <div className="saleItemQuickActions">
-              <button type="button" className="ghost" onClick={()=>setSaleItems(x=>[...x,newSaleItem()])}><Plus size={16}/>Adicionar produto</button>
+              <button type="button" className="ghost" onClick={addSaleItem}><Plus size={16}/>Adicionar produto</button>
               <button type="button" className="ghost" onClick={()=>void addSaleSection()}><Plus size={16}/>Adicionar seção</button>
               <button type="button" className="ghost quoteModelBtn" onClick={()=>{setQuoteModelSearch('');setQuoteModelPicker(true)}}><Boxes size={16}/>Modelo de cotação</button>
             </div>
