@@ -73,7 +73,7 @@ type EmpresaConfig={id:number;updated_at?:string;razao_social:string;nome_fantas
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
 type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean;avatar_path:string|null;permissoes:PermissionMap;availablePermissions:PermissionModule[]}
 type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
-type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string}
+type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string;data_vencimento?:string|null;alerta_dias?:number}
 type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number;referencia:string|null;created_at:string}
 type SaleHistoryEvent={evento_id:string;fonte:string;acao:string;usuario_id:string|null;usuario_nome:string;usuario_perfil:string|null;ocorrido_em:string;dados_antes:Record<string,unknown>|null;dados_depois:Record<string,unknown>|null}
 
@@ -3261,6 +3261,15 @@ function App(){
     setAccountMenuOpen(false)
   }
 
+  const documentExpiryNotifications=comprovantes.filter(file=>{
+    if(!file.data_vencimento)return false
+    const due=new Date(file.data_vencimento+'T12:00:00')
+    const now=new Date()
+    now.setHours(12,0,0,0)
+    const days=Math.ceil((due.getTime()-now.getTime())/86400000)
+    return days<=Number(file.alerta_dias??5)
+  }).length
+
   function openApp(module:ModuleKey){
     if(!permissionsReady||!dataReady||!canViewModule(module))return
     setActive(module)
@@ -3293,7 +3302,7 @@ function App(){
     <main className="main">
       {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Conferindo seu perfil e suas permissões de acesso.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sair</button></div>}</section>:showApps?<>
         {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
-        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={dataReady} canEdit={canEditModule} onOpen={openApp} notifications={{financeiro:billingCounts.naoFaturado,autorizacoes:saleApprovals.length}}/>
+        <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={dataReady} canEdit={canEditModule} onOpen={openApp} notifications={{financeiro:billingCounts.naoFaturado,autorizacoes:saleApprovals.length,documentos:documentExpiryNotifications}}/>
       </>:permissionsReady&&canViewModule(active)&&<>
       <header className="topbar">
         <div><h1 ref={moduleHeading} tabIndex={-1}>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'}</p></div>
