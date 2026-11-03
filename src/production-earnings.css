@@ -13,3 +13,11 @@
 @media(max-width:1450px){.prodConfigRow{grid-template-columns:repeat(4,minmax(0,1fr));}.prodAutoSave{justify-content:flex-start}}
 @media(max-width:900px){.prodConfigHint{text-align:left;max-width:none}.prodConfig>header{display:grid}.prodConfigRow{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:620px){.prodConfigRow{grid-template-columns:1fr}}
+
+.prodLinkedProduct{display:grid;gap:4px}.prodLinkedProduct>span{font-size:11px;color:var(--muted,#94a3b8)}
+.prodManagementGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.prodCreateCard{display:grid;gap:12px;padding:16px;border:1px solid var(--line,#273449);border-radius:14px;background:var(--panel,#111827)}
+.prodCreateCard header{display:flex;align-items:center;gap:9px}.prodCreateCard header div{display:grid;gap:3px}.prodCreateCard header small{color:var(--muted,#94a3b8)}
+.prodCreateCard label{display:grid;gap:5px}.prodCreateCard label span{font-size:11px;color:var(--muted,#94a3b8)}
+.prodCreateCard input,.prodCreateCard select{width:100%;box-sizing:border-box;border:1px solid var(--line,#334155);border-radius:8px;padding:9px 10px;background:var(--input,#0f172a);color:inherit}
+@media(max-width:900px){.prodManagementGrid{grid-template-columns:1fr}}
