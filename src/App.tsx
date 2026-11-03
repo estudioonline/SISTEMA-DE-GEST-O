@@ -1550,15 +1550,26 @@ function App(){
     }
 
     setSavingSale(true);setMsg('')
-    const storedLayout:SaleLayoutStoredEntry[]=saleLayoutEntries.flatMap(entry=>{
+    const currentItemEntry=(item:SaleItemDraft):SaleLayoutStoredEntry=>({tipo:'item',produto_id:item.produto_id,quantidade:Number(item.quantidade),valor_unitario:Number(item.valor_unitario),desconto:Number(item.desconto),total:Math.max(0,Number(item.quantidade)*Number(item.valor_unitario)-Number(item.desconto))})
+    let storedLayout:SaleLayoutStoredEntry[]=saleLayoutEntries.flatMap(entry=>{
       if(entry.startsWith('section:')){
         const section=saleSections.find(row=>'section:'+row.key===entry)
         return section?[{tipo:'section' as const,titulo:section.titulo}]:[]
       }
       const item=saleItems.find(row=>'item:'+row.key===entry)
-      if(!item||!item.produto_id||item.quantidade<=0)return []
-      return [{tipo:'item' as const,produto_id:item.produto_id,quantidade:Number(item.quantidade),valor_unitario:Number(item.valor_unitario),desconto:Number(item.desconto),total:Math.max(0,Number(item.quantidade)*Number(item.valor_unitario)-Number(item.desconto))}]
+      return item&&item.produto_id&&item.quantidade>0?[currentItemEntry(item)]:[]
     })
+    if(editingSale&&Array.isArray(editingSale.layout_itens)&&editingSale.layout_itens.some(entry=>entry.tipo==='section')&&saleSections.length===0){
+      const unused=[...saleItems]
+      storedLayout=editingSale.layout_itens.flatMap(entry=>{
+        if(entry.tipo==='section')return [{tipo:'section' as const,titulo:entry.titulo}]
+        const matchIndex=unused.findIndex(item=>item.produto_id===entry.produto_id)
+        if(matchIndex<0)return []
+        const [match]=unused.splice(matchIndex,1)
+        return [currentItemEntry(match)]
+      })
+      storedLayout.push(...unused.filter(item=>item.produto_id&&item.quantidade>0).map(currentItemEntry))
+    }
     const args={
       p_layout_itens:storedLayout,
       p_cliente_id:saleClient||null,
@@ -4163,7 +4174,15 @@ function App(){
                 <tbody>
                   {saleDetailItems.length===0&&<tr className="emptyTableRow"><td colSpan={5}><div className="emptyState">Nenhum item nesta venda.</div></td></tr>}
                   {(Array.isArray(v.layout_itens)&&v.layout_itens.length?v.layout_itens:null)?.map((entry,index)=>{
-                    if(entry.tipo==='section')return <tr key={'section-'+index} className="saleDetailSectionRow"><td colSpan={5}><strong>{entry.titulo}</strong><span>{money(v.layout_itens!.slice(index+1).reduce((sum,next)=>next.tipo==='section'?sum:sum+Number(next.total||0),0))}</span></td></tr>
+                    if(entry.tipo==='section'){
+                      let sectionTotal=0
+                      for(let cursor=index+1;cursor<v.layout_itens!.length;cursor++){
+                        const next=v.layout_itens![cursor]
+                        if(next.tipo==='section')break
+                        sectionTotal+=Number(next.total||0)
+                      }
+                      return <tr key={'section-'+index} className="saleDetailSectionRow"><td colSpan={5}><strong>{entry.titulo}</strong><span>Total da seção: {money(sectionTotal)}</span></td></tr>
+                    }
                     const product=produtos.find(p=>p.id===entry.produto_id)
                     return <tr key={'layout-item-'+index}>
                       <td>{product&&isAdmin&&canManageProducts
