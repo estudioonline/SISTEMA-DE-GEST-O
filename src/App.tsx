@@ -3840,67 +3840,14 @@ function App(){
             <button type="button" className="ghost" onClick={()=>setPurchaseItems(x=>[...x,newPurchaseItem()])}><Plus size={16}/>Adicionar item</button>
           </div>
 
-          <div className="saleItems saleItemsSortable">
-            <div className="saleItemColumnHead" aria-hidden="true"><span></span><span>Produto</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
-            {saleLayoutEntries.map(entry=>{
-              if(entry.startsWith('section:')){
-                const section=saleSections.find(row=>'section:'+row.key===entry)
-                if(!section)return null
-                return <div
-                  className="saleQuoteSectionRow saleQuoteSectionInline"
-                  key={section.key}
-                  onDragOver={e=>e.preventDefault()}
-                  onDrop={e=>{e.preventDefault();moveSaleLayout(e.dataTransfer.getData('text/plain'),entry)}}
-                >
-                  <span className="saleQuoteSectionHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para mover a seção"><GripVertical size={16}/></span>
-                  <input value={section.titulo} onChange={e=>updateSaleSection(section.key,e.target.value)} placeholder="Nome da seção" aria-label="Nome da seção"/>
-                  <div className="saleQuoteSectionTotal"><span>Total da seção</span><strong>{money(saleSectionTotal(section.key))}</strong></div>
-                  <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleSection(section.key)} title="Remover seção"><Trash2 size={14}/></button>
-                </div>
-              }
-
-              const i=saleItems.find(row=>'item:'+row.key===entry)
-              if(!i)return null
-              const stock=saleItemStockInfo(i)
-              const productionMaterials=productionMaterialsForItem(i)
-              return <div
-                className="saleItemRow saleItemSortableRow"
-                key={i.key}
-                onDragOver={e=>e.preventDefault()}
-                onDrop={e=>{e.preventDefault();moveSaleLayout(e.dataTransfer.getData('text/plain'),entry)}}
-              >
-                <span className="saleItemDragHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para reorganizar"><GripVertical size={17}/></span>
-                <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)} fullWidth/></div>
-                <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
-                <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
-                <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
-                <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
-                <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
-                {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
-                {(produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id)||i.receita_producao.length>0)&&<div className="saleProductionMaterials saleProductionRecipeEditor">
-                  <div className="saleProductionMaterialsTitle">
-                    <Boxes size={15}/>
-                    <div><strong>Receita deste item</strong><span>Materiais, quantidades e preços podem ser ajustados somente para esta venda.</span></div>
-                    <div className="saleProductionRecipeActions">
-                      <span className="saleRecipeValue">Receita/un.: <strong>{money(i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}</strong></span>
-                      <button type="button" className="ghost compactBtn" onClick={()=>updateSaleItem(i.key,'valor_unitario',i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}>Usar total como preço</button>
-                      <button type="button" className="ghost compactBtn" onClick={()=>resetSaleRecipe(i.key,i.produto_id)}>Restaurar padrão</button>
-                      <button type="button" className="ghost compactBtn" onClick={()=>addSaleRecipeItem(i.key)}><Plus size={14}/>Material</button>
-                    </div>
-                  </div>
-                  {i.receita_producao.length===0?<div className="saleProductionRecipeEmpty">Este produto de produção está sem receita configurada. Adicione os materiais necessários.</div>:<div className="saleProductionRecipeRows">
-                    {productionMaterials.map(({row,componente,quantidade,total},idx)=><div key={row.key} className={'saleProductionRecipeRow'+(componente&&Number(componente.estoque_atual)<quantidade?' productionMaterialShort':'')}>
-                      <span className="saleProductionRecipeIndex">{idx+1}</span>
-                      <ProductLookup products={produtos.filter(p=>p.ativo&&p.id!==i.produto_id)} value={row.componente_id} onSelect={id=>updateSaleRecipeItem(i.key,row.key,'componente_id',id)} fullWidth/>
-                      <label><span>Qtd./un.</span><input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateSaleRecipeItem(i.key,row.key,'quantidade',Number(e.target.value))}/></label>
-                      <label><span>Preço unit.</span><input type="number" min="0" step="0.01" value={row.valor_unitario||''} onChange={e=>updateSaleRecipeItem(i.key,row.key,'valor_unitario',Number(e.target.value))}/></label>
-                      <div className="saleProductionRecipeTotal"><span>Total na venda</span><strong>{money(total)}</strong><small>{quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {componente?.unidade||''}{componente?' · Estoque '+Number(componente.estoque_atual).toLocaleString('pt-BR')+' '+componente.unidade:''}</small></div>
-                      <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleRecipeItem(i.key,row.key)} title="Remover material"><Trash2 size={15}/></button>
-                    </div>)}
-                  </div>}
-                </div>}
-              </div>
-            })}
+          <div className="saleItems">
+            {purchaseItems.map(i=><div className="purchaseItemRow" key={i.key}>
+              <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>choosePurchaseProduct(i.key,id)} fullWidth/></div>
+              <input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updatePurchaseItem(i.key,'quantidade',Number(e.target.value))}/>
+              <input type="number" min="0" step="0.01" value={i.custo_unitario} onChange={e=>updatePurchaseItem(i.key,'custo_unitario',Number(e.target.value))}/>
+              <strong>{money(i.quantidade*i.custo_unitario)}</strong>
+              <button type="button" className="iconBtn dangerBtn" onClick={()=>removePurchaseItem(i.key)}><Trash2 size={16}/></button>
+            </div>)}
           </div>
 
           <div className="saleTotals">
@@ -4035,48 +3982,68 @@ function App(){
             </div>
           </div>
 
-          <div className="saleItems">
-            <div className="saleItemColumnHead" aria-hidden="true"><span>Produto</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
-            {saleItems.map(i=>{const stock=saleItemStockInfo(i);const productionMaterials=productionMaterialsForItem(i);return <div className="saleItemRow" key={i.key}>
-              <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)} fullWidth/></div>
-              <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
-              <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
-              <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
-              <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
-              <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
-              {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
-              {(produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id)||i.receita_producao.length>0)&&<div className="saleProductionMaterials saleProductionRecipeEditor">
-                <div className="saleProductionMaterialsTitle">
-                  <Boxes size={15}/>
-                  <div><strong>Receita deste item</strong><span>Materiais, quantidades e preços podem ser ajustados somente para esta venda.</span></div>
-                  <div className="saleProductionRecipeActions">
-                    <span className="saleRecipeValue">Receita/un.: <strong>{money(i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}</strong></span>
-                    <button type="button" className="ghost compactBtn" onClick={()=>updateSaleItem(i.key,'valor_unitario',i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}>Usar total como preço</button>
-                    <button type="button" className="ghost compactBtn" onClick={()=>resetSaleRecipe(i.key,i.produto_id)}>Restaurar padrão</button>
-                    <button type="button" className="ghost compactBtn" onClick={()=>addSaleRecipeItem(i.key)}><Plus size={14}/>Material</button>
-                  </div>
+          <div className="saleItems saleItemsSortable">
+            <div className="saleItemColumnHead" aria-hidden="true"><span></span><span>Produto</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
+            {saleLayoutEntries.map(entry=>{
+              if(entry.startsWith('section:')){
+                const section=saleSections.find(row=>'section:'+row.key===entry)
+                if(!section)return null
+                return <div
+                  className="saleQuoteSectionRow saleQuoteSectionInline"
+                  key={section.key}
+                  onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='move'}}
+                  onDrop={e=>{e.preventDefault();const source=e.dataTransfer.getData('text/plain');if(source)moveSaleLayout(source,entry)}}
+                >
+                  <span className="saleQuoteSectionHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para mover a seção"><GripVertical size={16}/></span>
+                  <input value={section.titulo} onChange={e=>updateSaleSection(section.key,e.target.value)} placeholder="Nome da seção" aria-label="Nome da seção"/>
+                  <div className="saleQuoteSectionTotal"><span>Total da seção</span><strong>{money(saleSectionTotal(section.key))}</strong></div>
+                  <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleSection(section.key)} title="Remover seção"><Trash2 size={14}/></button>
                 </div>
-                {i.receita_producao.length===0?<div className="saleProductionRecipeEmpty">Este produto de produção está sem receita configurada. Adicione os materiais necessários.</div>:<div className="saleProductionRecipeRows">
-                  {productionMaterials.map(({row,componente,quantidade,total},idx)=><div key={row.key} className={'saleProductionRecipeRow'+(componente&&Number(componente.estoque_atual)<quantidade?' productionMaterialShort':'')}>
-                    <span className="saleProductionRecipeIndex">{idx+1}</span>
-                    <ProductLookup products={produtos.filter(p=>p.ativo&&p.id!==i.produto_id)} value={row.componente_id} onSelect={id=>updateSaleRecipeItem(i.key,row.key,'componente_id',id)} fullWidth/>
-                    <label><span>Qtd./un.</span><input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateSaleRecipeItem(i.key,row.key,'quantidade',Number(e.target.value))}/></label>
-                    <label><span>Preço unit.</span><input type="number" min="0" step="0.01" value={row.valor_unitario||''} onChange={e=>updateSaleRecipeItem(i.key,row.key,'valor_unitario',Number(e.target.value))}/></label>
-                    <div className="saleProductionRecipeTotal"><span>Total na venda</span><strong>{money(total)}</strong><small>{quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {componente?.unidade||''}{componente?' · Estoque '+Number(componente.estoque_atual).toLocaleString('pt-BR')+' '+componente.unidade:''}</small></div>
-                    <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleRecipeItem(i.key,row.key)} title="Remover material"><Trash2 size={15}/></button>
-                  </div>)}
-                </div>}
-              </div>}
-            </div>})}
-          </div>
+              }
 
-          {saleSections.length>0&&<div className="saleQuoteSections">
-            {saleSections.map((section,index)=><div className="saleQuoteSectionRow" key={section.key}>
-              <span className="saleQuoteSectionHandle">⋮⋮</span>
-              <input value={section.titulo} onChange={e=>updateSaleSection(section.key,e.target.value)} placeholder={'Seção '+(index+1)} aria-label={'Nome da seção '+(index+1)}/>
-              <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleSection(section.key)} title="Remover seção"><Trash2 size={14}/></button>
-            </div>)}
-          </div>}
+              const i=saleItems.find(row=>'item:'+row.key===entry)
+              if(!i)return null
+              const stock=saleItemStockInfo(i)
+              const productionMaterials=productionMaterialsForItem(i)
+              return <div
+                className="saleItemRow saleItemSortableRow"
+                key={i.key}
+                onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='move'}}
+                onDrop={e=>{e.preventDefault();const source=e.dataTransfer.getData('text/plain');if(source)moveSaleLayout(source,entry)}}
+              >
+                <span className="saleItemDragHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para reorganizar"><GripVertical size={17}/></span>
+                <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)} fullWidth/></div>
+                <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
+                <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
+                <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
+                <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
+                <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
+                {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
+                {(produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id)||i.receita_producao.length>0)&&<div className="saleProductionMaterials saleProductionRecipeEditor">
+                  <div className="saleProductionMaterialsTitle">
+                    <Boxes size={15}/>
+                    <div><strong>Receita deste item</strong><span>Materiais, quantidades e preços podem ser ajustados somente para esta venda.</span></div>
+                    <div className="saleProductionRecipeActions">
+                      <span className="saleRecipeValue">Receita/un.: <strong>{money(i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}</strong></span>
+                      <button type="button" className="ghost compactBtn" onClick={()=>updateSaleItem(i.key,'valor_unitario',i.receita_producao.reduce((sum,row)=>sum+Number(row.quantidade||0)*Number(row.valor_unitario||0),0))}>Usar total como preço</button>
+                      <button type="button" className="ghost compactBtn" onClick={()=>resetSaleRecipe(i.key,i.produto_id)}>Restaurar padrão</button>
+                      <button type="button" className="ghost compactBtn" onClick={()=>addSaleRecipeItem(i.key)}><Plus size={14}/>Material</button>
+                    </div>
+                  </div>
+                  {i.receita_producao.length===0?<div className="saleProductionRecipeEmpty">Este produto de produção está sem receita configurada. Adicione os materiais necessários.</div>:<div className="saleProductionRecipeRows">
+                    {productionMaterials.map(({row,componente,quantidade,total},idx)=><div key={row.key} className={'saleProductionRecipeRow'+(componente&&Number(componente.estoque_atual)<quantidade?' productionMaterialShort':'')}>
+                      <span className="saleProductionRecipeIndex">{idx+1}</span>
+                      <ProductLookup products={produtos.filter(p=>p.ativo&&p.id!==i.produto_id)} value={row.componente_id} onSelect={id=>updateSaleRecipeItem(i.key,row.key,'componente_id',id)} fullWidth/>
+                      <label><span>Qtd./un.</span><input type="number" min="0.001" step="0.001" value={row.quantidade} onChange={e=>updateSaleRecipeItem(i.key,row.key,'quantidade',Number(e.target.value))}/></label>
+                      <label><span>Preço unit.</span><input type="number" min="0" step="0.01" value={row.valor_unitario||''} onChange={e=>updateSaleRecipeItem(i.key,row.key,'valor_unitario',Number(e.target.value))}/></label>
+                      <div className="saleProductionRecipeTotal"><span>Total na venda</span><strong>{money(total)}</strong><small>{quantidade.toLocaleString('pt-BR',{maximumFractionDigits:3})} {componente?.unidade||''}{componente?' · Estoque '+Number(componente.estoque_atual).toLocaleString('pt-BR')+' '+componente.unidade:''}</small></div>
+                      <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleRecipeItem(i.key,row.key)} title="Remover material"><Trash2 size={15}/></button>
+                    </div>)}
+                  </div>}
+                </div>}
+              </div>
+            })}
+          </div>
 
           <div className="saleTotals">
             <div><span>Subtotal</span><strong>{money(saleSubtotal)}</strong></div>
