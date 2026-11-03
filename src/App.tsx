@@ -4584,7 +4584,7 @@ function App(){
           </article>
         </>}
 
-        {financeSubtab!=='geral'&&financeSubtab!=='faturamento'&&financeSubtab!=='conciliacao'&&<div className="panel financeFilterPanel">
+        {financeSubtab!=='geral'&&financeSubtab!=='faturamento'&&financeSubtab!=='conciliacao'&&<div className={`panel financeFilterPanel ${['pagar','receber','vencidos'].includes(financeSubtab)?'financeFilterPanelCompact':''}`}>
           <div className="financeQuickRanges">
             <span>Período</span>
             <button type="button" className="ghost" onClick={()=>setFinanceQuickRange('hoje')}>Hoje</button>
