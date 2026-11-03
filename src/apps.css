@@ -339,7 +339,7 @@
 }
 .appsWorkspace.launcherWorkspace .main{
   position:relative;
-  padding:54px 24px 42px;
+  padding:18px 24px 42px;
   min-height:calc(100dvh - 92px);
   background:
     linear-gradient(rgba(59,130,246,.035) 1px,transparent 1px),
@@ -476,11 +476,11 @@
 }
 @media(max-width:900px){
   .appsWorkspace.launcherWorkspace .launcherGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .appsWorkspace.launcherWorkspace .main{padding-top:28px}
+  .appsWorkspace.launcherWorkspace .main{padding-top:14px}
 }
 @media(max-width:640px){
   .appsWorkspace.launcherWorkspace .workspaceBar{min-height:74px}
-  .appsWorkspace.launcherWorkspace .main{padding:18px 12px 28px;min-height:calc(100dvh - 74px)}
+  .appsWorkspace.launcherWorkspace .main{padding:12px 12px 28px;min-height:calc(100dvh - 74px)}
   .appsWorkspace.launcherWorkspace .appLauncher{padding:18px 12px;border-radius:18px}
   .appsWorkspace.launcherWorkspace .launcherToolbar{margin-bottom:18px}
   .appsWorkspace.launcherWorkspace .launcherGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
