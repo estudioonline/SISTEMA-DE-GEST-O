@@ -6984,3 +6984,16 @@ small{font-size:11px}
   background:#fef3c7!important;
   color:#b45309!important;
 }
+
+
+/* Melhor contraste dos status positivos na lista de vendas */
+.app:not(.dark) .salesModernTable .billingInvoice-faturado{
+  background:#bbf7d0!important;
+  color:#166534!important;
+  border:1px solid #86efac!important;
+}
+.app:not(.dark) .salesModernTable .salesPaymentStatus-pago{
+  background:#a7f3d0!important;
+  color:#065f46!important;
+  border:1px solid #6ee7b7!important;
+}
