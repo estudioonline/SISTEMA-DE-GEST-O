@@ -6896,3 +6896,30 @@ small{font-size:11px}
   .saleQuoteSectionInline{grid-template-columns:28px minmax(0,1fr) 38px}
   .saleQuoteSectionTotal{grid-column:2/3;padding:0 4px 4px}
 }
+
+
+.saleItemsDetailTable .saleDetailSectionRow td{
+  padding:10px 12px;
+  background:var(--ds-surface-soft);
+  border-top:1px solid var(--ds-border);
+  border-bottom:1px solid var(--ds-border);
+}
+.saleItemsDetailTable .saleDetailSectionRow td{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.saleItemsDetailTable .saleDetailSectionRow strong{
+  color:var(--ds-text);
+  font-size:13px;
+}
+.saleItemsDetailTable .saleDetailSectionRow span{
+  color:var(--ds-muted);
+  font-size:12px;
+  font-weight:700;
+}
+.dark .saleItemsDetailTable .saleDetailSectionRow td{
+  background:#0f172a;
+  border-color:#334155;
+}
