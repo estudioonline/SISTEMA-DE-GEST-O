@@ -7182,3 +7182,77 @@ small{font-size:11px}
 @media(max-width:640px){
   .financeFilterPanelCompact{padding:8px!important}
 }
+
+
+/* Detalhes globais: textos longos sem invadir cards vizinhos */
+/* Cliente/fornecedor: a grade divide o espaço com as ações sem ultrapassar o modal. */
+.recordDetailSheet .actionPanel:has(.entityDetailGrid){
+  align-items:flex-start;
+}
+.recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailGrid{
+  flex:1 1 0;
+  width:auto;
+  min-width:0;
+}
+.recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailActions{
+  flex:0 0 180px;
+  min-width:0;
+}
+
+/* Todo card de informação deve crescer em altura e quebrar textos longos. */
+.entityDetailGrid>div,
+.financeDetailGrid>div,
+.saleDetailSummaryGrid>div,
+.saleDetailInfo>div,
+.recordDetailSheet .actionMeta,
+.recordDetailSheet .financeDetailGrid>div{
+  min-width:0!important;
+  height:auto!important;
+  min-height:0;
+  overflow:visible;
+}
+
+.entityDetailGrid strong,
+.entityDetailGrid span,
+.financeDetailGrid strong,
+.financeDetailGrid span,
+.saleDetailSummaryGrid strong,
+.saleDetailSummaryGrid span,
+.saleDetailInfo strong,
+.saleDetailInfo span,
+.recordDetailSheet .actionMeta strong,
+.recordDetailSheet .actionMeta span{
+  min-width:0!important;
+  max-width:100%;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word;
+}
+
+/* Campos extensos de clientes ganham mais espaço quando houver largura disponível. */
+.clientsEntityTable .entityDetailGrid>div:nth-child(7),
+.clientsEntityTable .entityDetailGrid>div:nth-child(9),
+.clientsEntityTable .entityDetailGrid>div:nth-child(16),
+.clientsEntityTable .entityDetailGrid>div:nth-child(19){
+  grid-column:span 2;
+}
+
+@media(max-width:900px){
+  .recordDetailSheet .actionPanel:has(.entityDetailGrid){
+    display:grid;
+    grid-template-columns:1fr;
+  }
+  .recordDetailSheet .actionPanel:has(.entityDetailGrid) .entityDetailActions{
+    width:100%;
+    flex-basis:auto;
+    justify-content:flex-start;
+  }
+  .clientsEntityTable .entityDetailGrid>div:nth-child(7),
+  .clientsEntityTable .entityDetailGrid>div:nth-child(9),
+  .clientsEntityTable .entityDetailGrid>div:nth-child(16),
+  .clientsEntityTable .entityDetailGrid>div:nth-child(19){
+    grid-column:auto;
+  }
+}
