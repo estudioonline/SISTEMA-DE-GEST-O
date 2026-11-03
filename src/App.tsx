@@ -3025,6 +3025,24 @@ function App(){
       await refreshFinance()
     }catch(error){setMsg(error instanceof Error?error.message:(error as {message?:string})?.message||'Não foi possível cancelar a fatura.')}finally{setBillingBusy(false)}
   }
+  function clientReceivableSummary(client:Cliente){
+    const clientSaleIds=new Set(vendas.filter(v=>v.cliente_id===client.id).map(v=>v.id))
+    const clientName=String(client.nome||'').trim().toLocaleLowerCase('pt-BR')
+    const open=titulos.filter(t=>{
+      if(t.tipo!=='receber'||t.status==='pago'||t.status==='cancelado')return false
+      const saldo=Math.max(0,Number(t.valor)-Number(t.valor_pago))
+      if(saldo<=0)return false
+      if(t.venda_id&&clientSaleIds.has(t.venda_id))return true
+      return !t.venda_id&&String(t.entidade_nome||'').trim().toLocaleLowerCase('pt-BR')===clientName
+    })
+    return open.reduce((acc,t)=>{
+      const saldo=Math.max(0,Number(t.valor)-Number(t.valor_pago))
+      if(t.vencimento<today())acc.vencido+=saldo
+      else acc.aVencer+=saldo
+      return acc
+    },{aVencer:0,vencido:0})
+  }
+
   function nameInitials(name:string){
     const parts=String(name||'').trim().split(/\s+/).filter(Boolean)
     if(!parts.length)return '?'
@@ -3442,7 +3460,12 @@ function App(){
           </label>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingClient(null)}}>Cancelar</button><button className="primary">{editingClient?'Salvar alterações':'Cadastrar cliente'}</button></div>
         </form></div></div>}
-        <EditableEntityTable className="clientsEntityTable" readOnly={!canManageClients} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="entityDetailGrid">
+        <EditableEntityTable className="clientsEntityTable" readOnly={!canManageClients} title="Clientes" emptyActionLabel="+ Adicionar Cliente" onEmptyAction={startNewClient} headers={['Nome','Documento','E-mail','Telefone','Limite','Status','Gerenciar']} rows={clientes.map(c=>({id:c.id,cells:[c.nome,c.documento||'—',c.email||'—',c.telefone||'—',money(Number(c.limite_credito)),c.ativo?'Ativo':'Inativo'],opened:clientPanel===c.id,onToggle:()=>setClientPanel(clientPanel===c.id?null:c.id),panel:<><div className="entityDetailContent">
+  {(()=>{const resumo=clientReceivableSummary(c);return <div className="entityFinanceDash">
+    <article className="entityFinanceCard due"><span>Total a vencer</span><strong>{money(resumo.aVencer)}</strong><small>Saldo em aberto com vencimento hoje ou futuro</small></article>
+    <article className="entityFinanceCard overdue"><span>Total vencido</span><strong>{money(resumo.vencido)}</strong><small>Saldo em aberto com vencimento anterior a hoje</small></article>
+  </div>})()}
+  <div className="entityDetailGrid">
   <div><span>Nome / Razão social</span><strong>{c.nome}</strong></div>
   <div><span>CPF / CNPJ</span><strong>{c.documento||'—'}</strong></div>
   <div><span>E-mail</span><strong>{c.email||'—'}</strong></div>
@@ -3462,6 +3485,7 @@ function App(){
   <div><span>Nº inscrição estadual</span><strong>{c.inscricao_estadual||'—'}</strong></div>
   <div><span>Consumidor final</span><strong>{c.consumidor_final===false?'Não':'Sim'}</strong></div>
   <div><span>Presença do comprador</span><strong>{c.presenca_comprador===2?'Internet':c.presenca_comprador===3?'Teleatendimento':c.presenca_comprador===5?'Presencial fora do estabelecimento':c.presenca_comprador===9?'Não presencial, outros':'Presencial'}</strong></div>
+  </div>
 </div><div className="rowActions entityDetailActions">{canManageClients&&<button className="ghost" onClick={()=>startEditClient(c)}><Pencil size={15}/>Editar</button>}{canViewFinance&&<button className="ghost" disabled={statementBusy!==null} onClick={()=>void downloadEntityStatement('cliente',c)}><FileDown size={15}/>{statementBusy==='cliente:'+c.id?'Gerando...':'PDF de faturas em aberto'}</button>}{isAdmin&&canManageClients&&<button className="dangerAction" onClick={()=>void deleteClient(c)}><Trash2 size={15}/>Excluir</button>}</div></>}))}/>
       </section>}
 
