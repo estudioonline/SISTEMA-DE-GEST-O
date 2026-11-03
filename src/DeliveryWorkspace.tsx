@@ -2,8 +2,10 @@ import {useState} from 'react'
 import {BarChart3,Boxes,ClipboardCheck,PackageCheck,Truck,X} from 'lucide-react'
 import {DeliveryManagement} from './DeliveryManagement'
 import {LogisticsOperations} from './LogisticsOperations'
+import {ProductionWorkspace} from './ProductionWorkspace'
 import './delivery-workspace.css'
 import './logistics-operations.css'
+import './production-earnings.css'
 
 type Section='separacao'|'producao'|'rotas'|'conferencia'|'relatorio'
 
@@ -47,7 +49,7 @@ export function DeliveryWorkspace({canEdit,canOperate}:{canEdit:boolean;canOpera
       <span>{sections.find(item=>item.key===section)?.description}</span>
     </div>
     {section==='separacao'&&<LogisticsOperations mode="separacao" canEdit={canEdit}/>}
-    {section==='producao'&&<LogisticsOperations mode="producao" canEdit={canEdit}/>}
+    {section==='producao'&&<ProductionWorkspace canEdit={canEdit}/>}
     {section==='relatorio'&&<LogisticsOperations mode="relatorio" canEdit={canEdit}/>}
     {section==='rotas'&&<DeliveryManagement key="rotas" canEdit={canEdit} canOperate={canOperate} initialView="montagem"/>}
     {section==='conferencia'&&<DeliveryManagement key="conferencia" canEdit={canEdit} canOperate={canOperate} initialView="historico"/>}
