@@ -2394,7 +2394,8 @@ function App(){
   async function saveManagedUserPassword(){
     if(!canManageConfig){setMsg('Sem permissão para alterar senhas.');return}
     if(!passwordUserId||savingPasswordUserId)return
-    if(newManagedPassword.length<8){setMsg('A nova senha deve ter pelo menos 8 caracteres.');return}
+    if(newManagedPassword.length<12){setMsg('A nova senha deve ter pelo menos 12 caracteres.');return}
+    if(!/[a-z]/.test(newManagedPassword)||!/[A-Z]/.test(newManagedPassword)||!/[0-9]/.test(newManagedPassword)||!/[^A-Za-z0-9]/.test(newManagedPassword)){setMsg('A senha deve conter letra minúscula, maiúscula, número e símbolo.');return}
     if(newManagedPassword!==confirmManagedPassword){setMsg('A confirmação da senha não confere.');return}
 
     setSavingPasswordUserId(passwordUserId)
@@ -2498,6 +2499,9 @@ function App(){
       setMsg('Configuração do Supabase indisponível.')
       return
     }
+
+    if(viewerPassword.length<12){setMsg('A senha inicial deve ter pelo menos 12 caracteres.');return}
+    if(!/[a-z]/.test(viewerPassword)||!/[A-Z]/.test(viewerPassword)||!/[0-9]/.test(viewerPassword)||!/[^A-Za-z0-9]/.test(viewerPassword)){setMsg('A senha inicial deve conter letra minúscula, maiúscula, número e símbolo.');return}
 
     setCreatingViewer(true)
     setMsg('')
@@ -4699,7 +4703,7 @@ function App(){
           <div className="formTitle"><div><h3>Criar novo usuário</h3><p>O acesso ao ERP passa a ser controlado pelo administrador. Escolha o perfil inicial do usuário.</p></div></div>
           <label className="fieldLabel">Nome do usuário<input value={viewerName} onChange={e=>setViewerName(e.target.value)} placeholder="Digite o nome" required/></label>
           <label className="fieldLabel">E-mail<input type="email" value={viewerEmail} onChange={e=>setViewerEmail(e.target.value)} placeholder="usuario@empresa.com" required/></label>
-          <label className="fieldLabel">Senha inicial<input type="password" value={viewerPassword} onChange={e=>setViewerPassword(e.target.value)} placeholder="Mínimo de 8 caracteres" minLength={8} required/></label>
+          <label className="fieldLabel">Senha inicial<input type="password" value={viewerPassword} onChange={e=>setViewerPassword(e.target.value)} placeholder="12+ caracteres, maiúscula, minúscula, número e símbolo" minLength={12} maxLength={128} required/></label>
           <label className="fieldLabel">Perfil
             <select value={newUserRole} onChange={e=>setNewUserRole(e.target.value as PerfilRole)}>
               <option value="administrador">Administrador</option>
@@ -4814,10 +4818,10 @@ function App(){
               <div className="passwordResetContent">
                 <div className="passwordResetUser"><span className="passwordResetIcon"><KeyRound size={20}/></span><div><strong>{passwordUser.nome}</strong><span>{passwordUser.email}</span></div></div>
                 <div className="permissionSafetyNotice"><ShieldCheck size={16}/><span>A senha é alterada diretamente no login do usuário. O sistema nunca exibe nem armazena a senha atual.</span></div>
-                <label className="fieldLabel">Nova senha<input type="password" autoComplete="new-password" minLength={8} maxLength={128} value={newManagedPassword} onChange={e=>setNewManagedPassword(e.target.value)} placeholder="Mínimo de 8 caracteres" disabled={passwordBusy}/></label>
-                <label className="fieldLabel">Confirmar nova senha<input type="password" autoComplete="new-password" minLength={8} maxLength={128} value={confirmManagedPassword} onChange={e=>setConfirmManagedPassword(e.target.value)} placeholder="Digite novamente" disabled={passwordBusy}/></label>
+                <label className="fieldLabel">Nova senha<input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={newManagedPassword} onChange={e=>setNewManagedPassword(e.target.value)} placeholder="12+ caracteres, maiúscula, minúscula, número e símbolo" disabled={passwordBusy}/></label>
+                <label className="fieldLabel">Confirmar nova senha<input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={confirmManagedPassword} onChange={e=>setConfirmManagedPassword(e.target.value)} placeholder="Digite novamente" disabled={passwordBusy}/></label>
                 {confirmManagedPassword&&newManagedPassword!==confirmManagedPassword&&<small className="passwordMismatch">As senhas não coincidem.</small>}
-                <div className="passwordResetActions"><button type="button" className="ghost" disabled={passwordBusy} onClick={closeManagedUserPassword}>Cancelar</button><button type="button" className="primary" disabled={passwordBusy||newManagedPassword.length<8||newManagedPassword!==confirmManagedPassword} onClick={()=>void saveManagedUserPassword()}>{passwordBusy?'Alterando...':'Alterar senha'}</button></div>
+                <div className="passwordResetActions"><button type="button" className="ghost" disabled={passwordBusy} onClick={closeManagedUserPassword}>Cancelar</button><button type="button" className="primary" disabled={passwordBusy||newManagedPassword.length<12||newManagedPassword!==confirmManagedPassword} onClick={()=>void saveManagedUserPassword()}>{passwordBusy?'Alterando...':'Alterar senha'}</button></div>
               </div>
             </div>
           </div>
