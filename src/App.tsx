@@ -4845,29 +4845,43 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,on
   const [subgroupFilter,setSubgroupFilter]=useState('todos')
   const [selectedIds,setSelectedIds]=useState<string[]>([])
   const [sort,setSort]=useState<{key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda';dir:'asc'|'desc'}|null>(null)
-  const groupName=(p:Produto)=>groups.find(g=>g.id===p.grupo_id)?.nome||'Sem grupo'
-  const subgroupName=(p:Produto)=>subgroups.find(s=>s.id===p.subgrupo_id)?.nome||'—'
+  const [page,setPage]=useState(1)
+  const pageSize=100
+
+  const groupMap=useMemo(()=>new Map(groups.map(g=>[g.id,g.nome])),[groups])
+  const subgroupMap=useMemo(()=>new Map(subgroups.map(s=>[s.id,s.nome])),[subgroups])
+  const groupName=(p:Produto)=>p.grupo_id?groupMap.get(p.grupo_id)||'Sem grupo':'Sem grupo'
+  const subgroupName=(p:Produto)=>p.subgrupo_id?subgroupMap.get(p.subgrupo_id)||'—':'—'
   const normalized=query.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()
-  const filtered=produtos.filter(p=>{
+
+  const filtered=useMemo(()=>produtos.filter(p=>{
     if(groupFilter!=='todos'&&(groupFilter==='sem-grupo'?Boolean(p.grupo_id):p.grupo_id!==groupFilter))return false
     if(subgroupFilter!=='todos'&&(subgroupFilter==='sem-subgrupo'?Boolean(p.subgrupo_id):p.subgrupo_id!==subgroupFilter))return false
     if(!normalized)return true
     return [p.codigo,p.descricao,groupName(p),subgroupName(p),p.ativo?'ativo':'inativo',p.unidade,p.estoque_atual,p.estoque_minimo,money(Number(p.custo)),money(Number(p.preco_venda))].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized)
-  })
-  const sorted=[...filtered].sort((a,b)=>{
+  }),[produtos,groupFilter,subgroupFilter,normalized,groupMap,subgroupMap])
+
+  const sorted=useMemo(()=>[...filtered].sort((a,b)=>{
     if(!sort)return a.descricao.localeCompare(b.descricao,'pt-BR',{numeric:true,sensitivity:'base'})
     const map=(p:Produto)=>sort.key==='codigo'?p.codigo:sort.key==='produto'?p.descricao:sort.key==='grupo'?groupName(p):sort.key==='subgrupo'?subgroupName(p):sort.key==='status'?(p.ativo?'ativo':'inativo'):sort.key==='unidade'?p.unidade:sort.key==='estoque'?Number(p.estoque_atual):sort.key==='minimo'?Number(p.estoque_minimo):sort.key==='custo'?Number(p.custo):Number(p.preco_venda)
     const av=map(a),bv=map(b)
     const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'pt-BR',{numeric:true,sensitivity:'base'})
     return sort.dir==='asc'?cmp:-cmp
-  })
+  }),[filtered,sort,groupMap,subgroupMap])
+
+  useEffect(()=>{setPage(1)},[query,groupFilter,subgroupFilter,sort])
+  const pageCount=Math.max(1,Math.ceil(sorted.length/pageSize))
+  useEffect(()=>{if(page>pageCount)setPage(pageCount)},[page,pageCount])
+  const pageRows=sorted.slice((page-1)*pageSize,page*pageSize)
+
   const toggle=(key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>setSort(v=>({key,dir:v?.key===key&&v.dir==='asc'?'desc':'asc'}))
   const mark=(key:'codigo'|'produto'|'grupo'|'subgrupo'|'status'|'unidade'|'estoque'|'minimo'|'custo'|'venda')=>sort?.key===key?(sort.dir==='asc'?' ▲':' ▼'):''
-  const visibleSubgroups=subgroups.filter(s=>groupFilter==='todos'||groupFilter==='sem-grupo'||s.grupo_id===groupFilter)
-  const visibleIds=sorted.map(p=>p.id)
+  const visibleSubgroups=useMemo(()=>subgroups.filter(s=>groupFilter==='todos'||groupFilter==='sem-grupo'||s.grupo_id===groupFilter),[subgroups,groupFilter])
+  const visibleIds=pageRows.map(p=>p.id)
   const allVisibleSelected=visibleIds.length>0&&visibleIds.every(id=>selectedIds.includes(id))
   const toggleSelected=(id:string)=>setSelectedIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])
   const toggleAllVisible=()=>setSelectedIds(prev=>allVisibleSelected?prev.filter(id=>!visibleIds.includes(id)):Array.from(new Set([...prev,...visibleIds])))
+
   return <article className="panel tablePanel">
     <div className="panelHead"><div>{produtos.some(p=>Number(p.estoque_atual)<0)&&<p role="status">Há produtos com saldo negativo. Confira as entradas e saídas e registre a reposição ou um ajuste justificado após a contagem física.</p>}<h3>Produtos / Estoque</h3><p>{filtered.length} de {produtos.length} cadastrados</p></div><SearchField value={query} onChange={setQuery} placeholder="Pesquisar em todas as colunas"/></div>
     {selectedIds.length>0&&<div className="productBulkActions" style={{position:'fixed',right:16,bottom:16,zIndex:1200,maxWidth:'calc(100vw - 32px)',boxShadow:'0 10px 30px rgba(0,0,0,.28)'}}>
@@ -4881,7 +4895,7 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,on
       <label>Subgrupo<SearchableSelect value={subgroupFilter==='todos'?'':subgroupFilter} onChange={value=>setSubgroupFilter(value||'todos')} placeholder="Todos os subgrupos" searchPlaceholder="Pesquisar subgrupo..." options={[{value:'sem-subgrupo',label:'Sem subgrupo'},...visibleSubgroups.filter(s=>s.ativo).map(s=>({value:s.id,label:s.nome}))]}/></label>
     </div>
     <div className="tableWrap"><table><thead><tr>
-      <th className="productSelectCell"><input type="checkbox" aria-label="Selecionar todos os produtos visíveis" checked={allVisibleSelected} onChange={toggleAllVisible}/></th>
+      <th className="productSelectCell"><input type="checkbox" aria-label="Selecionar todos os produtos desta página" checked={allVisibleSelected} onChange={toggleAllVisible}/></th>
       <th><button className="tableSortBtn" onClick={()=>toggle('codigo')}>Código{mark('codigo')}</button></th>
       <th><button className="tableSortBtn" onClick={()=>toggle('produto')}>Produto{mark('produto')}</button></th>
       <th><button className="tableSortBtn" onClick={()=>toggle('grupo')}>Grupo{mark('grupo')}</button></th>
@@ -4894,8 +4908,16 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,on
       <th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th>
     </tr></thead><tbody>
       {filtered.length===0&&<tr className="emptyTableRow"><td colSpan={11}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para estes filtros.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}
-      {sorted.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <tr key={p.id} {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td className="productSelectCell" onDoubleClick={e=>e.stopPropagation()}><input type="checkbox" aria-label={'Selecionar '+p.codigo+' - '+p.descricao} checked={selectedIds.includes(p.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelected(p.id)}/></td><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}{p.tipo_produto==='servico'&&<small className="productFinalBadge serviceProductBadge">SERVIÇO</small>}</div></td><td>{groupName(p)}</td><td>{subgroupName(p)}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>})}
+      {pageRows.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <tr key={p.id} {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td className="productSelectCell" onDoubleClick={e=>e.stopPropagation()}><input type="checkbox" aria-label={'Selecionar '+p.codigo+' - '+p.descricao} checked={selectedIds.includes(p.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelected(p.id)}/></td><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}{p.tipo_produto==='servico'&&<small className="productFinalBadge serviceProductBadge">SERVIÇO</small>}</div></td><td>{groupName(p)}</td><td>{subgroupName(p)}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>})}
     </tbody></table></div>
+    {filtered.length>pageSize&&<div className="productTablePagination">
+      <span>Mostrando {(page-1)*pageSize+1}–{Math.min(page*pageSize,filtered.length)} de {filtered.length}</span>
+      <div>
+        <button type="button" className="ghost" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}><ChevronLeft size={15}/>Anterior</button>
+        <strong>Página {page} de {pageCount}</strong>
+        <button type="button" className="ghost" onClick={()=>setPage(p=>Math.min(pageCount,p+1))} disabled={page===pageCount}>Próxima<ChevronRight size={15}/></button>
+      </div>
+    </div>}
   </article>
 }
 
