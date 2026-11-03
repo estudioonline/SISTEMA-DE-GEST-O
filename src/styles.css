@@ -7326,3 +7326,66 @@ small{font-size:11px}
     flex:0 1 auto;
   }
 }
+
+
+/* Cliente: resumo financeiro no topo da ficha */
+.entityDetailContent{
+  min-width:0;
+  width:100%;
+  display:grid;
+  gap:12px;
+}
+.entityFinanceDash{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.entityFinanceCard{
+  display:grid;
+  gap:4px;
+  min-width:0;
+  padding:12px 14px;
+  border:1px solid var(--ds-border);
+  border-radius:12px;
+  background:var(--ds-bg);
+}
+.entityFinanceCard span{
+  font-size:9px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--ds-muted);
+}
+.entityFinanceCard strong{
+  font-size:18px;
+  line-height:1.15;
+  overflow-wrap:anywhere;
+}
+.entityFinanceCard small{
+  font-size:9px;
+  line-height:1.4;
+  color:var(--ds-muted);
+}
+.entityFinanceCard.due{
+  border-color:rgba(59,130,246,.35);
+  background:rgba(59,130,246,.08);
+}
+.entityFinanceCard.due strong{color:#60a5fa}
+.entityFinanceCard.overdue{
+  border-color:rgba(239,68,68,.35);
+  background:rgba(239,68,68,.08);
+}
+.entityFinanceCard.overdue strong{color:#f87171}
+.app.light .entityFinanceCard.due{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+}
+.app.light .entityFinanceCard.due strong{color:#1d4ed8}
+.app.light .entityFinanceCard.overdue{
+  background:#fef2f2;
+  border-color:#fecaca;
+}
+.app.light .entityFinanceCard.overdue strong{color:#b91c1c}
+@media(max-width:640px){
+  .entityFinanceDash{grid-template-columns:1fr}
+}
