@@ -308,6 +308,7 @@ function App(){
   const accessSignature=useRef('')
   const moduleHeading=useRef<HTMLHeadingElement>(null)
   const [profileRole,setProfileRole]=useState<PerfilRole>('visualizador')
+  const [currentAvatarPath,setCurrentAvatarPath]=useState<string|null>(null)
   const [userPermissions,setUserPermissions]=useState<PermissionMap>(emptyPermissions)
   const [msg,setMsg]=useState('')
   const [saleNotice,setSaleNotice]=useState('')
@@ -696,16 +697,16 @@ function App(){
 
   async function fetchAccess(userId:string){
     const [profile,permissions]=await Promise.all([
-      supabase.from('profiles').select('perfil,ativo').eq('id',userId).maybeSingle(),
+      supabase.from('profiles').select('perfil,ativo,avatar_path').eq('id',userId).maybeSingle(),
       supabase.rpc('minhas_permissoes_erp')
     ])
     if(profile.error||permissions.error)throw new Error('Não foi possível validar seus acessos. Tente novamente.')
     if(!profile.data?.ativo||!['administrador','financeiro','vendas','estoque','visualizador'].includes(profile.data.perfil))throw new Error('Acesso não liberado. Procure um administrador do sistema.')
-    return {role:profile.data.perfil as PerfilRole,permissions:parseEffectivePermissions(permissions.data)}
+    return {role:profile.data.perfil as PerfilRole,avatarPath:profile.data.avatar_path||null,permissions:parseEffectivePermissions(permissions.data)}
   }
   function blockAccess(error:unknown){
     dataLoadSequence.current++
-    setPermissionsReady(false);setUserPermissions(emptyPermissions());closeForms()
+    setPermissionsReady(false);setCurrentAvatarPath(null);setUserPermissions(emptyPermissions());closeForms()
     setClientes([]);setFornecedores([]);setProdutos([]);setVendas([]);setCompras([]);setTitulos([]);setEmpresa(null);setVendedores([]);setComprovantes([]);setMovimentosEstoque([]);setProdutoComponentes([]);setGruposProdutos([]);setSubgruposProdutos([]);setSaleApprovals([]);setFaturasVendas([]);setFaturaVendaItens([]);setManagedUsers([]);setFinancePayments([]);setFinanceReversals([]);setComissoes([])
     setAccessError(error instanceof Error?error.message:'Não foi possível validar seus acessos.')
   }
@@ -2446,6 +2447,7 @@ function App(){
     }
 
     if(u.avatar_path)await supabase.storage.from('user-avatars').remove([u.avatar_path])
+    if(u.usuario_atual)setCurrentAvatarPath(path)
     setSavingAvatarUserId(null)
     setMsg('Imagem do usuário atualizada.')
     await loadManagedUsers()
@@ -2458,6 +2460,7 @@ function App(){
     const save=await supabase.rpc('salvar_avatar_usuario_erp',{p_user_id:u.user_id,p_avatar_path:null})
     if(save.error){setSavingAvatarUserId(null);setMsg(save.error.message);return}
     await supabase.storage.from('user-avatars').remove([u.avatar_path])
+    if(u.usuario_atual)setCurrentAvatarPath(null)
     setSavingAvatarUserId(null)
     setMsg('Imagem do usuário removida.')
     await loadManagedUsers()
@@ -3274,6 +3277,7 @@ function App(){
       <div className="workspaceControls">
         <div className="workspaceAccountMenu">
           <button type="button" className="workspaceAccount workspaceAccountButton" onClick={()=>setAccountMenuOpen(v=>!v)} aria-expanded={accountMenuOpen}>
+            {currentAvatarPath?<img className="workspaceAccountAvatar" src={supabase.storage.from('user-avatars').getPublicUrl(currentAvatarPath).data.publicUrl} alt="Sua foto"/>:<span className="workspaceAccountAvatar workspaceAccountAvatarFallback">{(session.user.email||'?').charAt(0).toUpperCase()}</span>}
             <span title={session.user.email}>{session.user.email}</span><small>{profileLabel(profileRole)}</small><ChevronDown size={14}/>
           </button>
           {accountMenuOpen&&<div className="workspaceAccountDropdown">
