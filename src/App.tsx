@@ -396,6 +396,9 @@ function App(){
   const [saleDueDate,setSaleDueDate]=useState(today())
   const [saleInstallmentDates,setSaleInstallmentDates]=useState<string[]>([today()])
   const [saleItems,setSaleItems]=useState<SaleItemDraft[]>([newSaleItem()])
+  const [saleSections,setSaleSections]=useState<Array<{key:string;titulo:string}>>([])
+  const [quoteModelPicker,setQuoteModelPicker]=useState(false)
+  const [quoteModelSearch,setQuoteModelSearch]=useState('')
   const [originalSaleItems,setOriginalSaleItems]=useState<VendaItem[]>([])
   const [saleCreditState,setSaleCreditState]=useState<{em_aberto:number;vencido:number}|null>(null)
   const [savingSale,setSavingSale]=useState(false)
@@ -1329,7 +1332,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()])}
+  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()]);setSaleSections([]);setQuoteModelPicker(false);setQuoteModelSearch('')}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}setSalePanel(null);setSaleDetailItems([]);resetSaleForm();setShowForm(true);setMsg('')}
   async function openSaleDetail(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,receita_producao').eq('venda_id',v.id)
@@ -1446,6 +1449,30 @@ function App(){
     setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:defaultSaleRecipe(productId)}:item))
   }
   function removeSaleItem(key:string){setSaleItems(items=>items.length===1?items:items.filter(i=>i.key!==key))}
+  async function addSaleSection(){
+    const title=await themedPrompt('Nome da seção:','Adicionar seção')
+    if(title===null)return
+    const clean=title.trim()
+    if(!clean)return
+    setSaleSections(rows=>[...rows,{key:crypto.randomUUID(),titulo:clean}])
+  }
+  function updateSaleSection(key:string,titulo:string){setSaleSections(rows=>rows.map(row=>row.key===key?{...row,titulo}:row))}
+  function removeSaleSection(key:string){setSaleSections(rows=>rows.filter(row=>row.key!==key))}
+  function addQuoteModelProduct(productId:string){
+    const product=produtos.find(p=>p.id===productId)
+    if(!product)return
+    const item=newSaleItem()
+    item.produto_id=product.id
+    item.valor_unitario=Number(product.preco_venda||0)
+    item.receita_producao=defaultSaleRecipe(product.id)
+    setSaleItems(rows=>{
+      const reusable=rows.length===1&&!rows[0].produto_id&&Number(rows[0].valor_unitario||0)===0
+      return reusable?[{...item,key:rows[0].key}]:[...rows,item]
+    })
+    setQuoteModelPicker(false)
+    setQuoteModelSearch('')
+  }
+
   function resizeSaleDates(count:number){
     const next=Math.max(1,count)
     setSaleInstallments(next)
@@ -3872,7 +3899,11 @@ function App(){
           </div>}
           <div className="saleItemsHead">
             <h3>Itens</h3>
-            <button type="button" className="ghost" onClick={()=>setSaleItems(x=>[...x,newSaleItem()])}><Plus size={16}/>Adicionar item</button>
+            <div className="saleItemQuickActions">
+              <button type="button" className="ghost" onClick={()=>setSaleItems(x=>[...x,newSaleItem()])}><Plus size={16}/>Adicionar produto</button>
+              <button type="button" className="ghost" onClick={()=>void addSaleSection()}><Plus size={16}/>Adicionar seção</button>
+              <button type="button" className="ghost quoteModelBtn" onClick={()=>{setQuoteModelSearch('');setQuoteModelPicker(true)}}><Boxes size={16}/>Modelo de cotação</button>
+            </div>
           </div>
 
           <div className="saleItems">
@@ -3910,6 +3941,14 @@ function App(){
             </div>})}
           </div>
 
+          {saleSections.length>0&&<div className="saleQuoteSections">
+            {saleSections.map((section,index)=><div className="saleQuoteSectionRow" key={section.key}>
+              <span className="saleQuoteSectionHandle">⋮⋮</span>
+              <input value={section.titulo} onChange={e=>updateSaleSection(section.key,e.target.value)} placeholder={'Seção '+(index+1)} aria-label={'Nome da seção '+(index+1)}/>
+              <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleSection(section.key)} title="Remover seção"><Trash2 size={14}/></button>
+            </div>)}
+          </div>}
+
           <div className="saleTotals">
             <div><span>Subtotal</span><strong>{money(saleSubtotal)}</strong></div>
             <div><span>Desconto</span><strong>{money(saleDiscount)}</strong></div>
@@ -3932,6 +3971,24 @@ function App(){
             <button className="primary" disabled={savingSale||(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker)} title={saleHasAuthorizationBlocker?'Use Solicitar autorização para avançar esta venda.':''}>{savingSale?'Salvando...':!editingSale?'Salvar orçamento':saleStatus==='orcamento'?'Salvar orçamento':'Salvar como pedido'}</button>
           </div>
         </form></div></div>}
+
+        {quoteModelPicker&&showForm&&<div className="saleModalOverlay quoteModelOverlay" role="dialog" aria-modal="true" aria-label="Modelo de cotação">
+          <div className="quoteModelDialog">
+            <div className="quoteModelHeader">
+              <div><strong>Modelo de cotação</strong><span>Selecione um produto final para adicionar à cotação com sua receita de produção.</span></div>
+              <button type="button" className="iconBtn" onClick={()=>setQuoteModelPicker(false)} aria-label="Fechar"><X size={17}/></button>
+            </div>
+            <div className="quoteModelSearch"><Search size={16}/><input autoFocus value={quoteModelSearch} onChange={e=>setQuoteModelSearch(e.target.value)} placeholder="Pesquisar produto final por código ou descrição..."/></div>
+            <div className="quoteModelList">
+              {produtos.filter(p=>p.ativo&&p.tipo_produto==='produto_final'&&normalizeSearch([p.codigo,p.descricao,p.unidade].join(' ')).includes(normalizeSearch(quoteModelSearch))).map(p=><button type="button" key={p.id} className="quoteModelProduct" onClick={()=>addQuoteModelProduct(p.id)}>
+                <span className="quoteModelProductIcon"><Boxes size={17}/></span>
+                <span><strong>{p.codigo} — {p.descricao}</strong><small>{p.unidade||'UN'} · {money(Number(p.preco_venda||0))} · {produtoComponentes.filter(row=>row.produto_final_id===p.id).length} material(is)</small></span>
+                <ChevronRight size={17}/>
+              </button>)}
+              {produtos.filter(p=>p.ativo&&p.tipo_produto==='produto_final'&&normalizeSearch([p.codigo,p.descricao,p.unidade].join(' ')).includes(normalizeSearch(quoteModelSearch))).length===0&&<div className="quoteModelEmpty">Nenhum produto final encontrado.</div>}
+            </div>
+          </div>
+        </div>}
 
         {openedSale?(()=>{
           const v=openedSale
