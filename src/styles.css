@@ -1023,6 +1023,20 @@
   color:#60A5FA;
 }
 
+.userIdentityCell{display:flex;align-items:center;gap:10px;min-width:240px}
+.userIdentityFields{display:flex;flex-direction:column;min-width:0}
+.userAvatarWrap{position:relative;width:44px;height:44px;flex:0 0 44px}
+.userAvatar{width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #CBD5E1;background:#E2E8F0;display:flex;align-items:center;justify-content:center;font-weight:800;color:#334155}
+.userAvatarFallback{font-size:15px}
+.userAvatarUpload,.userAvatarRemove{position:absolute;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;background:#2563EB;color:#fff;cursor:pointer;padding:0}
+.userAvatarUpload{right:-4px;bottom:-2px}
+.userAvatarRemove{right:-4px;top:-4px;background:#EF4444}
+.userAvatarUpload input{display:none}
+.userAvatarStatus{display:block;margin-top:4px;color:#64748B;font-size:11px}
+.dark .userAvatar{border-color:#475569;background:#1E293B;color:#E2E8F0}
+.dark .userAvatarUpload,.dark .userAvatarRemove{border-color:#0F172A}
+.dark .userAvatarStatus{color:#94A3B8}
+
 
 
 /* Usabilidade: menu recolhível, estados vazios, valores e foco de linha */
