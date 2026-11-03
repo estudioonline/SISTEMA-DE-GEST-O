@@ -6950,3 +6950,37 @@ small{font-size:11px}
 .serviceNameText{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
 .serviceNameCell .serviceProductBadge{flex:0 0 auto;margin-left:6px}
 @media(max-width:760px){.serviceNameCell{gap:10px}.serviceNameText{white-space:normal}}
+
+
+/* Vendas: tabela contínua com divisórias pretas conforme modelo aprovado */
+.app:not(.dark) .salesModernTable .salesUxTable{
+  border-collapse:separate;
+  border-spacing:0;
+}
+.app:not(.dark) .salesModernTable .salesUxTable tbody tr td{
+  background:#fff!important;
+  border-top:0!important;
+  border-bottom:2px solid #111827!important;
+  border-left:0!important;
+  border-right:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.app:not(.dark) .salesModernTable .salesUxTable tbody tr:nth-child(even) td{
+  background:#f8fafc!important;
+}
+.app:not(.dark) .salesModernTable .salesUxTable tbody tr:hover td{
+  background:#eef4fb!important;
+  border-bottom-color:#111827!important;
+}
+.app:not(.dark) .salesModernTable .salesUxTable tbody tr td:first-child,
+.app:not(.dark) .salesModernTable .salesUxTable tbody tr td:last-child{
+  border-radius:0!important;
+}
+.app:not(.dark) .salesModernTable .salesUxTable thead th{
+  border-bottom:1px solid #cbd5e1!important;
+}
+.app:not(.dark) .salesModernTable .billingInvoice-nao-faturado{
+  background:#fef3c7!important;
+  color:#b45309!important;
+}
