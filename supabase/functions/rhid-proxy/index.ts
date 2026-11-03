@@ -1,15 +1,21 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import {createClient} from "npm:@supabase/supabase-js@2";
+import {createClient} from "npm:@supabase/supabase-js@2.75.0";
 import {sendAdjustment} from './send-adjustment.ts';
 import {AdjustmentError} from './adjustment.ts';
 
 const RHID_BASE="https://www.rhid.com.br/v2/api.svc";
-const corsHeaders={
-  "Access-Control-Allow-Origin":"*",
+const allowedOrigins=new Set([
+  "https://estudioonline.github.io",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173"
+]);
+function corsFor(origin:string){return {
+  ...(allowedOrigins.has(origin)?{"Access-Control-Allow-Origin":origin}:{}),
+  "Vary":"Origin",
   "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods":"GET,POST,OPTIONS"
-};
-function json(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{...corsHeaders,"Content-Type":"application/json","Cache-Control":"no-store"}})}
+}}
+function json(data:unknown,status=200,headers:Record<string,string>={}){return new Response(JSON.stringify(data),{status,headers:{...headers,"Content-Type":"application/json","Cache-Control":"no-store"}})}
 const normalize=(v:unknown)=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().replace(/\s+/g," ").toUpperCase();
 
 async function requireRhAccess(req:Request){
@@ -115,17 +121,21 @@ async function autoLinkPeople(peoplePayload:unknown,req:Request){
 }
 
 Deno.serve(async(req:Request)=>{
+  const origin=req.headers.get("Origin")||"";
+  const corsHeaders=corsFor(origin);
+  const reply=(data:unknown,status=200)=>json(data,status,corsHeaders);
+  if(origin&&!allowedOrigins.has(origin))return reply({error:"Origem não permitida."},403);
   if(req.method==="OPTIONS")return new Response("ok",{status:200,headers:corsHeaders});
   try{
     const access=await requireRhAccess(req);
     let payload:Record<string,unknown>={};if(req.method!=="GET"){try{payload=await req.json()}catch{}}
     const url=new URL(req.url),action=String(payload.action||url.searchParams.get("action")||"status");
-    if(action==="status"){const configured=Boolean(Deno.env.get("RHID_EMAIL")&&Deno.env.get("RHID_PASSWORD"));if(!configured)return json({configured:false});const people=await rhidData("/person");const result=await autoLinkPeople(people,req);return json({configured:true,connected:true,...result})}
-    if(action==="people"){const people=await rhidData("/person");const result=await autoLinkPeople(people,req);return json({people,linking:result})}
+    if(action==="status"){const configured=Boolean(Deno.env.get("RHID_EMAIL")&&Deno.env.get("RHID_PASSWORD"));if(!configured)return reply({configured:false});const people=await rhidData("/person");const result=await autoLinkPeople(people,req);return reply({configured:true,connected:true,...result})}
+    if(action==="people"){const people=await rhidData("/person");const result=await autoLinkPeople(people,req);return reply({people,linking:result})}
     if(action==="attendance"){
       const personIdValue=String(payload.person_id||url.searchParams.get("person_id")||""),start=String(payload.start||url.searchParams.get("start")||""),end=String(payload.end||url.searchParams.get("end")||"");
-      if(!personIdValue||!start||!end)return json({error:"person_id, start e end são obrigatórios"},400);
-      return json(await rhidData(`/apuracao_ponto?idPerson=${encodeURIComponent(personIdValue)}&dataIni=${encodeURIComponent(start)}&dataFinal=${encodeURIComponent(end)}`));
+      if(!personIdValue||!start||!end)return reply({error:"person_id, start e end são obrigatórios"},400);
+      return reply(await rhidData(`/apuracao_ponto?idPerson=${encodeURIComponent(personIdValue)}&dataIni=${encodeURIComponent(start)}&dataFinal=${encodeURIComponent(end)}`));
     }
     if(action==="shifts"){
       const token=await rhidLogin();
@@ -133,13 +143,13 @@ Deno.serve(async(req:Request)=>{
         headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Accept":"application/json"}
       });
       const text=await res.text();let body:unknown;try{body=text?JSON.parse(text):null}catch{body=text}
-      if(!res.ok)return json({error:`RHID respondeu HTTP ${res.status} ao listar escalas.`},res.status);
-      return json(body);
+      if(!res.ok)return reply({error:`RHID respondeu HTTP ${res.status} ao listar escalas.`},res.status);
+      return reply(body);
     }
     if(action==="assign_saturday_shift"){
       const personIdValue=Number(payload.person_id||0),shiftId=Number(payload.shift_id||0),date=String(payload.date||"");
       if(!Number.isFinite(personIdValue)||personIdValue<=0||!Number.isFinite(shiftId)||shiftId<=0||!/^(20\\d{2})-(\\d{2})-(\\d{2})$/.test(date)){
-        return json({error:"person_id, shift_id e date válidos são obrigatórios."},400);
+        return reply({error:"person_id, shift_id e date válidos são obrigatórios."},400);
       }
       const token=await rhidLogin();
       const compact=date.replace(/-/g,"");
@@ -150,8 +160,8 @@ Deno.serve(async(req:Request)=>{
         body:JSON.stringify(assignment)
       });
       const text=await res.text();let body:unknown;try{body=text?JSON.parse(text):null}catch{body=text}
-      if(!res.ok)return json({error:`RHID respondeu HTTP ${res.status} ao atribuir a escala.`,details:body},res.status);
-      return json({ok:true,response:body});
+      if(!res.ok)return reply({error:`RHID respondeu HTTP ${res.status} ao atribuir a escala.`,details:body},res.status);
+      return reply({ok:true,response:body});
     }
     if(action==="probe_point_write"){
       const token=await rhidLogin();
@@ -169,11 +179,11 @@ Deno.serve(async(req:Request)=>{
           results.push({path,status:res.status,allow:res.headers.get("allow")});
         }catch(e){results.push({path,status:0,error:e instanceof Error?e.message:"erro"})}
       }
-      return json({results});
+      return reply({results});
     }
     if(action==="adjustments"){
       const personIdValue=Number(payload.person_id||0),start=String(payload.start||""),end=String(payload.end||"");
-      if(!Number.isFinite(personIdValue)||personIdValue<=0||!start||!end)return json({error:"person_id, start e end são obrigatórios"},400);
+      if(!Number.isFinite(personIdValue)||personIdValue<=0||!start||!end)return reply({error:"person_id, start e end são obrigatórios"},400);
       const token=await rhidLogin();
       const body={
         approvalStatus:[],departments:[],companies:[],people:[personIdValue],
@@ -186,15 +196,15 @@ Deno.serve(async(req:Request)=>{
         body:JSON.stringify(body)
       });
       const text=await res.text();let parsed:unknown;try{parsed=text?JSON.parse(text):null}catch{parsed=text}
-      if(!res.ok)return json({error:`RHID respondeu HTTP ${res.status} ao consultar alterações.`,details:parsed},res.status);
-      return json(parsed);
+      if(!res.ok)return reply({error:`RHID respondeu HTTP ${res.status} ao consultar alterações.`,details:parsed},res.status);
+      return reply(parsed);
     }
     if(action==="send_adjustment"){
-      if(req.method!=="POST")return json({error:"Use POST para enviar ajustes."},405);
-      try{return json(await sendAdjustment(payload,access,rhidLogin))}
-      catch(error){if(error instanceof AdjustmentError)return json({error:error.message,code:error.code},error.status);throw error}
+      if(req.method!=="POST")return reply({error:"Use POST para enviar ajustes."},405);
+      try{return reply(await sendAdjustment(payload,access,rhidLogin))}
+      catch(error){if(error instanceof AdjustmentError)return reply({error:error.message,code:error.code},error.status);throw error}
     }
-    return json({error:"Ação inválida"},400);
-  }catch(error){const message=error instanceof Error?error.message:"Erro inesperado";const status=typeof (error as {status?:unknown})?.status==="number"?Number((error as {status:number}).status):500;console.error("RHID_PROXY_ERROR",JSON.stringify({message,status}));return json({error:message,upstream_status:status},status)}
+    return reply({error:"Ação inválida"},400);
+  }catch(error){const message=error instanceof Error?error.message:"Erro inesperado";const status=typeof (error as {status?:unknown})?.status==="number"?Number((error as {status:number}).status):500;console.error("RHID_PROXY_ERROR",JSON.stringify({message,status}));return reply({error:message,upstream_status:status},status)}
 });
 
