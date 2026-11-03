@@ -71,7 +71,7 @@ type FaturaVendaItem={fatura_id:string;venda_id:string;valor_venda:number}
 type InvoiceDraftLine={key:string;vencimento:string;valor:number}
 type EmpresaConfig={id:number;updated_at?:string;razao_social:string;nome_fantasia:string;cnpj:string|null;email:string|null;telefone:string|null;endereco:string|null;cidade:string|null;uf:string|null;cep:string|null;pix_chave:string|null;banco:string|null;agencia:string|null;conta:string|null;condicoes_gerais:string|null;desconto_max_vendedor?:number;margem_minima_percentual?:number;validade_orcamento_dias?:number;bloquear_cliente_inadimplente?:boolean;exigir_aprovacao_limite_credito?:boolean;reservar_estoque_pedido?:boolean;sessao_inatividade_minutos?:number;campos_obrigatorios?:Record<string,unknown>}
 type Vendedor={id:string;nome:string;email:string|null;telefone:string|null;percentual_comissao:number;ativo:boolean;created_at:string}
-type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean;permissoes:PermissionMap;availablePermissions:PermissionModule[]}
+type ManagedUser={user_id:string;nome:string;email:string;perfil:PerfilRole;ativo:boolean;criado_em:string;ultimo_acesso:string|null;usuario_atual:boolean;avatar_path:string|null;permissoes:PermissionMap;availablePermissions:PermissionModule[]}
 type ComissaoResumo={vendedor_id:string;vendedor_nome:string;percentual_comissao:number;total_recebido:number;comissao_apurada:number;pagamentos:number;vendas:number}
 type Comprovante={id:string;venda_id:string|null;compra_id:string|null;storage_path:string;nome_arquivo:string;mime_type:string|null;tamanho:number|null;created_at:string}
 type MovimentoEstoque={id:string;produto_id:string;tipo:string;quantidade:number;referencia:string|null;created_at:string}
@@ -354,6 +354,7 @@ function App(){
   const [confirmManagedPassword,setConfirmManagedPassword]=useState('')
   const [savingPasswordUserId,setSavingPasswordUserId]=useState<string|null>(null)
   const [savingPermissionUserId,setSavingPermissionUserId]=useState<string|null>(null)
+  const [savingAvatarUserId,setSavingAvatarUserId]=useState<string|null>(null)
   const [profilePermissions,setProfilePermissions]=useState<Record<PerfilRole,Record<PermissionModule,boolean>>|null>(null)
   const [savingProfileRole,setSavingProfileRole]=useState<PerfilRole|null>(null)
 
@@ -2416,6 +2417,50 @@ function App(){
     setPasswordUserId(null)
     setNewManagedPassword('')
     setConfirmManagedPassword('')
+  }
+
+  function managedUserAvatarUrl(u:ManagedUser){
+    if(!u.avatar_path)return ''
+    return supabase.storage.from('user-avatars').getPublicUrl(u.avatar_path).data.publicUrl
+  }
+
+  async function saveManagedUserAvatar(u:ManagedUser,file:File){
+    if(!canManageConfig||savingAvatarUserId)return
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMsg('Use uma imagem PNG, JPG ou WebP.');return}
+    if(file.size>2*1024*1024){setMsg('A imagem deve ter no máximo 2 MB.');return}
+
+    const extension=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg'
+    const path=`${u.user_id}/avatar-${Date.now()}.${extension}`
+    setSavingAvatarUserId(u.user_id)
+    setMsg('')
+
+    const upload=await supabase.storage.from('user-avatars').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type})
+    if(upload.error){setSavingAvatarUserId(null);setMsg('Não foi possível enviar a imagem: '+upload.error.message);return}
+
+    const save=await supabase.rpc('salvar_avatar_usuario_erp',{p_user_id:u.user_id,p_avatar_path:path})
+    if(save.error){
+      await supabase.storage.from('user-avatars').remove([path])
+      setSavingAvatarUserId(null)
+      setMsg(save.error.message)
+      return
+    }
+
+    if(u.avatar_path)await supabase.storage.from('user-avatars').remove([u.avatar_path])
+    setSavingAvatarUserId(null)
+    setMsg('Imagem do usuário atualizada.')
+    await loadManagedUsers()
+  }
+
+  async function removeManagedUserAvatar(u:ManagedUser){
+    if(!canManageConfig||savingAvatarUserId||!u.avatar_path)return
+    setSavingAvatarUserId(u.user_id)
+    setMsg('')
+    const save=await supabase.rpc('salvar_avatar_usuario_erp',{p_user_id:u.user_id,p_avatar_path:null})
+    if(save.error){setSavingAvatarUserId(null);setMsg(save.error.message);return}
+    await supabase.storage.from('user-avatars').remove([u.avatar_path])
+    setSavingAvatarUserId(null)
+    setMsg('Imagem do usuário removida.')
+    await loadManagedUsers()
   }
 
   async function saveManagedUser(u:ManagedUser){
@@ -4666,7 +4711,16 @@ function App(){
               const draft=userEdits[u.user_id]||{nome:u.nome,perfil:u.perfil,ativo:u.ativo}
               const changed=draft.nome!==u.nome||draft.perfil!==u.perfil||draft.ativo!==u.ativo
               return <Fragment key={u.user_id}><tr {...recordRow(()=>setManagedUserCard(u.user_id),u.nome)}>
-                <td><input className="userInlineInput" value={draft.nome} onChange={e=>editManagedUser(u.user_id,'nome',e.target.value)} disabled={u.usuario_atual&&savingUserId===u.user_id}/>{u.usuario_atual&&<small className="currentUserMark">Você</small>}</td>
+                <td><div className="userIdentityCell">
+                  <div className="userAvatarWrap">
+                    {u.avatar_path?<img className="userAvatar" src={managedUserAvatarUrl(u)} alt={`Imagem de ${u.nome}`}/>:<span className="userAvatar userAvatarFallback">{(u.nome||u.email||'?').trim().charAt(0).toUpperCase()}</span>}
+                    <label className="userAvatarUpload" title={u.avatar_path?'Trocar imagem':'Anexar imagem'}>
+                      <Upload size={13}/><input type="file" accept="image/png,image/jpeg,image/webp" disabled={savingAvatarUserId===u.user_id} onClick={e=>e.stopPropagation()} onChange={e=>{e.stopPropagation();const file=e.target.files?.[0];e.currentTarget.value='';if(file)void saveManagedUserAvatar(u,file)}}/>
+                    </label>
+                    {u.avatar_path&&<button type="button" className="userAvatarRemove" title="Remover imagem" disabled={savingAvatarUserId===u.user_id} onClick={e=>{e.stopPropagation();void removeManagedUserAvatar(u)}}><X size={12}/></button>}
+                  </div>
+                  <div className="userIdentityFields"><input className="userInlineInput" value={draft.nome} onChange={e=>editManagedUser(u.user_id,'nome',e.target.value)} disabled={u.usuario_atual&&savingUserId===u.user_id}/>{u.usuario_atual&&<small className="currentUserMark">Você</small>}{savingAvatarUserId===u.user_id&&<small className="userAvatarStatus">Enviando imagem...</small>}</div>
+                </div></td>
                 <td>{u.email}</td>
                 <td><select className="userInlineSelect" value={draft.perfil} onChange={e=>editManagedUser(u.user_id,'perfil',e.target.value as PerfilRole)} disabled={u.usuario_atual}>
                   <option value="administrador">Administrador</option>
