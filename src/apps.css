@@ -489,3 +489,96 @@
   .appsWorkspace.launcherWorkspace .launcherApp strong{font-size:13px}
   .launcherDescription{font-size:10px}
 }
+
+
+/* Tema claro da central de aplicativos */
+.appsWorkspace.light.launcherWorkspace{
+  background:
+    radial-gradient(circle at 14% 0%,rgba(37,99,235,.10),transparent 28%),
+    radial-gradient(circle at 86% 8%,rgba(124,58,237,.08),transparent 26%),
+    #f4f7fb;
+}
+.appsWorkspace.light.launcherWorkspace .workspaceBar{
+  background:rgba(255,255,255,.94);
+  color:#0f172a;
+  border-bottom-color:#dbe4f0;
+  box-shadow:0 10px 28px rgba(15,23,42,.08);
+  backdrop-filter:blur(14px);
+}
+.appsWorkspace.light.launcherWorkspace .workspaceBrandText strong{color:#0f172a}
+.appsWorkspace.light.launcherWorkspace .workspaceBrandText small{color:#2563eb}
+.appsWorkspace.light.launcherWorkspace .workspaceAccount span{color:#0f172a}
+.appsWorkspace.light.launcherWorkspace .workspaceAccount small{color:#64748b}
+.appsWorkspace.light.launcherWorkspace .workspaceAccountButton:hover{background:#eef4fb}
+.appsWorkspace.light.launcherWorkspace .workspaceAccountButton svg{color:#64748b}
+.appsWorkspace.light.launcherWorkspace .workspaceIcon,
+.appsWorkspace.light.launcherWorkspace .workspaceHome{
+  background:#fff;
+  color:#334155;
+  border-color:#cbd5e1;
+}
+.appsWorkspace.light.launcherWorkspace .workspaceIcon:hover,
+.appsWorkspace.light.launcherWorkspace .workspaceHome:hover{
+  background:#f1f5f9;
+  border-color:#93c5fd;
+}
+.appsWorkspace.light.launcherWorkspace .main{
+  background:
+    linear-gradient(rgba(59,130,246,.028) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(59,130,246,.028) 1px,transparent 1px),
+    radial-gradient(circle at 50% 12%,rgba(59,130,246,.08),transparent 30%),
+    transparent;
+  background-size:34px 34px,34px 34px,auto,auto;
+}
+.appsWorkspace.light.launcherWorkspace .appLauncher{
+  border-color:#dbe3ef;
+  background:rgba(255,255,255,.90);
+  box-shadow:0 20px 48px rgba(15,23,42,.10),inset 0 1px 0 rgba(255,255,255,.9);
+}
+.appsWorkspace.light.launcherWorkspace .launcherSearch{
+  background:#fff;
+  border-color:#93c5fd;
+  color:#64748b;
+  box-shadow:0 6px 18px rgba(15,23,42,.07);
+}
+.appsWorkspace.light.launcherWorkspace .launcherSearch input{color:#0f172a}
+.appsWorkspace.light.launcherWorkspace .launcherSearch input::placeholder{color:#94a3b8}
+.appsWorkspace.light.launcherWorkspace .launcherApp{
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--app-color,#2563eb) 8%,#ffffff 92%),#ffffff);
+  color:#0f172a;
+  border-color:color-mix(in srgb,var(--app-color,#2563eb) 36%,#cbd5e1 64%);
+  box-shadow:
+    inset 0 0 26px color-mix(in srgb,var(--app-color,#2563eb) 5%,transparent),
+    0 10px 22px rgba(15,23,42,.08);
+}
+.appsWorkspace.light.launcherWorkspace .launcherApp::before{
+  background:radial-gradient(circle,color-mix(in srgb,var(--app-color,#2563eb) 16%,transparent),transparent 70%);
+  opacity:.7;
+}
+.appsWorkspace.light.launcherWorkspace .launcherApp:hover{
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--app-color,#2563eb) 12%,#ffffff 88%),#ffffff);
+  border-color:color-mix(in srgb,var(--app-color,#2563eb) 62%,#94a3b8 38%);
+  box-shadow:
+    inset 0 0 30px color-mix(in srgb,var(--app-color,#2563eb) 7%,transparent),
+    0 16px 30px rgba(15,23,42,.12),
+    0 0 18px color-mix(in srgb,var(--app-color,#2563eb) 10%,transparent);
+}
+.appsWorkspace.light.launcherWorkspace .launcherApp strong{
+  color:#0f172a;
+  text-shadow:none;
+}
+.appsWorkspace.light.launcherWorkspace .launcherDescription{color:#64748b}
+.appsWorkspace.light.launcherWorkspace .launcherReadOnly{
+  background:#eef2f7;
+  color:#64748b;
+}
+.appsWorkspace.light.launcherWorkspace .launcherNotification{border-color:#fff}
+.appsWorkspace.light.launcherWorkspace .workspaceAccountDropdown{
+  background:#fff;
+  border-color:#dbe3ef;
+  box-shadow:0 16px 40px rgba(15,23,42,.14);
+}
+.appsWorkspace.light.launcherWorkspace .workspaceAccountDropdown button{color:#1e293b}
+.appsWorkspace.light.launcherWorkspace .workspaceAccountDropdown button:hover{background:#f1f5f9}
