@@ -7134,3 +7134,51 @@ small{font-size:11px}
   border-bottom:0!important;
   border-radius:0!important;
 }
+
+
+/* Financeiro: filtros compactos 80% em pagar/receber/vencidos */
+.financeFilterPanelCompact{
+  gap:8px!important;
+  margin-bottom:10px!important;
+  padding:10px 12px!important;
+}
+.financeFilterPanelCompact label{
+  gap:4px!important;
+  font-size:10px!important;
+}
+.financeFilterPanelCompact input,
+.financeFilterPanelCompact select{
+  height:32px!important;
+  min-height:32px!important;
+  border-radius:8px!important;
+  padding:0 9px!important;
+  font-size:11px!important;
+}
+.financeFilterPanelCompact .financeQuickRanges{
+  gap:5px!important;
+  padding-bottom:0!important;
+}
+.financeFilterPanelCompact .financeQuickRanges>span{
+  font-size:10px!important;
+  line-height:1.1!important;
+}
+.financeFilterPanelCompact .financeQuickRanges .ghost{
+  height:27px!important;
+  min-height:27px!important;
+  padding:0 8px!important;
+  border-radius:8px!important;
+  font-size:10px!important;
+}
+.financeFilterPanelCompact .financeClearFilters{
+  height:32px!important;
+  min-height:32px!important;
+  border-radius:8px!important;
+  padding:0 10px!important;
+  font-size:11px!important;
+}
+@media(max-width:900px){
+  .financeFilterPanelCompact{gap:7px!important;padding:9px 10px!important}
+}
+@media(max-width:640px){
+  .financeFilterPanelCompact{padding:8px!important}
+}
