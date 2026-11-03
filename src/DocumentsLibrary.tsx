@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import {
-  AlertCircle, ChevronRight, Cloud, Download, ExternalLink, FileImage, FileSpreadsheet,
+  AlertCircle, BellRing, CalendarClock, ChevronRight, Cloud, Download, ExternalLink, FileImage, FileSpreadsheet,
   FileText, FolderOpen, FolderPlus, HardDrive, MoreVertical, Pencil, RefreshCw, Search, ShoppingCart, ReceiptText, Trash2, Upload
 } from 'lucide-react'
 import { supabase } from './lib/supabase'
@@ -16,6 +16,8 @@ type CloudDocument = {
   tamanho: number | null
   created_at: string
   folder_id: string | null
+  data_vencimento: string | null
+  alerta_dias: number
 }
 type DocumentFolder = {
   id: string
@@ -61,6 +63,10 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
   const [openingId, setOpeningId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [expiryDialog, setExpiryDialog] = useState<CloudDocument | null>(null)
+  const [expiryDate, setExpiryDate] = useState('')
+  const [expiryDays, setExpiryDays] = useState('5')
+  const [savingExpiry, setSavingExpiry] = useState(false)
 
   async function loadDocuments() {
     setLoading(true)
@@ -284,6 +290,49 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
     }
   }
 
+  const expiryInfo = (file: CloudDocument) => {
+    if (!file.data_vencimento) return { kind:'none' as const, label:'Sem vencimento', days:null as number|null }
+    const today = new Date()
+    today.setHours(12,0,0,0)
+    const due = new Date(file.data_vencimento + 'T12:00:00')
+    const days = Math.ceil((due.getTime() - today.getTime()) / 86400000)
+    if (days < 0) return { kind:'expired' as const, label:`Vencido em ${new Intl.DateTimeFormat('pt-BR').format(due)}`, days }
+    if (days === 0) return { kind:'today' as const, label:'Vence hoje', days }
+    if (days <= Number(file.alerta_dias ?? 5)) return { kind:'warning' as const, label:`Vence em ${days} dia${days===1?'':'s'} · ${new Intl.DateTimeFormat('pt-BR').format(due)}`, days }
+    return { kind:'ok' as const, label:`Vence em ${new Intl.DateTimeFormat('pt-BR').format(due)}`, days }
+  }
+
+  const expiringDocuments = documents.filter(file => {
+    const info = expiryInfo(file)
+    return info.kind === 'expired' || info.kind === 'today' || info.kind === 'warning'
+  })
+
+  function openExpiryDialog(file: CloudDocument) {
+    if (!canEdit) return
+    setExpiryDialog(file)
+    setExpiryDate(file.data_vencimento || '')
+    setExpiryDays(String(file.alerta_dias ?? 5))
+  }
+
+  async function saveExpiry() {
+    if (!expiryDialog || !canEdit || savingExpiry) return
+    const days = Math.max(0, Math.min(365, Number(expiryDays || 5)))
+    setSavingExpiry(true)
+    setError('')
+    const { error: rpcError } = await supabase.rpc('documentos_definir_vencimento', {
+      p_documento_id: expiryDialog.id,
+      p_data_vencimento: expiryDate || null,
+      p_alerta_dias: days
+    })
+    setSavingExpiry(false)
+    if (rpcError) {
+      setError(rpcError.message)
+      return
+    }
+    setExpiryDialog(null)
+    await loadDocuments()
+  }
+
   async function openDocument(file: CloudDocument) {
     const tab = window.open('about:blank', '_blank')
     if (!tab) {
@@ -353,6 +402,11 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
     </div>
 
     {error && <div className="documentsError" role="alert"><AlertCircle size={17}/><span>{error}</span></div>}
+    {expiringDocuments.length>0&&<div className="documentsExpiryAlert" role="status">
+      <BellRing size={18}/>
+      <div><strong>{expiringDocuments.length} documento(s) com vencimento próximo ou vencido</strong>
+      <span>{expiringDocuments.slice(0,3).map(file=>`${file.nome_arquivo} — ${expiryInfo(file).label}`).join(' · ')}{expiringDocuments.length>3?' · …':''}</span></div>
+    </div>}
 
     <div className="documentsStats">
       <article className="documentsStat">
@@ -419,7 +473,7 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
       : documents.length === 0 && !error ? <div className="documentsEmpty"><FolderOpen size={30}/><strong>Nenhum documento cadastrado ainda</strong><span>Os arquivos anexados às faturas de vendas e compras aparecerão aqui.</span></div>
       : filtered.length === 0 && !error ? <div className="documentsEmpty"><Search size={27}/><strong>Nenhum resultado encontrado</strong><span>Altere a pesquisa ou o filtro para ver outros arquivos.</span><button type="button" className="ghost" onClick={() => { setSearch(''); setFilter('todos') }}>Limpar filtros</button></div>
       : <div className="documentsTableWrap"><table className="documentsTable">
-        <thead><tr><th>Documento</th><th>Origem</th><th>Data e tamanho</th><th><span className="documentsActionHeading">Ações</span></th></tr></thead>
+        <thead><tr><th>Documento</th><th>Origem</th><th>Data e tamanho</th><th>Vencimento</th><th><span className="documentsActionHeading">Ações</span></th></tr></thead>
         <tbody>{filtered.map(file => {
           const FileIcon = isImage(file) ? FileImage : isSpreadsheet(file) ? FileSpreadsheet : FileText
           const originLabel = file.venda_id ? 'Venda' : file.compra_id ? 'Compra' : 'Arquivo'
@@ -428,6 +482,7 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
             <td><div className="documentsFileCell"><span className={`documentsFileIcon ${isPdf(file) ? 'isPdf' : isImage(file) ? 'isImage' : ''}`}><FileIcon size={20}/></span><span className="documentsFileDetails"><strong title={file.nome_arquivo}>{file.nome_arquivo || 'Documento sem nome'}</strong><small>{fileKind(file)}{file.mime_type ? ` · ${file.mime_type}` : ''}</small></span></div></td>
             <td><span className={`documentsOrigin ${file.venda_id ? 'sale' : file.compra_id ? 'purchase' : ''}`}>{originLabel}</span><small className="documentsOriginId" title={originId}>{originId ? `ID ${originId.slice(0, 8)}` : '—'}</small></td>
             <td><span className="documentsDate">{formatDate(file.created_at)}</span><small className="documentsSize">{formatSize(file.tamanho)}</small></td>
+            <td><button type="button" className={`documentsExpiryBadge expiry-${expiryInfo(file).kind}`} onClick={()=>canEdit&&openExpiryDialog(file)} title={canEdit?'Editar vencimento':'Vencimento do documento'}><CalendarClock size={13}/><span>{expiryInfo(file).label}</span></button></td>
             <td><div className="documentsRowActions">
               <button type="button" className="documentsOpenAction" onClick={() => void openDocument(file)} disabled={openingId === file.id || downloadingId === file.id} aria-label={`Abrir ${file.nome_arquivo}`} title="Abrir documento">{openingId === file.id ? <RefreshCw size={15} className="documentsSpin"/> : <ExternalLink size={15}/>}<span>Abrir</span></button>
               <button type="button" className="documentsDownloadAction" onClick={() => void downloadDocument(file)} disabled={openingId === file.id || downloadingId === file.id} aria-label={`Baixar ${file.nome_arquivo}`} title="Baixar documento">{downloadingId === file.id ? <RefreshCw size={15} className="documentsSpin"/> : <Download size={15}/>}</button>
@@ -440,6 +495,19 @@ export function DocumentsLibrary({ canEdit = false }: { canEdit?: boolean }) {
         })}</tbody>
       </table></div>}
     </div>
+    {expiryDialog&&<div className="documentsFolderDialogOverlay" role="dialog" aria-modal="true" aria-label="Vencimento do documento">
+      <div className="documentsFolderDialog">
+        <div><strong>Vencimento do documento</strong><span>{expiryDialog.nome_arquivo}</span></div>
+        <label>Data de vencimento<input type="date" value={expiryDate} onChange={event=>setExpiryDate(event.target.value)}/></label>
+        <label>Avisar com antecedência<input type="number" min="0" max="365" value={expiryDays} onChange={event=>setExpiryDays(event.target.value)}/><small className="documentsDialogHint">Padrão: 5 dias antes. Use 0 para avisar somente no dia.</small></label>
+        <div className="documentsFolderDialogActions">
+          {expiryDate&&<button type="button" className="ghost" disabled={savingExpiry} onClick={()=>{setExpiryDate('');setExpiryDays('5')}}>Remover vencimento</button>}
+          <button type="button" className="ghost" disabled={savingExpiry} onClick={()=>setExpiryDialog(null)}>Cancelar</button>
+          <button type="button" className="primary" disabled={savingExpiry} onClick={()=>void saveExpiry()}>{savingExpiry?'Salvando...':'Salvar'}</button>
+        </div>
+      </div>
+    </div>}
+
     {folderDialog&&<div className="documentsFolderDialogOverlay" role="dialog" aria-modal="true" aria-label="Editar pasta">
       <div className="documentsFolderDialog">
         <div>
