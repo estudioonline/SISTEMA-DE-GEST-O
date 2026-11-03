@@ -51,7 +51,7 @@ type BeforeInstallPromptEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise
 
 type Cliente={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;limite_credito:number;ativo:boolean;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null;latitude?:number|null;longitude?:number|null}
 type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;telefone:string|null;ativo:boolean}
-type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';rastrear_estoque?:boolean;grupo_id?:string|null;subgrupo_id?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
+type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final'|'servico';rastrear_estoque?:boolean;grupo_id?:string|null;subgrupo_id?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type SaleLayoutStoredEntry={tipo:'section';titulo:string}|{tipo:'item';produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
@@ -368,7 +368,7 @@ function App(){
   const [editingProduct,setEditingProduct]=useState<Produto|null>(null)
   const [duplicatingProduct,setDuplicatingProduct]=useState(false)
   const [productReturnSaleId,setProductReturnSaleId]=useState<string|null>(null)
-  const [productType,setProductType]=useState<'insumo'|'produto_final'>('insumo')
+  const [productType,setProductType]=useState<'insumo'|'produto_final'|'servico'>('insumo')
   const [productTrackStock,setProductTrackStock]=useState(true)
   const [productGroupId,setProductGroupId]=useState('')
   const [productSubgroupId,setProductSubgroupId]=useState('')
@@ -379,7 +379,7 @@ function App(){
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
   const [stockReason,setStockReason]=useState('Ajuste manual')
-  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'|'producao'>('cadastro')
+  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'|'producao'|'servicos'>('cadastro')
   const [excelToolsOpen,setExcelToolsOpen]=useState(false)
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
@@ -1096,15 +1096,15 @@ function App(){
   }
   function startEditProduct(p:Produto,returnSaleId:string|null=null){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
-    setProductReturnSaleId(returnSaleId);setEditingProduct(p);setDuplicatingProduct(false);setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo');setProductTrackStock(p.tipo_produto==='produto_final'?false:p.rastrear_estoque!==false);setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
+    setProductReturnSaleId(returnSaleId);setEditingProduct(p);setDuplicatingProduct(false);setProductType(p.tipo_produto==='produto_final'?'produto_final':p.tipo_produto==='servico'?'servico':'insumo');setProductTrackStock(p.tipo_produto==='insumo'?p.rastrear_estoque!==false:false);setProductGroupId(p.grupo_id||'');setProductSubgroupId(p.subgrupo_id||'');setProductComponentDrafts(componentDraftsForProduct(p.id));setAdjustingProduct(null);setShowForm(true);setMsg('')
   }
   function startDuplicateProduct(p:Produto){
     if(!canManageProducts){setMsg('Você possui somente visualização em Produtos / Estoque.');return}
     setProductReturnSaleId(null)
     setEditingProduct(p)
     setDuplicatingProduct(true)
-    setProductType(p.tipo_produto==='produto_final'?'produto_final':'insumo')
-    setProductTrackStock(p.tipo_produto==='produto_final'?false:p.rastrear_estoque!==false)
+    setProductType(p.tipo_produto==='produto_final'?'produto_final':p.tipo_produto==='servico'?'servico':'insumo')
+    setProductTrackStock(p.tipo_produto==='insumo'?p.rastrear_estoque!==false:false)
     setProductGroupId(p.grupo_id||'')
     setProductSubgroupId(p.subgrupo_id||'')
     setProductComponentDrafts(componentDraftsForProduct(p.id).map(row=>({...row,key:crypto.randomUUID()})))
@@ -1153,7 +1153,7 @@ function App(){
       grupo_id:productGroupId||null,
       subgrupo_id:productSubgroupId&&subgruposProdutos.some(row=>row.id===productSubgroupId&&row.grupo_id===productGroupId)?productSubgroupId:null,
       tipo_produto:productType,
-      rastrear_estoque:productType==='produto_final'?false:productTrackStock,
+      rastrear_estoque:productType==='insumo'?productTrackStock:false,
       ativo:String(f.get('ativo')||'true')==='true'
     }
     if(productType==='produto_final'&&productComponentDrafts.some(row=>!row.componente_id||Number(row.quantidade)<=0)){
@@ -2546,7 +2546,7 @@ function App(){
     </section>
   </div>
 
-  const low=produtos.filter(p=>p.ativo&&Number(p.estoque_atual)<=Number(p.estoque_minimo)).length
+  const low=produtos.filter(p=>p.ativo&&p.rastrear_estoque!==false&&p.tipo_produto!=='servico'&&Number(p.estoque_atual)<=Number(p.estoque_minimo)).length
   const stockValue=produtos.reduce((s,p)=>s+Number(p.estoque_atual)*Number(p.custo),0)
   const monthSales=vendas.filter(v=>{const d=new Date(v.created_at),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&v.status!=='cancelado'}).reduce((s,v)=>s+Number(v.total),0)
   const openReceivables=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
@@ -2735,7 +2735,7 @@ function App(){
     return {kind:'ok',label:'Em estoque',detail:`Disponível: ${available.toLocaleString('pt-BR')} ${produto.unidade}`}
   }
   const purchaseSuggestions=produtos
-    .filter(p=>p.ativo&&Number(p.estoque_atual)<=Number(p.estoque_minimo))
+    .filter(p=>p.ativo&&p.rastrear_estoque!==false&&p.tipo_produto!=='servico'&&Number(p.estoque_atual)<=Number(p.estoque_minimo))
     .map(p=>{
       const current=Number(p.estoque_atual)||0
       const minimum=Math.max(0,Number(p.estoque_minimo)||0)
@@ -3438,6 +3438,7 @@ function App(){
           <button className={productSubtab==='movimentos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('movimentos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Entradas e saídas</button>
           <button className={productSubtab==='grupos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('grupos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Package size={16}/>Grupos e subgrupos</button>
           <button className={productSubtab==='producao'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('producao');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Produtos de produção</button>
+          <button className={productSubtab==='servicos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('servicos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><ReceiptText size={16}/>Produtos de serviço</button>
         </div>
 
         {productSubtab==='cadastro'&&<>
@@ -3491,19 +3492,20 @@ function App(){
               <SearchableSelect value={productSubgroupId} onChange={setProductSubgroupId} disabled={!productGroupId} placeholder="Sem subgrupo" searchPlaceholder="Pesquisar subgrupo..." options={subgruposProdutos.filter(s=>s.grupo_id===productGroupId&&(s.ativo||s.id===editingProduct?.subgrupo_id)).map(s=>({value:s.id,label:s.nome+(s.ativo?'':' (inativo)')}))}/>
             </label>
             <label className="fieldLabel">Tipo de produto
-              <select name="tipo_produto" value={productType} onChange={e=>{const next=e.target.value as 'insumo'|'produto_final';setProductType(next);setProductTrackStock(next!=='produto_final');if(next==='insumo')setProductComponentDrafts([])}}>
+              <select name="tipo_produto" value={productType} onChange={e=>{const next=e.target.value as 'insumo'|'produto_final'|'servico';setProductType(next);setProductTrackStock(next==='insumo');if(next!=='produto_final')setProductComponentDrafts([])}}>
                 <option value="insumo">Insumo / material</option>
                 <option value="produto_final">Produto final (produção)</option>
+                <option value="servico">Produto de serviço</option>
               </select>
-              <small>Produto final possui uma ficha técnica com os materiais necessários para produção.</small>
+              <small>{productType==='produto_final'?'Produto final possui uma ficha técnica com os materiais necessários para produção.':productType==='servico'?'Serviço pode ser vendido normalmente, mas não movimenta estoque.':'Insumo/material pode ter controle de estoque.'}</small>
             </label>
             <label className="fieldLabel">Unidade
               <input name="unidade" placeholder="Ex.: UN" defaultValue={editingProduct?.unidade||'UN'}/>
             </label>
             <label className="productTrackingField fieldLabelWide">
               <span className="productTrackingControl">
-                <input type="checkbox" checked={productTrackStock} disabled={productType==='produto_final'} onChange={e=>setProductTrackStock(e.target.checked)}/>
-                <span><strong>Rastrear estoque</strong><small>{productType==='produto_final'?'Produto de produção não mantém saldo próprio. O estoque é baixado pelos materiais da receita.':'Controla entradas, saídas, saldo atual e disponibilidade deste produto.'}</small></span>
+                <input type="checkbox" checked={productTrackStock} disabled={productType!=='insumo'} onChange={e=>setProductTrackStock(e.target.checked)}/>
+                <span><strong>Rastrear estoque</strong><small>{productType==='produto_final'?'Produto de produção não mantém saldo próprio. O estoque é baixado pelos materiais da receita.':productType==='servico'?'Serviços não possuem saldo, entrada, saída ou estoque mínimo.':'Controla entradas, saídas, saldo atual e disponibilidade deste produto.'}</small></span>
               </span>
               {productType==='produto_final'&&<span className="productTrackingRecipeNote"><Boxes size={14}/>Os materiais da ficha técnica ficam com rastreamento de estoque ativo.</span>}
             </label>
@@ -3715,6 +3717,44 @@ function App(){
                   </tr>
                 })}
                 {produtos.filter(p=>p.tipo_produto==='produto_final').length===0&&<tr className="emptyTableRow"><td colSpan={6}><EmptyState message="Nenhum produto de produção cadastrado." actionLabel={canManageProducts?'+ Novo produto':undefined} onAction={canManageProducts?()=>{startNewProduct();setProductType('produto_final')}:undefined}/></td></tr>}
+              </tbody>
+            </table></div>
+          </article>
+        </>}
+
+        {productSubtab==='servicos'&&<>
+          <article className="panel tablePanel productionListPanel serviceListPanel">
+            <div className="panelHead">
+              <div>
+                <h3>Produtos de serviço</h3>
+                <p>Serviços vendidos sem movimentação de estoque.</p>
+              </div>
+              <div className="productionListActions">
+                <SearchField value={tableSearch['produtos-servicos']||''} onChange={v=>setSearch('produtos-servicos',v)} placeholder="Pesquisar código, serviço ou unidade"/>
+                {canManageProducts&&<button type="button" className="primary" onClick={()=>{startNewProduct();setProductType('servico');setProductTrackStock(false)}}><Plus size={16}/>Novo serviço</button>}
+              </div>
+            </div>
+            <div className="tableWrap"><table className="productionListTable">
+              <thead><tr>
+                <th><button className="tableSortBtn" onClick={()=>toggleSort('produtos-servicos','codigo')}>Código{sortMark('produtos-servicos','codigo')}</button></th>
+                <th><button className="tableSortBtn" onClick={()=>toggleSort('produtos-servicos','produto')}>Serviço{sortMark('produtos-servicos','produto')}</button></th>
+                <th>Unidade</th>
+                <th><button className="tableSortBtn" onClick={()=>toggleSort('produtos-servicos','preco')}>Preço de venda{sortMark('produtos-servicos','preco')}</button></th>
+                <th>Status</th>
+              </tr></thead>
+              <tbody>
+                {sortList('produtos-servicos',produtos.filter(p=>p.tipo_produto==='servico'&&searchMatches('produtos-servicos',[p.codigo,p.descricao,p.unidade,money(Number(p.preco_venda))])),{
+                  codigo:p=>p.codigo||'',
+                  produto:p=>p.descricao,
+                  preco:p=>Number(p.preco_venda)
+                }).map(p=><tr key={p.id} onDoubleClick={()=>{setProductSubtab('cadastro');startEditProduct(p)}} title="Clique duplo para editar o serviço">
+                  <td><strong>{p.codigo||'—'}</strong></td>
+                  <td><div className="productNameCell"><span>{p.descricao}</span><small className="productFinalBadge serviceProductBadge">SERVIÇO</small></div></td>
+                  <td>{p.unidade||'UN'}</td>
+                  <td><strong>{money(Number(p.preco_venda))}</strong></td>
+                  <td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td>
+                </tr>)}
+                {produtos.filter(p=>p.tipo_produto==='servico').length===0&&<tr className="emptyTableRow"><td colSpan={5}><EmptyState message="Nenhum produto de serviço cadastrado." actionLabel={canManageProducts?'+ Novo serviço':undefined} onAction={canManageProducts?()=>{startNewProduct();setProductType('servico');setProductTrackStock(false)}:undefined}/></td></tr>}
               </tbody>
             </table></div>
           </article>
@@ -4854,7 +4894,7 @@ function ProductTable({produtos,groups,subgroups,onCreate,onEdit,onBulkDelete,on
       <th><button className="tableSortBtn" onClick={()=>toggle('venda')}>Venda{mark('venda')}</button></th>
     </tr></thead><tbody>
       {filtered.length===0&&<tr className="emptyTableRow"><td colSpan={11}><EmptyState message={produtos.length===0?'Nenhum produto cadastrado.':'Nenhum produto encontrado para estes filtros.'} actionLabel={produtos.length===0&&!readOnly?'+ Adicionar Produto':undefined} onAction={onCreate}/></td></tr>}
-      {sorted.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <tr key={p.id} {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td className="productSelectCell" onDoubleClick={e=>e.stopPropagation()}><input type="checkbox" aria-label={'Selecionar '+p.codigo+' - '+p.descricao} checked={selectedIds.includes(p.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelected(p.id)}/></td><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}</div></td><td>{groupName(p)}</td><td>{subgroupName(p)}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>})}
+      {sorted.map(p=>{const low=Number(p.estoque_atual)<=Number(p.estoque_minimo);return <tr key={p.id} {...recordRow(()=>{if(!readOnly)onEdit(p)},p.descricao)}><td className="productSelectCell" onDoubleClick={e=>e.stopPropagation()}><input type="checkbox" aria-label={'Selecionar '+p.codigo+' - '+p.descricao} checked={selectedIds.includes(p.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelected(p.id)}/></td><td>{p.codigo}</td><td><div className="productNameCell"><span>{p.descricao}</span>{p.tipo_produto==='produto_final'&&<small className="productFinalBadge">PRODUÇÃO</small>}{p.tipo_produto==='servico'&&<small className="productFinalBadge serviceProductBadge">SERVIÇO</small>}</div></td><td>{groupName(p)}</td><td>{subgroupName(p)}</td><td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td><td>{p.unidade}</td><td><strong className={low?'stockLow':''}>{Number(p.estoque_atual).toLocaleString('pt-BR')}</strong></td><td>{Number(p.estoque_minimo).toLocaleString('pt-BR')}</td><td>{money(Number(p.custo))}</td><td>{money(Number(p.preco_venda))}</td></tr>})}
     </tbody></table></div>
   </article>
 }
