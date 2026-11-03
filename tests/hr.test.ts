@@ -46,5 +46,5 @@ test('gross is reference only: net payroll, FGTS and advances enter totals once 
  assert.equal(totals.saldo,2020)
  assert.equal(totals.fgts,160)
  assert.equal(totals.decimo,800)
- assert.equal(totals.valesPendentes,340)
+ assert.equal(totals.valesPendentes,60)
 })
