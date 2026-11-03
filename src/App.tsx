@@ -54,7 +54,8 @@ type Fornecedor={id:string;nome:string;documento:string|null;email:string|null;t
 type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:number;custo_medio?:number|null;preco_venda:number;estoque_atual:number;estoque_minimo:number;estoque_reposicao?:number|null;percentual_minimo_custo_venda?:number|null;ativo:boolean;tipo_produto?:'insumo'|'produto_final';rastrear_estoque?:boolean;grupo_id?:string|null;subgrupo_id?:string|null;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null;complemento_tributario?:Record<string,unknown>|null;peso_kg?:number|null;volume_m3?:number|null}
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
-type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null}
+type SaleLayoutStoredEntry={tipo:'section';titulo:string}|{tipo:'item';produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
+type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null;layout_itens?:SaleLayoutStoredEntry[]|null}
 type SaleRecipeDraft={key:string;componente_id:string;quantidade:number;valor_unitario:number}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;receita_producao?:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>|null}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;receita_producao:SaleRecipeDraft[]}
@@ -1549,7 +1550,17 @@ function App(){
     }
 
     setSavingSale(true);setMsg('')
+    const storedLayout:SaleLayoutStoredEntry[]=saleLayoutEntries.flatMap(entry=>{
+      if(entry.startsWith('section:')){
+        const section=saleSections.find(row=>'section:'+row.key===entry)
+        return section?[{tipo:'section' as const,titulo:section.titulo}]:[]
+      }
+      const item=saleItems.find(row=>'item:'+row.key===entry)
+      if(!item||!item.produto_id||item.quantidade<=0)return []
+      return [{tipo:'item' as const,produto_id:item.produto_id,quantidade:Number(item.quantidade),valor_unitario:Number(item.valor_unitario),desconto:Number(item.desconto),total:Math.max(0,Number(item.quantidade)*Number(item.valor_unitario)-Number(item.desconto))}]
+    })
     const args={
+      p_layout_itens:storedLayout,
       p_cliente_id:saleClient||null,
       p_vendedor_cadastro_id:saleSeller||null,
       p_status:saleStatus,
@@ -1771,7 +1782,10 @@ function App(){
       vendedor_nome:vendedores.find(s=>s.id===v.vendedor_cadastro_id)?.nome||null,
       cliente:clientes.find(c=>c.id===v.cliente_id)||null,
       company:empresa||undefined,
-      items:invoiceItems(drafts)
+      items:invoiceItems(drafts),
+      layout:Array.isArray(v.layout_itens)&&v.layout_itens.length?v.layout_itens.map(entry=>entry.tipo==='section'
+        ? {tipo:'section' as const,titulo:entry.titulo}
+        : {tipo:'item' as const,item:{codigo:produtos.find(p=>p.id===entry.produto_id)?.codigo,descricao:produtos.find(p=>p.id===entry.produto_id)?.descricao||'Produto',unidade:produtos.find(p=>p.id===entry.produto_id)?.unidade||'UN',quantidade:Number(entry.quantidade),valor_unitario:Number(entry.valor_unitario),desconto:Number(entry.desconto),total:Number(entry.total)}}):undefined
     }
   }
   async function downloadSalePdf(v:Venda){
@@ -4148,7 +4162,19 @@ function App(){
                 <thead><tr><th>Produto</th><th>Quantidade</th><th>Preço unitário</th><th>Desconto</th><th>Valor</th></tr></thead>
                 <tbody>
                   {saleDetailItems.length===0&&<tr className="emptyTableRow"><td colSpan={5}><div className="emptyState">Nenhum item nesta venda.</div></td></tr>}
-                  {saleDetailItems.map((item,index)=>{
+                  {(Array.isArray(v.layout_itens)&&v.layout_itens.length?v.layout_itens:null)?.map((entry,index)=>{
+                    if(entry.tipo==='section')return <tr key={'section-'+index} className="saleDetailSectionRow"><td colSpan={5}><strong>{entry.titulo}</strong><span>{money(v.layout_itens!.slice(index+1).reduce((sum,next)=>next.tipo==='section'?sum:sum+Number(next.total||0),0))}</span></td></tr>
+                    const product=produtos.find(p=>p.id===entry.produto_id)
+                    return <tr key={'layout-item-'+index}>
+                      <td>{product&&isAdmin&&canManageProducts
+                        ? <><button type="button" className="saleProductLink" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product,v.id)}} title="Abrir produto para editar">{product.descricao}</button><br/><small>{product.codigo||''}</small></>
+                        : <><strong>{product?.descricao||'Produto'}</strong><br/><small>{product?.codigo||''}</small></>}</td>
+                      <td>{Number(entry.quantidade).toLocaleString('pt-BR')}</td>
+                      <td>{money(Number(entry.valor_unitario))}</td>
+                      <td>{money(Number(entry.desconto))}</td>
+                      <td><strong>{money(Number(entry.total))}</strong></td>
+                    </tr>
+                  })||saleDetailItems.map((item,index)=>{
                     const product=produtos.find(p=>p.id===item.produto_id)
                     return <tr key={item.produto_id+'-'+index}>
                       <td>{product&&isAdmin&&canManageProducts
