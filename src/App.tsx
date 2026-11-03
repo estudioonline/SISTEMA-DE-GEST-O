@@ -721,7 +721,7 @@ function App(){
     const signature=JSON.stringify(access)
     if(accessSignature.current&&accessSignature.current!==signature){setPermissionsReady(false);closeForms();setMsg('Seus acessos foram atualizados. Revise a operação antes de continuar.')}
     accessSignature.current=signature
-    setProfileRole(access.role);setUserPermissions(access.permissions);setAccessError('');setPermissionsReady(true)
+    setProfileRole(access.role);setCurrentAvatarPath(access.avatarPath);setUserPermissions(access.permissions);setAccessError('');setPermissionsReady(true)
     const [c,f,p,v,cp,t,ec,vd,cv,me,sa,pc,fv,fvi,gp,sgp]=await Promise.all([
       readAllRows((from,to)=>supabase.from('clientes').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
       readAllRows((from,to)=>supabase.from('fornecedores').select('*').order('nome',{ascending:true}).order('id').range(from,to)),
