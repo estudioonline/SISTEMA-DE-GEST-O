@@ -55,6 +55,8 @@ export function ProductionEarnings({canEdit}:{canEdit:boolean}){
       if(!s||!p)continue
       for(const rule of rules){
         if(!normalize(p.descricao).includes(normalize(rule.descricao_contem)))continue
+        if(rule.chave.startsWith('moises_')&&p.tipo_produto!=='produto_final')continue
+        if((rule.chave.startsWith('abimael_')||rule.chave.startsWith('andre_'))&&p.tipo_produto!=='servico')continue
         const already=entries.some(e=>e.venda_item_id===item.id&&e.regra_id===rule.id)
         if(already)continue
         const amount=rule.criterio==='valor_percentual'
