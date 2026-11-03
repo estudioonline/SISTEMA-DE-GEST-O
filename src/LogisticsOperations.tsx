@@ -25,7 +25,7 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
   const [deliveries,setDeliveries]=useState<Delivery[]>([])
   const [routes,setRoutes]=useState<RoutePlan[]>([])
   const [components,setComponents]=useState<ProductComponent[]>([])
-  const [productionDetail,setProductionDetail]=useState<{sale:Sale;item:SaleItem}|null>(null)
+  const [productionDetail,setProductionDetail]=useState<{sale:Sale;item:SaleItem;materials:Array<{componente_id:string;quantidade:number;produto:Product|null}>}|null>(null)
   const [busy,setBusy]=useState(false)
   const [msg,setMsg]=useState('')
 
@@ -67,6 +67,29 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
       if(error)throw error
       await load()
     }catch(e){setMsg((e as Error).message)}finally{setBusy(false)}
+  }
+
+  async function openProductionDetail(sale:Sale,item:SaleItem){
+    setMsg('')
+    const savedRecipe=Array.isArray(item.receita_producao)&&item.receita_producao.length
+      ? item.receita_producao.map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade||0)}))
+      : components.filter(row=>row.produto_final_id===item.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade||0)}))
+    const ids=[...new Set(savedRecipe.map(row=>row.componente_id).filter(Boolean))]
+    let materialProducts:Product[]=[]
+    if(ids.length){
+      const {data,error}=await supabase.from('produtos').select('id,codigo,descricao,unidade,tipo_produto,estoque_atual,rastrear_estoque').in('id',ids)
+      if(error){setMsg('Não foi possível carregar os materiais da produção: '+error.message);return}
+      materialProducts=(data||[]) as Product[]
+    }
+    setProductionDetail({
+      sale,
+      item,
+      materials:savedRecipe.map(row=>({
+        componente_id:row.componente_id,
+        quantidade:Number(row.quantidade||0),
+        produto:materialProducts.find(p=>p.id===row.componente_id)||products.find(p=>p.id===row.componente_id)||null
+      }))
+    })
   }
 
   async function markProductionReady(item:SaleItem){
@@ -137,7 +160,7 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
       <div className="logProductionList">
         {productionRows.map(({sale,item})=>{
           const p=productFor(item.produto_id),pr=prodFor(item.id),ready=pr?.status==='pronto'
-          return <article className="logProductionCard" key={item.id} onDoubleClick={()=>setProductionDetail({sale,item})} title="Clique duplo para ver materiais e informações da venda">
+          return <article className="logProductionCard" key={item.id} onDoubleClick={()=>void openProductionDetail(sale,item)} title="Clique duplo para ver materiais e informações da venda">
             <span className="logProductionIcon"><PackageCheck size={20}/></span>
             <div className="logProductionInfo">
               <strong>{p?.descricao||'Produto final'}</strong>
@@ -155,9 +178,7 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
       </div>
       {productionDetail&&(()=>{
         const detailProduct=productFor(productionDetail.item.produto_id)
-        const recipe=(Array.isArray(productionDetail.item.receita_producao)&&productionDetail.item.receita_producao.length
-          ?productionDetail.item.receita_producao
-          :components.filter(row=>row.produto_final_id===productionDetail.item.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade)})))
+        const recipe=productionDetail.materials
         return <div className="logProductionDetailOverlay" role="dialog" aria-modal="true" aria-label="Detalhes da produção">
           <div className="logProductionDetailBackdrop" onClick={()=>setProductionDetail(null)}/>
           <div className="logProductionDetail">
@@ -177,7 +198,7 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
               <div className="logProductionMaterialsHead"><div><span>RECEITA</span><h4>Materiais para produzir</h4></div><b>{recipe.length} material(is)</b></div>
               <div className="logProductionMaterialsList">
                 {recipe.map((row,index)=>{
-                  const material=productFor(row.componente_id)
+                  const material=row.produto
                   const perUnit=Number(row.quantidade||0)
                   const totalQty=perUnit*Number(productionDetail.item.quantidade||0)
                   return <div className="logProductionMaterialRow" key={row.componente_id+'-'+index}>
