@@ -35,6 +35,10 @@ export type InvoiceCompany = {
   condicoes_gerais?: string | null
 }
 
+export type InvoiceLayoutEntry =
+  | {tipo:'section';titulo:string}
+  | {tipo:'item';item:InvoiceItem}
+
 export type InvoiceData = {
   id: string
   document_kind?: 'orcamento'|'venda'|'fatura'
@@ -55,6 +59,7 @@ export type InvoiceData = {
   cliente?: InvoiceCustomer | null
   company?: InvoiceCompany
   items: InvoiceItem[]
+  layout?: InvoiceLayoutEntry[]
 }
 
 const COMPANY = {
@@ -265,8 +270,46 @@ function drawContinuationHeader(doc:jsPDF,data:InvoiceData){
 
 function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
   let y=drawTableHeader(doc,startY)
+  const entries:InvoiceLayoutEntry[]=data.layout?.length
+    ? data.layout
+    : data.items.map(item=>({tipo:'item' as const,item}))
 
-  data.items.forEach((item,index)=>{
+  let itemStripeIndex=0
+
+  for(let index=0;index<entries.length;index++){
+    const entry=entries[index]
+
+    if(entry.tipo==='section'){
+      let sectionTotal=0
+      for(let cursor=index+1;cursor<entries.length;cursor++){
+        const next=entries[cursor]
+        if(next.tipo==='section')break
+        sectionTotal+=Number(next.item.total||0)
+      }
+
+      const rowH=9
+      if(y+rowH>248){
+        doc.addPage()
+        drawContinuationHeader(doc,data)
+        y=drawTableHeader(doc,34)
+      }
+
+      doc.setFillColor(...paleBlue)
+      doc.rect(12,y-1,184,rowH,'F')
+      doc.setTextColor(...darkBlue)
+      doc.setFont('helvetica','bold')
+      doc.setFontSize(9.4)
+      doc.text(entry.titulo||'Seção',14,y+5)
+      doc.setTextColor(...blue)
+      doc.text(brl(sectionTotal),196,y+5,{align:'right'})
+      doc.setDrawColor(...line)
+      doc.setLineWidth(0.25)
+      doc.line(12,y+rowH-1,196,y+rowH-1)
+      y+=rowH
+      continue
+    }
+
+    const item=entry.item
     const description=`${item.codigo?`${item.codigo} - `:''}${item.descricao}`
     const lines=doc.splitTextToSize(description,104) as string[]
     const rowH=Math.max(7,lines.length*4.1+2)
@@ -277,10 +320,11 @@ function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
       y=drawTableHeader(doc,34)
     }
 
-    if(index%2===0){
+    if(itemStripeIndex%2===0){
       doc.setFillColor(...paleRow)
       doc.rect(12,y-1,184,rowH,'F')
     }
+    itemStripeIndex++
 
     doc.setTextColor(...text)
     doc.setFont('helvetica','normal')
@@ -300,7 +344,7 @@ function drawItems(doc:jsPDF,data:InvoiceData,startY:number){
     doc.setLineWidth(0.2)
     doc.line(12,y+rowH-1,196,y+rowH-1)
     y+=rowH
-  })
+  }
 
   if(y+9>250){
     doc.addPage()
