@@ -582,3 +582,38 @@
 }
 .appsWorkspace.light.launcherWorkspace .workspaceAccountDropdown button{color:#1e293b}
 .appsWorkspace.light.launcherWorkspace .workspaceAccountDropdown button:hover{background:#f1f5f9}
+
+
+/* Documentos: pastas e subpastas editáveis */
+.documentsFolderBar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--ds-border);background:var(--ds-surface)}
+.documentsBreadcrumb{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
+.documentsBreadcrumb>button,.documentsBreadcrumb span{display:inline-flex;align-items:center;gap:5px}
+.documentsBreadcrumb button{border:0;background:transparent;color:var(--ds-muted);padding:6px 8px;border-radius:8px;cursor:pointer;font:inherit;font-size:11px;font-weight:700}
+.documentsBreadcrumb button:hover,.documentsBreadcrumb button.active{background:var(--ds-blue-soft);color:var(--ds-blue)}
+.documentsNewFolder{flex-shrink:0}
+.documentsFolderGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px 18px;border-bottom:1px solid var(--ds-border);background:var(--ds-surface-soft)}
+.documentsFolderCard{position:relative;display:flex;align-items:center;min-width:0;border:1px solid var(--ds-border);border-radius:12px;background:var(--ds-surface);box-shadow:var(--ds-shadow-xs)}
+.documentsFolderOpen{display:flex;align-items:center;gap:10px;min-width:0;flex:1;padding:11px 12px;border:0;background:transparent;color:var(--ds-text);cursor:pointer;text-align:left}
+.documentsFolderIcon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:10px;background:var(--ds-blue-soft);color:var(--ds-blue)}
+.documentsFolderOpen>span:last-child{display:grid;gap:3px;min-width:0}
+.documentsFolderOpen strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.documentsFolderOpen small{font-size:9px;color:var(--ds-muted);white-space:nowrap}
+.documentsFolderMenuWrap{position:relative;padding-right:6px}
+.documentsFolderMenuBtn{display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:var(--ds-muted);cursor:pointer}
+.documentsFolderMenuBtn:hover{background:var(--ds-surface-soft);color:var(--ds-text)}
+.documentsFolderMenu{position:absolute;right:5px;top:34px;z-index:150;min-width:150px;padding:5px;border:1px solid var(--ds-border);border-radius:10px;background:var(--ds-surface);box-shadow:0 14px 34px rgba(15,23,42,.16)}
+.documentsFolderMenu button{display:flex;align-items:center;gap:7px;width:100%;padding:8px 9px;border:0;border-radius:7px;background:transparent;color:var(--ds-text);font:inherit;font-size:11px;cursor:pointer}
+.documentsFolderMenu button:hover{background:var(--ds-surface-soft)}
+.documentsFolderMenu button.danger{color:var(--ds-danger-text)}
+.documentsMoveSelect{height:34px;max-width:150px;border:1px solid var(--ds-border);border-radius:8px;background:var(--ds-surface);color:var(--ds-text);padding:0 8px;font-size:10px}
+.documentsFolderDialogOverlay{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:20px;background:rgba(2,6,23,.65);backdrop-filter:blur(6px)}
+.documentsFolderDialog{width:min(440px,100%);display:grid;gap:16px;padding:20px;border:1px solid var(--ds-border);border-radius:16px;background:var(--ds-surface);color:var(--ds-text);box-shadow:0 24px 70px rgba(2,6,23,.34)}
+.documentsFolderDialog>div:first-child{display:grid;gap:5px}
+.documentsFolderDialog>div:first-child strong{font-size:16px}
+.documentsFolderDialog>div:first-child span{font-size:12px;color:var(--ds-muted);line-height:1.5}
+.documentsFolderDialog label{display:grid;gap:7px;font-size:11px;font-weight:700;color:var(--ds-text-soft)}
+.documentsFolderDialog input,.documentsFolderDialog select{height:42px;border:1px solid var(--ds-border);border-radius:10px;background:var(--ds-bg);color:var(--ds-text);padding:0 11px;font:inherit}
+.documentsFolderDialogActions{display:flex;justify-content:flex-end;gap:8px}
+@media(max-width:1100px){.documentsFolderGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.documentsFolderBar{align-items:stretch;flex-direction:column}.documentsNewFolder{width:100%}.documentsFolderGrid{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px}.documentsMoveSelect{max-width:120px}}
+@media(max-width:480px){.documentsFolderGrid{grid-template-columns:1fr}.documentsRowActions{flex-wrap:wrap}.documentsMoveSelect{max-width:none;width:100%}}
