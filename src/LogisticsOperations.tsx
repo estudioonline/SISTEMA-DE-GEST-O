@@ -1,15 +1,16 @@
 import {useCallback,useEffect,useMemo,useState} from 'react'
-import {CheckCircle2,Clock3,FileDown,PackageCheck,RefreshCw,Route,Truck} from 'lucide-react'
+import {CheckCircle2,Clock3,FileDown,PackageCheck,RefreshCw,Route,Truck,X,Boxes,UserRound,ReceiptText,MapPin,CreditCard} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
-type Sale={id:string;cliente_id:string|null;status:string;venda_numero:number|null;fatura_numero:number|null;total:number;created_at:string}
+type Sale={id:string;cliente_id:string|null;status:string;venda_numero:number|null;fatura_numero:number|null;total:number;created_at:string;forma_pagamento:string|null;parcelas:number|null;primeiro_vencimento:string|null;observacoes:string|null;rota_entrega:string|null}
 type Client={id:string;nome:string}
-type SaleItem={id:string;venda_id:string;produto_id:string|null;quantidade:number}
-type Product={id:string;codigo:string|null;descricao:string;unidade:string|null;tipo_produto:string|null}
+type SaleItem={id:string;venda_id:string;produto_id:string|null;quantidade:number;valor_unitario:number;desconto:number;total:number;receita_producao:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>|null}
+type Product={id:string;codigo:string|null;descricao:string;unidade:string|null;tipo_produto:string|null;estoque_atual:number;rastrear_estoque:boolean}
 type Sep={venda_item_id:string;quantidade_separada:number;status:'pendente'|'parcial'|'separado'}
 type Prod={venda_item_id:string;status:'pendente'|'pronto';concluido_em:string|null}
 type Delivery={id:string;venda_id:string;status:string;rota_logistica_id:string|null;valor_recebido_entrega:number|null;forma_recebimento_entrega:string|null}
 type RoutePlan={id:string;nome:string;data_rota:string;status:string;motorista:string|null}
+type ProductComponent={produto_final_id:string;componente_id:string;quantidade:number}
 
 const money=(n:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0)
 const saleNumber=(s:Sale)=>'S'+String(s.venda_numero||s.fatura_numero||0).padStart(5,'0')
@@ -23,24 +24,27 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
   const [prods,setProds]=useState<Prod[]>([])
   const [deliveries,setDeliveries]=useState<Delivery[]>([])
   const [routes,setRoutes]=useState<RoutePlan[]>([])
+  const [components,setComponents]=useState<ProductComponent[]>([])
+  const [productionDetail,setProductionDetail]=useState<{sale:Sale;item:SaleItem}|null>(null)
   const [busy,setBusy]=useState(false)
   const [msg,setMsg]=useState('')
 
   const load=useCallback(async()=>{
-    const [s,c,i,p,sp,pr,d,r]=await Promise.all([
-      supabase.from('vendas').select('id,cliente_id,status,venda_numero,fatura_numero,total,created_at').eq('status','pedido').order('created_at',{ascending:false}),
+    const [s,c,i,p,sp,pr,d,r,pc]=await Promise.all([
+      supabase.from('vendas').select('id,cliente_id,status,venda_numero,fatura_numero,total,created_at,forma_pagamento,parcelas,primeiro_vencimento,observacoes,rota_entrega').eq('status','pedido').order('created_at',{ascending:false}),
       supabase.from('clientes').select('id,nome'),
-      supabase.from('venda_itens').select('id,venda_id,produto_id,quantidade'),
-      supabase.from('produtos').select('id,codigo,descricao,unidade,tipo_produto'),
+      supabase.from('venda_itens').select('id,venda_id,produto_id,quantidade,valor_unitario,desconto,total,receita_producao'),
+      supabase.from('produtos').select('id,codigo,descricao,unidade,tipo_produto,estoque_atual,rastrear_estoque'),
       supabase.from('logistica_separacao_itens').select('venda_item_id,quantidade_separada,status'),
       supabase.from('logistica_producao_itens').select('venda_item_id,status,concluido_em'),
       supabase.from('entregas').select('id,venda_id,status,rota_logistica_id,valor_recebido_entrega,forma_recebimento_entrega'),
-      supabase.from('rotas_logisticas').select('id,nome,data_rota,status,motorista').order('data_rota',{ascending:false})
+      supabase.from('rotas_logisticas').select('id,nome,data_rota,status,motorista').order('data_rota',{ascending:false}),
+      supabase.from('produto_componentes').select('produto_final_id,componente_id,quantidade')
     ])
-    const error=s.error||c.error||i.error||p.error||sp.error||pr.error||d.error||r.error
+    const error=s.error||c.error||i.error||p.error||sp.error||pr.error||d.error||r.error||pc.error
     if(error){setMsg(error.message);return}
     setSales((s.data||[]) as Sale[]);setClients((c.data||[]) as Client[]);setItems((i.data||[]) as SaleItem[]);setProducts((p.data||[]) as Product[])
-    setSeps((sp.data||[]) as Sep[]);setProds((pr.data||[]) as Prod[]);setDeliveries((d.data||[]) as Delivery[]);setRoutes((r.data||[]) as RoutePlan[])
+    setSeps((sp.data||[]) as Sep[]);setProds((pr.data||[]) as Prod[]);setDeliveries((d.data||[]) as Delivery[]);setRoutes((r.data||[]) as RoutePlan[]);setComponents((pc.data||[]) as ProductComponent[])
   },[])
 
   useEffect(()=>{void load()},[load])
@@ -133,7 +137,7 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
       <div className="logProductionList">
         {productionRows.map(({sale,item})=>{
           const p=productFor(item.produto_id),pr=prodFor(item.id),ready=pr?.status==='pronto'
-          return <article className="logProductionCard" key={item.id}>
+          return <article className="logProductionCard" key={item.id} onDoubleClick={()=>setProductionDetail({sale,item})} title="Clique duplo para ver materiais e informações da venda">
             <span className="logProductionIcon"><PackageCheck size={20}/></span>
             <div className="logProductionInfo">
               <strong>{p?.descricao||'Produto final'}</strong>
@@ -144,11 +148,53 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
               </div>
             </div>
             <span className={'logStatus '+(ready?'separado':'pendente')}>{ready?'Pronto':'A produzir'}</span>
-            <button className="primary" disabled={!canEdit||busy||ready} onClick={()=>void markProductionReady(item)}>{ready?<><CheckCircle2 size={14}/>Pronto</>:<><Clock3 size={14}/>Confirmar pronto</>}</button>
+            <button className="primary" disabled={!canEdit||busy||ready} onDoubleClick={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();void markProductionReady(item)}}>{ready?<><CheckCircle2 size={14}/>Pronto</>:<><Clock3 size={14}/>Confirmar pronto</>}</button>
           </article>
         })}
         {!productionRows.length&&<div className="logEmpty">Nenhum item de produção pendente.</div>}
       </div>
+      {productionDetail&&(()=>{
+        const detailProduct=productFor(productionDetail.item.produto_id)
+        const recipe=(Array.isArray(productionDetail.item.receita_producao)&&productionDetail.item.receita_producao.length
+          ?productionDetail.item.receita_producao
+          :components.filter(row=>row.produto_final_id===productionDetail.item.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade)})))
+        return <div className="logProductionDetailOverlay" role="dialog" aria-modal="true" aria-label="Detalhes da produção">
+          <div className="logProductionDetailBackdrop" onClick={()=>setProductionDetail(null)}/>
+          <div className="logProductionDetail">
+            <header>
+              <div><span>PRODUÇÃO</span><h3>{detailProduct?.descricao||'Produto final'}</h3><p>{saleNumber(productionDetail.sale)} · {clientName(productionDetail.sale.cliente_id)}</p></div>
+              <button type="button" className="iconBtn" onClick={()=>setProductionDetail(null)} aria-label="Fechar"><X size={17}/></button>
+            </header>
+            <div className="logProductionSaleInfo">
+              <div><ReceiptText size={16}/><span>Venda</span><strong>{saleNumber(productionDetail.sale)}</strong></div>
+              <div><UserRound size={16}/><span>Cliente</span><strong>{clientName(productionDetail.sale.cliente_id)}</strong></div>
+              <div><Boxes size={16}/><span>Quantidade</span><strong>{Number(productionDetail.item.quantidade)} {detailProduct?.unidade||''}</strong></div>
+              <div><CreditCard size={16}/><span>Pagamento</span><strong>{productionDetail.sale.forma_pagamento||'—'}{Number(productionDetail.sale.parcelas||0)>1?' · '+productionDetail.sale.parcelas+'x':''}</strong></div>
+              <div><MapPin size={16}/><span>Rota</span><strong>{productionDetail.sale.rota_entrega||'Não informada'}</strong></div>
+              <div><span className="logDetailCurrency">R$</span><span>Total da venda</span><strong>{money(Number(productionDetail.sale.total||0))}</strong></div>
+            </div>
+            <section className="logProductionMaterials">
+              <div className="logProductionMaterialsHead"><div><span>RECEITA</span><h4>Materiais para produzir</h4></div><b>{recipe.length} material(is)</b></div>
+              <div className="logProductionMaterialsList">
+                {recipe.map((row,index)=>{
+                  const material=productFor(row.componente_id)
+                  const perUnit=Number(row.quantidade||0)
+                  const totalQty=perUnit*Number(productionDetail.item.quantidade||0)
+                  return <div className="logProductionMaterialRow" key={row.componente_id+'-'+index}>
+                    <span className="logMaterialIndex">{index+1}</span>
+                    <div><strong>{material?.descricao||'Material'}</strong><small>{material?.codigo||'Sem código'} · {material?.unidade||'UN'}</small></div>
+                    <div><span>Por unidade</span><strong>{perUnit.toLocaleString('pt-BR',{maximumFractionDigits:3})}</strong></div>
+                    <div><span>Total necessário</span><strong>{totalQty.toLocaleString('pt-BR',{maximumFractionDigits:3})} {material?.unidade||''}</strong></div>
+                    <div><span>Estoque</span><strong className={material&&material.rastrear_estoque&&Number(material.estoque_atual)<totalQty?'short':''}>{material?.rastrear_estoque===false?'Não rastreado':Number(material?.estoque_atual||0).toLocaleString('pt-BR',{maximumFractionDigits:3})+' '+(material?.unidade||'')}</strong></div>
+                  </div>
+                })}
+                {!recipe.length&&<div className="logEmpty">Nenhuma receita de produção encontrada para este item.</div>}
+              </div>
+            </section>
+            {productionDetail.sale.observacoes&&<section className="logProductionNotes"><span>Observações da venda</span><p>{productionDetail.sale.observacoes}</p></section>}
+          </div>
+        </div>
+      })()}
     </section>
   }
 
