@@ -135,7 +135,14 @@ export function LogisticsOperations({mode,canEdit}:{mode:'separacao'|'producao'|
           const p=productFor(item.produto_id),pr=prodFor(item.id),ready=pr?.status==='pronto'
           return <article className="logProductionCard" key={item.id}>
             <span className="logProductionIcon"><PackageCheck size={20}/></span>
-            <div><strong>{p?.descricao||'Produto final'}</strong><small>{saleNumber(sale)} · {clientName(sale.cliente_id)} · {Number(item.quantidade)} {p?.unidade||''}</small></div>
+            <div className="logProductionInfo">
+              <strong>{p?.descricao||'Produto final'}</strong>
+              <div className="logProductionMeta">
+                <span className="logProductionSale">{saleNumber(sale)}</span>
+                <span className="logProductionClient">{clientName(sale.cliente_id)}</span>
+                <span className="logProductionQty">{Number(item.quantidade)} {p?.unidade||''}</span>
+              </div>
+            </div>
             <span className={'logStatus '+(ready?'separado':'pendente')}>{ready?'Pronto':'A produzir'}</span>
             <button className="primary" disabled={!canEdit||busy||ready} onClick={()=>void markProductionReady(item)}>{ready?<><CheckCircle2 size={14}/>Pronto</>:<><Clock3 size={14}/>Confirmar pronto</>}</button>
           </article>
