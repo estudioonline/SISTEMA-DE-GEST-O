@@ -6997,3 +6997,61 @@ small{font-size:11px}
   color:#065f46!important;
   border:1px solid #6ee7b7!important;
 }
+
+
+/* Modo escuro da lista de vendas no padrão do commit 5d2b234 */
+.dark .salesModernTable .salesUxTable{
+  border-collapse:separate;
+  border-spacing:0;
+}
+.dark .salesModernTable .salesUxTable tbody tr td{
+  background:#0f172a!important;
+  border-top:0!important;
+  border-bottom:2px solid #020617!important;
+  border-left:0!important;
+  border-right:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  color:#e2e8f0!important;
+}
+.dark .salesModernTable .salesUxTable tbody tr:nth-child(even) td{
+  background:#111c2d!important;
+}
+.dark .salesModernTable .salesUxTable tbody tr:hover td{
+  background:#172554!important;
+  border-bottom-color:#020617!important;
+}
+.dark .salesModernTable .salesUxTable tbody tr td:first-child,
+.dark .salesModernTable .salesUxTable tbody tr td:last-child{
+  border-radius:0!important;
+}
+.dark .salesModernTable .salesUxTable thead th{
+  background:transparent!important;
+  border-bottom:1px solid #334155!important;
+  color:#94a3b8!important;
+}
+.dark .salesModernTable .billingInvoice-faturado{
+  background:#064e3b!important;
+  color:#6ee7b7!important;
+  border:1px solid #065f46!important;
+}
+.dark .salesModernTable .salesPaymentStatus-pago{
+  background:#064e3b!important;
+  color:#6ee7b7!important;
+  border:1px solid #065f46!important;
+}
+.dark .salesModernTable .billingInvoice-nao-faturado{
+  background:#78350f!important;
+  color:#fcd34d!important;
+  border:1px solid #92400e!important;
+}
+.dark .salesModernTable .salesPaymentStatus-nao-pago{
+  background:#7f1d1d!important;
+  color:#fca5a5!important;
+  border:1px solid #991b1b!important;
+}
+.dark .salesModernTable .salesPaymentStatus-parcial{
+  background:#78350f!important;
+  color:#fcd34d!important;
+  border:1px solid #92400e!important;
+}
