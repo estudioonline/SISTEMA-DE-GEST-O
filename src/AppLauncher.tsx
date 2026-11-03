@@ -9,10 +9,22 @@ export type AppMenu = ReadonlyArray<readonly [AppModule, string, LucideIcon]>
 
 const normalize = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
 const descriptions: Partial<Record<AppModule, string>> = {
-  documentos: 'Arquivos e comprovantes armazenados na nuvem',
-  financeiro: 'Contas, pagamentos e conciliação',
-  rh: 'Recursos Humanos, funcionários, salários, FGTS, décimo terceiro e vales',
-  infra: 'Monitoramento do uso do GitHub e da infraestrutura Supabase',
+  vendas: 'Orçamentos, pedidos e faturamento',
+  dashboard: 'Métricas e indicadores em tempo real',
+  clientes: 'Cadastro, relacionamento e CRM',
+  fornecedores: 'Contatos, compras e fornecedores',
+  produtos: 'Produtos, estoque e movimentações',
+  compras: 'Pedidos, cotações e recebimentos',
+  comissoes: 'Cálculos, apuração e fechamentos',
+  financeiro: 'Contas, pagamentos e fluxo de caixa',
+  fechamento: 'Consolidação e fechamento diário',
+  documentos: 'Arquivos, comprovantes e NF-e',
+  rh: 'Funcionários, ponto, folha e benefícios',
+  entregas: 'Rotas, entregas e ocorrências',
+  autorizacoes: 'Solicitações e decisões administrativas',
+  relatorios: 'Exportações, indicadores e análises',
+  infra: 'Integrações, GitHub e banco de dados',
+  config: 'Usuários, regras e ajustes do sistema',
 }
 
 export function AppLauncher({ menu, company, ready, canEdit, onOpen, notifications = {} }: {
@@ -44,8 +56,9 @@ export function AppLauncher({ menu, company, ready, canEdit, onOpen, notificatio
           const meta = permissionModules.find(module => module.key === appPermission(key))
           const readOnly = Boolean(meta?.editable && !canEdit(key))
           return <button type="button" key={key} className={`launcherApp appColor-${key}${readOnly?' readOnly':''}`} onClick={() => onOpen(key)} aria-label={`${readOnly?'Abrir em modo somente leitura':'Abrir'} ${label}`} title={readOnly?`${label} · somente leitura`:label}>
-            <span className="launcherIcon"><Icon size={36} strokeWidth={1.8} aria-hidden="true"/>{Number(notifications[key]||0)>0&&<span className="launcherNotification" aria-label={`${notifications[key]} pendente(s)`}>{Number(notifications[key])>99?'99+':notifications[key]}</span>}</span>
+            <span className="launcherIcon"><Icon size={40} strokeWidth={1.75} aria-hidden="true"/>{Number(notifications[key]||0)>0&&<span className="launcherNotification" aria-label={`${notifications[key]} pendente(s)`}>{Number(notifications[key])>99?'99+':notifications[key]}</span>}</span>
             <strong>{label}</strong>
+            <span className="launcherDescription">{descriptions[key] || meta?.description || 'Abrir módulo'}</span>
             {readOnly&&<span className="launcherReadOnly">Somente leitura</span>}
           </button>
         })}
