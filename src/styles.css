@@ -6642,3 +6642,30 @@ small{font-size:11px}
   .productFormActionsRight{margin-left:0}
   .productFormActions button{flex:1}
 }
+
+
+/* Melhor contraste da coluna Tipo em Vendas */
+.salesModernTable .salesStatus-orcamento{
+  background:#E8EDF5;
+  color:#334155;
+  border:1px solid #CBD5E1;
+}
+.salesModernTable .salesStatus-pedido{
+  background:#DBEAFE;
+  color:#1D4ED8;
+  border:1px solid #BFDBFE;
+}
+.dark .salesModernTable .salesStatus-orcamento{
+  background:#273449;
+  color:#F1F5F9;
+  border-color:#475569;
+}
+.dark .salesModernTable .salesStatus-pedido{
+  background:#183B6B;
+  color:#93C5FD;
+  border-color:#2563EB;
+}
+.salesModernTable .salesUxTable th:nth-child(5),
+.salesModernTable .salesUxTable td:nth-child(5){
+  min-width:86px;
+}
