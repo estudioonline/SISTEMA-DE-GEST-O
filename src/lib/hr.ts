@@ -86,6 +86,6 @@ export function summarizeHr(rows:HrTitle[]){
     saldo:sum(valid,r=>Math.max(0,Number(r.valor)-Number(r.valor_pago))),
     fgts:sum(valid.filter(r=>hrSectionForTitle(r)==='fgts'),r=>Number(r.valor)),
     decimo:sum(valid.filter(r=>hrSectionForTitle(r)==='decimo'),r=>Number(r.valor)),
-    valesPendentes:sum(valid.filter(r=>hrSectionForTitle(r)==='vales'&&!r.vale_descontado_em),r=>Number(r.valor_pago)),
+    valesPendentes:sum(valid.filter(r=>hrSectionForTitle(r)==='vales'&&!r.vale_descontado_em),r=>Math.max(0,Number(r.valor)-Number(r.valor_pago))),
   }
 }
