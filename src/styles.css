@@ -6765,3 +6765,59 @@ small{font-size:11px}
   .saleItemQuickActions button{flex:1}
   .quoteModelProduct{grid-template-columns:34px minmax(0,1fr) auto}
 }
+
+
+/* Rastreamento de estoque por produto */
+.productTrackingField{
+  display:grid;
+  gap:8px;
+  padding:12px 14px;
+  border:1px solid var(--ds-border);
+  border-radius:12px;
+  background:var(--ds-surface-soft);
+}
+.productTrackingControl{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+.productTrackingControl>input{
+  width:18px;
+  height:18px;
+  margin-top:2px;
+  accent-color:var(--ds-blue);
+}
+.productTrackingControl>span{
+  display:grid;
+  gap:3px;
+}
+.productTrackingControl strong{
+  font-size:12px;
+  color:var(--ds-text);
+}
+.productTrackingControl small{
+  font-size:10px;
+  line-height:1.4;
+  color:var(--ds-muted);
+}
+.productTrackingRecipeNote{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  width:max-content;
+  max-width:100%;
+  padding:6px 8px;
+  border-radius:8px;
+  background:var(--ds-blue-soft);
+  color:var(--ds-blue);
+  font-size:10px;
+  font-weight:800;
+}
+.productTrackingControl>input:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+}
+.dark .productTrackingField{
+  background:#0f172a;
+  border-color:#334155;
+}
