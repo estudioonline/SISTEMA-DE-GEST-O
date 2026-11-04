@@ -121,6 +121,7 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
   },[sales,logisticsItems,logisticsProducts,logisticsSeps,logisticsProds])
   const active=useMemo(()=>deliveries.filter(d=>view==='montagem'?(d.status==='a_entregar'&&readyForRoute.has(d.venda_id)):view==='rota'?d.status==='em_transito':false).filter(d=>!selectedRoutes.length||selectedRoutes.includes(d.rota||'')).filter(d=>(!reportDate||d.data_prevista===reportDate)&&(!driverFilter||(d.entregador_nome||'').toLowerCase().includes(driverFilter.toLowerCase()))),[deliveries,selectedRoutes,view,reportDate,driverFilter,readyForRoute])
   const history=useMemo(()=>deliveries.filter(d=>d.status==='entregue'||d.status==='reagendamento').sort((a,b)=>b.updated_at.localeCompare(a.updated_at)).slice(0,20),[deliveries])
+  const conferenceRoutes=useMemo(()=>routePlans.filter(r=>r.status!=='cancelada'&&(!reportDate||r.data_rota===reportDate)).sort((a,b)=>b.created_at.localeCompare(a.created_at)),[routePlans,reportDate])
   const activeRoutes=new Set(active.map(d=>d.rota).filter(Boolean)).size
   const dayPlans=useMemo(()=>routePlans.filter(r=>r.data_rota===routeDay&&r.status!=='cancelada'),[routePlans,routeDay])
   const selectedPlan=dayPlans.find(r=>r.id===selectedPlanId)||dayPlans[0]||null
@@ -499,7 +500,39 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
     {!active.length&&<div className="deliveryEmpty"><Truck size={34}/><strong>Nenhuma entrega nesta visão</strong><span>Confira a data, o motorista e a visão selecionada.</span></div>}
     </>}
 
-    {view==='historico'&&<section className="deliveryHistory">
+    {view==='historico'&&<>
+    <section className="deliveryConferenceRoutes">
+      <div className="deliveryConferenceRoutesHead">
+        <div><span>ROTAS MONTADAS</span><h3>Rotas para conferência</h3><p>Confira motorista, veículo e a ordem das paradas antes e depois da saída.</p></div>
+        <span>{conferenceRoutes.length} rota(s)</span>
+      </div>
+      <div className="deliveryConferenceRouteList">
+        {conferenceRoutes.map(route=>{
+          const stops=deliveries.filter(d=>d.rota_logistica_id===route.id).sort((a,b)=>Number(a.ordem_rota||9999)-Number(b.ordem_rota||9999))
+          return <article className="deliveryConferenceRouteCard" key={route.id}>
+            <header>
+              <div><strong>{route.nome}</strong><span>{new Date(route.data_rota+'T12:00:00').toLocaleDateString('pt-BR')} · {route.motorista||'Motorista não informado'} · {route.veiculo||'Veículo não informado'}</span></div>
+              <div><span className={'deliveryConferenceRouteStatus '+route.status}>{route.status==='montagem'?'Montada':route.status==='liberada'?'Liberada':route.status==='concluida'?'Concluída':'Cancelada'}</span><b>{stops.length} parada(s)</b></div>
+            </header>
+            <div className="deliveryConferenceStops">
+              {stops.map((d,index)=>{
+                const s=saleFor(d),cl=clientFor(d),addr=addressOf(cl),due=openAmount(d.venda_id)
+                return <div className="deliveryConferenceStop" key={d.id}>
+                  <span className="deliveryConferenceStopOrder">{Number(d.ordem_rota||index+1)}</span>
+                  <div><strong>#{String(s?.fatura_numero||0).padStart(7,'0')} · {cl?.nome||'Cliente'}</strong><small>{addr||'Endereço não cadastrado'}</small></div>
+                  <div><b>{money(Number(s?.total||0))}</b><small>{due>0?'Cobrar '+money(due):'Pago'}</small></div>
+                  <span className={'deliveryHistoryStatus '+d.status}>{d.status==='entregue'?'Entregue':d.status==='reagendamento'?'Não entregue':d.status==='em_transito'?'Em trânsito':'A entregar'}</span>
+                </div>
+              })}
+              {!stops.length&&<div className="deliveryConferenceEmpty">Nenhum pedido vinculado a esta rota.</div>}
+            </div>
+          </article>
+        })}
+        {!conferenceRoutes.length&&<div className="deliveryConferenceEmpty">Nenhuma rota montada para a data selecionada.</div>}
+      </div>
+    </section>
+
+    <section className="deliveryHistory">
       <div className="deliveryHistoryHead"><div><span>HISTÓRICO OPERACIONAL</span><h3>Entregas recentes</h3></div><span>{history.length} registro(s)</span></div>
       {deliveryFilters}
       <div className="deliveryHistoryList">{history.map(d=>{
@@ -509,7 +542,7 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
           <div><span className={'deliveryHistoryStatus '+d.status}>{d.status==='entregue'?'Entregue':'Pendente de reagendamento'}</span><small>{d.status==='entregue'?dateTimeBr(d.entregue_em):`${failLabel(d.falha_motivo)} · ${dateTimeBr(d.falha_em)}`}</small>{d.status==='reagendamento'&&canEdit&&<button className="deliveryRequeue" disabled={busy} onClick={()=>void requeueDelivery(d)}>Reagendar / voltar à fila</button>}</div>
         </article>
       })}</div>
-    </section>}
+    </section></>}
 
     {modalDelivery&&mode&&<div className="deliveryModalBackdrop">
       <div className="deliveryModal" role="dialog" aria-modal="true">
