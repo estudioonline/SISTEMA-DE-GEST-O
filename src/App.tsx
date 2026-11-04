@@ -3152,6 +3152,13 @@ function App(){
   const saleStart=(safeSalePage-1)*salePageSize
   const visibleSales=filteredSalesList.slice(saleStart,saleStart+salePageSize)
   const salePageNumbers=Array.from({length:saleTotalPages},(_,i)=>i+1).filter(p=>p===1||p===saleTotalPages||Math.abs(p-safeSalePage)<=1)
+  const salesMonthKey=today().slice(0,7)
+  const salesMonthRows=vendas.filter(v=>v.created_at.slice(0,7)===salesMonthKey&&['pedido','faturado'].includes(v.status))
+  const salesMonthTotal=salesMonthRows.reduce((sum,v)=>sum+Number(v.total||0),0)
+  const salesMonthCount=salesMonthRows.length
+  const salesMonthAverage=salesMonthCount?salesMonthTotal/salesMonthCount:0
+  const salesMonthInvoiced=salesMonthRows.filter(v=>saleInvoiceStatus(v).key==='faturado').reduce((sum,v)=>sum+Number(v.total||0),0)
+  const salesMonthLabel=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date())
   const approvedBillingSales=vendas.filter(v=>['pedido','faturado'].includes(v.status)||faturasVendas.some(f=>f.venda_id===v.id))
   const billingSales=approvedBillingSales.filter(v=>{
     const invoiceState=saleInvoiceStatus(v)
@@ -3653,6 +3660,12 @@ function App(){
       </>:permissionsReady&&canViewModule(active)&&<>
       <header className="topbar">
         <div><h1 ref={moduleHeading} tabIndex={-1}>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'}</p></div>
+        {active==='vendas'&&<div className="salesMonthDashboard" aria-label="Resumo de vendas do mês">
+          <div className="salesMonthMetric salesMonthMetricPrimary"><span>Vendas do mês</span><strong>{money(salesMonthTotal)}</strong><small>{salesMonthLabel}</small></div>
+          <div className="salesMonthMetric"><span>Quantidade</span><strong>{salesMonthCount}</strong><small>pedidos/vendas</small></div>
+          <div className="salesMonthMetric"><span>Ticket médio</span><strong>{money(salesMonthAverage)}</strong><small>por venda</small></div>
+          <div className="salesMonthMetric"><span>Faturado</span><strong>{money(salesMonthInvoiced)}</strong><small>no mês</small></div>
+        </div>}
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
           {active==='compras'&&canManagePurchases&&<button className="ghost" onClick={()=>{closeForms();setShowNfeImport(true)}}><Upload size={17}/>Importar XML NF-e</button>}
