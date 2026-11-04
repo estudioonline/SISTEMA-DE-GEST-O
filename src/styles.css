@@ -7940,3 +7940,270 @@ small{font-size:11px}
   .saleItemQuickActions .ghost{flex:1}
   .saleTotals{grid-template-columns:1fr;max-width:none}
 }
+
+
+/* Ajuste fiel ao mockup aprovado - orçamento */
+.salesPage .saleModalOverlay{
+  padding:18px 28px;
+}
+.salesPage .saleModalShell{
+  width:min(1540px,calc(100vw - 56px));
+}
+.salesPage .saleModalForm{
+  max-height:calc(100vh - 36px);
+  border-radius:18px;
+  padding:20px 22px 18px;
+}
+.salesPage .saleGeminiHeader{
+  grid-template-columns:minmax(0,1fr) 420px 44px;
+  gap:18px;
+  margin-bottom:14px;
+}
+.salesPage .saleGeminiTitle{
+  align-items:center;
+}
+.salesPage .saleGeminiTitleIcon{
+  width:46px;
+  height:46px;
+  flex-basis:46px;
+  border-radius:12px;
+}
+.salesPage .saleGeminiTitle>div{
+  padding-left:16px;
+  border-left:2px solid var(--ds-border-strong,#cbd5e1);
+}
+.salesPage .saleGeminiTitle h3{
+  font-size:30px;
+  margin-bottom:3px;
+}
+.salesPage .saleGeminiTitle p{
+  font-size:13px;
+  max-width:820px;
+}
+.salesPage .saleGeminiNote{
+  min-height:70px;
+  padding:12px 15px;
+  border-radius:12px;
+}
+.salesPage .saleDataCard{
+  margin-bottom:10px;
+  border-radius:12px;
+}
+.salesPage .saleDataCardTitle{
+  min-height:40px;
+  padding:0 14px;
+  font-size:14px;
+}
+.salesPage .saleHeader.saleHeaderExpanded{
+  grid-template-columns:
+    minmax(220px,1.35fr)
+    minmax(190px,1fr)
+    minmax(155px,.82fr)
+    minmax(145px,.8fr)
+    minmax(160px,.9fr)
+    minmax(145px,.8fr)
+    minmax(100px,.55fr);
+  gap:12px;
+  padding:12px 14px 14px;
+}
+.salesPage .saleHeader label{
+  gap:5px;
+  font-size:11px;
+}
+.salesPage .saleHeader input,
+.salesPage .saleHeader select,
+.salesPage .saleHeader .partyLookupField{
+  height:38px!important;
+  min-height:38px!important;
+}
+.salesPage .saleHeader .saleNotes{
+  margin-top:0;
+}
+.salesPage .saleHeader .saleNotes textarea{
+  min-height:42px!important;
+  height:42px;
+  resize:vertical;
+  padding:10px 12px;
+}
+.salesPage .saleStageHint{
+  display:none!important;
+}
+.salesPage .saleItemsHead{
+  margin:8px 0 8px;
+  padding:0 0 8px;
+}
+.salesPage .saleItemsHead h3{
+  font-size:20px;
+}
+.salesPage .saleItemsHead h3:before{
+  height:26px;
+}
+.salesPage .saleItemQuickActions{
+  gap:8px;
+}
+.salesPage .saleItemQuickActions .ghost,
+.salesPage .saleItemQuickActions .primary{
+  height:36px;
+  min-height:36px;
+  padding:0 14px;
+  border-radius:7px;
+  font-size:12px;
+}
+.salesPage .saleAddProductBtn{
+  box-shadow:0 5px 12px rgba(37,99,235,.2);
+}
+.salesPage .saleItemsSortable{
+  border-radius:8px;
+}
+.salesPage .saleItemsSortable .saleItemColumnHead{
+  min-height:30px;
+  grid-template-columns:28px minmax(260px,1.7fr) minmax(190px,1.15fr) 88px 125px 105px 120px 40px;
+}
+.salesPage .saleItemsSortable .saleItemColumnHead>span{
+  padding:0 8px;
+  font-size:10px;
+}
+.salesPage .saleItemSortableRow{
+  grid-template-columns:28px minmax(260px,1.7fr) minmax(190px,1.15fr) 88px 125px 105px 120px 40px;
+  min-height:46px;
+}
+.salesPage .saleProductPicker,
+.salesPage .saleItemNoteField,
+.salesPage .saleItemField{
+  padding:4px 7px;
+}
+.salesPage .saleItemNoteField input,
+.salesPage .saleItemField input{
+  height:32px!important;
+  min-height:32px!important;
+  padding:0 8px;
+}
+.salesPage .saleProductPicker .productLookupField,
+.salesPage .saleProductPicker .productLookupButton{
+  min-height:32px!important;
+  height:32px!important;
+}
+.salesPage .saleItemSortableRow>strong{
+  font-size:12px;
+}
+.salesPage .saleBottomBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:9px;
+  padding-top:9px;
+  border-top:1px solid var(--ds-border,#dbe3ef);
+}
+.salesPage .saleQuickAdd{
+  height:34px;
+  border-radius:7px;
+  white-space:nowrap;
+}
+.salesPage .saleBottomRight{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  min-width:0;
+}
+.salesPage .saleTotals{
+  margin:0;
+  max-width:none;
+  display:flex;
+  align-items:center;
+  gap:0;
+}
+.salesPage .saleTotals div{
+  min-width:auto;
+  border:0!important;
+  border-radius:0;
+  background:transparent!important;
+  padding:0 10px!important;
+  gap:6px;
+  font-size:11px;
+  white-space:nowrap;
+}
+.salesPage .saleTotals div+div{
+  border-left:1px solid var(--ds-border,#dbe3ef)!important;
+}
+.salesPage .saleTotals .grandTotal{
+  min-width:170px;
+  height:36px;
+  border-radius:7px;
+  border:1px solid #2563eb!important;
+  background:#2563eb!important;
+  color:#fff;
+  justify-content:center;
+  margin-left:8px;
+}
+.salesPage .saleActions{
+  margin:0;
+  padding:0;
+  border:0;
+  display:flex;
+  gap:8px;
+}
+.salesPage .saleActions .ghost,
+.salesPage .saleActions .primary{
+  height:36px;
+  min-height:36px;
+  border-radius:7px;
+  padding:0 16px;
+}
+.dark .salesPage .saleGeminiTitle>div{
+  border-left-color:#475569;
+}
+.dark .salesPage .saleBottomBar{
+  border-top-color:#334155;
+}
+.dark .salesPage .saleTotals div+div{
+  border-left-color:#334155!important;
+}
+
+/* tema claro: tabela de itens mais semelhante à lista de vendas */
+.app:not(.dark) .salesPage .saleItemsSortable{
+  border-color:#64748b;
+}
+.app:not(.dark) .salesPage .saleItemsSortable .saleItemColumnHead{
+  background:#f8fafc;
+  border-bottom:1px solid #64748b;
+}
+.app:not(.dark) .salesPage .saleItemSortableRow{
+  border-bottom:2px solid #111827!important;
+}
+.app:not(.dark) .salesPage .saleItemSortableRow:nth-child(odd){
+  background:#ffffff;
+}
+.app:not(.dark) .salesPage .saleItemSortableRow:nth-child(even){
+  background:#f1f5f9;
+}
+
+@media(max-width:1280px){
+  .salesPage .saleModalShell{width:min(1200px,calc(100vw - 32px))}
+  .salesPage .saleHeader.saleHeaderExpanded{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .salesPage .saleHeader .saleNotes{grid-column:1/-1}
+  .salesPage .saleItemsSortable{overflow-x:auto}
+  .salesPage .saleItemsSortable .saleItemColumnHead,
+  .salesPage .saleItemSortableRow{min-width:1080px}
+}
+@media(max-width:900px){
+  .salesPage .saleModalOverlay{padding:10px}
+  .salesPage .saleModalShell{width:calc(100vw - 20px)}
+  .salesPage .saleGeminiHeader{grid-template-columns:1fr auto}
+  .salesPage .saleGeminiNote{grid-column:1/-1}
+  .salesPage .saleBottomBar{align-items:stretch;flex-direction:column}
+  .salesPage .saleBottomRight{width:100%;flex-wrap:wrap}
+  .salesPage .saleTotals{flex:1}
+}
+@media(max-width:700px){
+  .salesPage .saleModalForm{padding:14px}
+  .salesPage .saleHeader.saleHeaderExpanded{grid-template-columns:1fr}
+  .salesPage .saleBottomRight{flex-direction:column;align-items:stretch}
+  .salesPage .saleTotals{display:grid;grid-template-columns:1fr}
+  .salesPage .saleTotals div+div{border-left:0!important}
+  .salesPage .saleTotals .grandTotal{margin-left:0;width:100%}
+  .salesPage .saleActions{width:100%}
+  .salesPage .saleActions>*{flex:1}
+}
