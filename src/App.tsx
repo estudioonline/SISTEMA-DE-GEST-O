@@ -1900,7 +1900,7 @@ function App(){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,observacao_item').eq('venda_id',v.id)
     if(error){setMsg(error.message);return null}
     const items=(data||[]) as VendaItem[]
-    const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),receita_producao:[]}))
+    const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),observacao_item:i.observacao_item||'',receita_producao:[]}))
     return {
       id:v.id,
       document_kind:(v.status==='orcamento'?'orcamento':'venda') as 'orcamento'|'venda',
