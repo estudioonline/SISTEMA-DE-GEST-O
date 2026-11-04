@@ -4529,7 +4529,7 @@ function App(){
           <div className="saleItemsHead">
             <h3><ShoppingCart size={21}/>Itens</h3>
             <div className="saleItemQuickActions">
-              <button type="button" className="ghost" onClick={addSaleItem}><Plus size={16}/>Adicionar produto</button>
+              <button type="button" className="primary saleAddProductBtn" onClick={addSaleItem}><Plus size={16}/>Adicionar produto</button>
               <button type="button" className="ghost" onClick={()=>void addSaleSection()}><Plus size={16}/>Adicionar seção</button>
               <button type="button" className="ghost quoteModelBtn" onClick={()=>{setQuoteModelSearch('');setQuoteModelPicker(true)}}><Boxes size={16}/>Modelo de cotação</button>
             </div>
@@ -4599,26 +4599,30 @@ function App(){
             })}
           </div>
 
-          <div className="saleTotals">
-            <div><span>Subtotal</span><strong>{money(saleSubtotal)}</strong></div>
-            <div><span>Desconto</span><strong>{money(saleDiscount)}</strong></div>
-            <div className="grandTotal"><span>Total</span><strong>{money(saleTotal)}</strong></div>
-          </div>
-
           {saleStatus!=='orcamento'&&saleBelowStockMinimum.length>0&&saleStockShortages.length===0&&<div className="stockMinimumNotice">
             <strong>Aviso de estoque mínimo</strong>
             <span>Esta venda pode ser concluída normalmente. Alguns itens ficarão abaixo do estoque mínimo configurado após a saída.</span>
           </div>}
 
-          <div className="saleActions">
-            <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}>Cancelar</button>
-            {editingSale&&saleStatus!=='orcamento'&&saleHasAuthorizationBlocker&&<button
-              type="button"
-              className="authorizationRequestBtn"
-              disabled={savingSale||saleApprovals.some(a=>a.entidade_id===editingSale.id)}
-              onClick={()=>void requestSaleAuthorization()}
-            ><ShieldCheck size={17}/>Solicitar autorização ({saleApprovalBlockers.length})</button>}
-            <button className="primary" disabled={savingSale||(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker)} title={saleHasAuthorizationBlocker?'Use Solicitar autorização para avançar esta venda.':''}>{savingSale?'Salvando...':!editingSale?'Salvar orçamento':saleStatus==='orcamento'?'Salvar orçamento':'Salvar como pedido'}</button>
+          <div className="saleBottomBar">
+            <button type="button" className="ghost saleQuickAdd" onClick={addSaleItem}><Plus size={16}/>Adicionar item rápido</button>
+            <div className="saleBottomRight">
+              <div className="saleTotals">
+                <div><span>Subtotal</span><strong>{money(saleSubtotal)}</strong></div>
+                <div><span>Desconto</span><strong>{money(saleDiscount)}</strong></div>
+                <div className="grandTotal"><span>Total</span><strong>{money(saleTotal)}</strong></div>
+              </div>
+              <div className="saleActions">
+                <button type="button" className="ghost" onClick={()=>{setShowForm(false);resetSaleForm();requestAnimationFrame(()=>document.getElementById('sales-table')?.focus())}}>Cancelar</button>
+                {editingSale&&saleStatus!=='orcamento'&&saleHasAuthorizationBlocker&&<button
+                  type="button"
+                  className="authorizationRequestBtn"
+                  disabled={savingSale||saleApprovals.some(a=>a.entidade_id===editingSale.id)}
+                  onClick={()=>void requestSaleAuthorization()}
+                ><ShieldCheck size={17}/>Solicitar autorização ({saleApprovalBlockers.length})</button>}
+                <button className="primary" disabled={savingSale||(saleStatus!=='orcamento'&&saleHasAuthorizationBlocker)} title={saleHasAuthorizationBlocker?'Use Solicitar autorização para avançar esta venda.':''}>{savingSale?'Salvando...':!editingSale?'Salvar orçamento':saleStatus==='orcamento'?'Salvar orçamento':'Salvar como pedido'}</button>
+              </div>
+            </div>
           </div>
         </form></div></div>}
 
