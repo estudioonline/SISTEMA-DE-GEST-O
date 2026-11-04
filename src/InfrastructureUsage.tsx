@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Database, ExternalLink, GitBranch, GitCommit, Github, HardDrive, RefreshCw, Users, Gauge, Globe2, Zap, Radio, Layers3, ShieldCheck, LockKeyhole, ShieldAlert } from 'lucide-react'
+import { Activity, Database, ExternalLink, GitBranch, GitCommit, Github, HardDrive, RefreshCw, Users, Gauge, Globe2, Zap, Radio, Layers3, ShieldCheck, LockKeyhole, ShieldAlert, BrainCircuit, DollarSign, FileText } from 'lucide-react'
 import { supabase } from './lib/supabase'
 
 type InfraMetrics = {
@@ -36,6 +36,19 @@ type CommitItem = {
   commit: { message: string; author: { name: string; date: string } | null }
 }
 
+type AiUsageLog = {
+  id:string
+  origem:'financeiro'|'compras'
+  modelo:string
+  arquivo_nome:string|null
+  mime_type:string|null
+  input_tokens:number
+  cached_input_tokens:number
+  output_tokens:number
+  custo_estimado_usd:number
+  created_at:string
+}
+
 const repo = 'estudioonline/SISTEMA-DE-GEST-O'
 const api = 'https://api.github.com/repos/' + repo
 const bytes = (value: number) => {
@@ -58,6 +71,7 @@ export function InfrastructureUsage() {
   const [participation, setParticipation] = useState<Participation | null>(null)
   const [commits, setCommits] = useState<CommitItem[]>([])
   const [security, setSecurity] = useState<SecurityMetrics | null>(null)
+  const [aiUsage, setAiUsage] = useState<AiUsageLog[]>([])
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')
 
@@ -65,9 +79,10 @@ export function InfrastructureUsage() {
     setBusy(true)
     setError('')
     try {
-      const [infraResult, securityResult, repoResponse, participationResponse, commitsResponse] = await Promise.all([
+      const [infraResult, securityResult, aiUsageResult, repoResponse, participationResponse, commitsResponse] = await Promise.all([
         supabase.rpc('monitoramento_infraestrutura_erp'),
         supabase.rpc('monitoramento_seguranca_erp'),
+        supabase.from('ai_usage_logs').select('*').order('created_at',{ascending:false}).limit(500),
         fetch(api, { headers: { Accept: 'application/vnd.github+json' } }),
         fetch(api + '/stats/participation', { headers: { Accept: 'application/vnd.github+json' } }),
         fetch(api + '/commits?per_page=6', { headers: { Accept: 'application/vnd.github+json' } }),
@@ -77,6 +92,7 @@ export function InfrastructureUsage() {
       const repoJson = await repoResponse.json() as RepoInfo
       setInfra(infraResult.data as InfraMetrics)
       setSecurity(securityResult.error ? null : securityResult.data as SecurityMetrics)
+      setAiUsage(aiUsageResult.error ? [] : (aiUsageResult.data||[]) as AiUsageLog[])
       setRepoInfo(repoJson)
 
       if (participationResponse.ok) setParticipation(await participationResponse.json() as Participation)
@@ -96,6 +112,15 @@ export function InfrastructureUsage() {
   const weekly = participation?.all || []
   const commits4Weeks = weekly.slice(-4).reduce((sum, value) => sum + Number(value || 0), 0)
   const commitsYear = weekly.reduce((sum, value) => sum + Number(value || 0), 0)
+  const monthKey = new Date().toISOString().slice(0,7)
+  const aiThisMonth = aiUsage.filter(row=>row.created_at.slice(0,7)===monthKey)
+  const aiTotalCost = aiUsage.reduce((sum,row)=>sum+Number(row.custo_estimado_usd||0),0)
+  const aiMonthCost = aiThisMonth.reduce((sum,row)=>sum+Number(row.custo_estimado_usd||0),0)
+  const aiInputTokens = aiUsage.reduce((sum,row)=>sum+Number(row.input_tokens||0),0)
+  const aiOutputTokens = aiUsage.reduce((sum,row)=>sum+Number(row.output_tokens||0),0)
+  const aiFinanceCount = aiUsage.filter(row=>row.origem==='financeiro').length
+  const aiPurchaseCount = aiUsage.filter(row=>row.origem==='compras').length
+  const usd = (value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'USD',minimumFractionDigits:4,maximumFractionDigits:6}).format(value||0)
 
   return <section className="infraPage">
     <div className="infraHero panel">
@@ -190,6 +215,44 @@ export function InfrastructureUsage() {
         <p className="infraNote">Os limites acima são referências do plano Free. Egress, MAU, Edge Functions e Realtime não são medidos por este painel; consulte o Usage oficial do Supabase para o consumo mensal completo.</p>
       </article>
     </div>
+
+    <article className="panel infraAiPanel">
+      <div className="infraProviderHead">
+        <div className="infraProviderTitle"><span className="infraLogo aiMark"><BrainCircuit size={24}/></span><div><h3>OpenAI API / IA</h3><p>Leitura automática de PDFs e imagens no Financeiro e em Compras.</p></div></div>
+        <div className="infraAiLinks">
+          <a className="ghost infraLink" href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noreferrer">Billing<ExternalLink size={15}/></a>
+          <a className="ghost infraLink" href="https://platform.openai.com/usage" target="_blank" rel="noreferrer">Usage<ExternalLink size={15}/></a>
+        </div>
+      </div>
+
+      <div className="infraMetricGrid infraAiMetrics">
+        <div className="infraMetric"><FileText size={18}/><span>Documentos lidos</span><strong>{aiUsage.length}</strong><small>{aiFinanceCount} no Financeiro · {aiPurchaseCount} em Compras</small></div>
+        <div className="infraMetric"><DollarSign size={18}/><span>Custo estimado total</span><strong>{usd(aiTotalCost)}</strong><small>Estimativa baseada nos tokens retornados pela OpenAI.</small></div>
+        <div className="infraMetric"><Activity size={18}/><span>Custo no mês</span><strong>{usd(aiMonthCost)}</strong><small>{aiThisMonth.length} leitura(s) no mês atual.</small></div>
+        <div className="infraMetric"><Zap size={18}/><span>Tokens processados</span><strong>{(aiInputTokens+aiOutputTokens).toLocaleString('pt-BR')}</strong><small>{aiInputTokens.toLocaleString('pt-BR')} entrada · {aiOutputTokens.toLocaleString('pt-BR')} saída</small></div>
+      </div>
+
+      <div className="infraLimitPanel">
+        <div className="infraLimitHead"><strong>Modelo usado pelo SG</strong><span>GPT-6 Luna</span></div>
+        <div className="infraLimitRows">
+          <div><span><Activity size={15}/>Entrada</span><strong>US$ 0,10</strong><small>por 1 milhão de tokens</small></div>
+          <div><span><Zap size={15}/>Entrada cacheada</span><strong>US$ 0,01</strong><small>por 1 milhão de tokens</small></div>
+          <div><span><BrainCircuit size={15}/>Saída</span><strong>US$ 0,50</strong><small>por 1 milhão de tokens</small></div>
+          <div><span><ShieldCheck size={15}/>Chave da API</span><strong>Protegida</strong><small>fica somente nos Secrets da Edge Function</small></div>
+        </div>
+      </div>
+
+      <div className="infraSubhead"><strong>Últimas leituras por IA</strong><span>Até 8 registros recentes</span></div>
+      <div className="infraAiHistory">
+        {aiUsage.slice(0,8).map(row=><div className="infraAiRow" key={row.id}>
+          <span className="infraAiOrigin">{row.origem==='financeiro'?'Financeiro':'Compras'}</span>
+          <div><strong>{row.arquivo_nome||'Documento sem nome'}</strong><small>{dateTime(row.created_at)} · {row.modelo}</small></div>
+          <div><strong>{usd(Number(row.custo_estimado_usd||0))}</strong><small>{(Number(row.input_tokens||0)+Number(row.output_tokens||0)).toLocaleString('pt-BR')} tokens</small></div>
+        </div>)}
+        {!aiUsage.length&&<div className="infraEmpty">Nenhuma leitura por IA registrada ainda.</div>}
+      </div>
+      <p className="infraNote">O custo mostrado no SG é uma estimativa local. O valor oficial de cobrança deve ser conferido em Billing/Usage da OpenAI.</p>
+    </article>
 
     <article className="panel infraSecurityPanel">
       <div className="infraSecurityHead">
