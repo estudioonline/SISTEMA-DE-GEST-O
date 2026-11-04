@@ -103,6 +103,7 @@ function isManualJournal(j:Pick<Journal,'nome'|'banco'>){
 export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged}:{titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
  const [journals,setJournals]=useState<Journal[]>([])
  const [transactions,setTransactions]=useState<BankTx[]>([])
+ const [reconciledTotals,setReconciledTotals]=useState<Record<string,number>>({})
  const [imports,setImports]=useState<BankImport[]>([])
  const [clients,setClients]=useState<Partner[]>([])
  const [suppliers,setSuppliers]=useState<Partner[]>([])
@@ -136,7 +137,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const fileRef=useRef<HTMLInputElement|null>(null)
 
  const load=useCallback(async()=>{
-  const [j,t,c,s,a,p,m,x,i]=await Promise.all([
+  const [j,t,c,s,a,p,m,x,i,r]=await Promise.all([
    supabase.from('diarios_bancarios').select('*').eq('ativo',true).order('nome'),
    supabase.from('transacoes_bancarias').select('*').order('data_lancamento',{ascending:false}).order('criado_em',{ascending:false}).limit(5000),
    supabase.from('clientes').select('nome,documento').eq('ativo',true),
@@ -145,14 +146,22 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    supabase.from('periodos_financeiros_fechados').select('*').order('fim',{ascending:false}).limit(50),
    supabase.from('modelos_conciliacao_bancaria').select('*').order('prioridade',{ascending:true}).order('created_at',{ascending:true}),
    supabase.rpc('detectar_transferencias_bancarias_internas',{p_dias:2}),
-   supabase.from('importacoes_bancarias').select('id,diario_id,arquivo,total_linhas,inseridas,duplicadas,importado_em,arquivo_path,arquivo_tipo,arquivo_tamanho,saldo_extrato,data_saldo').order('importado_em',{ascending:false}).limit(300)
+   supabase.from('importacoes_bancarias').select('id,diario_id,arquivo,total_linhas,inseridas,duplicadas,importado_em,arquivo_path,arquivo_tipo,arquivo_tamanho,saldo_extrato,data_saldo').order('importado_em',{ascending:false}).limit(300),
+   supabase.from('conciliacoes_bancarias').select('transacao_id,valor,tipo_ajuste,valor_ajuste,desfeito_em').is('desfeito_em',null)
   ])
-  if(j.error||t.error||a.error||p.error||m.error||x.error||i.error){setMessage((j.error||t.error||a.error||p.error||m.error||x.error||i.error)!.message);return}
+  if(j.error||t.error||a.error||p.error||m.error||x.error||i.error||r.error){setMessage((j.error||t.error||a.error||p.error||m.error||x.error||i.error||r.error)!.message);return}
   const journalRows=((j.data||[]) as Journal[]).sort((a,b)=>{
    const rank=(row:Journal)=>normalize(row.nome)==='dinheiro'?0:normalize(row.nome)==='ajustes'?2:1
    return rank(a)-rank(b)||a.nome.localeCompare(b.nome,'pt-BR')
   })
-  setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setImports((i.data||[]) as BankImport[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[]);setModels((m.data||[]) as ReconcileModel[]);setTransferCandidates((x.data||[]) as TransferCandidate[])
+  const totalsByTx:Record<string,number>={}
+  ;((r.data||[]) as Array<{transacao_id:string;valor:number;tipo_ajuste:string|null;valor_ajuste:number;desfeito_em:string|null}>).forEach(row=>{
+   const txRow=((t.data||[]) as BankTx[]).find(item=>item.id===row.transacao_id)
+   const adj=Number(row.valor_ajuste)||0
+   const effective=Number(row.valor)||0+(row.tipo_ajuste==='desconto_concedido'? -Math.abs(adj):row.tipo_ajuste==='tarifa'&&txRow?.trntype==='CREDIT'? -Math.abs(adj):Math.abs(adj))
+   totalsByTx[row.transacao_id]=(totalsByTx[row.transacao_id]||0)+effective
+  })
+  setReconciledTotals(totalsByTx);setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setImports((i.data||[]) as BankImport[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[]);setModels((m.data||[]) as ReconcileModel[]);setTransferCandidates((x.data||[]) as TransferCandidate[])
  },[])
  useEffect(()=>{void load()},[load])
 
@@ -459,7 +468,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   const balance=Math.max(0,Number(title.valor)-Number(title.valor_pago))
   setSelected(prev=>{
    if(prev[title.id]!=null)return Object.fromEntries(Object.entries(prev).filter(([id])=>id!==title.id))
-   const bankTotal=reconcileTx?Math.abs(Number(reconcileTx.valor)):0
+   const bankTotal=reconcileTx?Math.max(0,Math.abs(Number(reconcileTx.valor))-Number(reconciledTotals[reconcileTx.id]||0)):0
    const adjustment=Number(adjustValue)||0
    const alreadySelected=Object.values(prev).reduce((sum,value)=>sum+Number(value||0),0)
    const available=Math.max(0,bankTotal-adjustment-alreadySelected)
@@ -468,7 +477,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   })
  }
  const selectedReconcileTotal=Object.values(selected).reduce((sum,value)=>sum+Number(value||0),0)
- const reconcileBankTotal=reconcileTx?Math.abs(Number(reconcileTx.valor)):0
+ const reconcileBankTotal=reconcileTx?Math.max(0,Math.abs(Number(reconcileTx.valor))-Number(reconciledTotals[reconcileTx.id]||0)):0
  const reconcileAdjustment=Number(adjustValue)||0
  const reconcileAppliedTotal=selectedReconcileTotal+reconcileAdjustment
  const reconcileDifference=reconcileBankTotal-reconcileAppliedTotal
@@ -621,10 +630,10 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       {reconcileAdjustment>0&&<div><span>Ajuste</span><strong>{money(reconcileAdjustment)}</strong></div>}
       <div className="bankReconcileDifference"><span>{reconcileExcess?'Excedente ajustado':reconcileResidual?'Residual da linha':'Conciliação fechada'}</span><strong>{reconcileExcess?money(0):reconcileResidual?money(reconcileResidual):money(0)}</strong></div>
       {reconcileExcess>0&&<small>O sistema limita automaticamente a última fatura selecionada para não ultrapassar o valor do extrato.</small>}
-      {reconcileResidual>0&&<small>Ainda falta distribuir este valor entre as faturas selecionadas ou informar um ajuste.</small>}
+      {reconcileResidual>0&&<small>Você pode confirmar parcialmente. O saldo restante continuará pendente para uma nova conciliação.</small>}
       {reconcileBalanced&&<small>O valor do extrato foi totalmente distribuído. A última fatura pode ficar parcialmente paga.</small>}
     </div>
-    <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(selectedReconcileTotal)} / Banco {money(reconcileBankTotal)}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length||reconcileResidual>0.009} onClick={()=>void reconcile(reconcileTx)}>Selecionar e conciliar</button></div></div>
+    <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(selectedReconcileTotal)} / Banco {money(reconcileBankTotal)}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length} onClick={()=>void reconcile(reconcileTx)}>{reconcileResidual>0.009?'Conciliar parcialmente':'Selecionar e conciliar'}</button></div></div>
   </div></div>}
   {adjustmentOpen&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={createAdjustment}><div className="bankModalHead"><strong>Novo ajuste</strong><button type="button" onClick={()=>setAdjustmentOpen(false)}><XCircle size={18}/></button></div><p>Crie uma entrada ou saída manual no diário Ajustes. O registro ficará pendente para conciliação.</p><div className="bankFormGrid"><label>Tipo<select name="tipo" defaultValue="entrada"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></label><label>Data<input name="data" type="date" required defaultValue={new Date().toISOString().slice(0,10)}/></label><label>Valor<input name="valor" type="number" min="0.01" step="0.01" required/></label><label>Categoria<input name="categoria" placeholder="Opcional"/></label></div><label>Descrição<input name="descricao" minLength={3} required placeholder="Motivo do ajuste"/></label><label>Centro de custo<input name="centro_custo" placeholder="Opcional"/></label><div className="bankModalActions"><button type="button" onClick={()=>setAdjustmentOpen(false)}>Cancelar</button><button className="bankPrimary" disabled={busy}>{busy?'Salvando…':'Salvar ajuste'}</button></div></form></div>}
   {partnerTx&&<div className="bankModalBackdrop"><form className="bankModal" onSubmit={savePartner}><div className="bankModalHead"><strong>Definir parceiro</strong><button type="button" onClick={()=>setPartnerTx(null)}><XCircle size={18}/></button></div><p>Associe o movimento bancário a um cliente ou fornecedor, como no fluxo de conciliação do Odoo.</p><label>Parceiro<input type="hidden" name="parceiro" value={partnerTx.parceiro_nome?(partnerTx.parceiro_tipo||'outro')+'|'+partnerTx.parceiro_nome:''}/><SearchableSelect required value={partnerTx.parceiro_nome?(partnerTx.parceiro_tipo||'outro')+'|'+partnerTx.parceiro_nome:''} onChange={value=>{const [tipo,...parts]=value.split('|');setPartnerTx({...partnerTx,parceiro_tipo:(tipo||null) as BankTx['parceiro_tipo'],parceiro_nome:parts.join('|')||null})}} placeholder="Selecione" searchPlaceholder="Pesquisar cliente, fornecedor ou documento..." options={[...clients.map((p,i)=>({value:'cliente|'+p.nome,label:'Cliente · '+p.nome+(p.documento?' · '+p.documento:''),keywords:(p.nome+' '+(p.documento||''))})),...suppliers.map((p,i)=>({value:'fornecedor|'+p.nome,label:'Fornecedor · '+p.nome+(p.documento?' · '+p.documento:''),keywords:(p.nome+' '+(p.documento||''))}))]}/></label><div className="bankModalActions"><button type="button" onClick={()=>setPartnerTx(null)}>Cancelar</button><button className="bankPrimary" disabled={busy}>Salvar parceiro</button></div></form></div>}
