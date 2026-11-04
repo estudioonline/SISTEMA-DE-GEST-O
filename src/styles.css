@@ -8325,3 +8325,24 @@ small{font-size:11px}
     width:100%;
   }
 }
+
+
+/* Ajuste de contraste dos totais no tema escuro */
+.dark .salesPage .saleTotals div{
+  color:#cbd5e1!important;
+}
+.dark .salesPage .saleTotals div span{
+  color:#cbd5e1!important;
+}
+.dark .salesPage .saleTotals div strong{
+  color:#f8fafc!important;
+}
+.dark .salesPage .saleTotals .grandTotal{
+  background:#2563eb!important;
+  border-color:#3b82f6!important;
+  color:#ffffff!important;
+}
+.dark .salesPage .saleTotals .grandTotal span,
+.dark .salesPage .saleTotals .grandTotal strong{
+  color:#ffffff!important;
+}
