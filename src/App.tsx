@@ -55,7 +55,7 @@ type Produto={id:string;codigo:string;descricao:string;unidade:string;custo:numb
 type ProdutoComponente={id:string;produto_final_id:string;componente_id:string;quantidade:number;perda_percentual?:number}
 type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type SaleLayoutStoredEntry={tipo:'section';titulo:string}|{tipo:'item';produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
-type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null;layout_itens?:SaleLayoutStoredEntry[]|null}
+type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;percentual_comissao?:number|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null;layout_itens?:SaleLayoutStoredEntry[]|null}
 type SaleRecipeDraft={key:string;componente_id:string;quantidade:number;valor_unitario:number}
 type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;receita_producao?:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>|null}
 type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;receita_producao:SaleRecipeDraft[]}
@@ -484,6 +484,7 @@ function App(){
   const [saleHistoryBusy,setSaleHistoryBusy]=useState(false)
   const [saleClient,setSaleClient]=useState('')
   const [saleSeller,setSaleSeller]=useState('')
+  const [saleCommissionPercent,setSaleCommissionPercent]=useState('')
   const [saleStatus,setSaleStatus]=useState('orcamento')
   const [saleNotes,setSaleNotes]=useState('')
   const [saleRoute,setSaleRoute]=useState<DeliveryRoute|''>('')
@@ -1463,7 +1464,7 @@ function App(){
   }
 
   // VENDAS
-  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()]);setSaleSections([]);setSaleOrder([]);setQuoteModelPicker(false);setQuoteModelSearch('')}
+  function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleCommissionPercent('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()]);setSaleSections([]);setSaleOrder([]);setQuoteModelPicker(false);setQuoteModelSearch('')}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}setSalePanel(null);setSaleDetailItems([]);resetSaleForm();setShowForm(true);setMsg('')}
   async function openSaleDetail(v:Venda){
     const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,receita_producao').eq('venda_id',v.id)
@@ -1533,7 +1534,7 @@ function App(){
     const items=(data||[]) as VendaItem[]
     setSaleRequestId(crypto.randomUUID())
     setOriginalSaleItems(items)
-    const saleCount=Number(v.parcelas)||1;const saleBase=v.primeiro_vencimento||today();const saleDates=Array.isArray(v.vencimentos_parcelas)&&v.vencimentos_parcelas.length===saleCount?v.vencimentos_parcelas:buildInstallmentDates(saleBase,saleCount);setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(saleCount);setSaleDueDate(saleDates[0]||saleBase);setSaleInstallmentDates(saleDates)
+    const saleCount=Number(v.parcelas)||1;const saleBase=v.primeiro_vencimento||today();const saleDates=Array.isArray(v.vencimentos_parcelas)&&v.vencimentos_parcelas.length===saleCount?v.vencimentos_parcelas:buildInstallmentDates(saleBase,saleCount);setEditingSale(v);setSaleClient(v.cliente_id||'');setSaleSeller(v.vendedor_cadastro_id||'');setSaleCommissionPercent(v.percentual_comissao==null?'':String(Number(v.percentual_comissao)));setSaleStatus(v.status);setSaleNotes(v.observacoes||'');setSaleRoute(v.rota_entrega||'');setSalePayment(v.forma_pagamento||'pix');setSaleInstallments(saleCount);setSaleDueDate(saleDates[0]||saleBase);setSaleInstallmentDates(saleDates)
     setSaleItems(items.map(i=>{
       const product=produtos.find(p=>p.id===i.produto_id)
       const saved=Array.isArray(i.receita_producao)&&i.receita_producao.length?i.receita_producao:null
@@ -1696,6 +1697,7 @@ function App(){
       p_layout_itens:storedLayout,
       p_cliente_id:saleClient||null,
       p_vendedor_cadastro_id:saleSeller||null,
+      p_percentual_comissao:saleCommissionPercent.trim()===''?null:Number(saleCommissionPercent),
       p_status:saleStatus,
       p_forma_pagamento:salePayment,
       p_parcelas:saleInstallments,
@@ -1803,6 +1805,7 @@ function App(){
         p_venda_id:v.id,
         p_cliente_id:v.cliente_id||null,
         p_vendedor_cadastro_id:v.vendedor_cadastro_id||null,
+        p_percentual_comissao:v.percentual_comissao??null,
         p_status:'pedido',
         p_forma_pagamento:v.forma_pagamento||'pix',
         p_parcelas:Number(v.parcelas)||1,
@@ -1866,6 +1869,7 @@ function App(){
           p_venda_id:editingSale.id,
           p_cliente_id:saleClient||null,
           p_vendedor_cadastro_id:saleSeller||null,
+          p_percentual_comissao:saleCommissionPercent.trim()===''?null:Number(saleCommissionPercent),
           p_status:saleStatus,
           p_forma_pagamento:salePayment,
           p_parcelas:saleInstallments,
@@ -4472,7 +4476,11 @@ function App(){
               <PartyLookup items={clientes} value={saleClient} onSelect={setSaleClient} kind="cliente" emptyLabel="Consumidor"/>
             </label>
             <label>Vendedor
-              <SearchableSelect value={saleSeller} onChange={setSaleSeller} placeholder="Sem vendedor / sem comissão" searchPlaceholder="Pesquisar vendedor..." options={vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=>({value:v.id,label:`${v.nome} — ${Number(v.percentual_comissao).toLocaleString('pt-BR')}%`,keywords:v.nome}))}/>
+              <SearchableSelect value={saleSeller} onChange={value=>{setSaleSeller(value);if(!editingSale)setSaleCommissionPercent('')}} placeholder="Sem vendedor / sem comissão" searchPlaceholder="Pesquisar vendedor..." options={vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=>({value:v.id,label:`${v.nome} — ${Number(v.percentual_comissao).toLocaleString('pt-BR')}%`,keywords:v.nome}))}/>
+            </label>
+            <label>Comissão desta venda (%)
+              <input type="number" min="0" max="100" step="0.01" value={saleCommissionPercent} onChange={e=>setSaleCommissionPercent(e.target.value)} placeholder={saleSeller?String(Number(vendedores.find(v=>v.id===saleSeller)?.percentual_comissao||0)):'0'}/>
+              <small className="saleStageHint">{saleCommissionPercent.trim()===''?(saleSeller?'Usando a comissão padrão do vendedor.':'Sem vendedor, sem comissão.'):'Percentual personalizado somente para esta venda.'}</small>
             </label>
             <label>Status
               <select value={saleStatus} onChange={e=>setSaleStatus(e.target.value)} disabled={!editingSale}>
@@ -4670,7 +4678,7 @@ function App(){
               <div><span>Data da venda</span><strong>{new Date(v.created_at).toLocaleString('pt-BR')}</strong></div>
               <div><span>Rota</span><strong>{deliveryRouteLabel(v.rota_entrega)}</strong></div>
               <div><span>Vendedor</span><strong>{seller?.nome||'—'}</strong></div>
-              <div><span>Comissão</span><strong>{seller?Number(seller.percentual_comissao).toLocaleString('pt-BR')+'%':'—'}</strong></div>
+              <div><span>Comissão</span><strong>{seller?(Number(v.percentual_comissao??seller.percentual_comissao).toLocaleString('pt-BR')+'%'+(v.percentual_comissao!=null?' · específica desta venda':'')):'—'}</strong></div>
               <div><span>Pagamento</span><strong>{paymentLabel(v.forma_pagamento)} · {v.parcelas}x</strong></div>
               <div><span>1º vencimento</span><strong>{dateBr(v.primeiro_vencimento)}</strong></div>
               <div><span>Total</span><strong className="saleDetailTotal">{money(Number(v.total))}</strong></div>
