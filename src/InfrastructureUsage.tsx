@@ -175,6 +175,7 @@ export function InfrastructureUsage() {
       <article className="panel infraProvider">
         <div className="infraProviderHead">
           <div className="infraProviderTitle"><span className="infraLogo supabaseMark"><Database size={24}/></span><div><h3>Supabase</h3><p>Projeto ORGJSS1-BR · sa-east-1 / produção</p></div></div>
+          <a className="ghost infraLink" href="https://supabase.com/dashboard/project/ecvuvfxfsqnulzszwqaq" target="_blank" rel="noreferrer">Abrir<ExternalLink size={15}/></a>
         </div>
         <div className="infraMetricGrid">
           <div className="infraMetric"><Database size={18}/><span>Banco de dados</span><strong>{infra ? bytes(Number(infra.database_bytes)) : '—'}</strong><small>Dados PostgreSQL usados pelo ERP.</small></div>
