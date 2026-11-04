@@ -655,3 +655,105 @@
   .routeBuilderItem{grid-template-columns:auto minmax(0,1fr);align-items:start}
   .routeBuilderItem>b,.routeBuilderOrder{grid-column:2}
 }
+
+
+/* Rotas: veiculo e venda extra na montagem */
+.routeBuilderControls{
+  grid-template-columns:1fr 170px 1.1fr 1fr;
+}
+.routeBuilderSummary>div{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.routeBuilderSummary button{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:0 9px;
+  border:1px solid var(--ds-border);
+  border-radius:8px;
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  font-size:9px;
+  font-weight:800;
+  cursor:pointer;
+}
+.routeExtraSalePanel{
+  margin:0 20px 12px;
+  border:1px solid var(--ds-border);
+  border-radius:12px;
+  overflow:hidden;
+  background:var(--ds-surface-soft);
+}
+.routeExtraSaleHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-bottom:1px solid var(--ds-border);
+  background:var(--ds-surface);
+}
+.routeExtraSaleHead>div{display:grid;gap:2px}
+.routeExtraSaleHead strong{font-size:10px}
+.routeExtraSaleHead span{font-size:9px;color:var(--ds-muted)}
+.routeExtraSaleHead>button{
+  width:28px;height:28px;display:grid;place-items:center;
+  border:1px solid var(--ds-border);border-radius:8px;
+  background:transparent;color:var(--ds-text);cursor:pointer
+}
+.routeExtraSaleList{
+  max-height:220px;
+  display:grid;
+  gap:6px;
+  overflow:auto;
+  padding:8px;
+}
+.routeExtraSaleItem{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  width:100%;
+  padding:9px 10px;
+  border:1px solid var(--ds-border);
+  border-radius:9px;
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  text-align:left;
+  cursor:pointer;
+}
+.routeExtraSaleItem:hover{
+  border-color:var(--ds-blue);
+  background:var(--ds-blue-soft);
+}
+.routeExtraSaleItem>div{display:grid;gap:2px;min-width:0}
+.routeExtraSaleItem strong{
+  font-size:9px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.routeExtraSaleItem span{
+  font-size:8px;
+  color:var(--ds-muted);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.routeExtraSaleItem>b{
+  flex:0 0 auto;
+  font-size:9px;
+}
+@media(max-width:900px){
+  .routeBuilderControls{grid-template-columns:1fr 1fr}
+}
+@media(max-width:620px){
+  .routeBuilderControls{grid-template-columns:1fr}
+  .routeBuilderSummary{align-items:flex-start;flex-direction:column}
+  .routeBuilderSummary>div{justify-content:flex-start}
+}
