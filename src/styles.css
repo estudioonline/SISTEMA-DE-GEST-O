@@ -5931,6 +5931,21 @@
 .cashClosingTotals .card{display:grid;gap:6px;padding:16px}
 .cashClosingTotals .card span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748B}
 .cashClosingTotals .card strong{font-size:18px;color:#0F172A}
+.cashClosingChart{display:grid;gap:14px}
+.cashClosingChartBody{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:28px;align-items:center}
+.cashClosingPieWrap{display:grid;place-items:center;padding:8px 0}
+.cashClosingPie{width:min(320px,72vw);aspect-ratio:1;border-radius:50%;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),0 18px 44px rgba(15,23,42,.12)}
+.cashClosingPie:after{content:'';position:absolute;inset:24%;border-radius:50%;background:var(--ds-surface,#fff);box-shadow:0 0 0 1px var(--ds-border,#d9e1eb)}
+.cashClosingPieCenter{position:absolute;inset:24%;z-index:1;display:grid;place-content:center;text-align:center;gap:4px}
+.cashClosingPieCenter span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ds-muted,#64748b)}
+.cashClosingPieCenter strong{font-size:20px;color:var(--ds-text,#0f172a)}
+.cashClosingLegend{display:grid;gap:8px}
+.cashClosingLegendRow{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--ds-border,#d9e1eb);border-radius:10px;background:var(--ds-surface-soft,#f8fafc)}
+.cashClosingLegendDot{width:10px;height:10px;border-radius:50%;display:block}
+.cashClosingLegendRow>div{display:grid;gap:2px}
+.cashClosingLegendRow strong{font-size:13px;color:var(--ds-text,#0f172a)}
+.cashClosingLegendRow small{font-size:11px;color:var(--ds-muted,#64748b)}
+.cashClosingLegendRow b{font-size:13px;color:var(--ds-text,#0f172a)}
 .cashClosingPositive strong,.cashAmountPositive{color:#059669!important}
 .cashClosingNegative strong,.cashAmountNegative{color:#DC2626!important}
 .cashClosingExpected strong{color:#2563EB!important}
@@ -5961,6 +5976,8 @@
 }
 @media(max-width:760px){
   .cashClosingHero{align-items:stretch;flex-direction:column}
+  .cashClosingChartBody{grid-template-columns:1fr;gap:16px}
+  .cashClosingPie{width:min(280px,78vw)}
   .cashClosingDate{align-items:stretch}
   .cashClosingDate label,.cashClosingDate input,.cashClosingDate button{width:100%}
   .cashClosingTotals{grid-template-columns:repeat(2,minmax(0,1fr))}
