@@ -7547,3 +7547,24 @@ small{font-size:11px}
 }
 
 /* deploy retry: 2026-11-04 pages timeout */
+
+
+/* Produto: ações no topo do modal */
+.productModalHeaderActions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.productModalHeaderActions .ghost{
+  min-height:36px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+}
+@media(max-width:720px){
+  .productModalHeaderActions{
+    align-items:flex-end;
+    flex-direction:column-reverse;
+  }
+}
