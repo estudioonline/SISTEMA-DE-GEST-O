@@ -1124,3 +1124,27 @@
   opacity:.45;
   cursor:not-allowed;
 }
+
+
+/* Rotas fixas: coluna em rota */
+.routeFixedLane.isInRoute{
+  border-color:rgba(245,158,11,.28);
+  background:rgba(245,158,11,.04);
+}
+.routeFixedLane.isInRoute>header{
+  background:rgba(245,158,11,.08);
+}
+.routeFixedLane.isInRoute>header em{
+  background:rgba(245,158,11,.14);
+  color:#f59e0b;
+}
+.routeFixedLane.isInRoute .routeFixedCardTop svg{
+  color:#f59e0b;
+}
+.app.light .routeFixedLane.isInRoute{
+  background:#fffbeb;
+  border-color:#fde68a;
+}
+.app.light .routeFixedLane.isInRoute>header{
+  background:#fef3c7;
+}
