@@ -3154,11 +3154,15 @@ function App(){
   const salePageNumbers=Array.from({length:saleTotalPages},(_,i)=>i+1).filter(p=>p===1||p===saleTotalPages||Math.abs(p-safeSalePage)<=1)
   const salesMonthKey=today().slice(0,7)
   const salesMonthRows=vendas.filter(v=>v.created_at.slice(0,7)===salesMonthKey&&['pedido','faturado'].includes(v.status))
-  const salesMonthTotal=salesMonthRows.reduce((sum,v)=>sum+Number(v.total||0),0)
-  const salesMonthCount=salesMonthRows.length
-  const salesMonthAverage=salesMonthCount?salesMonthTotal/salesMonthCount:0
-  const salesMonthInvoiced=salesMonthRows.filter(v=>saleInvoiceStatus(v).key==='faturado').reduce((sum,v)=>sum+Number(v.total||0),0)
   const salesMonthLabel=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date())
+  const salesMonthBySeller=vendedores
+    .filter(s=>s.ativo||salesMonthRows.some(v=>v.vendedor_cadastro_id===s.id))
+    .map(s=>{
+      const rows=salesMonthRows.filter(v=>v.vendedor_cadastro_id===s.id)
+      return {id:s.id,nome:s.nome,total:rows.reduce((sum,v)=>sum+Number(v.total||0),0),quantidade:rows.length}
+    })
+    .filter(item=>item.quantidade>0)
+    .sort((a,b)=>b.total-a.total)
   const approvedBillingSales=vendas.filter(v=>['pedido','faturado'].includes(v.status)||faturasVendas.some(f=>f.venda_id===v.id))
   const billingSales=approvedBillingSales.filter(v=>{
     const invoiceState=saleInvoiceStatus(v)
@@ -3660,11 +3664,12 @@ function App(){
       </>:permissionsReady&&canViewModule(active)&&<>
       <header className="topbar">
         <div><h1 ref={moduleHeading} tabIndex={-1}>{title}</h1><p>{empresa?.nome_fantasia||'Sistema de Gestão'}</p></div>
-        {active==='vendas'&&<div className="salesMonthDashboard" aria-label="Resumo de vendas do mês">
-          <div className="salesMonthMetric salesMonthMetricPrimary"><span>Vendas do mês</span><strong>{money(salesMonthTotal)}</strong><small>{salesMonthLabel}</small></div>
-          <div className="salesMonthMetric"><span>Quantidade</span><strong>{salesMonthCount}</strong><small>pedidos/vendas</small></div>
-          <div className="salesMonthMetric"><span>Ticket médio</span><strong>{money(salesMonthAverage)}</strong><small>por venda</small></div>
-          <div className="salesMonthMetric"><span>Faturado</span><strong>{money(salesMonthInvoiced)}</strong><small>no mês</small></div>
+        {active==='vendas'&&<div className="salesMonthDashboard salesSellerDashboard" aria-label="Vendas do mês por vendedor">
+          {salesMonthBySeller.length>0?salesMonthBySeller.map((seller,index)=><div key={seller.id} className={'salesMonthMetric'+(index===0?' salesMonthMetricPrimary':'')}>
+            <span>{seller.nome}</span>
+            <strong>{money(seller.total)}</strong>
+            <small>{seller.quantidade} venda(s) · {salesMonthLabel}</small>
+          </div>):<div className="salesMonthMetric"><span>Vendas do mês</span><strong>R$ 0,00</strong><small>Nenhuma venda por vendedor em {salesMonthLabel}</small></div>}
         </div>}
         <div className="topActions">
           <button className="iconBtn" onClick={()=>void loadData()} title="Atualizar"><RefreshCw size={18}/></button>
