@@ -4529,7 +4529,6 @@ function App(){
           <div className="saleItemsHead">
             <h3><ShoppingCart size={21}/>Itens</h3>
             <div className="saleItemQuickActions">
-              <button type="button" className="primary saleAddProductBtn" onClick={addSaleItem}><Plus size={16}/>Adicionar produto</button>
               <button type="button" className="ghost" onClick={()=>void addSaleSection()}><Plus size={16}/>Adicionar seção</button>
               <button type="button" className="ghost quoteModelBtn" onClick={()=>{setQuoteModelSearch('');setQuoteModelPicker(true)}}><Boxes size={16}/>Modelo de cotação</button>
             </div>
@@ -4602,6 +4601,10 @@ function App(){
                 </div>}
               </div>
             })}
+          </div>
+
+          <div className="saleAddProductBelowTable">
+            <button type="button" className="primary saleAddProductBtn" onClick={addSaleItem}><Plus size={16}/>Adicionar produto</button>
           </div>
 
           {saleStatus!=='orcamento'&&saleBelowStockMinimum.length>0&&saleStockShortages.length===0&&<div className="stockMinimumNotice">
