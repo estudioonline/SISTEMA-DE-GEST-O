@@ -520,22 +520,6 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
     }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
   }
 
-  async function releaseRoute(){
-    if(!selectedPlan||!canEdit||busy)return
-    setBusy(true)
-    try{
-      const {error}=await supabase.from('rotas_logisticas').update({status:'liberada',updated_at:new Date().toISOString()}).eq('id',selectedPlan.id)
-      if(error)throw error
-      const ids=plannedDeliveries.filter(d=>d.status==='a_entregar').map(d=>d.id)
-      if(ids.length){
-        const r=await supabase.from('entregas').update({status:'em_transito',em_transito_em:new Date().toISOString()}).in('id',ids)
-        if(r.error)throw r.error
-      }
-      setMessage('Rota '+selectedPlan.nome+' liberada com '+plannedDeliveries.length+' parada(s).')
-      await load()
-    }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
-  }
-
   function openRouteInMaps(){
     if(!plannedDeliveries.length)return
     const addresses=plannedDeliveries.map(d=>addressOf(clientFor(d))).filter(Boolean)
