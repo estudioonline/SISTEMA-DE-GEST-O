@@ -12,8 +12,8 @@ type Section='separacao'|'producao'|'rotas'|'conferencia'|'relatorio'
 const sections:{key:Section;title:string;description:string;icon:typeof Boxes}[]=[
   {key:'separacao',title:'Separar pedidos',description:'Pedidos confirmados aguardando separação, organização, rota ou saída.',icon:Boxes},
   {key:'rotas',title:'Rotas de entrega',description:'Montar viagens, definir motorista, ordem das paradas e liberar a rota.',icon:Truck},
-  {key:'producao',title:'Produção pronta',description:'Pedidos prontos para entrar na logística e seguir para uma rota.',icon:PackageCheck},
   {key:'conferencia',title:'Conferir entregas',description:'Revisar entregues, não entregues, comprovantes e retornos do motorista.',icon:ClipboardCheck},
+  {key:'producao',title:'Produção pronta',description:'Pedidos prontos para entrar na logística e seguir para uma rota.',icon:PackageCheck},
   {key:'relatorio',title:'Relatório de entregas',description:'Acompanhar histórico por período, motorista, rota e situação da entrega.',icon:BarChart3},
 ]
 
