@@ -2381,13 +2381,11 @@ function App(){
         )
         return
       }catch(e){
-        const message=e instanceof Error?e.message:String(e)
-        setFinanceImportNotice(
-          message.includes('OPENAI_API_KEY')||message.includes('openai_not_configured')
-            ?'A leitura por IA está instalada, mas falta configurar OPENAI_API_KEY nos Secrets do Supabase.'
-            :'Falha na leitura por IA: '+message+'. Tentando leitura local quando possível.'
-        )
-        if(isImage)return
+        if(isImage){
+          setFinanceImportNotice('Não foi possível ler a imagem automaticamente. Revise os campos manualmente.')
+          return
+        }
+        setFinanceImportNotice('Tentando leitura local do documento...')
       }
     }
 
