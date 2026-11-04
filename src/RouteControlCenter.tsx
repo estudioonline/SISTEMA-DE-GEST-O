@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState} from 'react'
-import {ArrowDown,ArrowUp,CheckCircle2,MapPin,Plus,RefreshCw,Route,Truck,X} from 'lucide-react'
+import {ArrowDown,ArrowUp,CheckCircle2,MapPin,Plus,RefreshCw,Route,Search,Truck,X} from 'lucide-react'
 import {supabase} from './lib/supabase'
 
 type Tab='montagem'|'rota'|'historico'
@@ -62,6 +62,7 @@ export function RouteControlCenter({
   const [builderDriver,setBuilderDriver]=useState('')
   const [builderVehicle,setBuilderVehicle]=useState('')
   const [extraSaleOpen,setExtraSaleOpen]=useState(false)
+  const [extraSaleSearch,setExtraSaleSearch]=useState('')
   const [builderSelected,setBuilderSelected]=useState<string[]>([])
   const [builderOrder,setBuilderOrder]=useState<string[]>([])
   const [builderBusy,setBuilderBusy]=useState(false)
@@ -109,6 +110,7 @@ export function RouteControlCenter({
     setBuilderDriver('')
     setBuilderVehicle('')
     setExtraSaleOpen(false)
+    setExtraSaleSearch('')
     setBuilderDate(new Date().toISOString().slice(0,10))
     setBuilderMessage('')
     setRouteBuilderOpen(true)
@@ -130,6 +132,7 @@ export function RouteControlCenter({
     setBuilderSelected(current=>current.includes(id)?current:[...current,id])
     setBuilderOrder(current=>current.includes(id)?current:[...current,id])
     setExtraSaleOpen(false)
+    setExtraSaleSearch('')
   }
 
   const extraDeliveries=deliveries.filter(delivery=>{
@@ -137,7 +140,19 @@ export function RouteControlCenter({
     if(builderOrder.includes(delivery.id))return false
     const sale=saleMap.get(delivery.venda_id)
     const lane=normalizeRoute(sale?.rota_entrega)||normalizeRoute(delivery.rota)
-    return lane!==builderLane
+    if(lane===builderLane)return false
+    const client=sale?.cliente_id?clientMap.get(sale.cliente_id):undefined
+    const q=extraSaleSearch.trim().toLocaleLowerCase('pt-BR')
+    if(!q)return true
+    const haystack=[
+      sale?.fatura_numero!=null?String(sale.fatura_numero):'',
+      '#'+String(sale?.fatura_numero||0).padStart(7,'0'),
+      client?.nome||'Cliente não identificado',
+      lane?.toUpperCase()||'SEM ROTA',
+      address(client),
+      money(Number(sale?.total||0))
+    ].join(' ').toLocaleLowerCase('pt-BR')
+    return haystack.includes(q)
   })
 
   function shiftBuilderDelivery(id:string,direction:-1|1){
@@ -274,7 +289,8 @@ export function RouteControlCenter({
           <div><span>{cardsByLane[builderLane].length} pedido(s) disponível(is) em {builderLane.toUpperCase()}</span><button type="button" onClick={()=>setExtraSaleOpen(true)}><Plus size={13}/>Adicionar venda de outra rota</button></div>
         </div>
         {extraSaleOpen&&<div className="routeExtraSalePanel">
-          <div className="routeExtraSaleHead"><div><strong>Adicionar venda de outra rota</strong><span>Escolha uma venda para incluir como exceção nesta rota.</span></div><button type="button" onClick={()=>setExtraSaleOpen(false)}><X size={15}/></button></div>
+          <div className="routeExtraSaleHead"><div><strong>Adicionar venda de outra rota</strong><span>Escolha uma venda para incluir como exceção nesta rota.</span></div><button type="button" onClick={()=>{setExtraSaleOpen(false);setExtraSaleSearch('')}}><X size={15}/></button></div>
+          <div className="routeExtraSaleSearch"><Search size={15}/><input autoFocus value={extraSaleSearch} onChange={e=>setExtraSaleSearch(e.target.value)} placeholder="Pesquisar por venda, cliente, rota, endereço ou valor..."/></div>
           <div className="routeExtraSaleList">
             {extraDeliveries.map(delivery=>{
               const sale=saleMap.get(delivery.venda_id)
@@ -285,7 +301,7 @@ export function RouteControlCenter({
                 <b>{money(Number(sale?.total||0))}</b>
               </button>
             })}
-            {!extraDeliveries.length&&<div className="routeBuilderEmpty">Nenhuma venda de outra rota disponível.</div>}
+            {!extraDeliveries.length&&<div className="routeBuilderEmpty">{extraSaleSearch?'Nenhuma venda encontrada para esta pesquisa.':'Nenhuma venda de outra rota disponível.'}</div>}
           </div>
         </div>}
         <div className="routeBuilderList">
