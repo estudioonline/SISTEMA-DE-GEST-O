@@ -757,3 +757,34 @@
   .routeBuilderSummary{align-items:flex-start;flex-direction:column}
   .routeBuilderSummary>div{justify-content:flex-start}
 }
+
+
+/* Rotas: busca de venda extra */
+.routeExtraSaleSearch{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:8px;
+  padding:0 10px;
+  min-height:38px;
+  border:1px solid var(--ds-border);
+  border-radius:9px;
+  background:var(--ds-bg);
+  color:var(--ds-muted);
+}
+.routeExtraSaleSearch:focus-within{
+  border-color:var(--ds-blue);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--ds-blue) 18%,transparent);
+}
+.routeExtraSaleSearch input{
+  flex:1;
+  min-width:0;
+  height:36px;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--ds-text);
+  font:inherit;
+  font-size:10px;
+}
+.routeExtraSaleSearch input::placeholder{color:var(--ds-muted)}
