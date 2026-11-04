@@ -3568,6 +3568,29 @@ function App(){
     else if(active==='financeiro')startNewTitle()
   }
 
+  async function logout(){
+    const userId=session?.user.id
+    setAccountMenuOpen(false)
+    setPermissionsReady(false)
+    setDataReady(false)
+    setShowApps(true)
+    setAccessError('')
+    closeForms()
+    setUserPermissions(emptyPermissions())
+    setCurrentAvatarPath(null)
+    if(userId){
+      try{sessionStorage.removeItem(`sg-erp-activity:${userId}`)}catch{/* sem ação */}
+    }
+    try{
+      await supabase.auth.signOut({scope:'local'})
+    }finally{
+      setSession(null)
+      setEmail('')
+      setPassword('')
+      setMsg('')
+    }
+  }
+
   async function installDesktopApp(){
     if(appInstalled){setMsg('O SG já está instalado como aplicativo neste dispositivo.');setAccountMenuOpen(false);return}
     if(!installPrompt){setMsg('A instalação ainda não foi liberada pelo navegador. No Chrome ou Edge, use o menu do navegador e escolha “Instalar SG Sistema de Gestão”.');setAccountMenuOpen(false);return}
@@ -3615,7 +3638,7 @@ function App(){
           </button>
           {accountMenuOpen&&<div className="workspaceAccountDropdown">
             <button type="button" onClick={()=>void installDesktopApp()} disabled={appInstalled}><MonitorDown size={16}/><span>{appInstalled?'Aplicativo instalado':'Instalar aplicativo'}</span></button>
-            <button type="button" onClick={()=>{setAccountMenuOpen(false);void supabase.auth.signOut({scope:'local'})}}><LogOut size={16}/><span>Sair</span></button>
+            <button type="button" onClick={()=>void logout()}><LogOut size={16}/><span>Sair</span></button>
           </div>}
         </div>
         <button type="button" className="workspaceIcon" onClick={toggleTheme} title={dark?'Ativar modo claro':'Ativar modo escuro'} aria-label={dark?'Ativar modo claro':'Ativar modo escuro'}>{dark?<Sun size={18}/>:<Moon size={18}/>}</button>
@@ -3624,7 +3647,7 @@ function App(){
       </div>
     </header>
     <main className="main">
-      {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Conferindo seu perfil e suas permissões de acesso.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sair</button></div>}</section>:showApps?<>
+      {!permissionsReady?<section className="panel accessState" role={accessError?'alert':'status'}><h2>{accessError?'Acessos indisponíveis':'Validando seus acessos'}</h2><p>{accessError||'Conferindo seu perfil e suas permissões de acesso.'}</p>{accessError&&<div className="formActions"><button className="primary" onClick={()=>{setAccessError('');void loadData()}}>Tentar novamente</button><button className="ghost" onClick={()=>void logout()}>Sair</button></div>}</section>:showApps?<>
         {msg&&<div className="panel noticePanel" role="status">{msg}</div>}
         <AppLauncher menu={permissionsReady?visibleMenu:[]} company={empresa?.nome_fantasia||'Sistema de Gestão'} ready={dataReady} canEdit={canEditModule} onOpen={openApp} notifications={{financeiro:billingCounts.naoFaturado,autorizacoes:saleApprovals.length,documentos:documentExpiryNotifications}}/>
       </>:permissionsReady&&canViewModule(active)&&<>
