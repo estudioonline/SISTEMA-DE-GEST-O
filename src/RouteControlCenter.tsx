@@ -57,6 +57,7 @@ export function RouteControlCenter({onViewChange,canEdit,canOperate,selectedDeli
   const [vehicleM3,setVehicleM3]=useState('')
   const [showSetup,setShowSetup]=useState(false)
   const [dragId,setDragId]=useState<string|null>(null)
+  const [dragOverColumn,setDragOverColumn]=useState<string|null>(null)
 
   const load=useCallback(async()=>{
     const [r,e,s,c,t,d,v,ev,pf]=await Promise.all([
@@ -84,6 +85,13 @@ export function RouteControlCenter({onViewChange,canEdit,canOperate,selectedDeli
       ? routes.filter(r=>r.status==='liberada')
       : routes.filter(r=>r.status==='concluida'||r.status==='cancelada')
   ,[tab,dayRoutes,routes])
+  const kanbanRoutes=useMemo(()=>tab==='montagem'
+    ? dayRoutes.filter(r=>r.status==='montagem')
+    : tab==='rota'
+      ? routes.filter(r=>r.status==='liberada')
+      : []
+  ,[tab,dayRoutes,routes])
+  const deliveredForDay=useMemo(()=>deliveries.filter(d=>d.status==='entregue'&&d.data_prevista===day),[deliveries,day])
   const selectedRoute=displayedRoutes.find(r=>r.id===selectedRouteId)||displayedRoutes[0]||null
   const stops=useMemo(()=>selectedRoute?deliveries.filter(d=>d.rota_logistica_id===selectedRoute.id).sort((a,b)=>Number(a.ordem_rota||9999)-Number(b.ordem_rota||9999)):[],[selectedRoute,deliveries])
   const selectedVehicle=vehicles.find(v=>v.id===selectedRoute?.veiculo_id)
@@ -134,6 +142,36 @@ export function RouteControlCenter({onViewChange,canEdit,canOperate,selectedDeli
     const ids=stops.map(s=>s.id),from=ids.indexOf(dragId),to=ids.indexOf(targetId);if(from<0||to<0)return
     ids.splice(to,0,ids.splice(from,1)[0]);setDragId(null);await reorder(ids)
   }
+  async function moveDeliveryToRoute(deliveryId:string,routeId:string){
+    if(!canEdit||busy)return
+    const target=routes.find(r=>r.id===routeId)
+    const delivery=deliveries.find(d=>d.id===deliveryId)
+    if(!target||!delivery)return
+    if(target.status!=='montagem'){
+      setMsg('Só é possível mover pedidos entre rotas que ainda estão em montagem.')
+      return
+    }
+    if(delivery.status==='entregue'){
+      setMsg('Pedido entregue não pode ser movido para outra rota.')
+      return
+    }
+    if(delivery.rota_logistica_id===routeId){setDragId(null);setDragOverColumn(null);return}
+    setBusy(true);setMsg('')
+    try{
+      const {error}=await supabase.rpc('logistica_adicionar_entregas_rota',{p_rota_id:routeId,p_entrega_ids:[deliveryId]})
+      if(error)throw error
+      setMsg('Pedido movido para '+target.nome+'.')
+      setDragId(null);setDragOverColumn(null)
+      await refresh()
+    }catch(e){setMsg((e as Error).message)}finally{setBusy(false)}
+  }
+
+  function dropOnDelivered(){
+    setDragOverColumn(null)
+    setDragId(null)
+    setMsg('Para concluir uma entrega, use o botão Entregar. Assim o SG preserva recebedor, comprovante e assinatura.')
+  }
+
   async function optimize(){
     if(stops.length<3)return
     const located=stops.filter(s=>{const c=clientFor(s);return c?.latitude!=null&&c?.longitude!=null})
@@ -235,6 +273,62 @@ export function RouteControlCenter({onViewChange,canEdit,canOperate,selectedDeli
       <button onClick={()=>void applyBulk()}>Aplicar</button>
       <button className="ghostRoute" onClick={onClearSelection}>Cancelar</button>
     </div>}
+
+    {tab!=='historico'&&<section className="routeKanbanPanel">
+      <div className="routeKanbanHead">
+        <div><span>QUADRO DE ROTAS</span><h3>Rotas de entrega</h3><p>Arraste os pedidos entre as rotas. A coluna Entregues é preenchida automaticamente após a confirmação da entrega.</p></div>
+        <strong>{kanbanRoutes.length} rota(s) · {kanbanRoutes.reduce((sum,r)=>sum+deliveries.filter(d=>d.rota_logistica_id===r.id&&d.status!=='entregue').length,0)} pendente(s)</strong>
+      </div>
+      <div className="routeKanbanBoard">
+        {kanbanRoutes.map(route=>{
+          const cards=deliveries.filter(d=>d.rota_logistica_id===route.id&&d.status!=='entregue').sort((a,b)=>Number(a.ordem_rota||9999)-Number(b.ordem_rota||9999))
+          const routeVehicle=vehicles.find(v=>v.id===route.veiculo_id)
+          return <section key={route.id}
+            className={'routeKanbanColumn'+(dragOverColumn===route.id?' dragOver':'')}
+            onDragOver={e=>{if(canEdit&&route.status==='montagem'){e.preventDefault();setDragOverColumn(route.id)}}}
+            onDragLeave={()=>setDragOverColumn(prev=>prev===route.id?null:prev)}
+            onDrop={e=>{e.preventDefault();if(dragId)void moveDeliveryToRoute(dragId,route.id)}}>
+            <header>
+              <div><strong>{route.nome}</strong><span>{route.motorista||'Sem motorista'}{route.veiculo?' · '+route.veiculo:''}</span></div>
+              <em>{cards.length}</em>
+            </header>
+            {(routeVehicle?.capacidade_entregas||routeVehicle?.capacidade_kg||routeVehicle?.capacidade_m3)&&<div className="routeKanbanCapacity">
+              {routeVehicle.capacidade_entregas!=null&&<span>{cards.length}/{routeVehicle.capacidade_entregas} paradas</span>}
+              {routeVehicle.capacidade_kg!=null&&<span>{cards.reduce((s,d)=>s+Number(d.peso_estimado_kg||0),0).toLocaleString('pt-BR')}/{Number(routeVehicle.capacidade_kg).toLocaleString('pt-BR')} kg</span>}
+            </div>}
+            <div className="routeKanbanCards">
+              {cards.map((d,index)=>{const s=saleFor(d),client=clientFor(d),due=dueFor(d);return <article key={d.id}
+                className={'routeKanbanCard'+(dragId===d.id?' dragging':'')}
+                draggable={canEdit&&route.status==='montagem'&&!busy}
+                onDragStart={()=>{setDragId(d.id);setSelectedRouteId(route.id)}}
+                onDragEnd={()=>{setDragId(null);setDragOverColumn(null)}}>
+                <div className="routeKanbanCardTop"><span>#{String(s?.fatura_numero||0).padStart(7,'0')}</span><b>{index+1}</b></div>
+                <strong>{client?.nome||'Cliente não identificado'}</strong>
+                <p>{address(client)||'Endereço não cadastrado'}</p>
+                <div className="routeKanbanCardMeta"><span>{money(Number(s?.total||0))}</span><span className={due>0?'collect':'paid'}>{due>0?'Cobrar '+money(due):'Pago'}</span></div>
+                <div className="routeKanbanCardFoot"><span className={'deliveryStatus '+d.status}>{d.status==='em_transito'?'Em trânsito':d.status==='reagendamento'?'Reagendar':'A entregar'}</span>{route.status==='liberada'&&d.status==='em_transito'&&canOperate&&<button type="button" onClick={()=>onConfirmDelivery(d.id)}><CheckCircle2 size={13}/>Entregar</button>}</div>
+              </article>})}
+              {!cards.length&&<div className="routeKanbanEmpty">{route.status==='montagem'?'Arraste pedidos para esta rota':'Nenhum pedido pendente'}</div>}
+            </div>
+          </section>
+        })}
+        <section className={'routeKanbanColumn delivered'+(dragOverColumn==='delivered'?' dragOver':'')}
+          onDragOver={e=>{if(dragId){e.preventDefault();setDragOverColumn('delivered')}}}
+          onDragLeave={()=>setDragOverColumn(prev=>prev==='delivered'?null:prev)}
+          onDrop={e=>{e.preventDefault();dropOnDelivered()}}>
+          <header><div><strong>Entregues</strong><span>Concluídos em {new Date(day+'T12:00:00').toLocaleDateString('pt-BR')}</span></div><em>{deliveredForDay.length}</em></header>
+          <div className="routeKanbanCards">
+            {deliveredForDay.map(d=>{const s=saleFor(d),client=clientFor(d);return <article key={d.id} className="routeKanbanCard deliveredCard">
+              <div className="routeKanbanCardTop"><span>#{String(s?.fatura_numero||0).padStart(7,'0')}</span><CheckCircle2 size={15}/></div>
+              <strong>{client?.nome||'Cliente não identificado'}</strong>
+              <p>{address(client)||'Endereço não cadastrado'}</p>
+              <div className="routeKanbanCardMeta"><span>{money(Number(s?.total||0))}</span><span className="paid">Entregue</span></div>
+            </article>})}
+            {!deliveredForDay.length&&<div className="routeKanbanEmpty">Nenhuma entrega concluída neste dia</div>}
+          </div>
+        </section>
+      </div>
+    </section>}
 
     {!(tab==='historico'&&!displayedRoutes.length)&&<>
     <div className="routeCenterBody">
