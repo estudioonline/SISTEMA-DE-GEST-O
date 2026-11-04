@@ -121,6 +121,88 @@ const maskCep=(value:string)=>{
 const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0,receita_producao:[]})
 const newPurchaseItem=():PurchaseItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,custo_unitario:0})
 
+const protectedAppPasswordHash='f86a4e4642f8d899a5f1aba77a4a44943c4484269e5b2e84a659e24cf8a3058f'
+
+async function sha256Hex(value:string){
+  const data=new TextEncoder().encode(value)
+  const digest=await crypto.subtle.digest('SHA-256',data)
+  return Array.from(new Uint8Array(digest)).map(byte=>byte.toString(16).padStart(2,'0')).join('')
+}
+
+function themedPasswordPrompt(title:string){
+  return new Promise<string|null>(resolve=>{
+    const overlay=document.createElement('div')
+    overlay.className='sgPromptOverlay'
+    overlay.setAttribute('role','presentation')
+
+    const dialog=document.createElement('div')
+    dialog.className='sgPromptDialog'
+    dialog.setAttribute('role','dialog')
+    dialog.setAttribute('aria-modal','true')
+    dialog.setAttribute('aria-labelledby','sg-password-title')
+
+    const head=document.createElement('div')
+    head.className='sgPromptHead'
+    const icon=document.createElement('div')
+    icon.className='sgPromptIcon'
+    icon.textContent='🔒'
+    const heading=document.createElement('div')
+    const h=document.createElement('strong')
+    h.id='sg-password-title'
+    h.textContent=title
+    const p=document.createElement('p')
+    p.textContent='Digite a senha para acessar este aplicativo.'
+    heading.append(h,p)
+    head.append(icon,heading)
+
+    const input=document.createElement('input')
+    input.className='sgPromptInput'
+    input.type='password'
+    input.autocomplete='current-password'
+    input.placeholder='Senha de acesso'
+    input.setAttribute('aria-label','Senha de acesso')
+
+    const error=document.createElement('div')
+    error.className='formHint'
+    error.setAttribute('role','alert')
+
+    const actions=document.createElement('div')
+    actions.className='sgPromptActions'
+    const cancel=document.createElement('button')
+    cancel.type='button'
+    cancel.className='ghost'
+    cancel.textContent='Cancelar'
+    const confirm=document.createElement('button')
+    confirm.type='button'
+    confirm.className='primary'
+    confirm.textContent='Entrar'
+    actions.append(cancel,confirm)
+
+    dialog.append(head,input,error,actions)
+    overlay.append(dialog)
+    document.body.append(overlay)
+
+    const finish=(value:string|null)=>{
+      document.removeEventListener('keydown',onKey)
+      overlay.remove()
+      resolve(value)
+    }
+    const submit=()=>{
+      if(!input.value){error.textContent='Informe a senha.';input.focus();return}
+      finish(input.value)
+    }
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape')finish(null)
+      if(event.key==='Enter')submit()
+    }
+    cancel.addEventListener('click',()=>finish(null))
+    confirm.addEventListener('click',submit)
+    overlay.addEventListener('mousedown',event=>{if(event.target===overlay)finish(null)})
+    document.addEventListener('keydown',onKey)
+    requestAnimationFrame(()=>input.focus())
+  })
+}
+
 function themedPrompt(message:string,title='Solicitar autorização',blockers:Array<{tipo?:string;label:string;detalhe:string}>=[]){
   return new Promise<string|null>(resolve=>{
     const overlay=document.createElement('div')
@@ -3472,8 +3554,15 @@ function App(){
     return days<=Number(file.alerta_dias??5)
   }).length
 
-  function openApp(module:ModuleKey){
+  async function openApp(module:ModuleKey){
     if(!permissionsReady||!dataReady||!canViewModule(module))return
+    if(module==='infra'||module==='config'){
+      const label=module==='infra'?'GitHub & Supabase':'Configurações'
+      const password=await themedPasswordPrompt(\`Acesso protegido · \${label}\`)
+      if(password===null)return
+      const valid=await sha256Hex(password)===protectedAppPasswordHash
+      if(!valid){setMsg('Senha incorreta. Acesso não autorizado.');return}
+    }
     setActive(module)
     if(module==='financeiro')setFinanceSubtab('geral')
     closeForms();setMsg('');setShowApps(false)
