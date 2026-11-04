@@ -3742,7 +3742,10 @@ function App(){
                 <h3>{duplicatingProduct?'Duplicar produto':editingProduct?'Editar produto':'Novo produto'}</h3>
                 <p>Preencha os dados do produto. O estoque de produtos já cadastrados é alterado pela opção “Ajustar estoque”.</p>
               </div>
-              <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de produto" onClick={()=>{setShowForm(false);setEditingProduct(null);setDuplicatingProduct(false);setProductComponentDrafts([])}}><X size={18}/></button>
+              <div className="productModalHeaderActions">
+                {editingProduct&&!duplicatingProduct&&productTrackStock&&<button type="button" className="ghost" onClick={()=>startAdjustStock(editingProduct)} disabled={!canManageProducts}><Boxes size={16}/>Ajustar estoque</button>}
+                <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de produto" onClick={()=>{setShowForm(false);setEditingProduct(null);setDuplicatingProduct(false);setProductComponentDrafts([])}}><X size={18}/></button>
+              </div>
             </div>
 
             <label className="fieldLabel">Código
@@ -3798,9 +3801,7 @@ function App(){
                 <strong>{Number(editingProduct.estoque_atual).toLocaleString('pt-BR')} {editingProduct.unidade||'UN'}</strong>
                 <small>Para corrigir o saldo, registre um ajuste com motivo e histórico de movimentação.</small>
               </div>
-              <button type="button" className="ghost" onClick={()=>startAdjustStock(editingProduct)} disabled={!canManageProducts}>
-                <Boxes size={16}/>Ajustar estoque
-              </button>
+
             </div>}
             <label className="fieldLabel">Peso unitário (kg)
               <input name="peso_kg" type="number" min="0" step="0.001" placeholder="0,000" defaultValue={editingProduct?.peso_kg??''}/>
