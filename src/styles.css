@@ -8207,3 +8207,60 @@ small{font-size:11px}
   .salesPage .saleActions{width:100%}
   .salesPage .saleActions>*{flex:1}
 }
+
+
+/* Tabela final de itens conforme layout Figma */
+.salesPage .saleItemsSortable .saleItemColumnHead{
+  grid-template-columns:28px 42px minmax(260px,1.7fr) minmax(190px,1.15fr) 88px 125px 105px 120px 92px;
+}
+.salesPage .saleItemSortableRow{
+  grid-template-columns:28px 42px minmax(260px,1.7fr) minmax(190px,1.15fr) 88px 125px 105px 120px 92px;
+}
+.salesPage .saleItemIndex{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  padding:0 8px;
+  font-size:11px;
+  font-weight:700;
+  color:var(--ds-text,#0f172a);
+}
+.salesPage .saleItemActions{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:4px 6px;
+}
+.salesPage .saleItemEditBtn,
+.salesPage .saleItemDeleteBtn{
+  width:30px;
+  height:30px;
+  border-radius:6px;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  background:transparent;
+}
+.salesPage .saleItemEditBtn{
+  border:1px solid #60a5fa;
+  color:#2563eb;
+}
+.salesPage .saleItemDeleteBtn{
+  border:1px solid #fca5a5;
+  color:#dc2626;
+}
+.salesPage .saleItemEditBtn:hover{background:#eff6ff}
+.salesPage .saleItemDeleteBtn:hover{background:#fff1f2}
+.dark .salesPage .saleItemIndex{color:#e5edf7}
+.dark .salesPage .saleItemEditBtn{border-color:#3b82f6;color:#60a5fa;background:#0b2444}
+.dark .salesPage .saleItemDeleteBtn{border-color:#7f1d1d;color:#f87171;background:#2a1115}
+.dark .salesPage .saleItemEditBtn:hover{background:#123563}
+.dark .salesPage .saleItemDeleteBtn:hover{background:#3a161c}
+
+@media(max-width:1250px){
+  .salesPage .saleItemsSortable .saleItemColumnHead,
+  .salesPage .saleItemSortableRow{
+    grid-template-columns:28px 40px minmax(220px,1.5fr) minmax(160px,1fr) 85px 115px 100px 110px 86px;
+  }
+}
