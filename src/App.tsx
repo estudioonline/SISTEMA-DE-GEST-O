@@ -2237,24 +2237,75 @@ function App(){
   async function importFinanceDocument(file:File){
     if(!file)return
     setFinanceImportNotice('Lendo documento...')
+    setFinanceFormField('documento_importado_nome',file.name)
+
+    const isPdf=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')
     const isImage=file.type.startsWith('image/')
+
+    if(isPdf||isImage){
+      setFinanceImportNotice('Analisando documento com IA...')
+      try{
+        const body=new FormData()
+        body.append('file',file)
+        const {data,error}=await supabase.functions.invoke('finance-document-ai',{body})
+        if(error)throw error
+        if(data?.error)throw new Error(data.message||data.error)
+        const extracted=data?.data||{}
+
+        const targetType=extracted.tipo==='pagar'||extracted.tipo==='receber'?extracted.tipo:financeTitleType
+        if(targetType!==financeTitleType)setFinanceTitleType(targetType)
+
+        const targetList=targetType==='receber'?clientes:fornecedores
+        const doc=String(extracted.documento||'').replace(/\D/g,'')
+        const normalizedName=normalizeFinanceText(String(extracted.entidade_nome||''))
+        const entity=targetList.find(item=>{
+          const itemDoc=(item.documento||'').replace(/\D/g,'')
+          if(doc&&itemDoc===doc)return true
+          const itemName=normalizeFinanceText(item.nome)
+          return normalizedName.length>=4&&(itemName.includes(normalizedName)||normalizedName.includes(itemName))
+        })
+        if(entity)setFinanceTitleEntity(entity.nome)
+        else if(extracted.entidade_nome)setFinanceTitleEntity(String(extracted.entidade_nome))
+
+        if(extracted.valor!=null&&Number(extracted.valor)>=0)setFinanceFormField('valor',Number(extracted.valor).toFixed(2))
+        if(extracted.vencimento)setFinanceFormField('vencimento',String(extracted.vencimento))
+        else if(extracted.data_documento)setFinanceFormField('vencimento',String(extracted.data_documento))
+        if(extracted.forma_pagamento)setFinanceFormField('forma_pagamento',String(extracted.forma_pagamento))
+        if(extracted.banco)setFinanceFormField('banco',String(extracted.banco))
+        if(extracted.descricao)setFinanceFormField('descricao',String(extracted.descricao))
+        else if(!editingTitle)setFinanceFormField('descricao',file.name.replace(/\.[^.]+$/,''))
+
+        const confidence=Number(extracted.confianca)
+        const details=[
+          extracted.entidade_nome?'entidade':'',
+          extracted.valor!=null?'valor':'',
+          extracted.vencimento||extracted.data_documento?'data':'',
+          extracted.forma_pagamento?'pagamento':'',
+          extracted.banco?'banco':''
+        ].filter(Boolean)
+        setFinanceImportNotice(
+          'IA concluiu a leitura'+
+          (Number.isFinite(confidence)?' · confiança '+Math.round(confidence*100)+'%':'')+
+          (details.length?' · reconhecido: '+details.join(', '):'')+
+          '. Revise os campos antes de salvar.'
+        )
+        return
+      }catch(e){
+        const message=e instanceof Error?e.message:String(e)
+        setFinanceImportNotice(
+          message.includes('OPENAI_API_KEY')||message.includes('openai_not_configured')
+            ?'A leitura por IA está instalada, mas falta configurar OPENAI_API_KEY nos Secrets do Supabase.'
+            :'Falha na leitura por IA: '+message+'. Tentando leitura local quando possível.'
+        )
+        if(isImage)return
+      }
+    }
+
     let text=''
-    try{
-      text=isImage?'':await file.text()
-    }catch{
-      text=''
-    }
-
-    if(isImage){
-      setFinanceImportNotice('Imagem carregada. Este navegador não extrai texto de imagem automaticamente; mantenha o arquivo como referência e revise os campos manualmente.')
-      setFinanceFormField('documento_importado_nome',file.name)
-      return
-    }
-
+    try{text=await file.text()}catch{text=''}
     const compact=text.replace(/\u0000/g,' ').replace(/\s+/g,' ').trim()
     if(!compact){
-      setFinanceImportNotice('Documento carregado, mas não foi possível extrair texto automaticamente. Revise e preencha os campos manualmente.')
-      setFinanceFormField('documento_importado_nome',file.name)
+      setFinanceImportNotice('Documento carregado, mas não foi possível extrair texto automaticamente. Revise os campos manualmente.')
       return
     }
 
@@ -2318,8 +2369,6 @@ function App(){
     if(method)setFinanceFormField('forma_pagamento',method)
 
     if(!editingTitle)setFinanceFormField('descricao',file.name.replace(/\.[^.]+$/,''))
-    setFinanceFormField('documento_importado_nome',file.name)
-
     const found=[
       entity?'entidade':'',
       amount>0?'valor':'',
