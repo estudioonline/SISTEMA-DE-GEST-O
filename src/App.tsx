@@ -4521,7 +4521,6 @@ function App(){
             </label>
           </div>
           </div>
-          </div>
 
           {saleStatus!=='orcamento'&&<div className={`paymentNotice saleStageNotice saleStage-${saleStatus}`}>
             <strong>Pedido aprovado — aguardando faturamento pelo Financeiro</strong>
