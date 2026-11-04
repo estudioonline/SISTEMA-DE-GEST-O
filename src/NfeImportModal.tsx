@@ -75,6 +75,8 @@ export function NfeImportModal({
   const [payment,setPayment]=useState<'pix'|'cartao'|'boleto'>('pix')
   const [dueDates,setDueDates]=useState<string[]>([])
   const [dueValues,setDueValues]=useState<string[]>([])
+  const [documentBank,setDocumentBank]=useState('')
+  const [aiNotice,setAiNotice]=useState('')
 
   const activeProducts=useMemo(
     ()=>products.filter(p=>p.ativo).sort((a,b)=>a.descricao.localeCompare(b.descricao,'pt-BR')),
@@ -93,6 +95,8 @@ export function NfeImportModal({
     setPayment('pix')
     setDueDates([])
     setDueValues([])
+    setDocumentBank('')
+    setAiNotice('')
   }
 
   const close=()=>{
@@ -101,73 +105,128 @@ export function NfeImportModal({
     onClose()
   }
 
+  async function prepareParsedDocument(parsed:ParsedNfe,file:File,suggestedPayment?:string,bank=''){
+    if(parsed.chave_nfe.replace(/\D/g,'').length!==44)throw new Error('Não foi possível identificar a chave de 44 dígitos da NF-e no documento.')
+    if(parsed.cnpj_fornecedor.replace(/\D/g,'').length!==14)throw new Error('Não foi possível identificar um CNPJ válido do fornecedor.')
+    if(!parsed.numero_nfe.trim())throw new Error('Não foi possível identificar o número da NF-e.')
+    if(!parsed.nome_fornecedor.trim())throw new Error('Não foi possível identificar o fornecedor.')
+    if(!parsed.data_emissao)throw new Error('Não foi possível identificar a data de emissão.')
+    if(!(Number(parsed.valor_total)>0))throw new Error('Não foi possível identificar o valor total da NF-e.')
+    if(!parsed.itens.length)throw new Error('Não foi possível identificar os itens da NF-e.')
+
+    const duplicate=await supabase
+      .from('compras')
+      .select('id,fatura_numero')
+      .eq('chave_nfe',parsed.chave_nfe)
+      .maybeSingle()
+
+    if(duplicate.error)throw duplicate.error
+    if(duplicate.data)throw new Error(`NF-e já importada na compra #${String(duplicate.data.fatura_numero||0).padStart(7,'0')}.`)
+
+    const mappings=await supabase
+      .from('de_para_produtos')
+      .select('codigo_produto_fornecedor,produto_id')
+      .eq('cnpj_fornecedor',parsed.cnpj_fornecedor)
+
+    if(mappings.error)throw mappings.error
+    const byCode=new Map((mappings.data||[]).map(m=>[String(m.codigo_produto_fornecedor),String(m.produto_id)]))
+
+    setItems(parsed.itens.map((item,index)=>{
+      const normalizedCode=item.codigo_fornecedor||`AI-${String(index+1).padStart(3,'0')}`
+      const mappedId=byCode.get(normalizedCode)||''
+      const mappedProduct=products.find(p=>p.id===mappedId&&p.ativo)
+      return {
+        ...item,
+        codigo_fornecedor:normalizedCode,
+        productId:mappedProduct?.id||'',
+        autoMapped:Boolean(mappedProduct),
+        createNew:false,
+        newCode:`NFE-${parsed.cnpj_fornecedor.slice(-6)}-${safeCode(normalizedCode)}`,
+        newDescription:item.descricao,
+        newUnit:item.unidade||'UN',
+        newSalePrice:(item.valor_unitario*2).toFixed(2)
+      }
+    }))
+
+    const emissionDate=parsed.data_emissao.slice(0,10)
+    const validDates=parsed.vencimentos.filter(v=>/^\d{4}-\d{2}-\d{2}$/.test(v)).slice(0,24)
+    const initialDates=validDates.length?validDates:[emissionDate]
+    const values=parsed.valores_vencimentos.length===initialDates.length
+      ? parsed.valores_vencimentos.map(value=>Number(value).toFixed(2))
+      : splitInstallments(parsed.valor_total,initialDates.length)
+
+    const normalizedPayment=suggestedPayment==='cartao'?'cartao':suggestedPayment==='boleto'?'boleto':'pix'
+    setPayment(validDates.length>1?'boleto':normalizedPayment)
+    setDueDates(initialDates)
+    setDueValues(values)
+    setDocumentBank(bank)
+    setNfe(parsed)
+    setFileName(file.name)
+  }
+
   async function handleFile(e:ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0]
     e.currentTarget.value=''
     if(!file)return
     setError('')
-    if(!file.name.toLowerCase().endsWith('.xml')){
-      setError('Selecione um arquivo com extensão .xml.')
+    setAiNotice('')
+    if(file.size>12*1024*1024){
+      setError('O arquivo é maior que 12 MB.')
       return
     }
-    if(file.size>6*1024*1024){
-      setError('O XML é maior que 6 MB.')
+
+    const lower=file.name.toLowerCase()
+    const isXml=lower.endsWith('.xml')||file.type.includes('xml')
+    const isPdf=lower.endsWith('.pdf')||file.type==='application/pdf'
+    const isImage=file.type.startsWith('image/')
+    if(!isXml&&!isPdf&&!isImage){
+      setError('Selecione XML, PDF ou uma imagem da NF-e/DANFE.')
       return
     }
 
     setLoading(true)
     try{
-      const parsed=parseNfeXml(await file.text())
-
-      const duplicate=await supabase
-        .from('compras')
-        .select('id,fatura_numero')
-        .eq('chave_nfe',parsed.chave_nfe)
-        .maybeSingle()
-
-      if(duplicate.error)throw duplicate.error
-      if(duplicate.data){
-        throw new Error(`NF-e já importada na compra #${String(duplicate.data.fatura_numero||0).padStart(7,'0')}.`)
-      }
-
-      const mappings=await supabase
-        .from('de_para_produtos')
-        .select('codigo_produto_fornecedor,produto_id')
-        .eq('cnpj_fornecedor',parsed.cnpj_fornecedor)
-
-      if(mappings.error)throw mappings.error
-      const byCode=new Map((mappings.data||[]).map(m=>[String(m.codigo_produto_fornecedor),String(m.produto_id)]))
-
-      setItems(parsed.itens.map(item=>{
-        const mappedId=byCode.get(item.codigo_fornecedor)||''
-        const mappedProduct=products.find(p=>p.id===mappedId&&p.ativo)
-        return {
-          ...item,
-          productId:mappedProduct?.id||'',
-          autoMapped:Boolean(mappedProduct),
-          createNew:false,
-          newCode:`NFE-${parsed.cnpj_fornecedor.slice(-6)}-${safeCode(item.codigo_fornecedor)}`,
-          newDescription:item.descricao,
-          newUnit:item.unidade||'UN',
-          newSalePrice:(item.valor_unitario*2).toFixed(2)
+      if(isXml){
+        const parsed=parseNfeXml(await file.text())
+        await prepareParsedDocument(parsed,file)
+      }else{
+        setAiNotice('Analisando PDF/imagem com IA...')
+        const body=new FormData()
+        body.append('file',file)
+        const {data,error:invokeError}=await supabase.functions.invoke('purchase-document-ai',{body})
+        if(invokeError)throw invokeError
+        if(data?.error)throw new Error(data.message||data.error)
+        const ai=data?.data||{}
+        const parsed:ParsedNfe={
+          chave_nfe:String(ai.chave_nfe||'').replace(/\D/g,''),
+          numero_nfe:String(ai.numero_documento||''),
+          cnpj_fornecedor:String(ai.cnpj_fornecedor||'').replace(/\D/g,''),
+          nome_fornecedor:String(ai.nome_fornecedor||''),
+          data_emissao:String(ai.data_emissao||''),
+          valor_total:Number(ai.valor_total||0),
+          vencimentos:Array.isArray(ai.vencimentos)?ai.vencimentos.map((x:unknown)=>String(x)):[],
+          valores_vencimentos:Array.isArray(ai.valores_vencimentos)?ai.valores_vencimentos.map((x:unknown)=>Number(x)||0):[],
+          itens:Array.isArray(ai.itens)?ai.itens.map((item:any,index:number)=>({
+            item:index+1,
+            codigo_fornecedor:String(item?.codigo_fornecedor||`AI-${String(index+1).padStart(3,'0')}`),
+            descricao:String(item?.descricao||''),
+            unidade:String(item?.unidade||'UN'),
+            quantidade:Number(item?.quantidade||0),
+            valor_unitario:Number(item?.valor_unitario||0),
+            valor_total:Number(item?.valor_total||0)
+          })).filter((item:ParsedNfeItem)=>item.descricao&&item.quantidade>0):[]
         }
-      }))
-
-      const emissionDate=parsed.data_emissao.slice(0,10)
-      const xmlDueDates=parsed.vencimentos.filter(v=>/^\d{4}-\d{2}-\d{2}$/.test(v)).slice(0,24)
-      const initialDates=xmlDueDates.length?xmlDueDates:[emissionDate]
-      const xmlValues=parsed.valores_vencimentos.length===initialDates.length
-        ? parsed.valores_vencimentos.map(value=>Number(value).toFixed(2))
-        : splitInstallments(parsed.valor_total,initialDates.length)
-      setPayment(xmlDueDates.length?'boleto':'pix')
-      setDueDates(initialDates)
-      setDueValues(xmlValues)
-      setNfe(parsed)
-      setFileName(file.name)
+        await prepareParsedDocument(parsed,file,String(ai.forma_pagamento||''),String(ai.banco||''))
+        const confidence=Number(ai.confianca)
+        setAiNotice('Leitura por IA concluída'+(Number.isFinite(confidence)?' · confiança '+Math.round(confidence*100)+'%':'')+'. Revise fornecedor, itens, valores e vencimentos antes de importar.')
+      }
     }catch(err){
       setNfe(null)
       setItems([])
-      setError(err instanceof Error?err.message:'Não foi possível ler o XML.')
+      setDocumentBank('')
+      const message=err instanceof Error?err.message:'Não foi possível ler o documento.'
+      setError(message)
+      if(message.includes('OPENAI_API_KEY')||message.includes('openai_not_configured'))setAiNotice('A leitura por IA está instalada, mas falta configurar OPENAI_API_KEY nos Secrets do Supabase.')
     }finally{
       setLoading(false)
     }
@@ -280,6 +339,12 @@ export function NfeImportModal({
 
       const result=await supabase.rpc('importar_compra_nfe',{p_payload:payload})
       if(result.error)throw result.error
+      if(result.data?.compra_id){
+        await supabase.from('compras').update({
+          banco_documento:documentBank||null,
+          documento_importado_nome:fileName||null
+        }).eq('id',result.data.compra_id)
+      }
       await onImported(result.data as ImportResult)
       reset()
     }catch(err){
@@ -302,22 +367,23 @@ export function NfeImportModal({
       <div className="panel nfeImportPanel">
         <div className="formTitle saleModalTitle">
           <div>
-            <h3>Entrada de compra via XML da NF-e</h3>
-            <p>O XML é processado no navegador. Depois do De/Para, a compra entra como recebida e atualiza estoque, custo e financeiro.</p>
+            <h3>Importar documento de compra</h3>
+            <p>Use XML, PDF ou imagem de NF-e/DANFE. PDF e imagem são lidos por IA; depois do De/Para, a compra entra como recebida e atualiza estoque, custo e financeiro.</p>
           </div>
           <button type="button" className="iconBtn saleModalClose" onClick={close} disabled={saving} aria-label="Fechar importação"><X size={18}/></button>
         </div>
 
         {!nfe&&<div className="nfeUploadBox">
           <Upload size={36}/>
-          <strong>Selecione o XML da NF-e</strong>
-          <span>Arquivo .xml de até 6 MB. Nenhum XML bruto é armazenado no navegador após fechar esta tela.</span>
+          <strong>Selecione XML, PDF ou imagem</strong>
+          <span>Até 12 MB. XML usa leitura estruturada; PDF e imagem usam IA para reconhecer a NF-e/DANFE.</span>
           <label className="primary nfeFileButton">
-            {loading?'Lendo XML...':'Escolher arquivo XML'}
-            <input type="file" accept=".xml,text/xml,application/xml" onChange={handleFile} disabled={loading}/>
+            {loading?'Lendo documento...':'Escolher documento'}
+            <input type="file" accept=".xml,text/xml,application/xml,.pdf,application/pdf,image/*" onChange={handleFile} disabled={loading}/>
           </label>
         </div>}
 
+        {aiNotice&&<div className="financeImportNotice"><FileText size={16}/><span>{aiNotice}</span></div>}
         {error&&<div className="authorizationInlineError nfeError" role="alert">{error}</div>}
 
         {nfe&&<>
@@ -326,6 +392,7 @@ export function NfeImportModal({
             <div><span>Fornecedor</span><strong>{nfe.nome_fornecedor}</strong><small>{nfe.cnpj_fornecedor}</small></div>
             <div><span>Emissão</span><strong>{dateBr(nfe.data_emissao)}</strong><small>Chave {nfe.chave_nfe.slice(0,10)}…{nfe.chave_nfe.slice(-8)}</small></div>
             <div><span>Valor da NF-e</span><strong>{money(nfe.valor_total)}</strong><small>Produtos: {money(itemTotal)}{Math.abs(difference)>.009?` • diferença ${money(difference)}`:''}</small></div>
+            {documentBank&&<div><span>Banco identificado</span><strong>{documentBank}</strong><small>Extraído do documento importado</small></div>}
           </div>
 
           <div className="panel nfePaymentPanel">
