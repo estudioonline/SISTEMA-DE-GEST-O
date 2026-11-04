@@ -6,7 +6,7 @@ import {SearchableSelect} from './SearchableSelect'
 import type {CSSProperties} from 'react'
 
 type Journal={id:string;nome:string;banco:string|null;agencia:string|null;conta:string|null;saldo_inicial:number;saldo_atual:number;ativo:boolean}
-type BankTx={id:string;diario_id:string;importacao_id:string|null;fitid:string;trntype:'CREDIT'|'DEBIT';valor:number;data_lancamento:string;nome:string|null;historico:string|null;status:'pendente'|'parcial'|'conciliado'|'ignorado';criado_em:string;parceiro_nome?:string|null;parceiro_tipo?:'cliente'|'fornecedor'|'outro'|null;conta_categoria?:string|null;centro_custo?:string|null}
+type BankTx={id:string;diario_id:string;importacao_id:string|null;fitid:string;trntype:'CREDIT'|'DEBIT';valor:number;data_lancamento:string;nome:string|null;historico:string|null;status:'pendente'|'parcial'|'conciliado'|'ignorado';criado_em:string;parceiro_nome?:string|null;parceiro_tipo?:'cliente'|'fornecedor'|'outro'|null;conta_categoria?:string|null;centro_custo?:string|null;descricao_conciliacao?:string|null}
 type Title={id:string;tipo:'receber'|'pagar';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:string;categoria:string|null;centro_custo:string|null;forma_pagamento:string|null;venda_id:string|null;compra_id:string|null}
 type Partner={nome:string;documento:string|null}
 type Suggestion={title:Title;score:number;reasons:string[]}
@@ -127,6 +127,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const [accountTx,setAccountTx]=useState<BankTx|null>(null)
  const [reconcileTx,setReconcileTx]=useState<BankTx|null>(null)
  const [reconcileSearch,setReconcileSearch]=useState('')
+ const [reconcileDescription,setReconcileDescription]=useState('')
  const [adjustmentOpen,setAdjustmentOpen]=useState(false)
  const [modelsOpen,setModelsOpen]=useState(false)
  const [editingModel,setEditingModel]=useState<ReconcileModel|null>(null)
@@ -330,7 +331,11 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   try{
    const {error}=await supabase.rpc('conciliar_transacao_bancaria',{p_transacao_id:tx.id,p_vinculos:links,p_tipo_ajuste:adjustType||null,p_valor_ajuste:Number(adjustValue)||0,p_categoria_ajuste:null,p_centro_custo_ajuste:null})
    if(error)throw error
-   setSelected({});setAdjustType('');setAdjustValue('0');setReconcileTx(null);setMessage('Transação conciliada com sucesso.');await Promise.all([load(),onChanged()])
+   if(reconcileDescription.trim()){
+    const saved=await supabase.from('transacoes_bancarias').update({descricao_conciliacao:reconcileDescription.trim()}).eq('id',tx.id)
+    if(saved.error)throw saved.error
+   }
+   setSelected({});setAdjustType('');setAdjustValue('0');setReconcileDescription('');setReconcileTx(null);setMessage('Transação conciliada com sucesso.');await Promise.all([load(),onChanged()])
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
  async function quickCreate(tx:BankTx){
@@ -374,7 +379,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
  function openReconcile(tx:BankTx){
-  setSelected({});setAdjustType('');setAdjustValue('0');setReconcileSearch('');setReconcileTx(tx);setActionMenuTx(null)
+  setSelected({});setAdjustType('');setAdjustValue('0');setReconcileSearch('');setReconcileDescription(tx.descricao_conciliacao||'');setReconcileTx(tx);setActionMenuTx(null)
  }
  async function undo(tx:BankTx){
   const reason=window.prompt('Motivo da desconciliação:');if(!reason)return
@@ -591,7 +596,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   {visible.length===0&&<div className="bankEmpty"><WalletCards size={30}/><strong>Nenhuma transação encontrada</strong><span>Carregue um arquivo OFX, QFX ou CSV para este diário.</span></div>}
 
   {reconcileTx&&<div className="bankModalBackdrop"><div className="bankModal bankReconcileModal" role="dialog" aria-modal="true" aria-label="Pesquisar itens a reconciliar">
-    <div className="bankModalHead"><div><strong>Pesquisar itens a reconciliar</strong><small>{reconcileTx.nome||reconcileTx.historico||'Transação'} · {money(Math.abs(Number(reconcileTx.valor)))}</small></div><button onClick={()=>{setReconcileTx(null);setSelected({})}}><XCircle size={18}/></button></div>
+    <div className="bankModalHead"><div><strong>Pesquisar itens a reconciliar</strong><small>{reconcileTx.nome||reconcileTx.historico||'Transação'} · {money(Math.abs(Number(reconcileTx.valor)))}</small></div><button onClick={()=>{setReconcileTx(null);setSelected({});setReconcileDescription('')}}><XCircle size={18}/></button></div>
     <div className="bankSearch bankReconcileSearch"><Search size={15}/><input autoFocus value={reconcileSearch} onChange={e=>setReconcileSearch(e.target.value)} placeholder="Buscar parceiro, fatura, descrição, vencimento, valor..."/></div>
     <div className="bankReconcileSummary"><span>{reconcileTx.trntype==='CREDIT'?'Contas a receber':'Contas a pagar'}</span><strong>{reconcileCandidates.length} título(s) disponível(is)</strong></div>
     <div className="bankReconcileList">{reconcileCandidates.map(title=>{
@@ -609,7 +614,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
         })}/>}
       </label>
     })}{reconcileCandidates.length===0&&<div className="bankNoCandidates">Nenhum título em aberto encontrado para esta pesquisa.</div>}</div>
-    <div className="bankReconcileAdjust"><label>Ajuste<select value={adjustType} onChange={e=>setAdjustType(e.target.value)}><option value="">Sem ajuste</option><option value="juros_passivos">Juros passivos</option><option value="desconto_concedido">Desconto concedido</option><option value="tarifa">Tarifa bancária</option><option value="outro">Outro</option></select></label>{adjustType&&<label>Valor do ajuste<input type="number" min="0" step="0.01" value={adjustValue} onChange={e=>setAdjustValue(e.target.value)}/></label>}</div>
+    <div className="bankReconcileAdjust"><label>Ajuste<select value={adjustType} onChange={e=>setAdjustType(e.target.value)}><option value="">Sem ajuste</option><option value="juros_passivos">Juros passivos</option><option value="desconto_concedido">Desconto concedido</option><option value="tarifa">Tarifa bancária</option><option value="outro">Outro</option></select></label>{adjustType&&<label>Valor do ajuste<input type="number" min="0" step="0.01" value={adjustValue} onChange={e=>setAdjustValue(e.target.value)}/></label>}<label className="bankReconcileDescription">Descrição da conciliação<input type="text" maxLength={120} value={reconcileDescription} onChange={e=>setReconcileDescription(e.target.value)} placeholder="Ex.: Boletos antecipados"/></label></div>
     <div className={'bankReconcileBalance '+(reconcileExcess?'excess':reconcileResidual?'residual':'balanced')}>
       <div><span>Valor da linha do extrato</span><strong>{money(reconcileBankTotal)}</strong></div>
       <div><span>Faturas selecionadas</span><strong>{money(selectedReconcileTotal)}</strong></div>
