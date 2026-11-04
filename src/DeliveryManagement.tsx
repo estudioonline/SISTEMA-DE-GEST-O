@@ -431,6 +431,21 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
     </div>
   )
 
+  if(initialView==='montagem'){
+    return <section className="deliveryApp routeProjectBlank">
+      <RouteControlCenter
+        onViewChange={()=>{}}
+        canEdit={canEdit}
+        canOperate={canOperate}
+        selectedDeliveryIds={[]}
+        onClearSelection={()=>{}}
+        onChanged={load}
+        onConfirmDelivery={()=>{}}
+        refreshKey={routeRefreshKey}
+      />
+    </section>
+  }
+
   return <section className="deliveryApp">
     <div className="deliveryHero">
       <div><span>OPERAÇÃO LOGÍSTICA</span><h2>Gerenciamento de Entregas</h2><p>Status de transporte separado do estoque e do faturamento.</p></div>
@@ -438,7 +453,7 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
     </div>
     {message&&<div className="deliveryNotice" role="status">{message}</div>}
 
-    <RouteControlCenter onViewChange={next=>{setView(next);setSelectedDeliveryIds([])}} canEdit={canEdit} canOperate={canOperate} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load} onConfirmDelivery={openDeliveryFromRoute} refreshKey={routeRefreshKey}/>
+    {initialView!=='historico'&&<RouteControlCenter onViewChange={next=>{setView(next);setSelectedDeliveryIds([])}} canEdit={canEdit} canOperate={canOperate} selectedDeliveryIds={selectedDeliveryIds} onClearSelection={()=>setSelectedDeliveryIds([])} onChanged={load} onConfirmDelivery={openDeliveryFromRoute} refreshKey={routeRefreshKey}/>}
 
     {view!=='historico'&&<>
     {deliveryFilters}
