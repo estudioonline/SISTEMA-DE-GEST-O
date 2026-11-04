@@ -567,3 +567,91 @@
 .routeFixedCard.locked:hover{
   transform:none;
 }
+
+
+/* Rotas: painel sobreposto de montagem */
+.routeBoardActions{display:flex;align-items:center;gap:8px}
+.routeBuildButton{
+  min-height:36px!important;width:auto!important;padding:0 12px!important;display:inline-flex!important;
+  align-items:center;gap:7px;border-color:var(--ds-blue)!important;background:var(--ds-blue-soft)!important;
+  color:var(--ds-blue)!important;font-size:10px!important;font-weight:900!important
+}
+.routeBuilderOverlay{
+  position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:24px;
+  background:rgba(2,6,23,.68);backdrop-filter:blur(7px)
+}
+.routeBuilderPanel{
+  width:min(980px,96vw);max-height:88vh;display:grid;grid-template-rows:auto auto auto minmax(180px,1fr) auto auto;
+  overflow:hidden;border:1px solid var(--ds-border);border-radius:18px;background:var(--ds-surface);
+  color:var(--ds-text);box-shadow:0 30px 90px rgba(2,6,23,.45)
+}
+.routeBuilderTitle{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px;
+  border-bottom:1px solid var(--ds-border)
+}
+.routeBuilderTitle>div{display:grid;gap:4px}
+.routeBuilderTitle span{font-size:9px;font-weight:900;letter-spacing:.09em;color:var(--ds-blue)}
+.routeBuilderTitle h3{margin:0;font-size:18px}
+.routeBuilderTitle p{margin:0;font-size:10px;color:var(--ds-muted)}
+.routeBuilderTitle>button{
+  width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--ds-border);border-radius:9px;
+  background:transparent;color:var(--ds-text);cursor:pointer
+}
+.routeBuilderControls{
+  display:grid;grid-template-columns:1fr 180px 1.2fr;gap:10px;padding:14px 20px;border-bottom:1px solid var(--ds-border)
+}
+.routeBuilderControls label{display:grid;gap:5px;font-size:9px;font-weight:900;color:var(--ds-muted);text-transform:uppercase;letter-spacing:.04em}
+.routeBuilderControls input,.routeBuilderControls select{
+  height:38px;border:1px solid var(--ds-border);border-radius:9px;background:var(--ds-bg);color:var(--ds-text);
+  padding:0 10px;font:inherit;font-size:11px
+}
+.routeBuilderSummary{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 20px;
+  border-bottom:1px solid var(--ds-border);background:var(--ds-surface-soft)
+}
+.routeBuilderSummary strong{font-size:11px;color:var(--ds-blue)}
+.routeBuilderSummary span{font-size:9px;color:var(--ds-muted)}
+.routeBuilderList{
+  min-height:180px;display:grid;align-content:start;gap:8px;overflow:auto;padding:12px 20px;background:var(--ds-bg)
+}
+.routeBuilderItem{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:10px 11px;
+  border:1px solid var(--ds-border);border-radius:11px;background:var(--ds-surface)
+}
+.routeBuilderItem.selected{border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.06)}
+.routeBuilderCheck{display:flex;align-items:center;gap:7px}
+.routeBuilderCheck input{width:16px;height:16px}
+.routeBuilderCheck span{
+  width:23px;height:23px;display:grid;place-items:center;border-radius:999px;background:var(--ds-blue-soft);
+  color:var(--ds-blue);font-size:9px;font-weight:900
+}
+.routeBuilderItemInfo{min-width:0;display:grid;gap:3px}
+.routeBuilderItemInfo strong{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.routeBuilderItemInfo small{font-size:9px;color:var(--ds-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.routeBuilderItem>b{font-size:10px;white-space:nowrap}
+.routeBuilderOrder{display:flex;gap:4px}
+.routeBuilderOrder button{
+  width:29px;height:29px;display:grid;place-items:center;border:1px solid var(--ds-border);border-radius:8px;
+  background:var(--ds-surface-soft);color:var(--ds-text);cursor:pointer
+}
+.routeBuilderOrder button:disabled{opacity:.35;cursor:not-allowed}
+.routeBuilderEmpty{
+  min-height:120px;display:grid;place-items:center;border:1px dashed var(--ds-border-strong);border-radius:10px;
+  color:var(--ds-muted);font-size:10px
+}
+.routeBuilderPanel>.deliveryNotice{margin:0 20px 12px}
+.routeBuilderFooter{
+  display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--ds-border)
+}
+.routeBuilderFooter button{min-height:36px}
+.app.light .routeBuilderPanel{background:#fff}
+.app.light .routeBuilderList{background:#f8fafc}
+.app.light .routeBuilderItem{background:#fff}
+.app.light .routeBuilderItem.selected{background:#eff6ff;border-color:#93c5fd}
+@media(max-width:760px){
+  .routeBuilderOverlay{padding:10px}
+  .routeBuilderPanel{width:100%;max-height:94vh}
+  .routeBuilderControls{grid-template-columns:1fr}
+  .routeBuilderItem{grid-template-columns:auto minmax(0,1fr);align-items:start}
+  .routeBuilderItem>b,.routeBuilderOrder{grid-column:2}
+}
