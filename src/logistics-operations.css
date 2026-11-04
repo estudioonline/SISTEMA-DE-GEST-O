@@ -535,3 +535,35 @@
   .routeFixedBoardHead{align-items:flex-start}
   .routeFixedLane{flex-basis:265px;min-width:265px;max-height:62vh}
 }
+
+
+/* Rotas fixas: drag and drop */
+.routeFixedLane.dragOver{
+  border-color:var(--ds-blue);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--ds-blue) 24%,transparent);
+  transform:translateY(-2px);
+}
+.routeFixedLane.isDelivered.dragOver{
+  border-color:#f59e0b;
+  box-shadow:0 0 0 2px rgba(245,158,11,.22);
+}
+.routeFixedCard{
+  cursor:grab;
+  transition:transform .14s ease,opacity .14s ease,box-shadow .14s ease,border-color .14s ease;
+}
+.routeFixedCard:hover{
+  transform:translateY(-1px);
+  border-color:var(--ds-border-strong);
+  box-shadow:0 7px 18px rgba(15,23,42,.08);
+}
+.routeFixedCard:active{cursor:grabbing}
+.routeFixedCard.dragging{
+  opacity:.42;
+  transform:rotate(1deg) scale(.985);
+}
+.routeFixedCard.locked{
+  cursor:default;
+}
+.routeFixedCard.locked:hover{
+  transform:none;
+}
