@@ -146,6 +146,52 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
     setSelectedDeliveryIds(prev=>allSelected?prev.filter(id=>!ids.includes(id)):Array.from(new Set([...prev,...ids])))
   }
 
+  async function cancelRoute(route:RoutePlan){
+    if(!canEdit||busy)return
+    const stops=deliveries.filter(d=>d.rota_logistica_id===route.id)
+    if(stops.some(d=>d.status==='entregue')){
+      setMessage('Não é possível cancelar uma rota que já possui entrega concluída.')
+      return
+    }
+    if(!window.confirm('Cancelar a rota '+route.nome+'? Os pedidos serão liberados para montar outra rota.'))return
+    setBusy(true);setMessage('')
+    try{
+      const {error:routeError}=await supabase.from('rotas_logisticas').update({
+        status:'cancelada',
+        updated_at:new Date().toISOString()
+      }).eq('id',route.id)
+      if(routeError)throw routeError
+
+      if(stops.length){
+        const ids=stops.map(d=>d.id)
+        const {error:deliveryError}=await supabase.from('entregas').update({
+          rota_logistica_id:null,
+          ordem_rota:null,
+          updated_at:new Date().toISOString()
+        }).in('id',ids)
+        if(deliveryError)throw deliveryError
+
+        for(const d of stops){
+          await supabase.from('entrega_eventos').insert({
+            entrega_id:d.id,
+            tipo:'organizacao',
+            status_anterior:d.status,
+            status_novo:d.status,
+            detalhes:'Rota cancelada: '+route.nome
+          })
+        }
+      }
+
+      if(editRoute?.id===route.id)setEditRoute(null)
+      setMessage('Rota cancelada. Os pedidos foram liberados para uma nova montagem.')
+      await load()
+    }catch(e){
+      setMessage((e as Error).message)
+    }finally{
+      setBusy(false)
+    }
+  }
+
   function openRouteEdit(route:RoutePlan){
     const stops=deliveries.filter(d=>d.rota_logistica_id===route.id).sort((a,b)=>Number(a.ordem_rota||9999)-Number(b.ordem_rota||9999))
     setEditRoute(route)
@@ -588,7 +634,10 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
           return <article className="deliveryConferenceRouteCard" key={route.id}>
             <header>
               <div><strong>{route.nome}</strong><span>{new Date(route.data_rota+'T12:00:00').toLocaleDateString('pt-BR')} · {route.motorista||'Motorista não informado'} · {route.veiculo||'Veículo não informado'}</span></div>
-              <div><span className={'deliveryConferenceRouteStatus '+route.status}>{route.status==='montagem'?'Montada':route.status==='liberada'?'Liberada':route.status==='concluida'?'Concluída':'Cancelada'}</span><b>{stops.length} parada(s)</b>{canEdit&&route.status!=='cancelada'&&<button type="button" className="deliveryRouteEditButton" onClick={()=>openRouteEdit(route)}><PenLine size={13}/>Editar rota</button>}</div>
+              <div><span className={'deliveryConferenceRouteStatus '+route.status}>{route.status==='montagem'?'Montada':route.status==='liberada'?'Liberada':route.status==='concluida'?'Concluída':'Cancelada'}</span><b>{stops.length} parada(s)</b>{canEdit&&route.status!=='cancelada'&&<>
+                <button type="button" className="deliveryRouteEditButton" onClick={()=>openRouteEdit(route)}><PenLine size={13}/>Editar rota</button>
+                <button type="button" className="deliveryRouteCancelButton" disabled={busy} onClick={()=>void cancelRoute(route)}><XCircle size={13}/>Cancelar rota</button>
+              </>}</div>
             </header>
             <div className="deliveryConferenceStops">
               {stops.map((d,index)=>{
