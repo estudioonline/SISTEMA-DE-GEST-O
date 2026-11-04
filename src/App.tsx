@@ -57,8 +57,8 @@ type ProdutoComponenteDraft={key:string;componente_id:string;quantidade:number}
 type SaleLayoutStoredEntry={tipo:'section';titulo:string}|{tipo:'item';produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number}
 type Venda={id:string;cliente_id:string|null;vendedor_id:string|null;vendedor_cadastro_id:string|null;percentual_comissao?:number|null;status:string;subtotal:number;desconto:number;total:number;observacoes:string|null;rota_entrega:DeliveryRoute|null;created_at:string;forma_pagamento:PaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas?:string[]|null;venda_numero:number;fatura_numero:number|null;fatura_gerada_em:string|null;estoque_negativo_autorizado_por?:string|null;estoque_negativo_autorizado_em?:string|null;layout_itens?:SaleLayoutStoredEntry[]|null}
 type SaleRecipeDraft={key:string;componente_id:string;quantidade:number;valor_unitario:number}
-type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;receita_producao?:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>|null}
-type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;receita_producao:SaleRecipeDraft[]}
+type VendaItem={produto_id:string;quantidade:number;valor_unitario:number;desconto:number;total:number;observacao_item?:string|null;receita_producao?:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>|null}
+type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitario:number;desconto:number;observacao_item:string;receita_producao:SaleRecipeDraft[]}
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
@@ -118,7 +118,7 @@ const maskCep=(value:string)=>{
   const d=onlyDigits(value,8)
   return d.replace(/(\d{5})(\d{1,3})$/,'$1-$2')
 }
-const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0,receita_producao:[]})
+const newSaleItem=():SaleItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,valor_unitario:0,desconto:0,observacao_item:'',receita_producao:[]})
 const newPurchaseItem=():PurchaseItemDraft=>({key:`${Date.now()}-${Math.random()}`,produto_id:'',quantidade:1,custo_unitario:0})
 
 const protectedAppPasswordHash='f86a4e4642f8d899a5f1aba77a4a44943c4484269e5b2e84a659e24cf8a3058f'
@@ -1467,7 +1467,7 @@ function App(){
   function resetSaleForm(){setSaleRequestId(crypto.randomUUID());setSaleNotice('');setEditingSale(null);setOriginalSaleItems([]);setSaleCreditState(null);setSaleClient('');setSaleSeller('');setSaleCommissionPercent('');setSaleStatus('orcamento');setSaleNotes('');setSaleRoute('');setSalePayment('pix');setSaleInstallments(1);setSaleDueDate(today());setSaleInstallmentDates([today()]);setSaleItems([newSaleItem()]);setSaleSections([]);setSaleOrder([]);setQuoteModelPicker(false);setQuoteModelSearch('')}
   function startNewSale(){if(!canManageSales){setMsg('Seu perfil não tem permissão para criar vendas.');return}setSalePanel(null);setSaleDetailItems([]);resetSaleForm();setShowForm(true);setMsg('')}
   async function openSaleDetail(v:Venda){
-    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,receita_producao').eq('venda_id',v.id)
+    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,observacao_item,receita_producao').eq('venda_id',v.id)
     if(error){setMsg('Não foi possível abrir os detalhes da venda: '+error.message);return}
     setSaleDetailItems((data||[]) as VendaItem[])
     setSaleDetailTab('itens')
@@ -1529,7 +1529,7 @@ function App(){
     if(saleHasActiveInvoice||v.status==='faturado'){setMsg('Venda faturada não pode ser alterada. Cancele a fatura pelo fluxo financeiro antes de editar a venda.');return}
     if(v.status==='cancelado'){setMsg('Venda cancelada não pode ser editada.');return}
     if(saleApprovals.some(a=>a.entidade_id===v.id)){setMsg('Este orçamento está aguardando aprovação e não pode ser alterado até a decisão do administrador.');return}
-    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
+    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,observacao_item').eq('venda_id',v.id)
     if(error){setMsg(error.message);return}
     const items=(data||[]) as VendaItem[]
     setSaleRequestId(crypto.randomUUID())
@@ -1541,7 +1541,7 @@ function App(){
       const recipe:Array<{componente_id:string;quantidade:number;valor_unitario?:number}>=saved||((product?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id))
         ? produtoComponentes.filter(row=>row.produto_final_id===i.produto_id).map(row=>({componente_id:row.componente_id,quantidade:Number(row.quantidade),valor_unitario:produtos.find(p=>p.id===row.componente_id)?.preco_venda}))
         : [])
-      return {key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),receita_producao:recipe.map(row=>{const componente=produtos.find(p=>p.id===row.componente_id);return {key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade),valor_unitario:Number(row.valor_unitario??componente?.preco_venda??0)}})}
+      return {key:`${Date.now()}-${Math.random()}`,produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),observacao_item:i.observacao_item||'',receita_producao:recipe.map(row=>{const componente=produtos.find(p=>p.id===row.componente_id);return {key:crypto.randomUUID(),componente_id:row.componente_id,quantidade:Number(row.quantidade),valor_unitario:Number(row.valor_unitario??componente?.preco_venda??0)}})}
     }))
     setSalePanel(null);setSaleDetailItems([]);setShowForm(true);setMsg('')
   }
@@ -1561,6 +1561,7 @@ function App(){
     }:i))
   }
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
+  function updateSaleItemNote(key:string,value:string){setSaleItems(items=>items.map(i=>i.key===key?{...i,observacao_item:value.slice(0,240)}:i))}
   function updateSaleRecipeItem(itemKey:string,recipeKey:string,field:'componente_id'|'quantidade'|'valor_unitario',value:string|number){
     setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:item.receita_producao.map(row=>{
       if(row.key!==recipeKey)return row
@@ -1704,7 +1705,7 @@ function App(){
       p_primeiro_vencimento:today(),
       p_vencimentos:buildInstallmentDates(today(),saleInstallments),
       p_observacoes:saleNotes,
-      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto,receita_producao:i.receita_producao.map(row=>({componente_id:row.componente_id,quantidade:row.quantidade,valor_unitario:row.valor_unitario}))}))
+      p_itens:items.map(i=>({produto_id:i.produto_id,quantidade:i.quantidade,valor_unitario:i.valor_unitario,desconto:i.desconto,observacao_item:i.observacao_item.trim()||null,receita_producao:i.receita_producao.map(row=>({componente_id:row.componente_id,quantidade:row.quantidade,valor_unitario:row.valor_unitario}))}))
     }
     const r=await supabase.rpc('salvar_venda_erp',{
       p_requisicao:saleRequestId,
@@ -1739,7 +1740,7 @@ function App(){
     try{
       const {data:itemData,error:itemError}=await supabase.from('venda_itens').select('*').eq('venda_id',v.id)
       if(itemError)throw itemError
-      const items=((itemData||[]) as VendaItem[]).map(i=>({produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto)}))
+      const items=((itemData||[]) as VendaItem[]).map(i=>({produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),observacao_item:i.observacao_item||null}))
       if(!items.length)throw new Error('Este orçamento não possui itens válidos.')
 
       const demand=items.reduce<Record<string,number>>((acc,item)=>{acc[item.produto_id]=(acc[item.produto_id]||0)+item.quantidade;return acc},{})
@@ -1878,7 +1879,7 @@ function App(){
           p_observacoes:saleNotes,
           p_rota_entrega:saleRoute||null,
           p_bloqueios:saleApprovalBlockers,
-          p_itens:saleItems.map(({produto_id,quantidade,valor_unitario,desconto})=>({produto_id,quantidade,valor_unitario,desconto}))
+          p_itens:saleItems.map(({produto_id,quantidade,valor_unitario,desconto,observacao_item})=>({produto_id,quantidade,valor_unitario,desconto,observacao_item:observacao_item.trim()||null}))
         }
       })
       if(error){
@@ -1896,7 +1897,7 @@ function App(){
   }
 
   async function buildSaleInvoicePayload(v:Venda){
-    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total').eq('venda_id',v.id)
+    const {data,error}=await supabase.from('venda_itens').select('produto_id,quantidade,valor_unitario,desconto,total,observacao_item').eq('venda_id',v.id)
     if(error){setMsg(error.message);return null}
     const items=(data||[]) as VendaItem[]
     const drafts=items.map(i=>({key:'pdf',produto_id:i.produto_id,quantidade:Number(i.quantidade),valor_unitario:Number(i.valor_unitario),desconto:Number(i.desconto),receita_producao:[]}))
@@ -4331,6 +4332,8 @@ function App(){
             <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de compra" onClick={()=>{setShowForm(false);resetPurchaseForm();requestAnimationFrame(()=>document.getElementById('purchases-table')?.focus())}}><X size={18}/></button>
           </div>
 
+          <div className="saleDataCard">
+            <div className="saleDataCardTitle"><Users size={18}/><strong>Dados do orçamento</strong></div>
           <div className="saleHeader saleHeaderExpanded">
             <label>Fornecedor
               <PartyLookup items={fornecedores} value={purchaseSupplier} onSelect={setPurchaseSupplier} kind="fornecedor" emptyLabel="Sem fornecedor"/>
@@ -4455,8 +4458,9 @@ function App(){
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingSale?'Editar venda':'Novo orçamento'}><div className="saleModalShell"><form className="panel saleForm salesForm saleModalForm" onSubmit={saveSale}>
           <div className="saleGeminiHeader">
             <div className="saleGeminiTitle">
-              <h3>{editingSale?(editingSale.status==='orcamento'?'Editar orçamento ':'Editar venda ')+invoiceNo(editingSale.fatura_numero):'Novo orçamento'}</h3>
-              <p>O processo de venda começa como orçamento. Depois ele pode ser convertido em Pedido/Venda para gerar cobrança e movimentação de estoque.</p>
+              <span className="saleGeminiTitleIcon"><ReceiptText size={24}/></span>
+              <div><h3>{editingSale?(editingSale.status==='orcamento'?'Editar orçamento ':'Editar venda ')+invoiceNo(editingSale.fatura_numero):'Novo orçamento'}</h3>
+              <p>O processo de venda começa como orçamento. Depois ele pode ser convertido em Pedido/Venda para gerar cobrança e movimentação de estoque.</p></div>
             </div>
             <div className={`saleGeminiNote${saleHasAuthorizationBlocker?' saleGeminiNoteBlocked':''}`} role={saleHasAuthorizationBlocker?'alert':undefined}>
               {saleHasAuthorizationBlocker?<ShieldCheck size={19}/>:<Info size={19}/>}
@@ -4516,13 +4520,14 @@ function App(){
               <textarea value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} placeholder="Informe observações do orçamento (opcional)"/>
             </label>
           </div>
+          </div>
 
           {saleStatus!=='orcamento'&&<div className={`paymentNotice saleStageNotice saleStage-${saleStatus}`}>
             <strong>Pedido aprovado — aguardando faturamento pelo Financeiro</strong>
             <span>{paymentLabel(salePayment)+' • '+saleInstallments+'x indicado pelo vendedor. O Financeiro definirá datas e valores das parcelas.'}</span>
           </div>}
           <div className="saleItemsHead">
-            <h3>Itens</h3>
+            <h3><ShoppingCart size={21}/>Itens</h3>
             <div className="saleItemQuickActions">
               <button type="button" className="ghost" onClick={addSaleItem}><Plus size={16}/>Adicionar produto</button>
               <button type="button" className="ghost" onClick={()=>void addSaleSection()}><Plus size={16}/>Adicionar seção</button>
@@ -4531,7 +4536,7 @@ function App(){
           </div>
 
           <div className="saleItems saleItemsSortable">
-            <div className="saleItemColumnHead" aria-hidden="true"><span></span><span>Produto</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
+            <div className="saleItemColumnHead" aria-hidden="true"><span></span><span>Produto</span><span>Observação do item</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
             {saleLayoutEntries.map(entry=>{
               if(entry.startsWith('section:')){
                 const section=saleSections.find(row=>'section:'+row.key===entry)
@@ -4561,6 +4566,7 @@ function App(){
               >
                 <span className="saleItemDragHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para reorganizar"><GripVertical size={17}/></span>
                 <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)} fullWidth/></div>
+                <label className="saleItemNoteField"><span>Observação</span><input type="text" maxLength={240} value={i.observacao_item} onChange={e=>updateSaleItemNote(i.key,e.target.value)} placeholder="Ex.: medida, acabamento, reforço..."/></label>
                 <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
                 <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
                 <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
