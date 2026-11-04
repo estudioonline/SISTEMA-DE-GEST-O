@@ -7457,3 +7457,46 @@ small{font-size:11px}
 }
 @media(max-width:900px){.rhEntitlementPreview{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.rhEntitlementPreview{grid-template-columns:1fr}}
+
+
+/* Financeiro: importar documento em nova fatura */
+.financeImportActions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.financeImportButton{
+  min-height:34px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:0 10px;
+}
+.financeImportNotice{
+  grid-column:1/-1;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:9px 11px;
+  border:1px solid rgba(59,130,246,.28);
+  border-radius:9px;
+  background:rgba(59,130,246,.08);
+  color:var(--ds-text-soft);
+  font-size:10px;
+  line-height:1.4;
+}
+.financeImportNotice svg{
+  flex:0 0 auto;
+  color:var(--ds-blue);
+}
+.app.light .financeImportNotice{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1e3a8a;
+}
+@media(max-width:640px){
+  .financeImportActions{
+    align-items:flex-end;
+    flex-direction:column-reverse;
+  }
+}
