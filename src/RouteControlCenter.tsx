@@ -6,6 +6,7 @@ type Tab='montagem'|'rota'|'historico'
 type Delivery={id:string;venda_id:string;status:string;rota:string|null;data_prevista:string|null;entregador_nome:string|null;updated_at:string}
 type Sale={id:string;cliente_id:string|null;total:number;rota_entrega:string|null;fatura_numero:number|null;status:string}
 type Client={id:string;nome:string;logradouro:string|null;numero:string|null;bairro:string|null;municipio:string|null;uf:string|null}
+type Vehicle={id:string;descricao:string;placa:string|null;ativo:boolean}
 
 type LaneKey='retirar'|'norte'|'sul'|'leste'|'interestadual'|'entregue'
 const lanes:{key:LaneKey;label:string}[]=[
@@ -49,6 +50,7 @@ export function RouteControlCenter({
   const [deliveries,setDeliveries]=useState<Delivery[]>([])
   const [sales,setSales]=useState<Sale[]>([])
   const [clients,setClients]=useState<Client[]>([])
+  const [vehicles,setVehicles]=useState<Vehicle[]>([])
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [draggedId,setDraggedId]=useState<string|null>(null)
@@ -58,6 +60,8 @@ export function RouteControlCenter({
   const [builderLane,setBuilderLane]=useState<Exclude<LaneKey,'entregue'>>('norte')
   const [builderDate,setBuilderDate]=useState(()=>new Date().toISOString().slice(0,10))
   const [builderDriver,setBuilderDriver]=useState('')
+  const [builderVehicle,setBuilderVehicle]=useState('')
+  const [extraSaleOpen,setExtraSaleOpen]=useState(false)
   const [builderSelected,setBuilderSelected]=useState<string[]>([])
   const [builderOrder,setBuilderOrder]=useState<string[]>([])
   const [builderBusy,setBuilderBusy]=useState(false)
@@ -65,16 +69,18 @@ export function RouteControlCenter({
 
   const load=useCallback(async()=>{
     setLoading(true);setError('')
-    const [d,s,c]=await Promise.all([
+    const [d,s,c,v]=await Promise.all([
       supabase.from('entregas').select('id,venda_id,status,rota,data_prevista,entregador_nome,updated_at').order('updated_at',{ascending:false}),
       supabase.from('vendas').select('id,cliente_id,total,rota_entrega,fatura_numero,status'),
-      supabase.from('clientes').select('id,nome,logradouro,numero,bairro,municipio,uf')
+      supabase.from('clientes').select('id,nome,logradouro,numero,bairro,municipio,uf'),
+      supabase.from('veiculos_logistica').select('id,descricao,placa,ativo').eq('ativo',true).order('descricao')
     ])
-    const issue=d.error||s.error||c.error
+    const issue=d.error||s.error||c.error||v.error
     if(issue){setError(issue.message);setLoading(false);return}
     setDeliveries((d.data||[]) as Delivery[])
     setSales((s.data||[]) as Sale[])
     setClients((c.data||[]) as Client[])
+    setVehicles((v.data||[]) as Vehicle[])
     setLoading(false)
   },[])
 
@@ -101,6 +107,8 @@ export function RouteControlCenter({
     setBuilderSelected(ids)
     setBuilderOrder(ids)
     setBuilderDriver('')
+    setBuilderVehicle('')
+    setExtraSaleOpen(false)
     setBuilderDate(new Date().toISOString().slice(0,10))
     setBuilderMessage('')
     setRouteBuilderOpen(true)
@@ -117,6 +125,20 @@ export function RouteControlCenter({
   function toggleBuilderDelivery(id:string){
     setBuilderSelected(current=>current.includes(id)?current.filter(x=>x!==id):[...current,id])
   }
+
+  function addExtraDelivery(id:string){
+    setBuilderSelected(current=>current.includes(id)?current:[...current,id])
+    setBuilderOrder(current=>current.includes(id)?current:[...current,id])
+    setExtraSaleOpen(false)
+  }
+
+  const extraDeliveries=deliveries.filter(delivery=>{
+    if(delivery.status==='entregue')return false
+    if(builderOrder.includes(delivery.id))return false
+    const sale=saleMap.get(delivery.venda_id)
+    const lane=normalizeRoute(sale?.rota_entrega)||normalizeRoute(delivery.rota)
+    return lane!==builderLane
+  })
 
   function shiftBuilderDelivery(id:string,direction:-1|1){
     setBuilderOrder(current=>{
@@ -136,6 +158,18 @@ export function RouteControlCenter({
     if(!builderDate){setBuilderMessage('Informe a data da rota.');return}
     setBuilderBusy(true);setBuilderMessage('')
     try{
+      const vehicle=vehicles.find(v=>v.id===builderVehicle)||null
+      const routeName=builderLane.toUpperCase()+' · '+new Date(builderDate+'T12:00:00').toLocaleDateString('pt-BR')
+      const {data:route,error:routeError}=await supabase.from('rotas_logisticas').insert({
+        data_rota:builderDate,
+        nome:routeName,
+        motorista:builderDriver.trim()||null,
+        veiculo:vehicle?vehicle.descricao+(vehicle.placa?' · '+vehicle.placa:''):null,
+        veiculo_id:vehicle?.id||null,
+        status:'montagem'
+      }).select('id').single()
+      if(routeError)throw routeError
+
       for(let index=0;index<ordered.length;index++){
         const delivery=deliveries.find(d=>d.id===ordered[index])
         if(!delivery)continue
@@ -143,15 +177,18 @@ export function RouteControlCenter({
           data_prevista:builderDate,
           entregador_nome:builderDriver.trim()||null,
           ordem_rota:index+1,
+          rota_logistica_id:route.id,
           updated_at:new Date().toISOString()
         }).eq('id',delivery.id)
         if(updateError)throw updateError
+        const sale=saleMap.get(delivery.venda_id)
+        const originalLane=normalizeRoute(sale?.rota_entrega)||normalizeRoute(delivery.rota)
         await supabase.from('entrega_eventos').insert({
           entrega_id:delivery.id,
           tipo:'organizacao',
           status_anterior:delivery.status,
           status_novo:delivery.status,
-          detalhes:'Rota montada: '+builderLane.toUpperCase()+' · parada '+(index+1)+' · '+builderDate+(builderDriver.trim()?' · '+builderDriver.trim():'')
+          detalhes:'Rota montada: '+builderLane.toUpperCase()+' · parada '+(index+1)+' · '+builderDate+(builderDriver.trim()?' · '+builderDriver.trim():'')+(vehicle?' · veículo '+vehicle.descricao:'')+(originalLane&&originalLane!==builderLane?' · exceção oriunda de '+originalLane.toUpperCase():'')
         })
       }
       setBuilderMessage('Rota montada com '+ordered.length+' pedido(s).')
@@ -227,8 +264,30 @@ export function RouteControlCenter({
           </select></label>
           <label>Data<input type="date" value={builderDate} onChange={e=>setBuilderDate(e.target.value)}/></label>
           <label>Motorista / Entregador<input value={builderDriver} onChange={e=>setBuilderDriver(e.target.value)} placeholder="Nome do motorista"/></label>
+          <label>Veículo<select value={builderVehicle} onChange={e=>setBuilderVehicle(e.target.value)}>
+            <option value="">Selecionar veículo</option>
+            {vehicles.map(v=><option key={v.id} value={v.id}>{v.descricao}{v.placa?' · '+v.placa:''}</option>)}
+          </select></label>
         </div>
-        <div className="routeBuilderSummary"><strong>{builderSelected.length} selecionado(s)</strong><span>{cardsByLane[builderLane].length} pedido(s) disponível(is) em {builderLane.toUpperCase()}</span></div>
+        <div className="routeBuilderSummary">
+          <strong>{builderSelected.length} selecionado(s)</strong>
+          <div><span>{cardsByLane[builderLane].length} pedido(s) disponível(is) em {builderLane.toUpperCase()}</span><button type="button" onClick={()=>setExtraSaleOpen(true)}><Plus size={13}/>Adicionar venda de outra rota</button></div>
+        </div>
+        {extraSaleOpen&&<div className="routeExtraSalePanel">
+          <div className="routeExtraSaleHead"><div><strong>Adicionar venda de outra rota</strong><span>Escolha uma venda para incluir como exceção nesta rota.</span></div><button type="button" onClick={()=>setExtraSaleOpen(false)}><X size={15}/></button></div>
+          <div className="routeExtraSaleList">
+            {extraDeliveries.map(delivery=>{
+              const sale=saleMap.get(delivery.venda_id)
+              const client=sale?.cliente_id?clientMap.get(sale.cliente_id):undefined
+              const lane=normalizeRoute(sale?.rota_entrega)||normalizeRoute(delivery.rota)
+              return <button type="button" key={delivery.id} className="routeExtraSaleItem" onClick={()=>addExtraDelivery(delivery.id)}>
+                <div><strong>#{String(sale?.fatura_numero||0).padStart(7,'0')} · {client?.nome||'Cliente não identificado'}</strong><span>{lane?lane.toUpperCase():'SEM ROTA'} · {address(client)||'Endereço não cadastrado'}</span></div>
+                <b>{money(Number(sale?.total||0))}</b>
+              </button>
+            })}
+            {!extraDeliveries.length&&<div className="routeBuilderEmpty">Nenhuma venda de outra rota disponível.</div>}
+          </div>
+        </div>}
         <div className="routeBuilderList">
           {builderOrder.map((id,index)=>{
             const delivery=deliveries.find(d=>d.id===id)
