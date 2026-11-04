@@ -2407,12 +2407,12 @@ function App(){
           '. Revise os campos antes de salvar.'
         )
         return
-      }catch(e){
+      }catch{
         if(isImage){
-          setFinanceImportNotice('Não foi possível ler a imagem automaticamente. Revise os campos manualmente.')
+          setFinanceImportNotice('Imagem carregada. A leitura automática está indisponível no momento; revise os campos manualmente.')
           return
         }
-        setFinanceImportNotice('Tentando leitura local do documento...')
+        setFinanceImportNotice('')
       }
     }
 
