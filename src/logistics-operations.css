@@ -432,3 +432,43 @@
     max-height:62vh;
   }
 }
+
+
+/* Rotas: tela limpa para reinicio Trello */
+.routeTrelloBlank{
+  min-height:calc(100vh - 220px);
+  padding:14px 0 26px;
+}
+.routeTrelloBlankBoard{
+  min-height:520px;
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  overflow-x:auto;
+  padding:4px 2px 16px;
+}
+.routeTrelloAddList{
+  flex:0 0 280px;
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:8px;
+  padding:0 14px;
+  border:1px dashed var(--ds-border-strong);
+  border-radius:12px;
+  background:color-mix(in srgb,var(--ds-surface) 82%,transparent);
+  color:var(--ds-text-soft);
+  font:inherit;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.routeTrelloAddList:hover{
+  border-color:var(--ds-blue);
+  color:var(--ds-blue);
+  background:var(--ds-blue-soft);
+}
+.app.light .routeTrelloAddList{
+  background:#ffffff;
+}
