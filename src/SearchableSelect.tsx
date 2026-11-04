@@ -17,6 +17,7 @@ type Props={
   disabled?:boolean
   required?:boolean
   className?:string
+  showSearch?:boolean
 }
 
 function norm(value:string){
@@ -24,7 +25,7 @@ function norm(value:string){
 }
 
 export function SearchableSelect({
-  value,onChange,options,placeholder='Selecione',searchPlaceholder='Pesquisar...',disabled=false,required=false,className=''
+  value,onChange,options,placeholder='Selecione',searchPlaceholder='Pesquisar...',disabled=false,required=false,className='',showSearch=true
 }:Props){
   const [query,setQuery]=useState('')
   const selected=options.find(option=>option.value===value)
@@ -35,7 +36,7 @@ export function SearchableSelect({
   },[options,query,value])
 
   return <div className={'searchableSelect '+className}>
-    <div className="searchableSelectSearch">
+    {showSearch&&<div className="searchableSelectSearch">
       <Search size={15}/>
       <input
         type="text"
@@ -46,13 +47,13 @@ export function SearchableSelect({
         aria-label={searchPlaceholder}
       />
       {query&&<button type="button" onClick={()=>setQuery('')} title="Limpar pesquisa" aria-label="Limpar pesquisa"><X size={13}/></button>}
-    </div>
+    </div>}
     <select value={value} onChange={e=>onChange(e.target.value)} disabled={disabled} required={required}>
       <option value="">{placeholder}</option>
       {selected&&!filtered.some(option=>option.value===selected.value)&&<option value={selected.value} hidden>{selected.label}</option>}
       {filtered.map(option=><option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}
     </select>
-    {query&&filtered.length===0&&<small className="searchableSelectEmpty">Nenhum resultado para “{query}”.</small>}
-    {selected&&query&&<small className="searchableSelectCurrent">Selecionado: {selected.label}</small>}
+    {showSearch&&query&&filtered.length===0&&<small className="searchableSelectEmpty">Nenhum resultado para “{query}”.</small>}
+    {showSearch&&selected&&query&&<small className="searchableSelectCurrent">Selecionado: {selected.label}</small>}
   </div>
 }
