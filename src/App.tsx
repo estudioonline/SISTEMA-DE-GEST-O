@@ -3558,7 +3558,7 @@ function App(){
     if(!permissionsReady||!dataReady||!canViewModule(module))return
     if(module==='infra'||module==='config'){
       const label=module==='infra'?'GitHub & Supabase':'Configurações'
-      const password=await themedPasswordPrompt(\`Acesso protegido · \${label}\`)
+      const password=await themedPasswordPrompt(`Acesso protegido · ${label}`)
       if(password===null)return
       const valid=await sha256Hex(password)===protectedAppPasswordHash
       if(!valid){setMsg('Senha incorreta. Acesso não autorizado.');return}
