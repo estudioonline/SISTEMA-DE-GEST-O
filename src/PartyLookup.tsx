@@ -23,8 +23,34 @@ export function PartyLookup({items,value,onSelect,kind,emptyLabel}:{
   const titleId=useId()
   const selected=items.find(item=>item.id===value)
   const results=useMemo(()=>{
-    const terms=norm(query).trim().split(/\s+/).filter(Boolean)
-    return items.filter(item=>item.ativo&&terms.every(term=>norm([item.nome,item.documento,item.email,item.telefone].filter(Boolean).join(' ')).includes(term)))
+    const raw=query.trim()
+    const terms=norm(raw).split(/\s+/).filter(Boolean)
+    const active=items.filter(item=>item.ativo)
+    if(!terms.length)return active
+
+    const matches=(values:Array<string|null|undefined>)=>{
+      const haystack=norm(values.filter(Boolean).join(' '))
+      return terms.every(term=>haystack.includes(term))
+    }
+
+    // Busca comum: prioriza nome e CPF/CNPJ. Isso evita que um e-mail
+    // compartilhado entre vários cadastros traga resultados sem relação aparente.
+    const primary=active.filter(item=>matches([item.nome,item.documento]))
+    if(primary.length)return primary
+
+    // Telefone/documento digitado em números continua funcionando normalmente.
+    const digits=raw.replace(/\D/g,'')
+    if(digits.length>=4){
+      const numeric=active.filter(item=>matches([item.documento,item.telefone]))
+      if(numeric.length)return numeric
+    }
+
+    // E-mail só entra como critério principal quando a intenção é claramente e-mail.
+    if(raw.includes('@')){
+      return active.filter(item=>matches([item.email]))
+    }
+
+    return []
   },[items,query])
   const close=()=>{setOpen(false);trigger.current?.focus()}
   useEffect(()=>{if(open)input.current?.focus()},[open])
