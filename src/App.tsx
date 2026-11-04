@@ -4536,7 +4536,7 @@ function App(){
           </div>
 
           <div className="saleItems saleItemsSortable">
-            <div className="saleItemColumnHead" aria-hidden="true"><span></span><span>Produto</span><span>Observação do item</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span></span></div>
+            <div className="saleItemColumnHead" aria-hidden="true"><span></span><span>#</span><span>Produto</span><span>Observação do item</span><span>Quant.</span><span>Preço Unitário</span><span>Desconto</span><span>Total</span><span>Ações</span></div>
             {saleLayoutEntries.map(entry=>{
               if(entry.startsWith('section:')){
                 const section=saleSections.find(row=>'section:'+row.key===entry)
@@ -4560,18 +4560,23 @@ function App(){
               const productionMaterials=productionMaterialsForItem(i)
               return <div
                 className="saleItemRow saleItemSortableRow"
+                id={'sale-item-'+i.key}
                 key={i.key}
                 onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='move'}}
                 onDrop={e=>{e.preventDefault();const source=e.dataTransfer.getData('text/plain');if(source)moveSaleLayout(source,entry)}}
               >
                 <span className="saleItemDragHandle" draggable onDragStart={e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',entry)}} title="Arraste para reorganizar"><GripVertical size={17}/></span>
+                <span className="saleItemIndex">{saleItems.findIndex(row=>row.key===i.key)+1}</span>
                 <div className="saleProductPicker"><ProductLookup products={produtos} value={i.produto_id} onSelect={id=>chooseProduct(i.key,id)} fullWidth/></div>
                 <label className="saleItemNoteField"><span>Observação</span><input type="text" maxLength={240} value={i.observacao_item} onChange={e=>updateSaleItemNote(i.key,e.target.value)} placeholder="Ex.: medida, acabamento, reforço..."/></label>
                 <label className="saleItemField"><span>Quant.</span><input type="number" min="0.001" step="0.001" value={i.quantidade} onChange={e=>updateSaleItem(i.key,'quantidade',Number(e.target.value))}/></label>
                 <label className="saleItemField"><span>Preço Unitário</span><input type="number" min="0" step="0.01" value={i.valor_unitario||''} onChange={e=>updateSaleItem(i.key,'valor_unitario',Number(e.target.value))}/></label>
                 <label className="saleItemField"><span>Desconto</span><input type="number" min="0" step="0.01" value={i.desconto} onChange={e=>updateSaleItem(i.key,'desconto',Number(e.target.value))}/></label>
                 <strong>{money(Math.max(0,i.quantidade*i.valor_unitario-i.desconto))}</strong>
-                <button type="button" className="iconBtn dangerBtn" onClick={()=>removeSaleItem(i.key)}><Trash2 size={16}/></button>
+                <div className="saleItemActions">
+                  <button type="button" className="saleItemEditBtn" title="Editar item" onClick={()=>{const row=document.getElementById('sale-item-'+i.key);(row?.querySelector('input') as HTMLInputElement|null)?.focus()}}><Pencil size={14}/></button>
+                  <button type="button" className="saleItemDeleteBtn" title="Excluir item" onClick={()=>removeSaleItem(i.key)}><Trash2 size={14}/></button>
+                </div>
                 {stock&&<div className={'saleStockHint stock-'+stock.kind}><span>{stock.label}</span><small>{stock.detail}</small>{saleConsumesStock&&stock.kind!=='ok'&&<b>{canManageAuthorizations?'Você pode autorizar esta exceção.':'Venda bloqueada: solicite autorização a um usuário autorizado.'}</b>}</div>}
                 {(produtos.find(p=>p.id===i.produto_id)?.tipo_produto==='produto_final'||produtoComponentes.some(row=>row.produto_final_id===i.produto_id)||i.receita_producao.length>0)&&<div className="saleProductionMaterials saleProductionRecipeEditor">
                   <div className="saleProductionMaterialsTitle">
