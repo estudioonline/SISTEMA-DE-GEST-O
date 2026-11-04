@@ -4965,7 +4965,7 @@ function App(){
           <label className="fieldLabel">Cliente / Fornecedor
             <SearchableSelect value={financeTitleEntity} onChange={setFinanceTitleEntity} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))} placeholder="Sem vínculo cadastral" searchPlaceholder={financeTitleType==='receber'?'Pesquisar cliente...':'Pesquisar fornecedor...'} options={[
               ...(financeTitleEntity&&!(financeTitleType==='receber'?clientes:fornecedores).some(x=>x.nome===financeTitleEntity)?[{value:financeTitleEntity,label:financeTitleEntity+' (registro anterior)'}]:[]),
-              ...(financeTitleType==='receber'?clientes:fornecedores).filter(x=>x.ativo||x.nome===financeTitleEntity).map(x=>({value:x.nome,label:x.nome,keywords:[x.documento,x.email,x.telefone].filter(Boolean).join(' ')}))
+              ...(financeTitleType==='receber'?clientes:fornecedores).filter(x=>x.ativo||x.nome===financeTitleEntity).map(x=>({value:x.nome,label:x.nome+(x.documento?' · '+x.documento:''),keywords:[x.nome,x.documento].filter(Boolean).join(' ')}))
             ]}/>
           </label>
           <label className="fieldLabel">Data de vencimento<input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
