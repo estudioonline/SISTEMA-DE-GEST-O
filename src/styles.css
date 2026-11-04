@@ -8264,3 +8264,64 @@ small{font-size:11px}
     grid-template-columns:28px 40px minmax(220px,1.5fr) minmax(160px,1fr) 85px 115px 100px 110px 86px;
   }
 }
+
+
+/* Ajuste 2026-11-04: botão abaixo dos itens e alinhamento monetário */
+.salesPage .saleAddProductBelowTable{
+  display:flex;
+  justify-content:flex-start;
+  margin-top:9px;
+  margin-bottom:6px;
+}
+.salesPage .saleAddProductBelowTable .saleAddProductBtn{
+  height:36px;
+  min-height:36px;
+  border-radius:8px;
+  padding:0 16px;
+}
+
+.salesPage .saleItemSortableRow>strong{
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  width:100%;
+  text-align:right;
+  padding:0 12px!important;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+.salesPage .saleTotals{
+  align-items:center;
+}
+.salesPage .saleTotals div{
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  font-variant-numeric:tabular-nums;
+}
+.salesPage .saleTotals div span{
+  text-align:right;
+}
+.salesPage .saleTotals div strong{
+  display:inline-block;
+  min-width:82px;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.salesPage .saleTotals .grandTotal{
+  justify-content:space-between!important;
+  min-width:190px;
+}
+.salesPage .saleTotals .grandTotal strong{
+  min-width:94px;
+  text-align:right;
+}
+
+@media(max-width:900px){
+  .salesPage .saleAddProductBelowTable{
+    width:100%;
+  }
+}
