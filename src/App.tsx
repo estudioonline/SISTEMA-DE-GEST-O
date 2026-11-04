@@ -471,8 +471,10 @@ function App(){
   const [adjustingProduct,setAdjustingProduct]=useState<Produto|null>(null)
   const [stockNew,setStockNew]=useState('')
   const [stockReason,setStockReason]=useState('Ajuste manual')
-  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'|'producao'|'servicos'>('cadastro')
+  const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'|'producao'|'servicos'|'massa'>('cadastro')
   const [excelToolsOpen,setExcelToolsOpen]=useState(false)
+  const [bulkProductEdits,setBulkProductEdits]=useState<Record<string,Partial<{descricao:string;unidade:string;custo:number;preco_venda:number;estoque_minimo:number;ativo:boolean}>>>({})
+  const [savingBulkProducts,setSavingBulkProducts]=useState(false)
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
@@ -1291,6 +1293,31 @@ function App(){
       setActive('vendas')
       const returnSale=vendas.find(v=>v.id===returnSaleId)
       if(returnSale)await openSaleDetail(returnSale)
+    }
+  }
+  function setBulkProductField(id:string,field:'descricao'|'unidade'|'custo'|'preco_venda'|'estoque_minimo'|'ativo',value:string|number|boolean){
+    setBulkProductEdits(current=>({...current,[id]:{...(current[id]||{}),[field]:value}}))
+  }
+  async function saveBulkProductAdjustments(){
+    if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return}
+    const entries=Object.entries(bulkProductEdits)
+    if(!entries.length){setMsg('Nenhum ajuste em massa foi alterado.');return}
+    setSavingBulkProducts(true)
+    try{
+      for(const [id,changes] of entries){
+        const payload={...changes}
+        if(typeof payload.descricao==='string')payload.descricao=payload.descricao.trim()
+        if(typeof payload.unidade==='string')payload.unidade=payload.unidade.trim()||'UN'
+        const result=await supabase.from('produtos').update(payload).eq('id',id)
+        if(result.error)throw result.error
+      }
+      setBulkProductEdits({})
+      setMsg(entries.length===1?'1 produto/serviço atualizado.':entries.length+' produtos/serviços atualizados em massa.')
+      await loadData()
+    }catch(error){
+      setMsg(error instanceof Error?error.message:String(error))
+    }finally{
+      setSavingBulkProducts(false)
     }
   }
   function startAdjustStock(p:Produto){if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setMsg('')}
@@ -3800,6 +3827,7 @@ function App(){
           <button className={productSubtab==='grupos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('grupos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Package size={16}/>Grupos e subgrupos</button>
           <button className={productSubtab==='producao'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('producao');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><Boxes size={16}/>Produtos de produção</button>
           <button className={productSubtab==='servicos'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('servicos');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><ReceiptText size={16}/>Produtos de serviço</button>
+          <button className={productSubtab==='massa'?'subTab active':'subTab'} onClick={()=>{setProductSubtab('massa');setShowForm(false);setAdjustingProduct(null);setMsg('')}}><SlidersHorizontal size={16}/>Produtos e serviços (ajustes em massa)</button>
         </div>
 
         {productSubtab==='cadastro'&&<>
@@ -4117,6 +4145,50 @@ function App(){
                   <td><span className={p.ativo?'statusBadge status-faturado':'statusBadge status-cancelado'}>{p.ativo?'ativo':'inativo'}</span></td>
                 </tr>)}
                 {produtos.filter(p=>p.tipo_produto==='servico').length===0&&<tr className="emptyTableRow"><td colSpan={5}><EmptyState message="Nenhum produto de serviço cadastrado." actionLabel={canManageProducts?'+ Novo serviço':undefined} onAction={canManageProducts?()=>{startNewProduct();setProductType('servico');setProductTrackStock(false)}:undefined}/></td></tr>}
+              </tbody>
+            </table></div>
+          </article>
+        </>}
+
+        {productSubtab==='massa'&&<>
+          <article className="panel tablePanel productionListPanel">
+            <div className="panelHead">
+              <div>
+                <h3>Produtos e serviços · ajustes em massa</h3>
+                <p>Edite vários cadastros na mesma tela. O estoque atual não é alterado por esta ferramenta.</p>
+              </div>
+              <div className="productionListActions">
+                <SearchField value={tableSearch['produtos-massa']||''} onChange={v=>setSearch('produtos-massa',v)} placeholder="Pesquisar código, produto ou serviço"/>
+                {Object.keys(bulkProductEdits).length>0&&<button type="button" className="ghost" onClick={()=>setBulkProductEdits({})} disabled={savingBulkProducts}>Descartar</button>}
+                <button type="button" className="primary" onClick={()=>void saveBulkProductAdjustments()} disabled={!canManageProducts||savingBulkProducts||Object.keys(bulkProductEdits).length===0}>
+                  <CheckCircle2 size={16}/>{savingBulkProducts?'Salvando...':`Salvar alterações (${Object.keys(bulkProductEdits).length})`}
+                </button>
+              </div>
+            </div>
+            <div className="tableWrap"><table className="productionListTable">
+              <thead><tr>
+                <th>Código</th>
+                <th>Produto / serviço</th>
+                <th>Unidade</th>
+                <th>Custo</th>
+                <th>Preço de venda</th>
+                <th>Estoque mínimo</th>
+                <th>Status</th>
+              </tr></thead>
+              <tbody>
+                {produtos.filter(p=>searchMatches('produtos-massa',[p.codigo,p.descricao,p.unidade,p.tipo_produto||''])).map(p=>{
+                  const edit=bulkProductEdits[p.id]||{}
+                  return <tr key={p.id}>
+                    <td><strong>{p.codigo||'—'}</strong></td>
+                    <td><input value={edit.descricao??p.descricao} onChange={e=>setBulkProductField(p.id,'descricao',e.target.value)} disabled={!canManageProducts||savingBulkProducts} aria-label={`Descrição de ${p.codigo||p.descricao}`}/></td>
+                    <td><input value={edit.unidade??p.unidade??'UN'} onChange={e=>setBulkProductField(p.id,'unidade',e.target.value)} disabled={!canManageProducts||savingBulkProducts} aria-label={`Unidade de ${p.codigo||p.descricao}`}/></td>
+                    <td><input type="number" min="0" step="0.01" value={edit.custo??Number(p.custo||0)} onChange={e=>setBulkProductField(p.id,'custo',Math.max(0,Number(e.target.value)||0))} disabled={!canManageProducts||savingBulkProducts} aria-label={`Custo de ${p.codigo||p.descricao}`}/></td>
+                    <td><input type="number" min="0" step="0.01" value={edit.preco_venda??Number(p.preco_venda||0)} onChange={e=>setBulkProductField(p.id,'preco_venda',Math.max(0,Number(e.target.value)||0))} disabled={!canManageProducts||savingBulkProducts} aria-label={`Preço de venda de ${p.codigo||p.descricao}`}/></td>
+                    <td>{p.tipo_produto==='servico'?<span>—</span>:<input type="number" min="0" step="0.01" value={edit.estoque_minimo??Number(p.estoque_minimo||0)} onChange={e=>setBulkProductField(p.id,'estoque_minimo',Math.max(0,Number(e.target.value)||0))} disabled={!canManageProducts||savingBulkProducts} aria-label={`Estoque mínimo de ${p.codigo||p.descricao}`}/>}</td>
+                    <td><select value={String(edit.ativo??p.ativo)} onChange={e=>setBulkProductField(p.id,'ativo',e.target.value==='true')} disabled={!canManageProducts||savingBulkProducts} aria-label={`Status de ${p.codigo||p.descricao}`}><option value="true">Ativo</option><option value="false">Inativo</option></select></td>
+                  </tr>
+                })}
+                {produtos.filter(p=>searchMatches('produtos-massa',[p.codigo,p.descricao,p.unidade,p.tipo_produto||''])).length===0&&<tr className="emptyTableRow"><td colSpan={7}>Nenhum produto ou serviço encontrado.</td></tr>}
               </tbody>
             </table></div>
           </article>
