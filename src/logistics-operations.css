@@ -950,3 +950,152 @@
   .deliveryConferenceStop>.deliveryHistoryStatus{grid-column:2}
   .deliveryConferenceStop>div:nth-of-type(2){text-align:left}
 }
+
+
+/* Conferir entregas: editar rota */
+.deliveryRouteEditButton{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:0 9px;
+  border:1px solid var(--ds-border);
+  border-radius:8px;
+  background:var(--ds-surface);
+  color:var(--ds-text);
+  font-size:9px;
+  font-weight:800;
+  cursor:pointer;
+}
+.deliveryRouteEditButton:hover{
+  border-color:var(--ds-blue);
+  color:var(--ds-blue);
+  background:var(--ds-blue-soft);
+}
+.deliveryRouteEditModal{
+  width:min(900px,94vw);
+  max-height:88vh;
+  display:grid;
+  grid-template-rows:auto auto minmax(180px,1fr) auto;
+  overflow:hidden;
+  border:1px solid var(--ds-border);
+  border-radius:16px;
+  background:var(--ds-surface);
+  box-shadow:0 28px 90px rgba(2,6,23,.42);
+}
+.deliveryRouteEditFields{
+  display:grid;
+  grid-template-columns:180px 1fr 1fr;
+  gap:10px;
+  padding:14px 18px;
+  border-bottom:1px solid var(--ds-border);
+}
+.deliveryRouteEditFields label{
+  display:grid;
+  gap:5px;
+  font-size:9px;
+  font-weight:900;
+  color:var(--ds-muted);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.deliveryRouteEditFields input{
+  height:38px;
+  border:1px solid var(--ds-border);
+  border-radius:9px;
+  background:var(--ds-bg);
+  color:var(--ds-text);
+  padding:0 10px;
+  font:inherit;
+  font-size:10px;
+}
+.deliveryRouteEditStops{
+  min-height:180px;
+  overflow:auto;
+  display:grid;
+  align-content:start;
+  gap:7px;
+  padding:12px 18px;
+  background:var(--ds-bg);
+}
+.deliveryRouteEditStopsHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:2px;
+}
+.deliveryRouteEditStopsHead strong{font-size:11px}
+.deliveryRouteEditStopsHead span{font-size:9px;color:var(--ds-muted)}
+.deliveryRouteEditStop{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:9px 10px;
+  border:1px solid var(--ds-border);
+  border-radius:10px;
+  background:var(--ds-surface);
+}
+.deliveryRouteEditStop>span{
+  width:24px;height:24px;
+  display:grid;place-items:center;
+  border-radius:999px;
+  background:var(--ds-blue-soft);
+  color:var(--ds-blue);
+  font-size:9px;
+  font-weight:900;
+}
+.deliveryRouteEditStop>div:nth-child(2){
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+.deliveryRouteEditStop strong{
+  font-size:10px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.deliveryRouteEditStop small{
+  font-size:8px;
+  color:var(--ds-muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.deliveryRouteEditStopActions{
+  display:flex;
+  gap:4px;
+}
+.deliveryRouteEditStopActions button{
+  width:29px;height:29px;
+  display:grid;place-items:center;
+  border:1px solid var(--ds-border);
+  border-radius:8px;
+  background:var(--ds-surface-soft);
+  color:var(--ds-text);
+  cursor:pointer;
+}
+.deliveryRouteEditStopActions button:disabled{opacity:.35;cursor:not-allowed}
+.deliveryRouteEditStopActions button.danger{
+  border-color:rgba(239,68,68,.28);
+  color:#ef4444;
+  background:rgba(239,68,68,.07);
+}
+.deliveryRouteEditFooter{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  padding:13px 18px;
+  border-top:1px solid var(--ds-border);
+}
+.deliveryRouteEditFooter button{min-height:36px}
+.app.light .deliveryRouteEditModal{background:#fff}
+.app.light .deliveryRouteEditStops{background:#f8fafc}
+.app.light .deliveryRouteEditStop{background:#fff}
+@media(max-width:720px){
+  .deliveryRouteEditFields{grid-template-columns:1fr}
+  .deliveryRouteEditStop{grid-template-columns:auto minmax(0,1fr)}
+  .deliveryRouteEditStopActions{grid-column:2}
+}
