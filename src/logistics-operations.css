@@ -1099,3 +1099,28 @@
   .deliveryRouteEditStop{grid-template-columns:auto minmax(0,1fr)}
   .deliveryRouteEditStopActions{grid-column:2}
 }
+
+
+/* Conferir entregas: cancelar rota */
+.deliveryRouteCancelButton{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:0 9px;
+  border:1px solid rgba(239,68,68,.28);
+  border-radius:8px;
+  background:rgba(239,68,68,.07);
+  color:#ef4444;
+  font-size:9px;
+  font-weight:800;
+  cursor:pointer;
+}
+.deliveryRouteCancelButton:hover{
+  border-color:#ef4444;
+  background:rgba(239,68,68,.12);
+}
+.deliveryRouteCancelButton:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
