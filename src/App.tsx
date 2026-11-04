@@ -62,7 +62,7 @@ type SaleItemDraft={key:string;produto_id:string;quantidade:number;valor_unitari
 type Compra={id:string;fornecedor_id:string|null;status:string;total:number;observacoes:string|null;created_at:string;forma_pagamento:PurchasePaymentMethod;parcelas:number;primeiro_vencimento:string;vencimentos_parcelas:string[];fatura_numero:number|null;fatura_gerada_em:string|null;chave_nfe?:string|null;numero_nfe?:string|null;cnpj_fornecedor?:string|null;nome_fornecedor?:string|null;data_emissao?:string|null;valor_total_nfe?:number|null}
 type CompraItem={produto_id:string;quantidade:number;custo_unitario:number;total:number}
 type PurchaseItemDraft={key:string;produto_id:string;quantidade:number;custo_unitario:number}
-type Titulo=EmployeeTitle&{id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;created_at:string;fatura_venda_id?:string|null}
+type Titulo=EmployeeTitle&{id:string;tipo:'pagar'|'receber';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:'aberto'|'parcial'|'pago'|'cancelado';categoria:string|null;centro_custo:string|null;venda_id:string|null;compra_id:string|null;parcela_numero:number|null;forma_pagamento:string|null;banco?:string|null;documento_importado_nome?:string|null;created_at:string;fatura_venda_id?:string|null}
 type SaleApproval={id:string;entidade_id:string|null;status:string;solicitado_em:string;payload:Record<string,unknown>|null}
 type FinancePayment={id:string;titulo_id:string;data_pagamento:string;valor:number}
 type FinanceReversal={id:string;pagamento_id:string;valor:number;data_estorno:string}
@@ -450,6 +450,9 @@ function App(){
   const [financeCenter,setFinanceCenter]=useState('todos')
   const [financeTitleType,setFinanceTitleType]=useState<'receber'|'pagar'>('receber')
   const [financeTitleEntity,setFinanceTitleEntity]=useState('')
+  const [financeImportNotice,setFinanceImportNotice]=useState('')
+  const financeTitleFormRef=useRef<HTMLFormElement|null>(null)
+  const financeImportInputRef=useRef<HTMLInputElement|null>(null)
   const [financeActivityState,setFinanceActivityState]=useState<'loading'|'ready'|'error'>('loading')
   const [financePayments,setFinancePayments]=useState<FinancePayment[]>([])
   const [financeReversals,setFinanceReversals]=useState<FinanceReversal[]>([])
@@ -2138,6 +2141,7 @@ function App(){
     setEditingTitle(null)
     setFinanceTitleType('receber')
     setFinanceTitleEntity('')
+    setFinanceImportNotice('')
     setShowForm(true)
     setMsg('')
   }
@@ -2148,6 +2152,7 @@ function App(){
     setEditingTitle(t)
     setFinanceTitleType(t.tipo)
     setFinanceTitleEntity(t.entidade_nome||'')
+    setFinanceImportNotice('')
     setShowForm(true)
     setMsg('')
   }
@@ -2202,6 +2207,129 @@ function App(){
     setPaymentAmount(String(Math.max(0,Number(first.valor)-Number(first.valor_pago)).toFixed(2)))
   }
 
+  function setFinanceFormField(name:string,value:string){
+    const form=financeTitleFormRef.current
+    if(!form)return
+    const field=form.elements.namedItem(name)
+    if(field instanceof HTMLInputElement||field instanceof HTMLSelectElement||field instanceof HTMLTextAreaElement){
+      field.value=value
+      field.dispatchEvent(new Event('change',{bubbles:true}))
+    }
+  }
+
+  function normalizeFinanceText(value:string){
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
+  }
+
+  function parseFinanceDate(raw:string){
+    const match=raw.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/)
+    if(!match)return ''
+    const [,d,m,y]=match
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+  }
+
+  function parseFinanceMoney(raw:string){
+    const value=raw.replace(/\s/g,'').replace(/\.(?=\d{3}(?:\D|$))/g,'').replace(',','.')
+    const n=Number(value.replace(/[^0-9.-]/g,''))
+    return Number.isFinite(n)&&n>=0?n:0
+  }
+
+  async function importFinanceDocument(file:File){
+    if(!file)return
+    setFinanceImportNotice('Lendo documento...')
+    const isImage=file.type.startsWith('image/')
+    let text=''
+    try{
+      text=isImage?'':await file.text()
+    }catch{
+      text=''
+    }
+
+    if(isImage){
+      setFinanceImportNotice('Imagem carregada. Este navegador não extrai texto de imagem automaticamente; mantenha o arquivo como referência e revise os campos manualmente.')
+      setFinanceFormField('documento_importado_nome',file.name)
+      return
+    }
+
+    const compact=text.replace(/\u0000/g,' ').replace(/\s+/g,' ').trim()
+    if(!compact){
+      setFinanceImportNotice('Documento carregado, mas não foi possível extrair texto automaticamente. Revise e preencha os campos manualmente.')
+      setFinanceFormField('documento_importado_nome',file.name)
+      return
+    }
+
+    const normalized=normalizeFinanceText(compact)
+    const docDigits=(compact.match(/(?:\d[.\/-]?){11,18}/g)||[]).map(v=>v.replace(/\D/g,'')).filter(v=>v.length===11||v.length===14)
+    const currentList=financeTitleType==='receber'?clientes:fornecedores
+    const otherList=financeTitleType==='receber'?fornecedores:clientes
+    const findEntity=(list:Array<Cliente|Fornecedor>)=>list.find(item=>{
+      const itemDoc=(item.documento||'').replace(/\D/g,'')
+      if(itemDoc&&docDigits.includes(itemDoc))return true
+      const name=normalizeFinanceText(item.nome)
+      return name.length>=5&&normalized.includes(name)
+    })
+    let entity=findEntity(currentList)
+    if(!entity){
+      const other=findEntity(otherList)
+      if(other){
+        setFinanceTitleType(financeTitleType==='receber'?'pagar':'receber')
+        entity=other
+      }
+    }
+    if(entity)setFinanceTitleEntity(entity.nome)
+
+    const valuePatterns=[
+      /(?:valor\s+(?:pago|total|do\s+documento|da\s+cobranca)|valor|total)\s*[:\-]?\s*(?:r\$\s*)?([\d.]+,\d{2})/i,
+      /r\$\s*([\d.]+,\d{2})/i
+    ]
+    let amount=0
+    for(const pattern of valuePatterns){
+      const match=compact.match(pattern)
+      if(match){amount=parseFinanceMoney(match[1]);if(amount>0)break}
+    }
+    if(amount>0)setFinanceFormField('valor',String(amount.toFixed(2)))
+
+    const dateMatch=compact.match(/(?:vencimento|data\s+de\s+vencimento|data\s+do\s+pagamento|pagamento\s+em|data)\s*[:\-]?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4})/i)
+    if(dateMatch){
+      const iso=parseFinanceDate(dateMatch[1])
+      if(iso)setFinanceFormField('vencimento',iso)
+    }
+
+    const banks:[RegExp,string][]=[
+      [/itau|ita[uú]\s+unibanco/i,'Itaú'],
+      [/bradesco/i,'Bradesco'],
+      [/santander/i,'Santander'],
+      [/banco\s+inter|inter\s+pagamentos/i,'Inter'],
+      [/banco\s+do\s+brasil|bb\s+s\.a/i,'Banco do Brasil'],
+      [/caixa\s+economica|caixa\s+econ[oô]mica/i,'Caixa Econômica Federal'],
+      [/nubank|nu\s+pagamentos/i,'Nubank'],
+      [/sicredi/i,'Sicredi'],
+      [/sicoob/i,'Sicoob']
+    ]
+    const bank=banks.find(([pattern])=>pattern.test(compact))?.[1]||''
+    if(bank)setFinanceFormField('banco',bank)
+
+    let method=''
+    if(/\bpix\b/i.test(compact))method='pix'
+    else if(/boleto|linha\s+digitavel|c[oó]digo\s+de\s+barras/i.test(compact))method='boleto'
+    else if(/cart[aã]o|cr[eé]dito|d[eé]bito/i.test(compact))method='cartao'
+    else if(/dinheiro|esp[eé]cie/i.test(compact))method='dinheiro'
+    else if(/ted|doc\b|transfer[eê]ncia/i.test(compact))method='transferencia'
+    if(method)setFinanceFormField('forma_pagamento',method)
+
+    if(!editingTitle)setFinanceFormField('descricao',file.name.replace(/\.[^.]+$/,''))
+    setFinanceFormField('documento_importado_nome',file.name)
+
+    const found=[
+      entity?'entidade':'',
+      amount>0?'valor':'',
+      bank?'banco':'',
+      method?'pagamento':'',
+      dateMatch?'data':''
+    ].filter(Boolean)
+    setFinanceImportNotice(found.length?'Documento importado. Reconhecido: '+found.join(', ')+'. Revise antes de salvar.':'Documento lido, mas os dados não foram reconhecidos automaticamente. Revise os campos manualmente.')
+  }
+
   async function saveTitle(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
     if(!canManageFinance){setMsg('Sem permissão para editar o Financeiro.');return}
@@ -2231,6 +2359,9 @@ function App(){
       entidade_nome:financeTitleEntity||null,
       vencimento:String(f.get('vencimento')||today()),
       valor,
+      forma_pagamento:String(f.get('forma_pagamento')||'')||null,
+      banco:String(f.get('banco')||'')||null,
+      documento_importado_nome:String(f.get('documento_importado_nome')||'')||null,
       ...classification
     }
 
@@ -4554,8 +4685,9 @@ function App(){
           <button className={financeSubtab==='conciliacao'?'subTab active':'subTab'} onClick={()=>{setFinanceSubtab('conciliacao');closeForms()}}><Building2 size={16}/>Diários e Conciliação</button>
         </div>
 
-        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingTitle?'Editar fatura':'Nova fatura'}><div className="saleModalShell financeModalShell"><form className="panel dataForm saleModalForm entityModalForm" onSubmit={saveTitle}>
-          <div className="formTitle saleModalTitle"><div><h3>{editingTitle?'Editar fatura':'Nova fatura'}</h3><p>{editingTitle&&(editingTitle.venda_id||editingTitle.compra_id)?'Fatura vinculada: apenas classificação financeira pode ser alterada aqui.':'Cadastre uma conta a receber ou uma conta a pagar.'}</p></div><button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fatura" onClick={()=>{setShowForm(false);setEditingTitle(null)}}><X size={18}/></button></div>
+        {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingTitle?'Editar fatura':'Nova fatura'}><div className="saleModalShell financeModalShell"><form ref={financeTitleFormRef} className="panel dataForm saleModalForm entityModalForm" onSubmit={saveTitle}>
+          <div className="formTitle saleModalTitle"><div><h3>{editingTitle?'Editar fatura':'Nova fatura'}</h3><p>{editingTitle&&(editingTitle.venda_id||editingTitle.compra_id)?'Fatura vinculada: apenas classificação financeira pode ser alterada aqui.':'Cadastre uma conta a receber ou uma conta a pagar.'}</p></div><div className="financeImportActions">{!editingTitle&&<><input ref={financeImportInputRef} type="file" accept=".pdf,.txt,.csv,.ofx,.xml,.html,image/*" hidden onChange={e=>{const file=e.target.files?.[0];if(file)void importFinanceDocument(file);e.currentTarget.value=''}}/><button type="button" className="ghost financeImportButton" onClick={()=>financeImportInputRef.current?.click()}><Upload size={15}/>Importar documento</button></>}<button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de fatura" onClick={()=>{setShowForm(false);setEditingTitle(null);setFinanceImportNotice('')}}><X size={18}/></button></div></div>
+          {financeImportNotice&&<div className="financeImportNotice"><FileDown size={16}/><span>{financeImportNotice}</span></div>}
           {editingTitle&&(editingTitle.venda_id||editingTitle.compra_id)&&<div className="financeLinkedNotice"><ShieldCheck size={18}/><div><strong>Documento integrado</strong><span>Valor, vencimento, entidade e descrição acompanham a {editingTitle.venda_id?'venda':'compra'} de origem.</span></div></div>}
           <label className="fieldLabel">Tipo de fatura
             <select value={financeTitleType} onChange={e=>{setFinanceTitleType(e.target.value as 'receber'|'pagar');setFinanceTitleEntity('')}} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}>
@@ -4572,6 +4704,9 @@ function App(){
           </label>
           <label className="fieldLabel">Data de vencimento<input name="vencimento" type="date" required defaultValue={editingTitle?.vencimento||today()} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
           <label className="fieldLabel">Valor (R$)<input name="valor" type="number" min="0" step="0.01" required defaultValue={editingTitle?.valor||0} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
+          <label className="fieldLabel">Forma de pagamento<select name="forma_pagamento" defaultValue={editingTitle?.forma_pagamento||''} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}><option value="">Não informada</option><option value="pix">PIX</option><option value="boleto">Boleto</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="transferencia">Transferência</option></select></label>
+          <label className="fieldLabel">Banco<input name="banco" placeholder="Banco identificado no documento" defaultValue={editingTitle?.banco||''} disabled={Boolean(editingTitle&&(editingTitle.venda_id||editingTitle.compra_id))}/></label>
+          <input type="hidden" name="documento_importado_nome" defaultValue={editingTitle?.documento_importado_nome||''}/>
           <FinanceClassifications category={editingTitle?.categoria||null} center={editingTitle?.centro_custo||null}/>
           <div className="formActions"><button type="button" className="ghost" onClick={()=>{setShowForm(false);setEditingTitle(null)}}>Cancelar</button><button className="primary">{editingTitle&&(editingTitle.venda_id||editingTitle.compra_id)?'Salvar classificação':editingTitle?'Salvar alterações':'Criar fatura'}</button></div>
         </form></div></div>}
