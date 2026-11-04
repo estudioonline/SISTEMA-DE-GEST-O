@@ -1148,3 +1148,28 @@
 .app.light .routeFixedLane.isInRoute>header{
   background:#fef3c7;
 }
+
+
+/* Conferir entregas: liberar rota */
+.deliveryRouteReleaseButton{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:0 9px;
+  border:1px solid rgba(245,158,11,.32);
+  border-radius:8px;
+  background:rgba(245,158,11,.09);
+  color:#f59e0b;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+}
+.deliveryRouteReleaseButton:hover{
+  border-color:#f59e0b;
+  background:rgba(245,158,11,.14);
+}
+.deliveryRouteReleaseButton:disabled{
+  opacity:.42;
+  cursor:not-allowed;
+}
