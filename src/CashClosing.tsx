@@ -90,6 +90,28 @@ export function CashClosing({canEdit,isAdmin,company}:{canEdit:boolean;isAdmin:b
     return acc
   },{initial:0,in:0,out:0,expected:0,checked:0}),[summary,checked])
   const difference=totals.checked-totals.expected
+  const chartRows=useMemo(()=>{
+    const rows=summary
+      .map((row,index)=>({
+        id:row.diario_id,
+        name:row.diario_nome,
+        value:Math.max(0,Number(row.saldo_esperado)||0),
+        color:`hsl(${(index*57+212)%360} 72% 58%)`
+      }))
+      .filter(row=>row.value>0)
+    const total=rows.reduce((sum,row)=>sum+row.value,0)
+    let cursor=0
+    const slices=rows.map(row=>{
+      const start=total?cursor/total*360:0
+      cursor+=row.value
+      const end=total?cursor/total*360:0
+      return {...row,percentage:total?row.value/total*100:0,start,end}
+    })
+    return {total,slices}
+  },[summary])
+  const chartGradient=chartRows.slices.length
+    ? `conic-gradient(${chartRows.slices.map(row=>`${row.color} ${row.start}deg ${row.end}deg`).join(',')})`
+    : 'conic-gradient(#334155 0deg 360deg)'
 
   async function closeDay(){
     if(!canEdit||busy)return
@@ -173,6 +195,27 @@ export function CashClosing({canEdit,isAdmin,company}:{canEdit:boolean;isAdmin:b
       <article className="card"><span>Saldo conferido</span><strong>{money(totals.checked)}</strong></article>
       <article className={'card '+(Math.abs(difference)<.01?'cashClosingOk':'cashClosingWarning')}><span>Diferença</span><strong>{money(difference)}</strong></article>
     </div>
+
+    <article className="panel cashClosingChart">
+      <div className="panelHead">
+        <div><h3>Distribuição do saldo por conta</h3><p>Participação de cada banco e do dinheiro no saldo esperado do dia.</p></div>
+        <span className="badge">{chartRows.slices.length} contas com saldo</span>
+      </div>
+      {chartRows.total>0?<div className="cashClosingChartBody">
+        <div className="cashClosingPieWrap">
+          <div className="cashClosingPie" role="img" aria-label="Gráfico de pizza da distribuição do saldo esperado por conta" style={{background:chartGradient}}>
+            <div className="cashClosingPieCenter"><span>Total</span><strong>{money(chartRows.total)}</strong></div>
+          </div>
+        </div>
+        <div className="cashClosingLegend">
+          {chartRows.slices.map(row=><div className="cashClosingLegendRow" key={row.id}>
+            <span className="cashClosingLegendDot" style={{background:row.color}} aria-hidden="true"/>
+            <div><strong>{row.name}</strong><small>{money(row.value)}</small></div>
+            <b>{row.percentage.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}%</b>
+          </div>)}
+        </div>
+      </div>:<div className="cashClosingEmpty"><WalletCards size={28}/><strong>Sem saldo para exibir no gráfico</strong></div>}
+    </article>
 
     <article className="panel cashClosingAccounts">
       <div className="panelHead">
