@@ -31,7 +31,7 @@ export function SearchableSelect({
   const filtered=useMemo(()=>{
     const q=norm(query)
     if(!q)return options
-    return options.filter(option=>norm(option.label+' '+(option.keywords||'')).includes(q)||option.value===value)
+    return options.filter(option=>norm(option.label+' '+(option.keywords||'')).includes(q))
   },[options,query,value])
 
   return <div className={'searchableSelect '+className}>
@@ -49,6 +49,7 @@ export function SearchableSelect({
     </div>
     <select value={value} onChange={e=>onChange(e.target.value)} disabled={disabled} required={required}>
       <option value="">{placeholder}</option>
+      {selected&&!filtered.some(option=>option.value===selected.value)&&<option value={selected.value} hidden>{selected.label}</option>}
       {filtered.map(option=><option key={option.value} value={option.value} disabled={option.disabled}>{option.label}</option>)}
     </select>
     {query&&filtered.length===0&&<small className="searchableSelectEmpty">Nenhum resultado para “{query}”.</small>}
