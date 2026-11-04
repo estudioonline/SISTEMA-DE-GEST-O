@@ -51,6 +51,9 @@ export function RouteControlCenter({
   const [clients,setClients]=useState<Client[]>([])
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
+  const [draggedId,setDraggedId]=useState<string|null>(null)
+  const [dragOver,setDragOver]=useState<LaneKey|null>(null)
+  const [savingMove,setSavingMove]=useState(false)
 
   const load=useCallback(async()=>{
     setLoading(true);setError('')
@@ -83,6 +86,49 @@ export function RouteControlCenter({
     return map
   },[deliveries,saleMap])
 
+  async function moveCard(deliveryId:string,target:LaneKey){
+    if(target==='entregue'){
+      setError('A coluna ENTREGUE só recebe pedidos após a confirmação da entrega.')
+      setDraggedId(null);setDragOver(null)
+      return
+    }
+    const delivery=deliveries.find(d=>d.id===deliveryId)
+    const sale=delivery?saleMap.get(delivery.venda_id):undefined
+    if(!delivery||!sale)return
+    const current=normalizeRoute(sale.rota_entrega)||normalizeRoute(delivery.rota)
+    if(current===target){setDraggedId(null);setDragOver(null);return}
+
+    setSavingMove(true);setError('')
+    try{
+      const routeValue=target
+      const [deliveryUpdate,saleUpdate]=await Promise.all([
+        supabase.from('entregas').update({
+          rota:routeValue,
+          rota_manual:true,
+          updated_at:new Date().toISOString()
+        }).eq('id',delivery.id),
+        supabase.from('vendas').update({rota_entrega:routeValue}).eq('id',sale.id)
+      ])
+      const issue=deliveryUpdate.error||saleUpdate.error
+      if(issue)throw issue
+
+      await supabase.from('entrega_eventos').insert({
+        entrega_id:delivery.id,
+        tipo:'organizacao',
+        status_anterior:delivery.status,
+        status_novo:delivery.status,
+        detalhes:'Rota alterada por arrastar cartão para '+target.toUpperCase()
+      })
+
+      setDraggedId(null);setDragOver(null)
+      await load()
+    }catch(e){
+      setError(e instanceof Error?e.message:'Não foi possível mover o pedido.')
+    }finally{
+      setSavingMove(false)
+    }
+  }
+
   return <section className="routeTrelloBoardShell">
     <div className="routeFixedBoardHead">
       <div><span>QUADRO DE ROTAS</span><strong>Pedidos por rota de entrega</strong><small>A rota definida na venda posiciona o pedido automaticamente na coluna correspondente.</small></div>
@@ -92,7 +138,11 @@ export function RouteControlCenter({
     <div className="routeFixedBoard">
       {lanes.map(lane=>{
         const rows=cardsByLane[lane.key]
-        return <section key={lane.key} className={'routeFixedLane '+(lane.key==='entregue'?'isDelivered':'')}>
+        return <section key={lane.key}
+          className={'routeFixedLane '+(lane.key==='entregue'?'isDelivered ':'')+(dragOver===lane.key?'dragOver':'')}
+          onDragOver={e=>{if(draggedId){e.preventDefault();setDragOver(lane.key)}}}
+          onDragLeave={()=>setDragOver(prev=>prev===lane.key?null:prev)}
+          onDrop={e=>{e.preventDefault();if(draggedId)void moveCard(draggedId,lane.key)}}>
           <header>
             <div><strong>{lane.label}</strong><span>{rows.length} pedido(s)</span></div>
             <em>{rows.length}</em>
@@ -101,7 +151,11 @@ export function RouteControlCenter({
             {rows.map(delivery=>{
               const sale=saleMap.get(delivery.venda_id)
               const client=sale?.cliente_id?clientMap.get(sale.cliente_id):undefined
-              return <article key={delivery.id} className="routeFixedCard">
+              return <article key={delivery.id}
+                className={'routeFixedCard'+(draggedId===delivery.id?' dragging':'')+(lane.key==='entregue'?' locked':'')}
+                draggable={lane.key!=='entregue'&&!savingMove}
+                onDragStart={()=>{if(lane.key!=='entregue')setDraggedId(delivery.id)}}
+                onDragEnd={()=>{setDraggedId(null);setDragOver(null)}}>
                 <div className="routeFixedCardTop">
                   <span>#{String(sale?.fatura_numero||0).padStart(7,'0')}</span>
                   {lane.key==='entregue'?<CheckCircle2 size={15}/>:<Truck size={15}/>}
