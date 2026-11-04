@@ -472,3 +472,66 @@
 .app.light .routeTrelloAddList{
   background:#ffffff;
 }
+
+
+/* Rotas fixas por venda */
+.routeTrelloBoardShell{display:grid;gap:12px;min-width:0}
+.routeFixedBoardHead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.routeFixedBoardHead>div{display:grid;gap:3px}
+.routeFixedBoardHead span{font-size:9px;font-weight:900;letter-spacing:.08em;color:var(--ds-blue)}
+.routeFixedBoardHead strong{font-size:16px;color:var(--ds-text)}
+.routeFixedBoardHead small{font-size:10px;color:var(--ds-muted)}
+.routeFixedBoardHead>button{
+  width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--ds-border);
+  border-radius:10px;background:var(--ds-surface);color:var(--ds-text);cursor:pointer
+}
+.routeFixedBoard{
+  display:flex;gap:12px;align-items:flex-start;overflow-x:auto;overflow-y:hidden;
+  padding:2px 2px 14px;scroll-snap-type:x proximity
+}
+.routeFixedLane{
+  flex:0 0 280px;min-width:280px;max-height:68vh;display:grid;grid-template-rows:auto minmax(90px,1fr);
+  border:1px solid var(--ds-border);border-radius:14px;background:var(--ds-surface-soft);
+  overflow:hidden;scroll-snap-align:start;box-shadow:var(--ds-shadow-xs)
+}
+.routeFixedLane>header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;
+  border-bottom:1px solid var(--ds-border);background:var(--ds-surface)
+}
+.routeFixedLane>header>div{display:grid;gap:2px;min-width:0}
+.routeFixedLane>header strong{font-size:12px;color:var(--ds-text);letter-spacing:.02em}
+.routeFixedLane>header span{font-size:9px;color:var(--ds-muted)}
+.routeFixedLane>header em{
+  min-width:25px;height:25px;padding:0 7px;display:grid;place-items:center;border-radius:999px;
+  background:var(--ds-blue-soft);color:var(--ds-blue);font-size:10px;font-style:normal;font-weight:900
+}
+.routeFixedLane.isDelivered{border-color:rgba(16,185,129,.26);background:rgba(16,185,129,.04)}
+.routeFixedLane.isDelivered>header{background:rgba(16,185,129,.07)}
+.routeFixedLane.isDelivered>header em{background:rgba(16,185,129,.14);color:#10b981}
+.routeFixedCards{display:grid;align-content:start;gap:8px;padding:9px;overflow:auto;min-height:90px}
+.routeFixedCard{
+  display:grid;gap:7px;padding:10px;border:1px solid var(--ds-border);border-radius:11px;
+  background:var(--ds-surface);box-shadow:0 3px 10px rgba(15,23,42,.05)
+}
+.routeFixedCardTop,.routeFixedCardFoot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.routeFixedCardTop span{font-size:9px;font-weight:900;color:var(--ds-blue)}
+.routeFixedLane.isDelivered .routeFixedCardTop svg{color:#10b981}
+.routeFixedCard>strong{font-size:11px;color:var(--ds-text);line-height:1.3}
+.routeFixedCard>p{
+  margin:0;display:flex;align-items:flex-start;gap:5px;font-size:9px;line-height:1.4;color:var(--ds-muted)
+}
+.routeFixedCard>p svg{flex:0 0 auto;margin-top:1px}
+.routeFixedCardFoot b{font-size:10px;color:var(--ds-text)}
+.routeFixedCardFoot span{font-size:9px;color:var(--ds-muted);text-align:right}
+.routeFixedEmpty{
+  min-height:78px;display:grid;place-items:center;padding:12px;border:1px dashed var(--ds-border-strong);
+  border-radius:10px;color:var(--ds-muted);font-size:9px;text-align:center
+}
+.app.light .routeFixedLane{background:#e9edf2}
+.app.light .routeFixedLane>header,.app.light .routeFixedCard{background:#fff}
+.app.light .routeFixedLane.isDelivered{background:#ecfdf5;border-color:#a7f3d0}
+.app.light .routeFixedLane.isDelivered>header{background:#f0fdf4}
+@media(max-width:760px){
+  .routeFixedBoardHead{align-items:flex-start}
+  .routeFixedLane{flex-basis:265px;min-width:265px;max-height:62vh}
+}
