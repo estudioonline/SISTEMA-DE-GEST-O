@@ -8,13 +8,14 @@ type Sale={id:string;cliente_id:string|null;total:number;rota_entrega:string|nul
 type Client={id:string;nome:string;logradouro:string|null;numero:string|null;bairro:string|null;municipio:string|null;uf:string|null}
 type Vehicle={id:string;descricao:string;placa:string|null;ativo:boolean}
 
-type LaneKey='retirar'|'norte'|'sul'|'leste'|'interestadual'|'entregue'
+type LaneKey='retirar'|'norte'|'sul'|'leste'|'interestadual'|'em_rota'|'entregue'
 const lanes:{key:LaneKey;label:string}[]=[
   {key:'retirar',label:'RETIRAR'},
   {key:'norte',label:'NORTE'},
   {key:'sul',label:'SUL'},
   {key:'leste',label:'LESTE'},
   {key:'interestadual',label:'INTERESTADUAL'},
+  {key:'em_rota',label:'EM ROTA'},
   {key:'entregue',label:'ENTREGUE'},
 ]
 
@@ -57,7 +58,7 @@ export function RouteControlCenter({
   const [dragOver,setDragOver]=useState<LaneKey|null>(null)
   const [savingMove,setSavingMove]=useState(false)
   const [routeBuilderOpen,setRouteBuilderOpen]=useState(false)
-  const [builderLane,setBuilderLane]=useState<Exclude<LaneKey,'entregue'>>('norte')
+  const [builderLane,setBuilderLane]=useState<Exclude<LaneKey,'em_rota'|'entregue'>>('norte')
   const [builderDate,setBuilderDate]=useState(()=>new Date().toISOString().slice(0,10))
   const [builderDriver,setBuilderDriver]=useState('')
   const [builderVehicle,setBuilderVehicle]=useState('')
@@ -91,9 +92,10 @@ export function RouteControlCenter({
   const clientMap=useMemo(()=>new Map(clients.map(c=>[c.id,c])),[clients])
 
   const cardsByLane=useMemo(()=>{
-    const map:Record<LaneKey,Delivery[]>={retirar:[],norte:[],sul:[],leste:[],interestadual:[],entregue:[]}
+    const map:Record<LaneKey,Delivery[]>={retirar:[],norte:[],sul:[],leste:[],interestadual:[],em_rota:[],entregue:[]}
     for(const delivery of deliveries){
       if(delivery.status==='entregue'){map.entregue.push(delivery);continue}
+      if(delivery.status==='em_transito'){map.em_rota.push(delivery);continue}
       const sale=saleMap.get(delivery.venda_id)
       const lane=normalizeRoute(sale?.rota_entrega)||normalizeRoute(delivery.rota)
       if(lane)map[lane].push(delivery)
@@ -116,7 +118,7 @@ export function RouteControlCenter({
     setRouteBuilderOpen(true)
   }
 
-  function changeBuilderLane(next:Exclude<LaneKey,'entregue'>){
+  function changeBuilderLane(next:Exclude<LaneKey,'em_rota'|'entregue'>){
     const ids=cardsByLane[next].map(d=>d.id)
     setBuilderLane(next)
     setBuilderSelected(ids)
@@ -216,8 +218,8 @@ export function RouteControlCenter({
   }
 
   async function moveCard(deliveryId:string,target:LaneKey){
-    if(target==='entregue'){
-      setError('A coluna ENTREGUE só recebe pedidos após a confirmação da entrega.')
+    if(target==='entregue'||target==='em_rota'){
+      setError(target==='entregue'?'A coluna ENTREGUE só recebe pedidos após a confirmação da entrega.':'A coluna EM ROTA é automática e recebe pedidos marcados como Em trânsito.')
       setDraggedId(null);setDragOver(null)
       return
     }
@@ -274,7 +276,7 @@ export function RouteControlCenter({
           <button type="button" onClick={()=>setRouteBuilderOpen(false)} aria-label="Fechar"><X size={18}/></button>
         </div>
         <div className="routeBuilderControls">
-          <label>Rota<select value={builderLane} onChange={e=>changeBuilderLane(e.target.value as Exclude<LaneKey,'entregue'>)}>
+          <label>Rota<select value={builderLane} onChange={e=>changeBuilderLane(e.target.value as Exclude<LaneKey,'em_rota'|'entregue'>)}>
             <option value="retirar">RETIRAR</option><option value="norte">NORTE</option><option value="sul">SUL</option><option value="leste">LESTE</option><option value="interestadual">INTERESTADUAL</option>
           </select></label>
           <label>Data<input type="date" value={builderDate} onChange={e=>setBuilderDate(e.target.value)}/></label>
@@ -334,7 +336,7 @@ export function RouteControlCenter({
       {lanes.map(lane=>{
         const rows=cardsByLane[lane.key]
         return <section key={lane.key}
-          className={'routeFixedLane '+(lane.key==='entregue'?'isDelivered ':'')+(dragOver===lane.key?'dragOver':'')}
+          className={'routeFixedLane '+(lane.key==='entregue'?'isDelivered ':lane.key==='em_rota'?'isInRoute ':'')+(dragOver===lane.key?'dragOver':'')}
           onDragOver={e=>{if(draggedId){e.preventDefault();setDragOver(lane.key)}}}
           onDragLeave={()=>setDragOver(prev=>prev===lane.key?null:prev)}
           onDrop={e=>{e.preventDefault();if(draggedId)void moveCard(draggedId,lane.key)}}>
@@ -347,9 +349,9 @@ export function RouteControlCenter({
               const sale=saleMap.get(delivery.venda_id)
               const client=sale?.cliente_id?clientMap.get(sale.cliente_id):undefined
               return <article key={delivery.id}
-                className={'routeFixedCard'+(draggedId===delivery.id?' dragging':'')+(lane.key==='entregue'?' locked':'')}
-                draggable={lane.key!=='entregue'&&!savingMove}
-                onDragStart={()=>{if(lane.key!=='entregue')setDraggedId(delivery.id)}}
+                className={'routeFixedCard'+(draggedId===delivery.id?' dragging':'')+((lane.key==='entregue'||lane.key==='em_rota')?' locked':'')}
+                draggable={lane.key!=='entregue'&&lane.key!=='em_rota'&&!savingMove}
+                onDragStart={()=>{if(lane.key!=='entregue'&&lane.key!=='em_rota')setDraggedId(delivery.id)}}
                 onDragEnd={()=>{setDraggedId(null);setDragOver(null)}}>
                 <div className="routeFixedCardTop">
                   <span>#{String(sale?.fatura_numero||0).padStart(7,'0')}</span>
