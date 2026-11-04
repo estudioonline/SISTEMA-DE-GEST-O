@@ -4332,8 +4332,6 @@ function App(){
             <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de compra" onClick={()=>{setShowForm(false);resetPurchaseForm();requestAnimationFrame(()=>document.getElementById('purchases-table')?.focus())}}><X size={18}/></button>
           </div>
 
-          <div className="saleDataCard">
-            <div className="saleDataCardTitle"><Users size={18}/><strong>Dados do orçamento</strong></div>
           <div className="saleHeader saleHeaderExpanded">
             <label>Fornecedor
               <PartyLookup items={fornecedores} value={purchaseSupplier} onSelect={setPurchaseSupplier} kind="fornecedor" emptyLabel="Sem fornecedor"/>
@@ -4475,6 +4473,8 @@ function App(){
           </div>
 
           {saleNotice&&<div role="alert" aria-live="assertive" style={{position:"sticky",top:0,zIndex:20,background:"#fff0f0",color:"#991b1b",border:"1px solid #fca5a5",borderRadius:10,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10,boxShadow:"0 5px 20px #00000016"}}><Ban size={20}/><span style={{flex:1}}><strong>Atenção:</strong> {saleNotice}</span><button type="button" aria-label="Fechar aviso" onClick={()=>setSaleNotice('')} style={{background:"transparent",border:"none",cursor:"pointer",color:"inherit"}}><X size={18}/></button></div>}
+          <div className="saleDataCard">
+            <div className="saleDataCardTitle"><Users size={18}/><strong>Dados do orçamento</strong></div>
           <div className="saleHeader saleHeaderExpanded">
             <label>Cliente
               <PartyLookup items={clientes} value={saleClient} onSelect={setSaleClient} kind="cliente" emptyLabel="Consumidor"/>
@@ -4519,6 +4519,7 @@ function App(){
             <label className="saleNotes">Observações
               <textarea value={saleNotes} onChange={e=>setSaleNotes(e.target.value)} placeholder="Informe observações do orçamento (opcional)"/>
             </label>
+          </div>
           </div>
           </div>
 
