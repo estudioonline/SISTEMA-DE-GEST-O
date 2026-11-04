@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowDown,ArrowUp,Camera,CheckCircle2,FileDown,MapPin,MessageCircle,MoreVertical,Navigation,PenLine,Plus,Route,Truck,XCircle} from 'lucide-react'
+import {ArrowDown,ArrowUp,Camera,CheckCircle2,FileDown,MapPin,MessageCircle,MoreVertical,Navigation,PenLine,Plus,Route,Save,Trash2,Truck,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {RouteControlCenter} from './RouteControlCenter'
 
@@ -67,6 +67,12 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
   const [proofFile,setProofFile]=useState<File|null>(null)
   const [failReason,setFailReason]=useState('cliente_ausente')
   const [failDetails,setFailDetails]=useState('')
+  const [editRoute,setEditRoute]=useState<RoutePlan|null>(null)
+  const [editRouteDate,setEditRouteDate]=useState('')
+  const [editRouteDriver,setEditRouteDriver]=useState('')
+  const [editRouteVehicle,setEditRouteVehicle]=useState('')
+  const [editRouteOrder,setEditRouteOrder]=useState<string[]>([])
+  const [editRouteBusy,setEditRouteBusy]=useState(false)
   const canvasRef=useRef<HTMLCanvasElement|null>(null)
   const drawing=useRef(false)
 
@@ -138,6 +144,76 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
     const ids=active.filter(d=>!d.rota_logistica_id).map(d=>d.id)
     const allSelected=ids.length>0&&ids.every(id=>selectedDeliveryIds.includes(id))
     setSelectedDeliveryIds(prev=>allSelected?prev.filter(id=>!ids.includes(id)):Array.from(new Set([...prev,...ids])))
+  }
+
+  function openRouteEdit(route:RoutePlan){
+    const stops=deliveries.filter(d=>d.rota_logistica_id===route.id).sort((a,b)=>Number(a.ordem_rota||9999)-Number(b.ordem_rota||9999))
+    setEditRoute(route)
+    setEditRouteDate(route.data_rota)
+    setEditRouteDriver(route.motorista||'')
+    setEditRouteVehicle(route.veiculo||'')
+    setEditRouteOrder(stops.map(d=>d.id))
+    setMessage('')
+  }
+
+  function moveEditRouteStop(id:string,direction:-1|1){
+    setEditRouteOrder(current=>{
+      const copy=[...current]
+      const index=copy.indexOf(id)
+      const target=index+direction
+      if(index<0||target<0||target>=copy.length)return current
+      ;[copy[index],copy[target]]=[copy[target],copy[index]]
+      return copy
+    })
+  }
+
+  function removeEditRouteStop(id:string){
+    setEditRouteOrder(current=>current.filter(x=>x!==id))
+  }
+
+  async function saveRouteEdit(){
+    if(!editRoute||!canEdit||editRouteBusy)return
+    if(!editRouteDate){setMessage('Informe a data da rota.');return}
+    setEditRouteBusy(true);setMessage('')
+    try{
+      const previousIds=deliveries.filter(d=>d.rota_logistica_id===editRoute.id).map(d=>d.id)
+      const removedIds=previousIds.filter(id=>!editRouteOrder.includes(id))
+      const {error:routeError}=await supabase.from('rotas_logisticas').update({
+        data_rota:editRouteDate,
+        motorista:editRouteDriver.trim()||null,
+        veiculo:editRouteVehicle.trim()||null,
+        updated_at:new Date().toISOString()
+      }).eq('id',editRoute.id)
+      if(routeError)throw routeError
+
+      if(removedIds.length){
+        const {error:removeError}=await supabase.from('entregas').update({
+          rota_logistica_id:null,
+          ordem_rota:null,
+          updated_at:new Date().toISOString()
+        }).in('id',removedIds)
+        if(removeError)throw removeError
+      }
+
+      for(let index=0;index<editRouteOrder.length;index++){
+        const id=editRouteOrder[index]
+        const {error:updateError}=await supabase.from('entregas').update({
+          data_prevista:editRouteDate,
+          entregador_nome:editRouteDriver.trim()||null,
+          ordem_rota:index+1,
+          updated_at:new Date().toISOString()
+        }).eq('id',id)
+        if(updateError)throw updateError
+      }
+
+      setEditRoute(null)
+      setMessage('Rota atualizada com sucesso.')
+      await load()
+    }catch(e){
+      setMessage((e as Error).message)
+    }finally{
+      setEditRouteBusy(false)
+    }
   }
 
   function openModal(d:Delivery,next:Mode){
@@ -512,7 +588,7 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
           return <article className="deliveryConferenceRouteCard" key={route.id}>
             <header>
               <div><strong>{route.nome}</strong><span>{new Date(route.data_rota+'T12:00:00').toLocaleDateString('pt-BR')} · {route.motorista||'Motorista não informado'} · {route.veiculo||'Veículo não informado'}</span></div>
-              <div><span className={'deliveryConferenceRouteStatus '+route.status}>{route.status==='montagem'?'Montada':route.status==='liberada'?'Liberada':route.status==='concluida'?'Concluída':'Cancelada'}</span><b>{stops.length} parada(s)</b></div>
+              <div><span className={'deliveryConferenceRouteStatus '+route.status}>{route.status==='montagem'?'Montada':route.status==='liberada'?'Liberada':route.status==='concluida'?'Concluída':'Cancelada'}</span><b>{stops.length} parada(s)</b>{canEdit&&route.status!=='cancelada'&&<button type="button" className="deliveryRouteEditButton" onClick={()=>openRouteEdit(route)}><PenLine size={13}/>Editar rota</button>}</div>
             </header>
             <div className="deliveryConferenceStops">
               {stops.map((d,index)=>{
@@ -543,6 +619,39 @@ export function DeliveryManagement({canEdit,canOperate,initialView='montagem'}:{
         </article>
       })}</div>
     </section></>}
+
+    {editRoute&&<div className="deliveryModalBackdrop">
+      <div className="deliveryRouteEditModal" role="dialog" aria-modal="true" aria-label="Editar rota">
+        <div className="deliveryModalHead"><div><span>EDIÇÃO DE ROTA</span><h3>{editRoute.nome}</h3></div><button onClick={()=>setEditRoute(null)}><XCircle size={20}/></button></div>
+        <div className="deliveryRouteEditFields">
+          <label>Data<input type="date" value={editRouteDate} onChange={e=>setEditRouteDate(e.target.value)}/></label>
+          <label>Motorista / Entregador<input value={editRouteDriver} onChange={e=>setEditRouteDriver(e.target.value)} placeholder="Nome do motorista"/></label>
+          <label>Veículo<input value={editRouteVehicle} onChange={e=>setEditRouteVehicle(e.target.value)} placeholder="Veículo utilizado"/></label>
+        </div>
+        <div className="deliveryRouteEditStops">
+          <div className="deliveryRouteEditStopsHead"><strong>Ordem das paradas</strong><span>{editRouteOrder.length} pedido(s)</span></div>
+          {editRouteOrder.map((id,index)=>{
+            const d=deliveries.find(x=>x.id===id)
+            if(!d)return null
+            const s=saleFor(d),cl=clientFor(d)
+            return <div className="deliveryRouteEditStop" key={id}>
+              <span>{index+1}</span>
+              <div><strong>#{String(s?.fatura_numero||0).padStart(7,'0')} · {cl?.nome||'Cliente'}</strong><small>{addressOf(cl)||'Endereço não cadastrado'}</small></div>
+              <div className="deliveryRouteEditStopActions">
+                <button type="button" disabled={index===0||editRouteBusy} onClick={()=>moveEditRouteStop(id,-1)} title="Subir"><ArrowUp size={14}/></button>
+                <button type="button" disabled={index===editRouteOrder.length-1||editRouteBusy} onClick={()=>moveEditRouteStop(id,1)} title="Descer"><ArrowDown size={14}/></button>
+                <button type="button" className="danger" disabled={editRouteBusy} onClick={()=>removeEditRouteStop(id)} title="Remover da rota"><Trash2 size={14}/></button>
+              </div>
+            </div>
+          })}
+          {!editRouteOrder.length&&<div className="deliveryConferenceEmpty">Nenhuma parada nesta rota.</div>}
+        </div>
+        <div className="deliveryRouteEditFooter">
+          <button type="button" className="ghost" disabled={editRouteBusy} onClick={()=>setEditRoute(null)}>Cancelar</button>
+          <button type="button" className="primary" disabled={editRouteBusy} onClick={()=>void saveRouteEdit()}><Save size={15}/>{editRouteBusy?'Salvando...':'Salvar alterações'}</button>
+        </div>
+      </div>
+    </div>}
 
     {modalDelivery&&mode&&<div className="deliveryModalBackdrop">
       <div className="deliveryModal" role="dialog" aria-modal="true">
