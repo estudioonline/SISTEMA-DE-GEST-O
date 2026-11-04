@@ -4480,7 +4480,7 @@ function App(){
               <PartyLookup items={clientes} value={saleClient} onSelect={setSaleClient} kind="cliente" emptyLabel="Consumidor"/>
             </label>
             <label>Vendedor
-              <SearchableSelect value={saleSeller} onChange={value=>{setSaleSeller(value);if(!editingSale)setSaleCommissionPercent('')}} placeholder="Sem vendedor / sem comissão" searchPlaceholder="Pesquisar vendedor..." options={vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=>({value:v.id,label:`${v.nome} — ${Number(v.percentual_comissao).toLocaleString('pt-BR')}%`,keywords:v.nome}))}/>
+              <SearchableSelect value={saleSeller} onChange={value=>{setSaleSeller(value);if(!editingSale)setSaleCommissionPercent('')}} placeholder="Sem vendedor / sem comissão" showSearch={false} options={vendedores.filter(v=>v.ativo||v.id===saleSeller).map(v=>({value:v.id,label:`${v.nome} — ${Number(v.percentual_comissao).toLocaleString('pt-BR')}%`,keywords:v.nome}))}/>
             </label>
             <label>Comissão desta venda (%)
               <input type="number" min="0" max="100" step="0.01" value={saleCommissionPercent} onChange={e=>setSaleCommissionPercent(e.target.value)} placeholder={saleSeller?String(Number(vendedores.find(v=>v.id===saleSeller)?.percentual_comissao||0)):'0'}/>
