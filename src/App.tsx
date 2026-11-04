@@ -157,10 +157,16 @@ function themedPasswordPrompt(title:string){
 
     const input=document.createElement('input')
     input.className='sgPromptInput'
-    input.type='password'
-    input.autocomplete='current-password'
+    input.type='text'
+    input.autocomplete='off'
+    input.name='sg-protected-app-access'
+    input.value=''
+    input.spellcheck=false
     input.placeholder='Senha de acesso'
     input.setAttribute('aria-label','Senha de acesso')
+    input.setAttribute('data-lpignore','true')
+    input.setAttribute('data-1p-ignore','true')
+    input.style.setProperty('-webkit-text-security','disc')
 
     const error=document.createElement('div')
     error.className='formHint'
@@ -183,6 +189,8 @@ function themedPasswordPrompt(title:string){
     document.body.append(overlay)
 
     const finish=(value:string|null)=>{
+      input.value=''
+      input.setAttribute('value','')
       document.removeEventListener('keydown',onKey)
       overlay.remove()
       resolve(value)
