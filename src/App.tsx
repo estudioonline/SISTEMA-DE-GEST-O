@@ -4508,8 +4508,22 @@ function App(){
                     </div>
                     <button type="button" className="iconBtn" onClick={()=>setBulkAdjustmentEditingId(null)}><X size={18}/></button>
                   </div>
+                  <div className="bulkAdjustmentStockSnapshot">
+                    <div>
+                      <span>Estoque atual</span>
+                      <strong>{Number(p.estoque_atual||0).toLocaleString('pt-BR',{maximumFractionDigits:3})} {p.unidade||'UN'}</strong>
+                    </div>
+                    <div>
+                      <span>Estoque mínimo</span>
+                      <strong>{Number(p.estoque_minimo||0).toLocaleString('pt-BR',{maximumFractionDigits:3})} {p.unidade||'UN'}</strong>
+                    </div>
+                    <div className={`bulkAdjustmentStockState ${Number(p.estoque_atual)<0?'negative':Number(p.estoque_atual)===0?'zero':Number(p.estoque_atual)<=Number(p.estoque_minimo)?'low':'normal'}`}>
+                      <span>Situação</span>
+                      <strong>{Number(p.estoque_atual)<0?'Estoque negativo':Number(p.estoque_atual)===0?'Sem estoque':Number(p.estoque_atual)<=Number(p.estoque_minimo)?'Estoque baixo':'Estoque normal'}</strong>
+                    </div>
+                  </div>
                   <div className="bulkAdjustmentEditGrid">
-                    <label><span>Quantidade / Estoque atual</span><input type="number" step="0.001" value={edit.estoque_atual??Number(p.estoque_atual||0)} onChange={e=>setBulkProductField(p.id,'estoque_atual',Number(e.target.value)||0)} disabled={p.tipo_produto==='servico'}/><small>{p.tipo_produto==='servico'?'Serviços não controlam estoque.':'A alteração será registrada no histórico de estoque.'}</small></label>
+                    <label><span>Novo estoque / Quantidade</span><input type="number" step="0.001" value={edit.estoque_atual??Number(p.estoque_atual||0)} onChange={e=>setBulkProductField(p.id,'estoque_atual',Number(e.target.value)||0)} disabled={p.tipo_produto==='servico'}/><small>{p.tipo_produto==='servico'?'Serviços não controlam estoque.':'O valor atual acima é apenas informativo. A alteração será registrada no histórico de estoque.'}</small></label>
                     <label><span>Unidade de medida</span><input value={edit.unidade??p.unidade??'UN'} onChange={e=>setBulkProductField(p.id,'unidade',e.target.value)}/></label>
                     <label><span>Preço de custo</span><input type="number" min="0" step="0.01" value={edit.custo??Number(p.custo||0)} onChange={e=>setBulkProductField(p.id,'custo',Math.max(0,Number(e.target.value)||0))}/></label>
                     <label><span>Preço de venda</span><input type="number" min="0" step="0.01" value={edit.preco_venda??Number(p.preco_venda||0)} onChange={e=>setBulkProductField(p.id,'preco_venda',Math.max(0,Number(e.target.value)||0))}/></label>
