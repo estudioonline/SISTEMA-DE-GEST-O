@@ -194,7 +194,19 @@ export function NfeImportModal({
         const body=new FormData()
         body.append('file',file)
         const {data,error:invokeError}=await supabase.functions.invoke('purchase-document-ai',{body})
-        if(invokeError)throw invokeError
+        if(invokeError){
+          let message=invokeError.message||'Falha ao analisar documento com IA.'
+          const context=(invokeError as unknown as {context?:Response}).context
+          if(context instanceof Response){
+            try{
+              const payload=await context.clone().json() as {message?:string;error?:string}
+              message=payload?.message||payload?.error||message
+            }catch{
+              try{message=(await context.clone().text())||message}catch{}
+            }
+          }
+          throw new Error(message)
+        }
         if(data?.error)throw new Error(data.message||data.error)
         const ai=data?.data||{}
         const parsed:ParsedNfe={
