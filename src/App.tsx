@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Users, Package, Boxes, ShoppingCart, ReceiptText, WalletCards,
   BarChart3, Settings, Moon, Sun, Plus, Building2, LogOut, Trash2, FileDown,
   Pencil, Ban, MoreVertical, RefreshCw, CheckCircle2, ChevronLeft, ChevronRight, Grid2X2,
-  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen, Info, Database, KeyRound, GripVertical
+  Upload, Download, FileSpreadsheet, BadgeDollarSign, UserPlus, Paperclip, ExternalLink, Search, X, ShieldCheck, TrendingUp, Printer, Truck, SlidersHorizontal, MapPin, MonitorDown, ChevronDown, FolderOpen, Info, Database, KeyRound, GripVertical,
+  Layers3, Mail, LockKeyhole, Eye, EyeOff, LogIn, Bell, CircleUserRound
 } from 'lucide-react'
 import { supabase, supabaseConfigured, supabasePublishableKey, supabaseUrl } from './lib/supabase'
 import type { CommissionReportRow } from './lib/commissionReportPdf'
@@ -392,6 +393,7 @@ function App(){
   const [dataReady,setDataReady]=useState(false)
   const [accessError,setAccessError]=useState('')
   const [loginBusy,setLoginBusy]=useState(false)
+  const [showLoginPassword,setShowLoginPassword]=useState(false)
   const [savingCompany,setSavingCompany]=useState(false)
   const [configSection,setConfigSection]=useState<'empresa'|'usuarios'|'integracoes'|'financeiro'>('empresa')
   const dataLoadSequence=useRef(0)
@@ -2873,40 +2875,90 @@ function App(){
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
   if(!supabaseConfigured)return <div className="modulePlaceholder"><div className="panel" style={{maxWidth:620}}><h2>Sistema de Gestão publicado</h2><p>Configuração do Supabase ausente.</p></div></div>
-  if(!session)return <div className="loginPage">
+  if(!session)return <div className="loginPage loginPagePremium">
     <section className="loginInfo">
-      <div className="loginBrand"><BarChart3 size={48}/><div><h1>Sistema de<br/>Gestão</h1><p>Mais controle para o seu negócio.</p></div></div>
+      <div className="loginBrand">
+        <div className="loginBrandMark"><BarChart3 size={42}/></div>
+        <div>
+          <h1>Sistema de<br/>Gestão</h1>
+          <p>ERP completo para otimizar, integrar e dar mais controle ao seu negócio.</p>
+          <span className="loginBrandAccent" aria-hidden="true"></span>
+        </div>
+      </div>
       <div className="loginBenefits">
-        <div><span><BarChart3 size={24}/></span><p><strong>Gestão Integrada</strong><small>Todas as áreas do seu negócio em um só lugar.</small></p></div>
-        <div><span><Users size={24}/></span><p><strong>Mais Produtividade</strong><small>Processos mais ágeis e eficientes.</small></p></div>
-        <div><span><ShieldCheck size={24}/></span><p><strong>Segurança de Dados</strong><small>Suas informações sempre protegidas.</small></p></div>
+        <div><span><Layers3 size={24}/></span><p><strong>Gestão Integrada</strong><small>Todas as áreas do seu negócio conectadas em um só lugar.</small></p></div>
+        <div><span><TrendingUp size={24}/></span><p><strong>Mais Produtividade</strong><small>Automatize processos e ganhe eficiência no dia a dia.</small></p></div>
+        <div><span><ShieldCheck size={24}/></span><p><strong>Segurança de Dados</strong><small>Seus dados protegidos com alta confiabilidade e privacidade.</small></p></div>
       </div>
     </section>
 
-    <form onSubmit={login} className="panel dataForm loginCard">
-      <div className="loginCardIcon"><BarChart3 size={30}/></div>
+    <form onSubmit={login} className="panel dataForm loginCard loginCardPremium">
+      <div className="loginCardIcon"><BarChart3 size={34}/></div>
       <h2>Sistema de Gestão</h2>
       <p>Acesse o ERP</p>
-      <label className="fieldLabel">E-mail<input type="email" autoComplete="username" placeholder="E-mail" value={email} onChange={e=>setEmail(e.target.value)} required/></label>
-      <label className="fieldLabel">Senha<input type="password" autoComplete="current-password" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/></label>
-      <button className="primary" disabled={loginBusy}>{loginBusy?'Entrando...':'Entrar'}</button>
+
+      <label className="fieldLabel loginField">
+        <span>E-mail</span>
+        <div className="loginInputWrap">
+          <Mail size={20}/>
+          <input type="email" autoComplete="username" placeholder="Digite seu e-mail" value={email} onChange={e=>setEmail(e.target.value)} required/>
+        </div>
+      </label>
+
+      <label className="fieldLabel loginField">
+        <span>Senha</span>
+        <div className="loginInputWrap">
+          <LockKeyhole size={20}/>
+          <input type={showLoginPassword?'text':'password'} autoComplete="current-password" placeholder="Digite sua senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/>
+          <button type="button" className="loginPasswordToggle" onClick={()=>setShowLoginPassword(v=>!v)} aria-label={showLoginPassword?'Ocultar senha':'Mostrar senha'}>
+            {showLoginPassword?<EyeOff size={20}/>:<Eye size={20}/>}
+          </button>
+        </div>
+      </label>
+
+      <div className="loginAssistRow">
+        <span className="loginRemember"><span className="loginRememberBox">✓</span>Lembrar-me</span>
+        <span className="loginForgot">Esqueci minha senha</span>
+      </div>
+
+      <button className="primary loginSubmit" disabled={loginBusy}><LogIn size={21}/>{loginBusy?'Entrando...':'Entrar'}</button>
       {msg&&<p className="loginMsg">{msg}</p>}
+
+      <div className="loginSecure"><span></span><ShieldCheck size={17}/><small>Ambiente seguro</small><span></span></div>
     </form>
 
     <section className="loginVisual" aria-hidden="true">
-      <div className="loginLaptop">
-        <div className="loginLaptopBar"></div>
+      <div className="loginDevice">
+        <div className="loginDeviceTop">
+          <div className="loginDeviceBrand"><BarChart3 size={20}/><strong>Sistema de Gestão</strong></div>
+          <div className="loginDeviceIcons"><Bell size={18}/><CircleUserRound size={22}/></div>
+        </div>
+        <div className="loginDeviceTitle">
+          <strong>Visão Geral</strong>
+          <span>Últimos 30 dias <ChevronDown size={14}/></span>
+        </div>
         <div className="loginMiniCards">
-          <div><BarChart3 size={18}/><span>Receita</span><strong>R$ 125.430</strong></div>
-          <div><TrendingUp size={18}/><span>Vendas</span><strong>1.284</strong></div>
-          <div><Users size={18}/><span>Clientes</span><strong>892</strong></div>
+          <div><BarChart3 size={18}/><span>Receita</span><strong>R$ 125.430</strong><small>↑ +12,4%</small></div>
+          <div><TrendingUp size={18}/><span>Vendas</span><strong>1.284</strong><small>↑ +8,7%</small></div>
+          <div><Users size={18}/><span>Clientes</span><strong>892</strong><small>↑ +5,1%</small></div>
         </div>
-        <div className="loginChart">
-          <span></span><i></i><b></b><em></em><u></u>
+        <div className="loginChartPanel">
+          <strong>Faturamento</strong>
+          <div className="loginChart">
+            <span></span><i></i><b></b><em></em><u></u>
+          </div>
         </div>
-        <div className="loginDonut"></div>
+        <div className="loginDeviceBottom">
+          <div className="loginDonut"><strong>72%</strong></div>
+          <div className="loginGoals">
+            <strong>Metas do Período</strong>
+            <div><span>Vendas</span><i><b style={{width:'85%'}}></b></i><small>85%</small></div>
+            <div><span>Faturamento</span><i><b style={{width:'72%'}}></b></i><small>72%</small></div>
+            <div><span>Clientes</span><i><b style={{width:'90%'}}></b></i><small>90%</small></div>
+          </div>
+        </div>
       </div>
-      <div className="loginLaptopBase"></div>
+      <div className="loginDeviceGlow"></div>
     </section>
   </div>
 
