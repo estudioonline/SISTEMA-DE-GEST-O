@@ -1,3 +1,4 @@
+import { financeOriginLabel, financeOriginDocuments } from './lib/financeOrigin'
 import { purchaseCode } from './lib/purchaseCode'
 import { financialInvoiceCode } from './lib/invoiceCode'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
@@ -3637,9 +3638,37 @@ function App(){
     </div>
   }
 
+  function titleOrigin(t:Titulo){
+    return financeOriginLabel(t,vendas,compras,faturasVendas,faturaVendaItens)
+  }
+  function openFinanceOrigin(kind:'venda'|'compra',id:string){
+    const module=kind==='venda'?'vendas':'compras'
+    if(!canViewModule(module))return
+    closeForms()
+    setFinancePanel(null)
+    setFinancePanelReturnModule(null)
+    setFinancePanelReturnSubtab(null)
+    setShowApps(false)
+    setMsg('')
+    setActive(module)
+    if(kind==='venda')setSalePanel(id)
+    else{setPurchaseTab('todas');setSearch('compras','');setPurchasePanel(id)}
+  }
+  function financeOriginLinks(t:Titulo){
+    const documents=financeOriginDocuments(t,vendas,compras,faturasVendas,faturaVendaItens)
+    return <span className="financeOriginLinks"><span>Origem:</span>{documents.length?documents.map(doc=>{
+      const code=doc.kind==='venda'?saleCode(doc.number):purchaseCode(doc.number)
+      const label=(doc.kind==='venda'?'Venda ':'Compra ')+code
+      return canViewModule(doc.kind==='venda'?'vendas':'compras')
+        ? <button type="button" key={doc.kind+doc.id} className="financeOriginLink" onClick={event=>{event.stopPropagation();openFinanceOrigin(doc.kind,doc.id)}} onDoubleClick={event=>event.stopPropagation()} title={'Abrir '+label} aria-label={'Abrir '+label}>{label}<ExternalLink size={12}/></button>
+        : <span key={doc.kind+doc.id}>{label}</span>
+    }):<span>{titleOrigin(t)}</span>}</span>
+  }
+
   function mapFinanceReportRows(rows:Titulo[]){
     return rows.map(t=>({
       descricao:t.descricao,
+      origem:titleOrigin(t),
       entidade:t.entidade_nome||'—',
       vencimento:t.vencimento,
       valor:Number(t.valor),
@@ -3731,7 +3760,7 @@ function App(){
       .filter(t=>!financeEnd||t.vencimento<=financeEnd)
       .filter(t=>financeCategory==='todos'||t.categoria===financeCategory)
       .filter(t=>financeCenter==='todos'||t.centro_custo===financeCenter)
-    const rows=sortList(searchKey,baseRows.filter(t=>searchMatches(searchKey,[t.descricao,t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),financeStatusLabel(t.status),t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||''])),{
+    const rows=sortList(searchKey,baseRows.filter(t=>searchMatches(searchKey,[t.descricao,titleOrigin(t),t.entidade_nome||'',dateBr(t.vencimento),money(Number(t.valor)),money(Number(t.valor_pago)),money(Math.max(0,Number(t.valor)-Number(t.valor_pago))),financeStatusLabel(t.status),t.categoria||'',t.centro_custo||'',t.forma_pagamento||'',t.parcela_numero||''])),{
       descricao:t=>t.descricao,entidade:t=>t.entidade_nome||'',vencimento:t=>t.vencimento,valor:t=>Number(t.valor),pago:t=>Number(t.valor_pago),saldo:t=>Math.max(0,Number(t.valor)-Number(t.valor_pago)),status:t=>t.status
     })
     const groupTitle=overdueOnly?(type==='receber'?'Vencidos a receber':'Vencidos a pagar'):(type==='receber'?'Contas a receber':'Contas a pagar')
@@ -3746,21 +3775,19 @@ function App(){
             const opened=financePanel===t.id
             const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
             const linked=Boolean(t.venda_id||t.compra_id||t.fatura_venda_id||t.funcionario_id)
-            const origin=t.venda_id?'Venda':t.compra_id?'Compra':t.fatura_venda_id?'Fatura de venda':t.funcionario_id?'RH':'Manual'
             const invoice=t.fatura_venda_id?faturasVendas.find(f=>f.id===t.fatura_venda_id):undefined
             const invoiceTitles=t.fatura_venda_id
               ? financeTitles.filter(item=>item.fatura_venda_id===t.fatura_venda_id).sort((a,b)=>Number(a.parcela_numero||0)-Number(b.parcela_numero||0)||a.vencimento.localeCompare(b.vencimento))
               : [t]
-            const invoiceSale=t.venda_id?vendas.find(v=>v.id===t.venda_id):undefined
             const invoiceTotal=invoiceTitles.reduce((sum,item)=>sum+Number(item.valor||0),0)
             const invoicePaid=invoiceTitles.reduce((sum,item)=>sum+Number(item.valor_pago||0),0)
             const invoiceBalance=Math.max(0,invoiceTotal-invoicePaid)
             const invoiceTitle=invoice
-              ? financialInvoiceCode(invoice.numero)+(invoiceSale?' • '+saleCode(invoiceSale.venda_numero):'')
+              ? financialInvoiceCode(invoice.numero)
               : t.descricao
             return <Fragment key={t.id}>
               <tr {...recordRow(()=>{if(financePanel!==t.id)openFinancePanel(t)},t.descricao)} className={'recordRow '+(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueRow':'')}>
-                <td>{t.descricao}</td>
+                <td><div className="financeTitleDescription">{t.descricao}{financeOriginLinks(t)}</div></td>
                 <td>{t.entidade_nome||'—'}</td>
                 <td><span className={t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueDate':''}>{dateBr(t.vencimento)}</span></td>
                 <td><strong>{money(Number(t.valor))}</strong></td>
@@ -3797,7 +3824,8 @@ function App(){
                   <div className="actionPanel">
                     <div className="actionMeta">
                       <strong>{invoiceTitles.length>1?`Parcela ${t.parcela_numero||1}/${invoiceTitles.length}`:t.descricao}</strong>
-                      <span>{linked?`Ligado à ${origin.toLowerCase()} • vencimento ${dateBr(t.vencimento)}`:'Lançamento manual'} • saldo {money(balance)}</span>
+                      <span>Vencimento {dateBr(t.vencimento)} • saldo {money(balance)}</span>
+                      {financeOriginLinks(t)}
                     </div>
                     <div className="rowActions">
                       <button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>{linked?'Classificar':'Editar'}</button>
@@ -3814,7 +3842,7 @@ function App(){
                   </div>
 
                   {financePanelTab==='detalhes'&&<div className="financeDetailGrid">
-                    <div><span>Origem</span><strong>{origin}</strong></div>
+                    <div><span>Documento de origem</span>{financeOriginLinks(t)}</div>
                     <div><span>Cliente / Fornecedor</span><strong>{t.entidade_nome||'Não informado'}</strong></div>
                     <div><span>Vencimento</span><strong>{dateBr(t.vencimento)}</strong></div>
                     <div><span>Forma de pagamento</span><strong>{t.forma_pagamento?paymentLabel(t.forma_pagamento):'Não informada'}</strong></div>

@@ -3,6 +3,7 @@ import type { InvoiceCompany } from './invoicePdf'
 
 export type FinanceReportRow={
   descricao:string
+  origem?:string
   entidade:string
   vencimento:string
   valor:number
@@ -138,12 +139,15 @@ export function generateFinanceReportPdf(data:FinanceReportData){
     }
     y=sectionTableHeader(doc,y)
     section.rows.forEach((row,index)=>{
-      y=ensure(doc,data,y,9)
+      const originLines=row.origem?doc.splitTextToSize('Origem: '+row.origem,48) as string[]:[]
+      const rowHeight=Math.max(8,8+originLines.length*3.5)
+      y=ensure(doc,data,y,rowHeight)
       if(y===38)y=sectionTableHeader(doc,y)
-      if(index%2===0){doc.setFillColor(...rowAlt);doc.rect(12,y,273,8,'F')}
-      doc.setDrawColor(235,239,244);doc.line(12,y+8,285,y+8)
+      if(index%2===0){doc.setFillColor(...rowAlt);doc.rect(12,y,273,rowHeight,'F')}
+      doc.setDrawColor(235,239,244);doc.line(12,y+rowHeight,285,y+rowHeight)
       doc.setTextColor(...text);doc.setFont('helvetica','normal');doc.setFontSize(7.6)
       doc.text(fit(doc,row.descricao,48),14,y+5.1)
+      if(originLines.length){doc.setFontSize(7);doc.text(originLines,14,y+9);doc.setFontSize(7.6)}
       doc.text(fit(doc,row.entidade,43),66,y+5.1)
       doc.text(dateBr(row.vencimento),113,y+5.1)
       doc.text(money(row.valor),166,y+5.1,{align:'right'})
@@ -151,7 +155,7 @@ export function generateFinanceReportPdf(data:FinanceReportData){
       doc.setFont('helvetica','bold');doc.text(money(row.saldo),228,y+5.1,{align:'right'})
       doc.setFont('helvetica','normal');doc.text(fit(doc,row.status,22),232,y+5.1)
       doc.text(fit(doc,row.categoria,25),258,y+5.1)
-      y+=8
+      y+=rowHeight
     })
     y+=3
   })

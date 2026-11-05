@@ -10660,3 +10660,10 @@ small{font-size:11px}
     font-size:22px;
   }
 }
+
+.financeTitleDescription{display:flex;flex-direction:column;gap:6px;min-width:0}
+.financeOriginLinks{display:flex;align-items:center;flex-wrap:wrap;gap:4px 7px;font-size:11px;line-height:1.5;white-space:normal}
+.financeOriginLinks>span:first-child{opacity:.75}
+.financeOriginLink{display:inline-flex;align-items:center;gap:4px;border:0!important;background:transparent!important;color:#1d4ed8;padding:2px 0!important;font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.financeOriginLink:focus-visible{outline:2px solid #3b82f6;outline-offset:3px;border-radius:3px}
+.dark .financeOriginLink{color:#93c5fd}
