@@ -8366,3 +8366,120 @@ small{font-size:11px}
   color:#0f172a!important;
   font-weight:700;
 }
+
+
+/* Desconto global da venda */
+.salesPage .saleGlobalDiscountBtn{
+  border-color:#60a5fa;
+  color:#2563eb;
+}
+.dark .salesPage .saleGlobalDiscountBtn{
+  border-color:#3b82f6;
+  color:#93c5fd;
+  background:#0f1f33;
+}
+.salesPage .globalDiscountDialog{
+  width:min(520px,calc(100vw - 32px));
+  background:var(--ds-surface,#fff);
+  border:1px solid var(--ds-border,#dbe3ef);
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 22px 70px rgba(15,23,42,.28);
+}
+.salesPage .globalDiscountHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:16px;
+}
+.salesPage .globalDiscountHeader>div{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.salesPage .globalDiscountHeader strong{
+  font-size:18px;
+  color:var(--ds-text,#0f172a);
+}
+.salesPage .globalDiscountHeader span{
+  font-size:12px;
+  line-height:1.4;
+  color:var(--ds-muted,#64748b);
+}
+.salesPage .globalDiscountField{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.salesPage .globalDiscountField>span{
+  font-size:12px;
+  font-weight:700;
+  color:var(--ds-text,#0f172a);
+}
+.salesPage .globalDiscountField input{
+  height:42px;
+  border:1px solid var(--ds-border-strong,#cbd5e1);
+  border-radius:8px;
+  background:var(--ds-surface,#fff);
+  color:var(--ds-text,#0f172a);
+  padding:0 12px;
+  font-size:15px;
+  font-weight:700;
+}
+.salesPage .globalDiscountField small{
+  color:var(--ds-muted,#64748b);
+  font-size:11px;
+}
+.salesPage .globalDiscountPreview{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:16px 0;
+}
+.salesPage .globalDiscountPreview span{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:10px;
+  border:1px solid var(--ds-border,#dbe3ef);
+  border-radius:8px;
+  background:var(--ds-surface-soft,#f8fafc);
+  color:var(--ds-muted,#64748b);
+  font-size:10px;
+}
+.salesPage .globalDiscountPreview strong{
+  color:var(--ds-text,#0f172a);
+  font-size:13px;
+}
+.salesPage .globalDiscountActions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+.dark .salesPage .globalDiscountDialog{
+  background:#0f1725;
+  border-color:#334155;
+}
+.dark .salesPage .globalDiscountHeader strong,
+.dark .salesPage .globalDiscountField>span,
+.dark .salesPage .globalDiscountPreview strong{
+  color:#f8fafc;
+}
+.dark .salesPage .globalDiscountHeader span,
+.dark .salesPage .globalDiscountField small,
+.dark .salesPage .globalDiscountPreview span{
+  color:#a8b4c6;
+}
+.dark .salesPage .globalDiscountField input{
+  background:#0b1422;
+  border-color:#3a4a61;
+  color:#f8fafc;
+}
+.dark .salesPage .globalDiscountPreview span{
+  background:#111827;
+  border-color:#334155;
+}
+@media(max-width:600px){
+  .salesPage .globalDiscountPreview{grid-template-columns:1fr}
+}
