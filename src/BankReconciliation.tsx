@@ -100,7 +100,7 @@ function isManualJournal(j:Pick<Journal,'nome'|'banco'>){
  return key.includes('dinheiro')||key.includes('caixa')||key.includes('ajustes')
 }
 
-export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged}:{titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
+export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged,initialTransactionId,onClearTransaction}:{initialTransactionId?:string|null;onClearTransaction?:()=>void;titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
  const [journals,setJournals]=useState<Journal[]>([])
  const [transactions,setTransactions]=useState<BankTx[]>([])
  const [reconciledTotals,setReconciledTotals]=useState<Record<string,number>>({})
@@ -161,8 +161,16 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    const effective=Number(row.valor)||0+(row.tipo_ajuste==='desconto_concedido'? -Math.abs(adj):row.tipo_ajuste==='tarifa'&&txRow?.trntype==='CREDIT'? -Math.abs(adj):Math.abs(adj))
    totalsByTx[row.transacao_id]=(totalsByTx[row.transacao_id]||0)+effective
   })
+  if(initialTransactionId){
+   const target=await supabase.from('transacoes_bancarias').select('*').eq('id',initialTransactionId).maybeSingle()
+   if(target.error||!target.data){setMessage(target.error?.message||'A linha do diário não está mais disponível.');setActiveJournal('all');setScreen('transactions')}
+   else{
+    if(!t.data?.some(row=>row.id===target.data.id))t.data?.push(target.data)
+    setActiveJournal(target.data.diario_id);setScreen('transactions');setSearch('')
+   }
+  }
   setReconciledTotals(totalsByTx);setJournals(journalRows);setTransactions((t.data||[]) as BankTx[]);setImports((i.data||[]) as BankImport[]);setClients((c.data||[]) as Partner[]);setSuppliers((s.data||[]) as Partner[]);setReconcileAccounts((a.data||[]) as {id:string;nome:string}[]);setClosedPeriods((p.data||[]) as ClosedPeriod[]);setModels((m.data||[]) as ReconcileModel[]);setTransferCandidates((x.data||[]) as TransferCandidate[])
- },[])
+ },[initialTransactionId])
  useEffect(()=>{void load()},[load])
 
  const journal=useMemo(()=>journals.find(j=>j.id===activeJournal)||null,[journals,activeJournal])
@@ -171,7 +179,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const pending=journalTx.filter(isPending)
  const visibleImports=useMemo(()=>showingAllJournals?imports:imports.filter(row=>row.diario_id===activeJournal),[imports,activeJournal,showingAllJournals])
  const journalSupportsOfx=Boolean(journal&&!isManualJournal(journal))
- const visible=journalTx.filter(t=>!search||normalize([t.fitid,t.nome||'',t.historico||'',String(t.valor),dateBr(t.data_lancamento)].join(' ')).includes(normalize(search)))
+ const visible=journalTx.filter(t=>!initialTransactionId||t.id===initialTransactionId).filter(t=>!search||normalize([t.fitid,t.nome||'',t.historico||'',String(t.valor),dateBr(t.data_lancamento)].join(' ')).includes(normalize(search)))
 
  function partnerDoc(entity:string|null){
   const n=normalize(entity||'');const p=[...clients,...suppliers].find(x=>normalize(x.nome)===n);return digits(p?.documento||'')
@@ -456,7 +464,7 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
  function openJournal(id:string,target:'matching'|'transactions'){
-  setActiveJournal(id);setScreen(target);setSearch('');setSelected({});setMessage('')
+  onClearTransaction?.();setActiveJournal(id);setScreen(target);setSearch('');setSelected({});setMessage('')
  }
  function openUploadForJournal(id:string){
   if(!canEdit||busy)return
@@ -550,13 +558,14 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     </div>
     <div className="bankTopControls">
       <label className="bankJournalSelector">Diário
-        <SearchableSelect value={activeJournal==='all'?'':activeJournal||''} onChange={value=>{setActiveJournal(value||'all');setSearch('')}} placeholder="Todos os diários" searchPlaceholder="Pesquisar diário..." options={journals.map(j=>({value:j.id,label:j.nome,keywords:[j.banco,j.agencia,j.conta].filter(Boolean).join(' ')}))}/>
+        <SearchableSelect value={activeJournal==='all'?'':activeJournal||''} onChange={value=>{onClearTransaction?.();setActiveJournal(value||'all');setSearch('')}} placeholder="Todos os diários" searchPlaceholder="Pesquisar diário..." options={journals.map(j=>({value:j.id,label:j.nome,keywords:[j.banco,j.agencia,j.conta].filter(Boolean).join(' ')}))}/>
       </label>
       <div className="bankActions">{canEdit&&normalize(journal?.nome||'')==='ajustes'&&<button className="bankPrimary" onClick={()=>setAdjustmentOpen(true)}><SlidersHorizontal size={14}/>Novo ajuste</button>}{canEdit&&journalSupportsOfx&&<button className="bankPrimary" disabled={showingAllJournals} onClick={()=>setUploadOpen(true)}><Upload size={14}/>Carregar extrato</button>}<button onClick={()=>void load()}><RefreshCw size={14}/></button></div>
     </div>
   </div>
   {message&&<div className="bankMessage" role="status">{message}</div>}
   <div className="bankFilterBar bankSearchOnly">
+    {initialTransactionId&&<button type="button" onClick={()=>onClearTransaction?.()}>Linha do pagamento · Mostrar todas as linhas</button>}
     <label className="bankBulkSelect"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisibleTransactions} disabled={!canEdit||busy||deletableVisible.length===0}/><span>Selecionar linhas</span></label>
     <div className="bankSearch"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar FITID, nome, histórico, valor..."/></div>
     {selectedTransactionCount>0&&<button className="bankBulkDelete" disabled={!canEdit||busy} onClick={()=>void deleteSelectedTransactions()}><Trash2 size={15}/>Excluir selecionadas ({selectedTransactionCount})</button>}

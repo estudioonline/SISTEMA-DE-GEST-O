@@ -553,6 +553,7 @@ function App(){
   const [financePanel,setFinancePanel]=useState<string|null>(null)
   const [financePanelReturnModule,setFinancePanelReturnModule]=useState<ModuleKey|null>(null)
   const [financePanelReturnSubtab,setFinancePanelReturnSubtab]=useState<'faturamento'|null>(null)
+  const [financeTransactionId,setFinanceTransactionId]=useState<string|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
   const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'faturamento'|'conciliacao'>('geral')
   const [financeStatusFilter,setFinanceStatusFilter]=useState<'todos'|'aberto'|'parcial'|'pago'|'cancelado'>('todos')
@@ -3873,7 +3874,7 @@ function App(){
                       </div>}
                       <button className="primary" onClick={()=>void registerPayment(t)}><CheckCircle2 size={15}/>{type==='receber'?'Receber':'Pagar'}</button>
                     </div>}
-                    <PaymentHistory titleId={t.id} onChanged={refreshFinance}/>
+                    <PaymentHistory titleId={t.id} onChanged={refreshFinance} onOpenTransaction={id=>{setFinanceTransactionId(id);setFinancePanel(null);setFinancePanelReturnModule(null);setFinancePanelReturnSubtab(null);setActive('financeiro');setFinanceSubtab('conciliacao')}}/>
                   </>}
 
                   {financePanelTab==='comprovantes'&&linked&&proofPanel(t.venda_id?'venda':'compra',String(t.venda_id||t.compra_id))}
@@ -5688,7 +5689,7 @@ function App(){
         </div>}
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
-        {financeSubtab==='conciliacao'&&<BankReconciliation titles={titulos} canEdit={canManageFinance} canClosePeriods={canManageConfig} onChanged={refreshFinance}/>}
+        {financeSubtab==='conciliacao'&&<BankReconciliation initialTransactionId={financeTransactionId} onClearTransaction={()=>setFinanceTransactionId(null)} titles={titulos} canEdit={canManageFinance} canClosePeriods={canManageConfig} onChanged={refreshFinance}/>}
 
       </section>}
       {active==='relatorios'&&<section className="semanticPage reportsPage">
