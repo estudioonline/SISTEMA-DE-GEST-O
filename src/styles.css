@@ -9091,3 +9091,224 @@ small{font-size:11px}
 .loginInputWrapClean .loginPasswordToggle{
   margin-left:auto;
 }
+
+/* Modo noturno da tela de login */
+.loginThemeToggle{
+  position:absolute;
+  top:22px;
+  right:24px;
+  z-index:30;
+  height:42px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:0 14px;
+  border:1px solid rgba(78,132,197,.22);
+  border-radius:12px;
+  background:rgba(255,255,255,.78);
+  color:#27476d;
+  font-weight:750;
+  box-shadow:0 8px 24px rgba(25,67,117,.09);
+  backdrop-filter:blur(12px);
+  cursor:pointer;
+}
+.loginThemeToggle:hover{
+  border-color:#8ab8ef;
+  background:#fff;
+}
+.loginPage.dark{
+  background:
+    radial-gradient(circle at 8% 2%,rgba(25,42,68,.95) 0 19%,transparent 19.3%),
+    radial-gradient(circle at 82% 13%,rgba(16,92,173,.22) 0 17%,transparent 17.3%),
+    radial-gradient(circle at 47% 100%,rgba(27,74,121,.24) 0 25%,transparent 25.3%),
+    linear-gradient(135deg,#07111f 0%,#0b1728 46%,#10233a 100%);
+}
+.loginPage.dark:before,
+.loginPage.dark:after{
+  border-color:rgba(72,146,232,.12);
+}
+.loginPage.dark .loginThemeToggle{
+  background:rgba(13,27,46,.82);
+  border-color:#29415f;
+  color:#d9e9fb;
+}
+.loginPage.dark .loginThemeToggle:hover{
+  background:#12233a;
+  border-color:#3c6594;
+}
+.loginPage.dark .loginBrand h1,
+.loginPage.dark .loginBenefits strong{
+  color:#f4f8ff;
+}
+.loginPage.dark .loginBrand p,
+.loginPage.dark .loginBenefits small{
+  color:#9fb1c9;
+}
+.loginPage.dark .loginBenefits span{
+  background:linear-gradient(145deg,#112743,#0d1d31);
+  border-color:#203c5f;
+  color:#65b0ff;
+  box-shadow:none;
+}
+.loginPage.dark .loginCard{
+  background:rgba(12,23,39,.94)!important;
+  border-color:#233a57!important;
+  box-shadow:0 30px 85px rgba(0,0,0,.34)!important;
+}
+.loginPage.dark .loginCard:before{
+  background:linear-gradient(145deg,rgba(255,255,255,.025),transparent 42%);
+}
+.loginPage.dark .loginCard h2,
+.loginPage.dark .loginField>span{
+  color:#f4f8ff!important;
+}
+.loginPage.dark .loginCard>p,
+.loginPage.dark .loginAssistRow,
+.loginPage.dark .loginSecure{
+  color:#9fb1c9;
+}
+.loginPage.dark .loginInputWrapClean{
+  background:linear-gradient(180deg,#111d2e 0%,#0d1725 100%)!important;
+  border-color:#2a405d!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+.loginPage.dark .loginInputWrapClean:hover{
+  border-color:#3b5c82!important;
+}
+.loginPage.dark .loginInputWrapClean:focus-within{
+  border-color:#3f92ff!important;
+  background:#0f1b2b!important;
+  box-shadow:
+    0 0 0 4px rgba(63,146,255,.13),
+    0 12px 28px rgba(0,0,0,.22)!important;
+}
+.loginPage.dark .loginInputIcon{
+  background:linear-gradient(180deg,#18304d,#11243b);
+  color:#81bfff;
+}
+.loginPage.dark .loginInputWrapClean input{
+  color:#f4f8ff!important;
+}
+.loginPage.dark .loginInputWrapClean input::placeholder{
+  color:#6f849f;
+}
+.loginPage.dark .loginPasswordToggle{
+  color:#7fa0c3;
+}
+.loginPage.dark .loginPasswordToggle:hover{
+  color:#8fc4ff;
+  background:#15283f;
+}
+.loginPage.dark .loginForgot{
+  color:#69aaff;
+}
+.loginPage.dark .loginSecure>span{
+  background:linear-gradient(90deg,transparent,#2f445f);
+}
+.loginPage.dark .loginSecure>span:last-child{
+  background:linear-gradient(90deg,#2f445f,transparent);
+}
+.loginPage.dark .loginDevice{
+  background:#0d1a2b;
+  border-color:#1b477b;
+  box-shadow:
+    0 34px 70px rgba(0,0,0,.38),
+    0 0 0 4px rgba(76,142,217,.08);
+}
+.loginPage.dark .loginDeviceTop,
+.loginPage.dark .loginDeviceTitle>strong,
+.loginPage.dark .loginMiniCards strong,
+.loginPage.dark .loginChartPanel>strong,
+.loginPage.dark .loginDonut strong,
+.loginPage.dark .loginGoals>strong{
+  color:#eef6ff;
+}
+.loginPage.dark .loginDeviceIcons,
+.loginPage.dark .loginMiniCards,
+.loginPage.dark .loginGoals>div{
+  color:#91a6c0;
+}
+.loginPage.dark .loginDeviceTitle>span,
+.loginPage.dark .loginMiniCards>div,
+.loginPage.dark .loginChartPanel,
+.loginPage.dark .loginGoals{
+  background:#122238;
+  border-color:#27405f;
+  color:#b7c7da;
+}
+.loginPage.dark .loginChart{
+  background:
+    linear-gradient(to top,rgba(37,111,201,.10),transparent 68%),
+    repeating-linear-gradient(to bottom,#0e1c2e 0 29px,#1a2d45 30px 31px);
+}
+.loginPage.dark .loginDonut:after{
+  background:#0d1a2b;
+}
+.loginPage.dark .loginGoals i{
+  background:#253b56;
+}
+.loginPage.dark .loginDeviceGlow{
+  background:rgba(32,104,193,.22);
+}
+.loginPage.dark .loginResetModal{
+  background:rgba(12,23,39,.98);
+  border-color:#29415f;
+  color:#eaf3ff;
+}
+.loginPage.dark .loginResetModal h2,
+.loginPage.dark .loginRecoveryField{
+  color:#f4f8ff;
+}
+.loginPage.dark .loginResetModal>p,
+.loginPage.dark .loginRecoveryBack{
+  color:#9fb1c9;
+}
+.loginPage.dark .loginResetClose{
+  background:#14263d;
+  color:#9eb6d0;
+}
+.loginPage.dark .loginResetSteps span{
+  background:#111f32;
+  border-color:#29415f;
+  color:#aec0d5;
+}
+.loginPage.dark .loginResetSteps b{
+  background:#183758;
+  color:#8fc4ff;
+}
+.loginRecoveryPage.dark{
+  background:
+    radial-gradient(circle at 18% 10%,rgba(23,41,66,.96) 0 18%,transparent 18.3%),
+    radial-gradient(circle at 82% 18%,rgba(23,96,169,.20) 0 17%,transparent 17.3%),
+    linear-gradient(135deg,#07111f,#0b1728 52%,#10233a);
+}
+.loginRecoveryPage.dark .loginRecoveryCard{
+  background:rgba(12,23,39,.98);
+  border-color:#29415f;
+  color:#eaf3ff;
+}
+.loginRecoveryPage.dark .loginRecoveryCard h2,
+.loginRecoveryPage.dark .loginRecoveryField{
+  color:#f4f8ff;
+}
+.loginRecoveryPage.dark .loginRecoveryCard>p{
+  color:#9fb1c9;
+}
+.loginRecoveryPage.dark .loginInputWrap{
+  background:#111d2e;
+  border-color:#2a405d;
+  color:#8eb3dc;
+}
+.loginRecoveryPage.dark .loginInputWrap input{
+  color:#f4f8ff!important;
+  background:transparent!important;
+}
+@media(max-width:600px){
+  .loginThemeToggle{
+    top:12px;
+    right:12px;
+    height:38px;
+    padding:0 10px;
+  }
+  .loginThemeToggle span{display:none}
+}
