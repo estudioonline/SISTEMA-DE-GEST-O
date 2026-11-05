@@ -2932,7 +2932,7 @@ function App(){
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
   if(!supabaseConfigured)return <div className="modulePlaceholder"><div className="panel" style={{maxWidth:620}}><h2>Sistema de Gestão publicado</h2><p>Configuração do Supabase ausente.</p></div></div>
-  if(recoveryMode&&session)return <div className="loginRecoveryPage">
+  if(recoveryMode&&session)return <div className={`loginRecoveryPage ${dark?'dark':''}`}>
     <form onSubmit={updateRecoveredPassword} className="loginRecoveryCard">
       <div className="loginRecoveryIcon"><KeyRound size={30}/></div>
       <span className="loginRecoveryEyebrow">Recuperação de acesso</span>
@@ -2952,7 +2952,11 @@ function App(){
     </form>
   </div>
 
-  if(!session)return <div className="loginPage loginPagePremium">
+  if(!session)return <div className={`loginPage loginPagePremium ${dark?'dark':''}`}>
+    <button type="button" className="loginThemeToggle" onClick={toggleTheme} aria-label={dark?'Ativar modo claro':'Ativar modo noturno'} title={dark?'Modo claro':'Modo noturno'}>
+      {dark?<Sun size={19}/>:<Moon size={19}/>}
+      <span>{dark?'Claro':'Noturno'}</span>
+    </button>
     <section className="loginInfo">
       <div className="loginBrand">
         <div className="loginBrandMark"><BarChart3 size={42}/></div>
