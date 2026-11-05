@@ -2976,16 +2976,16 @@ function App(){
 
       <label className="fieldLabel loginField">
         <span>E-mail</span>
-        <div className="loginInputWrap">
-          <Mail size={20}/>
+        <div className="loginInputWrap loginInputWrapClean">
+          <div className="loginInputIcon"><Mail size={18}/></div>
           <input type="email" autoComplete="username" placeholder="Digite seu e-mail" value={email} onChange={e=>setEmail(e.target.value)} required/>
         </div>
       </label>
 
       <label className="fieldLabel loginField">
         <span>Senha</span>
-        <div className="loginInputWrap">
-          <LockKeyhole size={20}/>
+        <div className="loginInputWrap loginInputWrapClean">
+          <div className="loginInputIcon"><LockKeyhole size={18}/></div>
           <input type={showLoginPassword?'text':'password'} autoComplete="current-password" placeholder="Digite sua senha" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6}/>
           <button type="button" className="loginPasswordToggle" onClick={()=>setShowLoginPassword(v=>!v)} aria-label={showLoginPassword?'Ocultar senha':'Mostrar senha'}>
             {showLoginPassword?<EyeOff size={20}/>:<Eye size={20}/>}
