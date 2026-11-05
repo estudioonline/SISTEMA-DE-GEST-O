@@ -39,6 +39,18 @@ type ApprovalBlocker = {
   detalhe?:string
 }
 
+type SaleSummary = {
+  id:string
+  cliente_id:string|null
+  vendedor_cadastro_id:string|null
+  venda_numero:number
+  total:number
+  forma_pagamento?:string|null
+  parcelas?:number|null
+  rota_entrega?:string|null
+  status?:string|null
+}
+
 type SummaryCounts = {
   pending:number
   critical:number
@@ -64,6 +76,7 @@ export function AuthorizationCenter({
   products,
   clients,
   sellers,
+  sales,
   onChanged,
   onOpenSale
 }:{
@@ -71,6 +84,7 @@ export function AuthorizationCenter({
   products:Product[]
   clients:{id:string;nome:string}[]
   sellers:{id:string;nome:string}[]
+  sales:SaleSummary[]
   onChanged:()=>Promise<void>
   onOpenSale?:(id:string)=>void
 }) {
@@ -154,13 +168,20 @@ export function AuthorizationCenter({
     return()=>{loadSequence.current++}
   },[reloadAll])
 
-  function buildMeta(row:Request){
-    const p=row.payload
-    const items=rowItems(row)
-    const blockers=rowBlockers(row)
-    const total=items.reduce((sum,item)=>sum+Number(item.quantidade)*Number(item.valor_unitario)-Number(item.desconto||0),0)
-    const clientName=clients.find(client=>client.id===p?.p_cliente_id)?.nome||'Consumidor'
-    const sellerName=sellers.find(seller=>seller.id===p?.p_vendedor_cadastro_id)?.nome||'Sem vendedor'
+  function buildMeta(row:Request,contextRows:Request[]=[]){
+    const structuredRow=row.payload?row:contextRows.find(candidate=>candidate.payload)||row
+    const p=structuredRow.payload
+    const items=rowItems(structuredRow)
+    const blockers=rowBlockers(structuredRow)
+    const saleId=row.resultado_id||row.entidade_id||String(row.payload?.p_venda_id||structuredRow.resultado_id||structuredRow.entidade_id||structuredRow.payload?.p_venda_id||'')
+    const sale=sales.find(candidate=>candidate.id===saleId)
+    const payloadTotal=items.reduce((sum,item)=>sum+Number(item.quantidade)*Number(item.valor_unitario)-Number(item.desconto||0),0)
+    const total=Number(sale?.total??payloadTotal)
+    const clientId=sale?.cliente_id||String(p?.p_cliente_id||'')
+    const sellerId=sale?.vendedor_cadastro_id||String(p?.p_vendedor_cadastro_id||'')
+    const clientName=clients.find(client=>client.id===clientId)?.nome||'Cliente não identificado'
+    const sellerName=sellers.find(seller=>seller.id===sellerId)?.nome||'Sem vendedor'
+    const saleNumber=sale?.venda_numero??null
 
     const hasStockShortage=items.some(item=>{
       const product=products.find(product=>product.id===item.produto_id)
@@ -176,11 +197,13 @@ export function AuthorizationCenter({
       return effective+0.000001<minimum
     })
 
-    const critical=blockers.some(blockerIsCritical)||hasStockShortage||hasBelowMinimum
-    const saleId=row.resultado_id||row.entidade_id||String(p?.p_venda_id||'')
-    const typeLabel=p?(row.entidade_id?'Orçamento → venda':p.p_venda_id?'Alteração de venda':'Nova venda'):row.tipo
+    const allBlockers=contextRows.length
+      ? Array.from(new Map(contextRows.flatMap(rowBlockers).map(blocker=>[(blocker.tipo||blocker.label),blocker])).values())
+      : blockers
+    const critical=allBlockers.some(blockerIsCritical)||hasStockShortage||hasBelowMinimum
+    const typeLabel=p?(structuredRow.entidade_id?'Orçamento → venda':p.p_venda_id?'Alteração de venda':'Nova venda'):row.tipo
 
-    return {p,items,blockers,total,clientName,sellerName,hasStockShortage,hasBelowMinimum,critical,saleId,typeLabel}
+    return {p,items,blockers:allBlockers,total,clientName,sellerName,hasStockShortage,hasBelowMinimum,critical,saleId,saleNumber,sale,typeLabel}
   }
 
   const groups=useMemo(()=>{
@@ -200,7 +223,7 @@ export function AuthorizationCenter({
   const filteredGroups=groups.filter(group=>{
     if(!search.trim())return true
     const query=normalize(search)
-    const latestMeta=buildMeta(group.latest)
+    const latestMeta=buildMeta(group.latest,group.requests)
     const haystack=[
       group.key,
       latestMeta.clientName,
@@ -213,8 +236,8 @@ export function AuthorizationCenter({
   })
 
   const selectedGroup=selectedKey?groups.find(group=>group.key===selectedKey)||null:null
-  const selectedRow=selectedGroup?.requests.find(request=>request.status==='pendente')||selectedGroup?.latest||null
-  const selectedMeta=selectedRow?buildMeta(selectedRow):null
+  const selectedRow=selectedGroup?.requests.find(request=>request.status==='pendente'&&request.payload)\n    ||selectedGroup?.requests.find(request=>request.status==='pendente')\n    ||selectedGroup?.requests.find(request=>request.payload)\n    ||selectedGroup?.latest\n    ||null
+  const selectedMeta=selectedRow&&selectedGroup?buildMeta(selectedRow,selectedGroup.requests):null
 
   async function decide(row:Request,approve:boolean){
     if(!admin||deciding.current||row.status!=='pendente')return
@@ -308,7 +331,7 @@ export function AuthorizationCenter({
       <div className="authorizationQueue">
         {filteredGroups.map(group=>{
           const latest=group.latest
-          const meta=buildMeta(latest)
+          const meta=buildMeta(latest,group.requests)
           const pendingCount=group.requests.filter(request=>request.status==='pendente').length
           const combinedBlockers=Array.from(new Map(group.requests.flatMap(rowBlockers).map(blocker=>[(blocker.tipo||blocker.label),blocker])).values())
           const visibleBlockers=combinedBlockers.slice(0,3)
