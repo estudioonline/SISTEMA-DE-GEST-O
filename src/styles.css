@@ -9774,3 +9774,80 @@ small{font-size:11px}
     max-height:calc(100vh - 20px);
   }
 }
+
+/* Situação atual do estoque no ajuste */
+.bulkAdjustmentStockSnapshot{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  padding:16px 20px 0;
+}
+.bulkAdjustmentStockSnapshot>div{
+  display:grid;
+  gap:4px;
+  padding:12px 14px;
+  border:1px solid var(--ds-border,#dbe3ef);
+  border-radius:10px;
+  background:var(--ds-surface-soft,#f8fafc);
+}
+.bulkAdjustmentStockSnapshot span{
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--ds-muted,#64748b);
+}
+.bulkAdjustmentStockSnapshot strong{
+  font-size:14px;
+  color:var(--ds-text,#0f172a);
+}
+.bulkAdjustmentStockState.normal{
+  background:#ecfdf3;
+  border-color:#bbf7d0;
+}
+.bulkAdjustmentStockState.normal strong{color:#166534}
+.bulkAdjustmentStockState.low{
+  background:#fff7ed;
+  border-color:#fed7aa;
+}
+.bulkAdjustmentStockState.low strong{color:#c2410c}
+.bulkAdjustmentStockState.zero{
+  background:#fef2f2;
+  border-color:#fecaca;
+}
+.bulkAdjustmentStockState.zero strong{color:#b91c1c}
+.bulkAdjustmentStockState.negative{
+  background:#fff1f2;
+  border-color:#fda4af;
+}
+.bulkAdjustmentStockState.negative strong{color:#be123c}
+.dark .bulkAdjustmentStockSnapshot>div{
+  background:#101827;
+  border-color:#334155;
+}
+.dark .bulkAdjustmentStockSnapshot span{
+  color:#94a3b8;
+}
+.dark .bulkAdjustmentStockSnapshot strong{
+  color:#f8fafc;
+}
+.dark .bulkAdjustmentStockState.normal{
+  background:#10251b;
+  border-color:#245b3d;
+}
+.dark .bulkAdjustmentStockState.normal strong{color:#86efac}
+.dark .bulkAdjustmentStockState.low{
+  background:#2a2112;
+  border-color:#6b4d1d;
+}
+.dark .bulkAdjustmentStockState.low strong{color:#fbbf24}
+.dark .bulkAdjustmentStockState.zero,
+.dark .bulkAdjustmentStockState.negative{
+  background:#2b1719;
+  border-color:#63313a;
+}
+.dark .bulkAdjustmentStockState.zero strong,
+.dark .bulkAdjustmentStockState.negative strong{color:#fca5a5}
+@media(max-width:720px){
+  .bulkAdjustmentStockSnapshot{grid-template-columns:1fr}
+}
