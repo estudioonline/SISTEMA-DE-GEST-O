@@ -1210,11 +1210,11 @@ function App(){
   async function deleteClient(c:Cliente){
     if(!(isAdmin&&canManageClients)){setMsg('Sem permissão para excluir clientes.');return}
     if(!await themedConfirm(`Excluir o cliente "${c.nome}"?`))return
-    const r=await supabase.from('clientes').delete().eq('id',c.id)
+    const r=await supabase.from('clientes').delete().eq('id',c.id).select('id')
     if(r.error?.code==='23503'){
       const d=await supabase.from('clientes').update({ativo:false}).eq('id',c.id)
       setMsg(d.error?d.error.message:'Cliente com histórico foi desativado.')
-    }else setMsg(r.error?r.error.message:'Cliente excluído.')
+    }else setMsg(r.error?r.error.message:r.data?.length?'Cliente excluído.':'Cliente não foi excluído. Atualize a tela e tente novamente.')
     await loadData()
   }
 
@@ -1237,11 +1237,11 @@ function App(){
   async function deleteSupplier(f:Fornecedor){
     if(!(isAdmin&&canManageSuppliers)){setMsg('Sem permissão para excluir fornecedores.');return}
     if(!await themedConfirm(`Excluir o fornecedor "${f.nome}"?`))return
-    const r=await supabase.from('fornecedores').delete().eq('id',f.id)
+    const r=await supabase.from('fornecedores').delete().eq('id',f.id).select('id')
     if(r.error?.code==='23503'){
       const d=await supabase.from('fornecedores').update({ativo:false}).eq('id',f.id)
       setMsg(d.error?d.error.message:'Fornecedor com histórico foi desativado.')
-    }else setMsg(r.error?r.error.message:'Fornecedor excluído.')
+    }else setMsg(r.error?r.error.message:r.data?.length?'Fornecedor excluído.':'Fornecedor não foi excluído. Atualize a tela e tente novamente.')
     await loadData()
   }
 
@@ -1444,12 +1444,13 @@ function App(){
   async function deleteProduct(p:Produto){
     if(!(isAdmin&&canManageProducts)){setMsg('Sem permissão para excluir produtos.');return false}
     if(!await themedConfirm(`Excluir o produto "${p.descricao}"?`,'Excluir produto','Excluir','danger'))return false
-    const r=await supabase.from('produtos').delete().eq('id',p.id)
+    const r=await supabase.from('produtos').delete().eq('id',p.id).select('id')
     if(r.error?.code==='23503'){
       const d=await supabase.from('produtos').update({ativo:false}).eq('id',p.id)
       if(d.error){setMsg(d.error.message);return false}
       setMsg('Produto com histórico foi desativado.')
     }else if(r.error){setMsg(r.error.message);return false}
+    else if(!r.data?.length){setMsg('Produto não foi excluído. Atualize a tela e tente novamente.');return false}
     else setMsg('Produto excluído.')
     await loadData()
     return true
@@ -1482,11 +1483,11 @@ function App(){
     if(!await themedConfirm('Excluir '+selected.length+' produto(s) selecionado(s)? Produtos com histórico serão apenas desativados.'))return false
     let deleted=0,deactivated=0,failed=0
     for(const p of selected){
-      const r=await supabase.from('produtos').delete().eq('id',p.id)
+      const r=await supabase.from('produtos').delete().eq('id',p.id).select('id')
       if(r.error?.code==='23503'){
         const d=await supabase.from('produtos').update({ativo:false}).eq('id',p.id)
         if(d.error)failed++;else deactivated++
-      }else if(r.error)failed++
+      }else if(r.error||!r.data?.length)failed++
       else deleted++
     }
     setMsg('Ação concluída: '+deleted+' excluído(s), '+deactivated+' desativado(s)'+(failed?', '+failed+' com erro':'')+'.')
@@ -2128,7 +2129,7 @@ function App(){
   }
 
   async function cancelSale(v:Venda){if(v.status==='cancelado'||!await themedConfirm(`Cancelar venda ${saleCode(v.venda_numero)}?`))return;const r=await supabase.from('vendas').update({status:'cancelado'}).eq('id',v.id);setMsg(r.error?r.error.message:'Venda cancelada e estoque/financeiro estornados.');if(!r.error){setSalePanel(null);await loadData()}}
-  async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!await themedConfirm(`Excluir venda ${saleCode(v.venda_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id);setMsg(r.error?r.error.message:'Venda excluída.');if(!r.error){setSalePanel(null);await loadData()}}
+  async function deleteSale(v:Venda){if(!(isAdmin&&canManageSales)){setMsg('Sem permissão para excluir venda.');return}if(!await themedConfirm(`Excluir venda ${saleCode(v.venda_numero)} definitivamente?`))return;const r=await supabase.from('vendas').delete().eq('id',v.id).select('id');setMsg(r.error?r.error.message:r.data?.length?'Venda excluída.':'Venda não foi excluída. Verifique vínculos de fatura, pagamentos ou histórico.');if(!r.error&&r.data?.length){setSalePanel(null);await loadData()}}
 
   // COMPRAS
   function resetPurchaseForm(){const base=today();setEditingPurchase(null);setPurchaseSupplier('');setPurchaseStatus('cotacao');setPurchaseNotes('');setPurchasePayment('pix');setPurchaseInstallments(1);setPurchaseDueDate(base);setPurchaseInstallmentDates([base]);setPurchaseItems([newPurchaseItem()])}
@@ -2368,7 +2369,7 @@ function App(){
     setMsg(r.error?r.error.message:c.status==='pedido_recebido'?'Pedido cancelado, estoque estornado e contas a pagar em aberto canceladas.':c.status==='pedido_aprovado'?'Pedido cancelado e contas a pagar em aberto canceladas.':'Cotação cancelada.')
     if(!r.error){setPurchasePanel(null);await loadData()}
   }
-  async function deletePurchase(c:Compra){if(!(isAdmin&&canManagePurchases)){setMsg('Sem permissão para excluir compra.');return}if(!await themedConfirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id);setMsg(r.error?r.error.message:'Compra excluída.');if(!r.error){setPurchasePanel(null);await loadData()}}
+  async function deletePurchase(c:Compra){if(!(isAdmin&&canManagePurchases)){setMsg('Sem permissão para excluir compra.');return}if(!await themedConfirm('Excluir esta compra definitivamente?'))return;const r=await supabase.from('compras').delete().eq('id',c.id).select('id');setMsg(r.error?r.error.message:r.data?.length?'Compra excluída.':'Compra não foi excluída. Verifique vínculos financeiros, recebimento ou histórico.');if(!r.error&&r.data?.length){setPurchasePanel(null);await loadData()}}
 
   // FINANCEIRO
   function startNewTitle(){
@@ -3139,15 +3140,16 @@ function App(){
   const low=produtos.filter(p=>p.ativo&&p.rastrear_estoque!==false&&p.tipo_produto!=='servico'&&Number(p.estoque_atual)<=Number(p.estoque_minimo)).length
   const stockValue=produtos.reduce((s,p)=>s+Number(p.estoque_atual)*Number(p.custo),0)
   const monthSales=vendas.filter(v=>{const d=new Date(v.created_at),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&v.status!=='cancelado'}).reduce((s,v)=>s+Number(v.total),0)
-  const openReceivables=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
-  const openPayables=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
-  const openReceivableCount=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0).length
-  const openPayableCount=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0).length
-  const financeCategories=Array.from(new Set(titulos.map(t=>t.categoria).filter((v):v is string=>Boolean(v)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))
-  const financeCenters=Array.from(new Set(titulos.map(t=>t.centro_custo).filter((v):v is string=>Boolean(v)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))
+  const financeTitles=titulos.filter(t=>!t.funcionario_id)
+  const openReceivables=financeTitles.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const openPayables=financeTitles.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const openReceivableCount=financeTitles.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0).length
+  const openPayableCount=financeTitles.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0).length
+  const financeCategories=Array.from(new Set(financeTitles.map(t=>t.categoria).filter((v):v is string=>Boolean(v)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))
+  const financeCenters=Array.from(new Set(financeTitles.map(t=>t.centro_custo).filter((v):v is string=>Boolean(v)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))
   const financeMonthStart=monthStartIso()
   const financeMonthEnd=monthEndIso()
-  const financeTitleById=new Map(titulos.map(t=>[t.id,t]))
+  const financeTitleById=new Map(financeTitles.map(t=>[t.id,t]))
   const financePaymentById=new Map(financePayments.map(p=>[p.id,p]))
   const monthMovement=(type:'receber'|'pagar')=>{
     const payments=financePayments
@@ -3165,12 +3167,12 @@ function App(){
   const paidThisMonth=monthMovement('pagar')
   const cashResultThisMonth=receivedThisMonth-paidThisMonth
   const next7End=addDaysIso(today(),6)
-  const dueNext7Receivable=titulos.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=today()&&t.vencimento<=next7End).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
-  const dueNext7Payable=titulos.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=today()&&t.vencimento<=next7End).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const dueNext7Receivable=financeTitles.filter(t=>t.tipo==='receber'&&t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=today()&&t.vencimento<=next7End).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
+  const dueNext7Payable=financeTitles.filter(t=>t.tipo==='pagar'&&t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=today()&&t.vencimento<=next7End).reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
   const financeProjectionRanges=[[0,6],[7,13],[14,20],[21,29]] as const
   const financeProjection=financeProjectionRanges.map(([from,to],index)=>{
     const start=addDaysIso(today(),from),end=addDaysIso(today(),to)
-    const relevant=titulos.filter(t=>t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=start&&t.vencimento<=end)
+    const relevant=financeTitles.filter(t=>t.status!=='pago'&&t.status!=='cancelado'&&t.vencimento>=start&&t.vencimento<=end)
     const receber=relevant.filter(t=>t.tipo==='receber').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
     const pagar=relevant.filter(t=>t.tipo==='pagar').reduce((s,t)=>s+Math.max(0,Number(t.valor)-Number(t.valor_pago)),0)
     return {label:index===0?'Próx. 7 dias':`${from+1}–${to+1} dias`,start,end,receber,pagar,liquido:receber-pagar}
@@ -3635,7 +3637,7 @@ function App(){
   }
 
   function filteredFinanceRows(type?:'receber'|'pagar',overdueOnly=false){
-    return titulos
+    return financeTitles
       .filter(t=>!type||t.tipo===type)
       .filter(t=>!overdueOnly||(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0))
       .filter(t=>financeStatusFilter==='todos'||t.status===financeStatusFilter)
@@ -3658,8 +3660,6 @@ function App(){
         const receivable=filteredFinanceRows('receber')
         const payable=filteredFinanceRows('pagar')
         const overdue=filteredFinanceRows(undefined,true)
-        const employees=titulos.filter(t=>t.tipo_funcionario==='gasto')
-        const advances=titulos.filter(t=>t.tipo_funcionario==='vale')
         mod.generateFinanceReportPdf({
           ...base,
           title:'Relatório Financeiro Consolidado',
@@ -3673,9 +3673,7 @@ function App(){
           sections:[
             {title:'Contas a receber',rows:mapFinanceReportRows(receivable)},
             {title:'Contas a pagar',rows:mapFinanceReportRows(payable)},
-            {title:'Vencidos',rows:mapFinanceReportRows(overdue)},
-            {title:'Gastos com funcionários',note:'Detalhamento dos lançamentos de funcionários já refletidos nas contas a pagar.',rows:mapFinanceReportRows(employees)},
-            {title:'Vales de funcionários',note:'Detalhamento dos vales já refletidos nas contas a pagar.',rows:mapFinanceReportRows(advances)}
+            {title:'Vencidos',rows:mapFinanceReportRows(overdue)}
           ]
         })
       }else if(kind==='receber'){
@@ -3705,7 +3703,7 @@ function App(){
 
   function financeTable(type:'receber'|'pagar',overdueOnly=false){
     const searchKey=(overdueOnly?'financeiro-vencidos-':'financeiro-')+(type==='receber'?'receber':'pagar')
-    const baseRows=titulos
+    const baseRows=financeTitles
       .filter(t=>t.tipo===type)
       .filter(t=>!overdueOnly||(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'&&Math.max(0,Number(t.valor)-Number(t.valor_pago))>0))
       .filter(t=>financeStatusFilter==='todos'||t.status===financeStatusFilter)
@@ -3727,8 +3725,8 @@ function App(){
           {rows.map(t=>{
             const opened=financePanel===t.id
             const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
-            const linked=Boolean(t.venda_id||t.compra_id)
-            const origin=t.venda_id?'Venda':t.compra_id?'Compra':'Manual'
+            const linked=Boolean(t.venda_id||t.compra_id||t.fatura_venda_id||t.funcionario_id)
+            const origin=t.venda_id?'Venda':t.compra_id?'Compra':t.fatura_venda_id?'Fatura de venda':t.funcionario_id?'RH':'Manual'
             return <Fragment key={t.id}>
               <tr {...recordRow(()=>{if(financePanel!==t.id)openFinancePanel(t)},t.descricao)} className={'recordRow '+(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueRow':'')}>
                 <td>{t.descricao}</td>
