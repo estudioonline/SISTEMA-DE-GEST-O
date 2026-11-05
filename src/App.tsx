@@ -4613,7 +4613,6 @@ function App(){
           </div>}
 
           <div className="saleBottomBar">
-            <button type="button" className="ghost saleQuickAdd" onClick={addSaleItem}><Plus size={16}/>Adicionar item rápido</button>
             <div className="saleBottomRight">
               <div className="saleTotals">
                 <div><span>Subtotal</span><strong>{money(saleSubtotal)}</strong></div>
