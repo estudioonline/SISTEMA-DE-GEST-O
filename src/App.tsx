@@ -4421,7 +4421,7 @@ function App(){
         </>}
 
         {productSubtab==='massa'&&<>
-          {!bulkAdjustmentOpen?<article className="panel bulkAdjustmentLanding">
+          <article className="panel bulkAdjustmentLanding">
             <div className="bulkAdjustmentLandingText">
               <div className="bulkAdjustmentIcon"><SlidersHorizontal size={22}/></div>
               <div>
@@ -4430,7 +4430,9 @@ function App(){
               </div>
             </div>
             <button type="button" className="primary bulkAdjustmentNewBtn" onClick={startBulkAdjustment} disabled={!canManageProducts}><Plus size={17}/>Novo ajuste</button>
-          </article>:<article className="panel bulkAdjustmentWorkspace">
+          </article>
+          {bulkAdjustmentOpen&&<div className="bulkAdjustmentScreenOverlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!savingBulkProducts){setBulkAdjustmentOpen(false);setBulkAdjustmentItems([]);setBulkAdjustmentPicker('');setBulkProductEdits({});setBulkAdjustmentEditingId(null)}}}>
+            <article className="panel bulkAdjustmentWorkspace bulkAdjustmentScreen" role="dialog" aria-modal="true" aria-label="Novo ajuste em massa">
             <div className="bulkAdjustmentHeader">
               <div>
                 <span className="bulkAdjustmentEyebrow">AJUSTE EM MASSA</span>
@@ -4534,7 +4536,8 @@ function App(){
                 </button>
               </div>
             </div>
-          </article>}
+          </article>
+          </div>}
         </>}
 
         {productSubtab==='grupos'&&<ProductGroupsManager groups={gruposProdutos} subgroups={subgruposProdutos} canEdit={canManageProducts} onReload={loadData} onMessage={setMsg}/>} 
