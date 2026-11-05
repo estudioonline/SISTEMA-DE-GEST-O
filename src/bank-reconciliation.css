@@ -899,3 +899,53 @@
 .bankRecon select{
   border-radius:var(--ds-radius-sm);
 }
+
+
+/* Mantém métricas dos diários em uma linha sem quebrar valores monetários */
+.bankRecon .bankJournalMetrics{
+  column-gap:12px;
+}
+.bankRecon .bankJournalMetrics span{
+  font-size:10px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.bankRecon .bankJournalMetrics strong{
+  font-size:clamp(18px,1.55vw,23px);
+  line-height:1.1;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+  letter-spacing:-.02em;
+}
+.bankRecon .bankJournalMetrics b{
+  font-size:clamp(14px,1.2vw,17px);
+  line-height:1.1;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.bankRecon .bankJournalMetrics.cashMetrics{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.bankRecon .bankJournalMetrics.cashMetrics strong{
+  font-size:clamp(17px,1.35vw,22px);
+}
+.bankRecon .bankJournalMetrics.cashMetrics b{
+  font-size:clamp(13px,1.05vw,16px);
+}
+@media(max-width:700px){
+  .bankRecon .bankJournalMetrics.cashMetrics{
+    grid-template-columns:1fr 1fr;
+  }
+  .bankRecon .bankJournalMetrics.cashMetrics>div:first-child{
+    grid-column:1/-1;
+  }
+  .bankRecon .bankJournalMetrics strong{
+    font-size:20px;
+  }
+  .bankRecon .bankJournalMetrics b{
+    font-size:15px;
+  }
+}
