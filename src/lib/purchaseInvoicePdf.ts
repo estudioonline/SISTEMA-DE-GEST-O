@@ -1,3 +1,4 @@
+import { purchaseCode } from './purchaseCode'
 import { financialInvoiceCode } from './invoiceCode'
 import { jsPDF } from 'jspdf'
 import type { InvoiceCompany } from './invoicePdf'
@@ -96,7 +97,11 @@ function drawHeader(doc:jsPDF,data:PurchasePdfData){
 
   doc.setTextColor(...blue)
   doc.setFontSize(18)
-  doc.text(`Compra nº ${financialInvoiceCode(data.fatura_numero)}`,196,45,{align:'right'})
+  doc.text(`Compra nº ${purchaseCode(data.fatura_numero)}`,196,45,{align:'right'})
+  if(data.status!=='cotacao'){
+    doc.setFontSize(9.2)
+    doc.text(`Fatura ${financialInvoiceCode(data.fatura_numero)}`,196,52,{align:'right'})
+  }
 }
 
 function drawSupplier(doc:jsPDF,data:PurchasePdfData){
@@ -161,7 +166,7 @@ function drawContinuationHeader(doc:jsPDF,data:PurchasePdfData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(13)
-  doc.text(`Compra nº ${financialInvoiceCode(data.fatura_numero)} - continuação`,196,16,{align:'right'})
+  doc.text(`Compra nº ${purchaseCode(data.fatura_numero)} - continuação`,196,16,{align:'right'})
 }
 
 function drawItems(doc:jsPDF,data:PurchasePdfData,startY:number){
@@ -285,7 +290,7 @@ function addFooters(doc:jsPDF,data:PurchasePdfData){
 export function generatePurchaseInvoicePdf(data:PurchasePdfData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
-    title:`Compra ${financialInvoiceCode(data.fatura_numero)}`,
+    title:`Compra ${purchaseCode(data.fatura_numero)}`,
     subject:'Fatura de compra a pagar',
     author:companyName(data)
   })
@@ -298,5 +303,5 @@ export function generatePurchaseInvoicePdf(data:PurchasePdfData){
   drawNotes(doc,data,y)
   addFooters(doc,data)
 
-  doc.save(`${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-${financialInvoiceCode(data.fatura_numero)}.pdf`)
+  doc.save(`${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-${purchaseCode(data.fatura_numero)}.pdf`)
 }

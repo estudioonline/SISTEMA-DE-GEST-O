@@ -1,4 +1,4 @@
-import { financialInvoiceCode } from './lib/invoiceCode'
+import { purchaseCode } from './lib/purchaseCode'
 import { useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { CheckCircle2, FileText, Link2, Plus, Upload, X } from 'lucide-react'
@@ -122,7 +122,7 @@ export function NfeImportModal({
       .maybeSingle()
 
     if(duplicate.error)throw duplicate.error
-    if(duplicate.data)throw new Error(`NF-e já importada na compra ${financialInvoiceCode(duplicate.data.fatura_numero)}.`)
+    if(duplicate.data)throw new Error(`NF-e já importada na compra ${purchaseCode(duplicate.data.fatura_numero)}.`)
 
     const mappings=await supabase
       .from('de_para_produtos')

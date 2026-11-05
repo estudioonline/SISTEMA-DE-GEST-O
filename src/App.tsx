@@ -1,3 +1,4 @@
+import { purchaseCode } from './lib/purchaseCode'
 import { financialInvoiceCode } from './lib/invoiceCode'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
@@ -2340,7 +2341,7 @@ function App(){
   async function receivePurchase(c:Compra){
     if(!canManagePurchases){setMsg('Sem permissão para receber compras.');return}
     if(c.status!=='pedido_aprovado')return
-    if(!await themedConfirm(`Confirmar o recebimento da compra ${financialInvoiceCode(c.fatura_numero)}? Os itens serão adicionados ao estoque.`))return
+    if(!await themedConfirm(`Confirmar o recebimento da compra ${purchaseCode(c.fatura_numero)}? Os itens serão adicionados ao estoque.`))return
 
     const r=await supabase.from('compras')
       .update({status:'pedido_recebido'})
@@ -2352,7 +2353,7 @@ function App(){
       return
     }
 
-    setMsg(`Compra ${financialInvoiceCode(c.fatura_numero)} recebida. Estoque atualizado com sucesso.`)
+    setMsg(`Compra ${purchaseCode(c.fatura_numero)} recebida. Estoque atualizado com sucesso.`)
     setPurchasePanel(null)
     await loadData()
   }
@@ -3394,8 +3395,8 @@ function App(){
   const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
   const pendingPurchases=compras.filter(c=>c.status==='pedido_aprovado')
   const purchaseTabRows=purchaseTab==='a_receber'?pendingPurchases:compras
-  const visiblePurchases=sortList('compras',purchaseTabRows.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[financialInvoiceCode(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])}),{
-    fatura:c=>Number(c.fatura_numero||0),data:c=>c.created_at,fornecedor:c=>fornecedores.find(x=>x.id===c.fornecedor_id)?.nome||'',status:c=>c.status,pagamento:c=>paymentLabel(c.forma_pagamento),total:c=>Number(c.total)
+  const visiblePurchases=sortList('compras',purchaseTabRows.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[purchaseCode(c.fatura_numero),financialInvoiceCode(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])}),{
+    codigo:c=>Number(c.fatura_numero||0),fatura:c=>Number(c.fatura_numero||0),data:c=>c.created_at,fornecedor:c=>fornecedores.find(x=>x.id===c.fornecedor_id)?.nome||'',status:c=>c.status,pagamento:c=>paymentLabel(c.forma_pagamento),total:c=>Number(c.total)
   })
   const pendingSaleApproval=(saleId:string)=>saleApprovals.find(a=>a.entidade_id===saleId)
   const saleStatusDisplay=(v:Venda)=>pendingSaleApproval(v.id)&&v.status==='orcamento'?'Orçamento • aguardando aprovação':v.status==='orcamento'?'Orçamento':v.status==='pedido'?'Pedido':v.status==='faturado'?'Faturado':'Cancelado'
@@ -4704,7 +4705,7 @@ function App(){
         onClose={()=>setShowNfeImport(false)}
         onImported={async result=>{
           setShowNfeImport(false)
-          setMsg(`NF-e importada com sucesso na compra ${financialInvoiceCode(result.fatura_numero)}. Pedido aprovado, aguardando recebimento. Financeiro atualizado; estoque será lançado ao receber a compra.`)
+          setMsg(`NF-e importada com sucesso na compra ${purchaseCode(result.fatura_numero)}. Pedido aprovado, aguardando recebimento. Financeiro atualizado; estoque será lançado ao receber a compra.`)
           await loadData()
         }}
       />}
@@ -4743,7 +4744,7 @@ function App(){
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingPurchase?'Editar compra':'Nova compra'}><div className="saleModalShell"><form className="panel saleForm purchaseForm saleModalForm" onSubmit={savePurchase}>
           <div className="formTitle saleModalTitle">
             <div>
-              <h3>{editingPurchase?`Editar compra ${financialInvoiceCode(editingPurchase.fatura_numero)}`:'Nova compra'}</h3>
+              <h3>{editingPurchase?`Editar compra ${purchaseCode(editingPurchase.fatura_numero)}`:'Nova compra'}</h3>
               <p>Cotação não gera financeiro nem estoque. Pedido aprovado confirma a fatura e gera contas a pagar. Pedido recebido lança a entrada no estoque.</p>
             </div>
             <button type="button" className="iconBtn saleModalClose" title="Fechar" aria-label="Fechar formulário de compra" onClick={()=>{setShowForm(false);resetPurchaseForm();requestAnimationFrame(()=>document.getElementById('purchases-table')?.focus())}}><X size={18}/></button>
@@ -4825,13 +4826,14 @@ function App(){
         <article id="purchases-table" tabIndex={-1} className="panel tablePanel purchasesTable">
           <div className="panelHead"><div><h3>{purchaseTab==='a_receber'?'Compras a receber':'Cotações, pedidos e compras'}</h3>{purchaseTab==='a_receber'&&<p>Pedidos aprovados aguardando chegada. Confirme o recebimento quando os produtos chegarem.</p>}</div><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
-            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fatura')}>Fatura{sortMark('compras','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','data')}>Data{sortMark('compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fornecedor')}>Fornecedor{sortMark('compras','fornecedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','status')}>Status{sortMark('compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','pagamento')}>Pagamento{sortMark('compras','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','total')}>Total{sortMark('compras','total')}</button></th><th>Gerenciar</th></tr></thead>
-            <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={purchaseTab==='a_receber'?(pendingPurchases.length===0?'Nenhuma compra aguardando chegada.':'Nenhuma compra a receber encontrada para esta pesquisa.'):compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={purchaseTab==='todas'&&compras.length===0&&canManagePurchases?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
+            <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','codigo')}>Código{sortMark('compras','codigo')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fatura')}>Fatura{sortMark('compras','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','data')}>Data{sortMark('compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fornecedor')}>Fornecedor{sortMark('compras','fornecedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','status')}>Status{sortMark('compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','pagamento')}>Pagamento{sortMark('compras','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','total')}>Total{sortMark('compras','total')}</button></th><th>Gerenciar</th></tr></thead>
+            <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={8}><EmptyState message={purchaseTab==='a_receber'?(pendingPurchases.length===0?'Nenhuma compra aguardando chegada.':'Nenhuma compra a receber encontrada para esta pesquisa.'):compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={purchaseTab==='todas'&&compras.length===0&&canManagePurchases?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
               return <Fragment key={c.id}>
-                <tr {...recordRow(()=>setPurchasePanel(c.id),'compra '+financialInvoiceCode(c.fatura_numero))}>
-                  <td><strong>{financialInvoiceCode(c.fatura_numero)}</strong></td>
+                <tr {...recordRow(()=>setPurchasePanel(c.id),'compra '+purchaseCode(c.fatura_numero))}>
+                  <td><strong>{purchaseCode(c.fatura_numero)}</strong></td>
+                  <td>{c.status==='cotacao'?'—':financialInvoiceCode(c.fatura_numero)}</td>
                   <td>{new Date(c.created_at).toLocaleString('pt-BR')}</td>
                   <td>{f?.nome||'Sem fornecedor'}</td>
                   <td><span className={`statusBadge status-${c.status==='pedido_recebido'?'faturado':c.status==='cancelada'?'cancelado':c.status==='pedido_aprovado'?'pedido':'orcamento'}`}>{purchaseStatusLabel(c.status)}</span></td>
@@ -4839,15 +4841,15 @@ function App(){
                   <td><strong>{money(Number(c.total))}</strong></td>
                   <td><div className="rowActions">{purchaseTab==='a_receber'&&canManagePurchases&&<button type="button" className="ghost receivePurchaseBtn" onDoubleClick={event=>event.stopPropagation()} onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}<button type="button" className="rowMenuBtn" onClick={()=>setPurchasePanel(opened?null:c.id)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></div></td>
                 </tr>
-                {opened&&<tr className="manageRow"><td colSpan={7}>
-                  <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={`Compra ${financialInvoiceCode(c.fatura_numero)}`}>
+                {opened&&<tr className="manageRow"><td colSpan={8}>
+                  <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={`Compra ${purchaseCode(c.fatura_numero)}`}>
                     <div className="recordDetailBackdrop" onClick={()=>setPurchasePanel(null)}/>
                     <div className="recordDetailSheet">
-                      <div className="recordDetailHeader"><strong>{c.status==='cotacao'?'Cotação':'Compra'} {financialInvoiceCode(c.fatura_numero)}</strong><button type="button" className="recordDetailClose" onClick={()=>setPurchasePanel(null)}><X size={17}/>Fechar</button></div>
+                      <div className="recordDetailHeader"><strong>{c.status==='cotacao'?'Cotação':'Compra'} {purchaseCode(c.fatura_numero)}</strong><button type="button" className="recordDetailClose" onClick={()=>setPurchasePanel(null)}><X size={17}/>Fechar</button></div>
                       <div className="invoiceManagePanel">
                     <div className="actionPanel">
                       <div className="actionMeta">
-                        <strong>{c.status==='cotacao'?'Cotação':'Fatura de compra'} {financialInvoiceCode(c.fatura_numero)}</strong>
+                        <strong>{c.status==='cotacao'?'Cotação '+purchaseCode(c.fatura_numero):'Fatura de compra '+financialInvoiceCode(c.fatura_numero)}</strong>
                         <span>{f?.nome||'Sem fornecedor'} • {paymentLabel(c.forma_pagamento)} • {c.parcelas}x • vencimentos individuais</span>
                       </div>
                       <div className="rowActions">
@@ -5630,7 +5632,7 @@ function App(){
       {active==='relatorios'&&<section className="semanticPage reportsPage">
         <div className="panel reportFilters"><label>De<input type="date" value={reportStart} onChange={e=>setReportStart(e.target.value)}/></label><label>Até<input type="date" value={reportEnd} onChange={e=>setReportEnd(e.target.value)}/></label><label>Status da venda<select value={reportStatus} onChange={e=>setReportStatus(e.target.value)}><option value="todos">Todos</option><option value="orcamento">Orçamento</option><option value="pedido">Pedido</option><option value="faturado">Faturado</option><option value="cancelado">Cancelado</option></select></label></div>
         <div className="cards compactCards semanticCards"><article className="card semanticCard semanticBlue"><span>Vendas no período</span><strong>{money(reportSalesTotal)}</strong><small>{filteredSales.length} registros</small></article><article className="card semanticCard semanticNegative"><span>Compras no período</span><strong>{money(reportPurchaseTotal)}</strong><small>{filteredPurchases.length} registros</small></article><article className={'card semanticCard '+(reportSalesTotal-reportPurchaseTotal>=0?'semanticPositive':'semanticNegative')}><span>Resultado bruto</span><strong>{money(reportSalesTotal-reportPurchaseTotal)}</strong><small>vendas - compras</small></article></div>
-        <div className="reportsStack"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','fatura')}>Fatura{sortMark('relatorio-vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','data')}>Data{sortMark('relatorio-vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','status')}>Status{sortMark('relatorio-vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','total')}>Total{sortMark('relatorio-vendas','total')}</button></th></tr></thead><tbody>{sortList('relatorio-vendas',filteredSales.filter(v=>searchMatches('relatorio-vendas',[saleCode(v.venda_numero),dateBr(v.created_at),v.status,money(Number(v.total))])),{fatura:v=>Number(v.venda_numero||0),data:v=>v.created_at,status:v=>v.status,total:v=>Number(v.total)}).map(v=><tr key={v.id} {...recordRow(()=>{setActive('vendas');setSalePanel(v.id)},'venda '+saleCode(v.venda_numero))}><td>#{saleCode(v.venda_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','data')}>Data{sortMark('relatorio-compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','status')}>Status{sortMark('relatorio-compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','total')}>Total{sortMark('relatorio-compras','total')}</button></th></tr></thead><tbody>{sortList('relatorio-compras',filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])),{data:c=>c.created_at,status:c=>c.status,total:c=>Number(c.total)}).map(c=><tr key={c.id} {...recordRow(()=>{setActive('compras');setPurchasePanel(c.id)},'compra '+financialInvoiceCode(c.fatura_numero))}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
+        <div className="reportsStack"><article className="panel tablePanel"><div className="panelHead"><h3>Vendas filtradas</h3><SearchField value={tableSearch['relatorio-vendas']||''} onChange={v=>setSearch('relatorio-vendas',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','fatura')}>Fatura{sortMark('relatorio-vendas','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','data')}>Data{sortMark('relatorio-vendas','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','status')}>Status{sortMark('relatorio-vendas','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-vendas','total')}>Total{sortMark('relatorio-vendas','total')}</button></th></tr></thead><tbody>{sortList('relatorio-vendas',filteredSales.filter(v=>searchMatches('relatorio-vendas',[saleCode(v.venda_numero),dateBr(v.created_at),v.status,money(Number(v.total))])),{fatura:v=>Number(v.venda_numero||0),data:v=>v.created_at,status:v=>v.status,total:v=>Number(v.total)}).map(v=><tr key={v.id} {...recordRow(()=>{setActive('vendas');setSalePanel(v.id)},'venda '+saleCode(v.venda_numero))}><td>#{saleCode(v.venda_numero)}</td><td>{dateBr(v.created_at)}</td><td>{v.status}</td><td>{money(Number(v.total))}</td></tr>)}</tbody></table></div></article><article className="panel tablePanel"><div className="panelHead"><h3>Compras filtradas</h3><SearchField value={tableSearch['relatorio-compras']||''} onChange={v=>setSearch('relatorio-compras',v)} placeholder="Pesquisar"/></div><div className="tableWrap"><table><thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','data')}>Data{sortMark('relatorio-compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','status')}>Status{sortMark('relatorio-compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('relatorio-compras','total')}>Total{sortMark('relatorio-compras','total')}</button></th></tr></thead><tbody>{sortList('relatorio-compras',filteredPurchases.filter(c=>searchMatches('relatorio-compras',[dateBr(c.created_at),c.status,money(Number(c.total))])),{data:c=>c.created_at,status:c=>c.status,total:c=>Number(c.total)}).map(c=><tr key={c.id} {...recordRow(()=>{setActive('compras');setPurchasePanel(c.id)},'compra '+purchaseCode(c.fatura_numero))}><td>{dateBr(c.created_at)}</td><td>{c.status}</td><td>{money(Number(c.total))}</td></tr>)}</tbody></table></div></article></div>
       </section>}
 
       {active==='config'&&<section>
