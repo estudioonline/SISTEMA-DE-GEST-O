@@ -9558,3 +9558,27 @@ small{font-size:11px}
     flex:1;
   }
 }
+
+/* Correção autofill escuro do login */
+.loginPage.dark .loginInputWrapClean{
+  background:linear-gradient(180deg,#111d2e 0%,#0d1725 100%)!important;
+  border-color:#2a405d!important;
+}
+
+.loginPage.dark .loginInputWrapClean input{
+  background:transparent!important;
+  color:#f4f8ff!important;
+  -webkit-text-fill-color:#f4f8ff!important;
+  box-shadow:none!important;
+}
+
+.loginPage.dark .loginInputWrapClean input:-webkit-autofill,
+.loginPage.dark .loginInputWrapClean input:-webkit-autofill:hover,
+.loginPage.dark .loginInputWrapClean input:-webkit-autofill:focus,
+.loginPage.dark .loginInputWrapClean input:-webkit-autofill:active{
+  -webkit-text-fill-color:#f4f8ff!important;
+  -webkit-box-shadow:0 0 0 1000px #0f1b2b inset!important;
+  box-shadow:0 0 0 1000px #0f1b2b inset!important;
+  caret-color:#f4f8ff!important;
+  transition:background-color 9999s ease-in-out 0s;
+}
