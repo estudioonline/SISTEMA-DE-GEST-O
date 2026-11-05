@@ -536,6 +536,7 @@ function App(){
 
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
   const [purchasePanel,setPurchasePanel]=useState<string|null>(null)
+  const [purchaseTab,setPurchaseTab]=useState<'todas'|'a_receber'>('todas')
   const [purchaseSupplier,setPurchaseSupplier]=useState('')
   const [purchaseStatus,setPurchaseStatus]=useState('cotacao')
   const [purchaseNotes,setPurchaseNotes]=useState('')
@@ -3392,7 +3393,9 @@ function App(){
   const commissionReceived=comissoes.reduce((s,c)=>s+Number(c.total_recebido),0)
   const commissionTotal=comissoes.reduce((s,c)=>s+Number(c.comissao_apurada),0)
   const salesWithoutSeller=vendas.filter(v=>v.status!=='cancelado'&&!v.vendedor_cadastro_id).length
-  const visiblePurchases=sortList('compras',compras.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])}),{
+  const pendingPurchases=compras.filter(c=>c.status==='pedido_aprovado')
+  const purchaseTabRows=purchaseTab==='a_receber'?pendingPurchases:compras
+  const visiblePurchases=sortList('compras',purchaseTabRows.filter(c=>{const f=fornecedores.find(x=>x.id===c.fornecedor_id);return searchMatches('compras',[invoiceNo(c.fatura_numero),new Date(c.created_at).toLocaleString('pt-BR'),f?.nome||'Sem fornecedor',c.status,paymentLabel(c.forma_pagamento),c.parcelas,money(Number(c.total))])}),{
     fatura:c=>Number(c.fatura_numero||0),data:c=>c.created_at,fornecedor:c=>fornecedores.find(x=>x.id===c.fornecedor_id)?.nome||'',status:c=>c.status,pagamento:c=>paymentLabel(c.forma_pagamento),total:c=>Number(c.total)
   })
   const pendingSaleApproval=(saleId:string)=>saleApprovals.find(a=>a.entidade_id===saleId)
@@ -4708,7 +4711,11 @@ function App(){
       />}
 
       {active==='compras'&&<section className="semanticPage purchasesPage">
-        <article className="panel purchaseSuggestionPanel">
+        <div className="subTabs" aria-label="Listas de compras">
+          <button type="button" className={purchaseTab==='todas'?'subTab active':'subTab'} aria-pressed={purchaseTab==='todas'} onClick={()=>{setPurchaseTab('todas');setPurchasePanel(null)}}><ShoppingCart size={16}/>Todas as compras ({compras.length})</button>
+          <button type="button" className={purchaseTab==='a_receber'?'subTab active':'subTab'} aria-pressed={purchaseTab==='a_receber'} onClick={()=>{setPurchaseTab('a_receber');setPurchasePanel(null)}}><Package size={16}/>A receber ({pendingPurchases.length})</button>
+        </div>
+        {purchaseTab==='todas'&&<article className="panel purchaseSuggestionPanel">
           <div className="purchaseSuggestionHead">
             <div>
               <span className="purchaseSuggestionEyebrow">Reposição de estoque</span>
@@ -4732,7 +4739,7 @@ function App(){
               <td><button type="button" className="ghost purchaseSuggestionAdd" onClick={()=>addPurchaseSuggestion(s.produto,s.suggested)}><Plus size={15}/>Adicionar</button></td>
             </tr>)}</tbody>
           </table></div>}
-        </article>
+        </article>}
 
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingPurchase?'Editar compra':'Nova compra'}><div className="saleModalShell"><form className="panel saleForm purchaseForm saleModalForm" onSubmit={savePurchase}>
           <div className="formTitle saleModalTitle">
@@ -4817,10 +4824,10 @@ function App(){
         </form></div></div>}
 
         <article id="purchases-table" tabIndex={-1} className="panel tablePanel purchasesTable">
-          <div className="panelHead"><h3>Cotações, pedidos e compras</h3><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
+          <div className="panelHead"><div><h3>{purchaseTab==='a_receber'?'Compras a receber':'Cotações, pedidos e compras'}</h3>{purchaseTab==='a_receber'&&<p>Pedidos aprovados aguardando chegada. Confirme o recebimento quando os produtos chegarem.</p>}</div><SearchField value={tableSearch.compras||''} onChange={v=>setSearch('compras',v)} placeholder="Pesquisar em todas as colunas"/></div>
           <div className="tableWrap"><table>
             <thead><tr><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fatura')}>Fatura{sortMark('compras','fatura')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','data')}>Data{sortMark('compras','data')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','fornecedor')}>Fornecedor{sortMark('compras','fornecedor')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','status')}>Status{sortMark('compras','status')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','pagamento')}>Pagamento{sortMark('compras','pagamento')}</button></th><th><button className="tableSortBtn" onClick={()=>toggleSort('compras','total')}>Total{sortMark('compras','total')}</button></th><th>Gerenciar</th></tr></thead>
-            <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={compras.length===0&&canManagePurchases?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
+            <tbody>{visiblePurchases.length===0&&<tr className="emptyTableRow"><td colSpan={7}><EmptyState message={purchaseTab==='a_receber'?(pendingPurchases.length===0?'Nenhuma compra aguardando chegada.':'Nenhuma compra a receber encontrada para esta pesquisa.'):compras.length===0?'Nenhuma compra cadastrada.':'Nenhuma compra encontrada para esta pesquisa.'} actionLabel={purchaseTab==='todas'&&compras.length===0&&canManagePurchases?'+ Adicionar Compra':undefined} onAction={startNewPurchase}/></td></tr>}{visiblePurchases.map(c=>{
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
               return <Fragment key={c.id}>
@@ -4831,7 +4838,7 @@ function App(){
                   <td><span className={`statusBadge status-${c.status==='pedido_recebido'?'faturado':c.status==='cancelada'?'cancelado':c.status==='pedido_aprovado'?'pedido':'orcamento'}`}>{purchaseStatusLabel(c.status)}</span></td>
                   <td>{paymentLabel(c.forma_pagamento)} {Number(c.parcelas)>1?`• ${c.parcelas}x`:''}</td>
                   <td><strong>{money(Number(c.total))}</strong></td>
-                  <td><button className="rowMenuBtn" onClick={()=>setPurchasePanel(opened?null:c.id)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></td>
+                  <td><div className="rowActions">{purchaseTab==='a_receber'&&canManagePurchases&&<button type="button" className="ghost receivePurchaseBtn" onDoubleClick={event=>event.stopPropagation()} onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}<button type="button" className="rowMenuBtn" onClick={()=>setPurchasePanel(opened?null:c.id)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></div></td>
                 </tr>
                 {opened&&<tr className="manageRow"><td colSpan={7}>
                   <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={`Compra #${invoiceNo(c.fatura_numero)}`}>
