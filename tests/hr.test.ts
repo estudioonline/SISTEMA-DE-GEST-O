@@ -3,14 +3,15 @@ import assert from 'node:assert/strict'
 import {appPermission,calculatePayroll,calculateHrEntitlements,hrSectionForTitle,summarizeHr} from '../src/lib/hr.ts'
 import {canViewPermission,canEditPermission,defaultPermissionsForRole} from '../src/lib/permissions.ts'
 
-test('RH reuses Financeiro access; every profile can view and only configured profiles can edit',()=>{
+test('RH has independent access from Financeiro',()=>{
+ assert.equal(appPermission('rh'),'rh')
  for(const role of ['administrador','financeiro','vendas','estoque','visualizador']){
   const map=defaultPermissionsForRole(role)
-  assert.equal(canViewPermission(map,appPermission('rh')),true)
-  assert.equal(canViewPermission(map,appPermission('rh')),canViewPermission(map,'financeiro'))
-  assert.equal(canEditPermission(map,appPermission('rh')),canEditPermission(map,'financeiro'))
+  assert.equal(canViewPermission(map,'rh'),true)
  }
- assert.equal(canEditPermission(defaultPermissionsForRole('vendas'),appPermission('rh')),false)
+ assert.equal(canEditPermission(defaultPermissionsForRole('administrador'),'rh'),true)
+ assert.equal(canEditPermission(defaultPermissionsForRole('financeiro'),'rh'),false)
+ assert.equal(canEditPermission(defaultPermissionsForRole('vendas'),'rh'),false)
 })
 test('net payroll uses exact cents; missing, invalid or excessive deductions do not create a payable',()=>{
  assert.deepEqual(calculatePayroll('1935.00','145.13','300.00'),{bruto:1935,descontos:145.13,vales:300,liquido:1489.87})
