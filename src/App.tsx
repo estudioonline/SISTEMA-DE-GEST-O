@@ -394,6 +394,8 @@ function App(){
   const [accessError,setAccessError]=useState('')
   const [loginBusy,setLoginBusy]=useState(false)
   const [showLoginPassword,setShowLoginPassword]=useState(false)
+  const [rememberLogin,setRememberLogin]=useState(()=>{try{return localStorage.getItem('sg-auth-remember')==='1'}catch{return false}})
+  const [resetBusy,setResetBusy]=useState(false)
   const [savingCompany,setSavingCompany]=useState(false)
   const [configSection,setConfigSection]=useState<'empresa'|'usuarios'|'integracoes'|'financeiro'>('empresa')
   const dataLoadSequence=useRef(0)
@@ -1033,10 +1035,29 @@ function App(){
   async function login(e:FormEvent){
     e.preventDefault();if(loginBusy)return;setMsg('');setLoginBusy(true)
     try{
+      try{
+        if(rememberLogin)localStorage.setItem('sg-auth-remember','1')
+        else localStorage.removeItem('sg-auth-remember')
+      }catch{/* armazenamento indisponível */}
       const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password})
       if(error)setMsg('Não foi possível entrar. Verifique e-mail e senha.')
       else if(data.user){try{sessionStorage.setItem(`sg-erp-activity:${data.user.id}`,String(Date.now()))}catch{/* controle em memória */}}
     }catch{setMsg('Não foi possível conectar. Tente novamente.')}finally{setLoginBusy(false)}
+  }
+
+  async function recoverPassword(){
+    if(resetBusy)return
+    const target=email.trim()
+    if(!target){setMsg('Informe seu e-mail para receber o link de recuperação.');return}
+    setResetBusy(true);setMsg('')
+    try{
+      const redirectTo=`${window.location.origin}${window.location.pathname}`
+      const {error}=await supabase.auth.resetPasswordForEmail(target,{redirectTo})
+      if(error)throw error
+      setMsg('E-mail de recuperação enviado. Verifique sua caixa de entrada e o spam.')
+    }catch(error){
+      setMsg((error as {message?:string}).message||'Não foi possível enviar o e-mail de recuperação.')
+    }finally{setResetBusy(false)}
   }
 
   function closeForms(){
@@ -2917,8 +2938,12 @@ function App(){
       </label>
 
       <div className="loginAssistRow">
-        <span className="loginRemember"><span className="loginRememberBox">✓</span>Lembrar-me</span>
-        <span className="loginForgot">Esqueci minha senha</span>
+        <label className="loginRemember">
+          <input type="checkbox" checked={rememberLogin} onChange={e=>setRememberLogin(e.target.checked)}/>
+          <span className="loginRememberBox">{rememberLogin?'✓':''}</span>
+          Lembrar-me
+        </label>
+        <button type="button" className="loginForgot" onClick={recoverPassword} disabled={resetBusy}>{resetBusy?'Enviando...':'Esqueci minha senha'}</button>
       </div>
 
       <button className="primary loginSubmit" disabled={loginBusy}><LogIn size={21}/>{loginBusy?'Entrando...':'Entrar'}</button>
