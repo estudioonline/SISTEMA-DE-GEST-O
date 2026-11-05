@@ -4762,8 +4762,8 @@ function App(){
                     const product=produtos.find(p=>p.id===entry.produto_id)
                     return <tr key={'layout-item-'+index}>
                       <td>{product&&isAdmin&&canManageProducts
-                        ? <><button type="button" className="saleProductLink" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product,v.id)}} title="Abrir produto para editar">{product.descricao}</button><br/><small>{product.codigo||''}</small></>
-                        : <><strong>{product?.descricao||'Produto'}</strong><br/><small>{product?.codigo||''}</small></>}</td>
+                        ? <button type="button" className="saleProductLink saleProductInline" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product,v.id)}} title="Abrir produto para editar">{product.codigo?product.codigo+' — ':''}{product.descricao}</button>
+                        : <strong className="saleProductInline">{product?.codigo?product.codigo+' — ':''}{product?.descricao||'Produto'}</strong>}</td>
                       <td>{Number(entry.quantidade).toLocaleString('pt-BR')}</td>
                       <td>{money(Number(entry.valor_unitario))}</td>
                       <td>{money(Number(entry.desconto))}</td>
@@ -4773,8 +4773,8 @@ function App(){
                     const product=produtos.find(p=>p.id===item.produto_id)
                     return <tr key={item.produto_id+'-'+index}>
                       <td>{product&&isAdmin&&canManageProducts
-                        ? <><button type="button" className="saleProductLink" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product,v.id)}} title="Abrir produto para editar">{product.descricao}</button><br/><small>{product.codigo||''}</small></>
-                        : <><strong>{product?.descricao||'Produto'}</strong><br/><small>{product?.codigo||''}</small></>}</td>
+                        ? <button type="button" className="saleProductLink saleProductInline" onClick={()=>{closeSaleDetail();setActive('produtos');setProductSubtab('cadastro');startEditProduct(product,v.id)}} title="Abrir produto para editar">{product.codigo?product.codigo+' — ':''}{product.descricao}</button>
+                        : <strong className="saleProductInline">{product?.codigo?product.codigo+' — ':''}{product?.descricao||'Produto'}</strong>}</td>
                       <td>{Number(item.quantidade).toLocaleString('pt-BR')}</td>
                       <td>{money(Number(item.valor_unitario))}</td>
                       <td>{money(Number(item.desconto))}</td>
