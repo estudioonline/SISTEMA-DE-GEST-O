@@ -497,6 +497,8 @@ function App(){
   const [saleOrder,setSaleOrder]=useState<string[]>([])
   const [quoteModelPicker,setQuoteModelPicker]=useState(false)
   const [quoteModelSearch,setQuoteModelSearch]=useState('')
+  const [globalDiscountOpen,setGlobalDiscountOpen]=useState(false)
+  const [globalDiscountPercent,setGlobalDiscountPercent]=useState('')
   const [originalSaleItems,setOriginalSaleItems]=useState<VendaItem[]>([])
   const [saleCreditState,setSaleCreditState]=useState<{em_aberto:number;vencido:number}|null>(null)
   const [savingSale,setSavingSale]=useState(false)
@@ -1561,6 +1563,16 @@ function App(){
     }:i))
   }
   function updateSaleItem(key:string,field:'quantidade'|'valor_unitario'|'desconto',value:number){setSaleItems(items=>items.map(i=>i.key===key?{...i,[field]:Math.max(0,value||0)}:i))}
+  function applyGlobalDiscount(){
+    const pct=Math.max(0,Math.min(100,Number(globalDiscountPercent.replace(',','.'))||0))
+    setSaleItems(items=>items.map(item=>{
+      const gross=Math.max(0,Number(item.quantidade||0)*Number(item.valor_unitario||0))
+      const discount=Math.round(gross*(pct/100)*100)/100
+      return {...item,desconto:discount}
+    }))
+    setGlobalDiscountPercent(String(pct).replace('.',','))
+    setGlobalDiscountOpen(false)
+  }
   function updateSaleItemNote(key:string,value:string){setSaleItems(items=>items.map(i=>i.key===key?{...i,observacao_item:value.slice(0,240)}:i))}
   function updateSaleRecipeItem(itemKey:string,recipeKey:string,field:'componente_id'|'quantidade'|'valor_unitario',value:string|number){
     setSaleItems(items=>items.map(item=>item.key===itemKey?{...item,receita_producao:item.receita_producao.map(row=>{
@@ -4529,6 +4541,7 @@ function App(){
           <div className="saleItemsHead">
             <h3><ShoppingCart size={21}/>Itens</h3>
             <div className="saleItemQuickActions">
+              <button type="button" className="ghost saleGlobalDiscountBtn" onClick={()=>{setGlobalDiscountPercent(saleDiscountPct>0?saleDiscountPct.toFixed(2).replace('.',','):'');setGlobalDiscountOpen(true)}}><BadgeDollarSign size={16}/>Desconto global</button>
               <button type="button" className="ghost" onClick={()=>void addSaleSection()}><Plus size={16}/>Adicionar seção</button>
               <button type="button" className="ghost quoteModelBtn" onClick={()=>{setQuoteModelSearch('');setQuoteModelPicker(true)}}><Boxes size={16}/>Modelo de cotação</button>
             </div>
@@ -4632,6 +4645,29 @@ function App(){
             </div>
           </div>
         </form></div></div>}
+
+        {globalDiscountOpen&&showForm&&<div className="saleModalOverlay quoteModelOverlay" role="dialog" aria-modal="true" aria-label="Desconto global">
+          <div className="globalDiscountDialog">
+            <div className="globalDiscountHeader">
+              <div><strong>Desconto global</strong><span>Aplicar o mesmo percentual proporcionalmente em todos os itens desta venda.</span></div>
+              <button type="button" className="iconBtn" onClick={()=>setGlobalDiscountOpen(false)} aria-label="Fechar"><X size={17}/></button>
+            </div>
+            <label className="globalDiscountField">
+              <span>Percentual de desconto (%)</span>
+              <input autoFocus type="text" inputMode="decimal" value={globalDiscountPercent} onChange={e=>setGlobalDiscountPercent(e.target.value.replace(/[^0-9,.]/g,''))} placeholder="Ex.: 5"/>
+              <small>O desconto será distribuído entre os itens conforme o valor bruto de cada linha.</small>
+            </label>
+            <div className="globalDiscountPreview">
+              <span>Subtotal atual <strong>{money(saleSubtotal)}</strong></span>
+              <span>Desconto estimado <strong>{money(saleSubtotal*(Math.max(0,Math.min(100,Number(globalDiscountPercent.replace(',','.'))||0))/100))}</strong></span>
+              <span>Total estimado <strong>{money(saleSubtotal*(1-Math.max(0,Math.min(100,Number(globalDiscountPercent.replace(',','.'))||0))/100))}</strong></span>
+            </div>
+            <div className="globalDiscountActions">
+              <button type="button" className="ghost" onClick={()=>setGlobalDiscountOpen(false)}>Cancelar</button>
+              <button type="button" className="primary" onClick={applyGlobalDiscount}>Aplicar desconto</button>
+            </div>
+          </div>
+        </div>}
 
         {quoteModelPicker&&showForm&&<div className="saleModalOverlay quoteModelOverlay" role="dialog" aria-modal="true" aria-label="Modelo de cotação">
           <div className="quoteModelDialog">
