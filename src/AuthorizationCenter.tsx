@@ -236,7 +236,11 @@ export function AuthorizationCenter({
   })
 
   const selectedGroup=selectedKey?groups.find(group=>group.key===selectedKey)||null:null
-  const selectedRow=selectedGroup?.requests.find(request=>request.status==='pendente'&&request.payload)\n    ||selectedGroup?.requests.find(request=>request.status==='pendente')\n    ||selectedGroup?.requests.find(request=>request.payload)\n    ||selectedGroup?.latest\n    ||null
+  const selectedRow=selectedGroup?.requests.find(request=>request.status==='pendente'&&request.payload)
+    ||selectedGroup?.requests.find(request=>request.status==='pendente')
+    ||selectedGroup?.requests.find(request=>request.payload)
+    ||selectedGroup?.latest
+    ||null
   const selectedMeta=selectedRow&&selectedGroup?buildMeta(selectedRow,selectedGroup.requests):null
 
   async function decide(row:Request,approve:boolean){
