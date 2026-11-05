@@ -8346,3 +8346,23 @@ small{font-size:11px}
 .dark .salesPage .saleTotals .grandTotal strong{
   color:#ffffff!important;
 }
+
+
+/* Ajuste fino do total por item */
+.salesPage .saleItemSortableRow>strong{
+  min-height:100%;
+  align-self:stretch;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  padding:0 12px!important;
+  line-height:1;
+}
+.dark .salesPage .saleItemSortableRow>strong{
+  color:#f8fafc!important;
+  font-weight:700;
+}
+.app:not(.dark) .salesPage .saleItemSortableRow>strong{
+  color:#0f172a!important;
+  font-weight:700;
+}
