@@ -49,6 +49,7 @@ export function FocusNfeSettings(){
  </section>
 }
 const labels:Record<string,string>={rascunho:'Rascunho',enviando:'Enviando',processando_autorizacao:'Aguardando autorização',autorizado:'Autorizada em teste',erro_autorizacao:'Erro de autorização',rejeitado:'Rejeitada',incerto:'Resposta não confirmada',nao_encontrado:'Não localizada na Focus',cancelado:'Cancelada',denegado:'Denegada'}
+const localIsoDate=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})
 type FiscalClient={nome:string;documento:string;logradouro?:string|null;numero?:string|null;bairro?:string|null;municipio?:string|null;codigo_municipio?:string|null;uf?:string|null;cep?:string|null;indicador_ie?:string|null;inscricao_estadual?:string|null;consumidor_final?:boolean|null;presenca_comprador?:number|null}
 type FiscalProduct={descricao:string;codigo:string;ncm?:string|null;cfop_interno?:string|null;cfop_interestadual?:string|null;origem?:number|null;cst_icms?:string|null;cst_pis?:string|null;cst_cofins?:string|null}
 type SaleSource={venda:{status:string;total:number;forma_pagamento:string;subtotal?:number;desconto?:number;created_at?:string;fatura_numero?:number|null};cliente: FiscalClient|null;empresa?:Record<string,unknown>|null;itens:{id:string;quantidade:number;valor_unitario:number;desconto:number;total?:number;produto: FiscalProduct&{unidade?:string|null}}[];parcelas?:{id:string;numero:number;vencimento:string;valor:number;status:string}[];nota:Note|null}
@@ -237,7 +238,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
               <input type="number" min="0.01" step="0.01" value={p.valor} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,valor:Number(e.target.value)}:row))}/>
               <button type="button" className="iconBtn" onClick={()=>setNfeInstallments(rows=>rows.length>1?rows.filter(row=>row.key!==p.key):rows)} aria-label="Remover parcela">×</button>
             </div>)}
-            <button type="button" className="ghost" onClick={()=>setNfeInstallments(rows=>[...rows,{key:crypto.randomUUID(),numero:rows.length+1,vencimento:rows.at(-1)?.vencimento||new Date().toISOString().slice(0,10),valor:0}])}>+ Adicionar parcela</button>
+            <button type="button" className="ghost" onClick={()=>setNfeInstallments(rows=>[...rows,{key:crypto.randomUUID(),numero:rows.length+1,vencimento:rows.at(-1)?.vencimento||localIsoDate(),valor:0}])}>+ Adicionar parcela</button>
             <small>A soma das parcelas precisa ser igual ao total da venda. A edição vale para os dados de cobrança enviados nesta NF-e.</small>
           </div>:(source?.parcelas?.length||0)>0?<div className="nfeInstallmentsList">{source?.parcelas?.map((p,index)=><div key={p.id}><span>{String(index+1).padStart(3,'0')}</span><span>{new Date(p.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span><strong>{Number(p.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>)}</div>:<p>Pagamento à vista ou sem parcelas de cobrança para a NF-e.</p>}
         </div>
