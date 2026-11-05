@@ -8,6 +8,7 @@ import type {CSSProperties} from 'react'
 type Journal={id:string;nome:string;banco:string|null;agencia:string|null;conta:string|null;saldo_inicial:number;saldo_atual:number;ativo:boolean}
 type BankTx={id:string;diario_id:string;importacao_id:string|null;fitid:string;trntype:'CREDIT'|'DEBIT';valor:number;data_lancamento:string;nome:string|null;historico:string|null;status:'pendente'|'parcial'|'conciliado'|'ignorado';criado_em:string;parceiro_nome?:string|null;parceiro_tipo?:'cliente'|'fornecedor'|'outro'|null;conta_categoria?:string|null;centro_custo?:string|null;descricao_conciliacao?:string|null}
 type Title={id:string;tipo:'receber'|'pagar';descricao:string;entidade_nome:string|null;vencimento:string;valor:number;valor_pago:number;status:string;categoria:string|null;centro_custo:string|null;forma_pagamento:string|null;venda_id:string|null;compra_id:string|null}
+type InvoiceLink={id:string;transacao_id:string;titulo_id:string|null;pagamento_id:string|null;valor:number}
 type Partner={nome:string;documento:string|null}
 type Suggestion={title:Title;score:number;reasons:string[]}
 type ClosedPeriod={id:string;inicio:string;fim:string;motivo:string;fechado_em:string;reaberto_em:string|null;reabertura_motivo:string|null}
@@ -100,7 +101,8 @@ function isManualJournal(j:Pick<Journal,'nome'|'banco'>){
  return key.includes('dinheiro')||key.includes('caixa')||key.includes('ajustes')
 }
 
-export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged,initialTransactionId,onClearTransaction}:{initialTransactionId?:string|null;onClearTransaction?:()=>void;titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
+export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged,initialTransactionId,onClearTransaction,onOpenTitle}:{onOpenTitle?:(id:string,transactionId:string)=>void;initialTransactionId?:string|null;onClearTransaction?:()=>void;titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
+ const [invoiceLinks,setInvoiceLinks]=useState<InvoiceLink[]>([])
  const [journals,setJournals]=useState<Journal[]>([])
  const [transactions,setTransactions]=useState<BankTx[]>([])
  const [reconciledTotals,setReconciledTotals]=useState<Record<string,number>>({})
@@ -147,18 +149,19 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    supabase.from('modelos_conciliacao_bancaria').select('*').order('prioridade',{ascending:true}).order('created_at',{ascending:true}),
    supabase.rpc('detectar_transferencias_bancarias_internas',{p_dias:2}),
    supabase.from('importacoes_bancarias').select('id,diario_id,arquivo,total_linhas,inseridas,duplicadas,importado_em,arquivo_path,arquivo_tipo,arquivo_tamanho,saldo_extrato,data_saldo').order('importado_em',{ascending:false}).limit(300),
-   supabase.from('conciliacoes_bancarias').select('transacao_id,valor,tipo_ajuste,valor_ajuste,desfeito_em').is('desfeito_em',null)
+   supabase.from('conciliacoes_bancarias').select('id,transacao_id,titulo_id,pagamento_id,valor,tipo_ajuste,valor_ajuste,desfeito_em').is('desfeito_em',null)
   ])
   if(j.error||t.error||a.error||p.error||m.error||x.error||i.error||r.error){setMessage((j.error||t.error||a.error||p.error||m.error||x.error||i.error||r.error)!.message);return}
   const journalRows=((j.data||[]) as Journal[]).sort((a,b)=>{
    const rank=(row:Journal)=>normalize(row.nome)==='dinheiro'?0:normalize(row.nome)==='ajustes'?2:1
    return rank(a)-rank(b)||a.nome.localeCompare(b.nome,'pt-BR')
   })
+  setInvoiceLinks((r.data||[]) as InvoiceLink[])
   const totalsByTx:Record<string,number>={}
   ;((r.data||[]) as Array<{transacao_id:string;valor:number;tipo_ajuste:string|null;valor_ajuste:number;desfeito_em:string|null}>).forEach(row=>{
    const txRow=((t.data||[]) as BankTx[]).find(item=>item.id===row.transacao_id)
    const adj=Number(row.valor_ajuste)||0
-   const effective=Number(row.valor)||0+(row.tipo_ajuste==='desconto_concedido'? -Math.abs(adj):row.tipo_ajuste==='tarifa'&&txRow?.trntype==='CREDIT'? -Math.abs(adj):Math.abs(adj))
+   const effective=(Number(row.valor)||0)+(row.tipo_ajuste==='desconto_concedido'? -Math.abs(adj):row.tipo_ajuste==='tarifa'&&txRow?.trntype==='CREDIT'? -Math.abs(adj):Math.abs(adj))
    totalsByTx[row.transacao_id]=(totalsByTx[row.transacao_id]||0)+effective
   })
   if(initialTransactionId){
@@ -353,6 +356,19 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     if(saved.error)throw saved.error
    }
    setSelected({});setAdjustType('');setAdjustValue('0');setReconcileDescription('');setReconcileTx(null);setMessage('Transação conciliada com sucesso.');await Promise.all([load(),onChanged()])
+  }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
+ }
+ async function unlinkInvoice(link:InvoiceLink){
+  if(!canEdit||busy)return
+  const reason=window.prompt('Desvincular esta fatura e reabrir o valor aplicado, mantendo as demais faturas e a linha do diário. Informe o motivo:')
+  if(reason===null)return
+  if(reason.trim().length<5){setMessage('Informe um motivo com pelo menos 5 caracteres.');return}
+  setBusy(true);setMessage('')
+  try{
+   const {error}=await supabase.rpc('desvincular_fatura_diario',{p_vinculo_id:link.id,p_motivo:reason.trim()})
+   if(error)throw error
+   await Promise.all([load(),onChanged()])
+   setMessage('Fatura desvinculada. Saldo da fatura e residual do diário atualizados.')
   }catch(e){setMessage((e as Error).message)}finally{setBusy(false)}
  }
  async function quickCreate(tx:BankTx){
@@ -580,6 +596,18 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    const statementLabel=txImport?((txJournal?.nome||'Diário')+' Extrato '+(txImport.data_saldo||tx.data_lancamento)):''
    return <>{showStatementHeader&&<div className="bankStatementGroupHeader"><button type="button" disabled={busy||!txImport?.arquivo_path} onClick={()=>txImport&&void openImportedFile(txImport)} title={txImport?.arquivo_path?'Abrir documento original do extrato':'Documento original não armazenado'}><FileText size={15}/><strong>{statementLabel}</strong></button><span>{txImport?.saldo_extrato!=null?money(Number(txImport.saldo_extrato)):'Saldo não informado no arquivo'}</span></div>}<article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')+(selectedTransactions[tx.id]?' bankTxSelected':'')} key={tx.id}>
     <div className="bankTxMain"><label className="bankTxSelect" title={tx.status==='conciliado'?'Desfaça a conciliação antes de excluir':'Selecionar linha para exclusão'}><input type="checkbox" checked={Boolean(selectedTransactions[tx.id])} disabled={!canEdit||busy||tx.status==='conciliado'} onChange={()=>toggleTransactionSelection(tx)}/></label><div className="bankTxDate"><div className="bankTxDateLine"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span></div>{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong>{tx.historico&&!sameBankText(tx.historico,tx.nome)&&<span>{tx.historico}</span>}{tx.importacao_id&&imports.find(row=>row.id===tx.importacao_id)&&<small className="bankTxSource"><FileText size={11}/>{imports.find(row=>row.id===tx.importacao_id)!.arquivo}</small>}</div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
+    {invoiceLinks.some(l=>l.transacao_id===tx.id&&l.titulo_id)&&<div className="bankLinkedInvoices">
+      <strong>Faturas vinculadas</strong>
+      <ul>{invoiceLinks.filter(l=>l.transacao_id===tx.id&&l.titulo_id).map(link=>{
+        const title=titles.find(t=>t.id===link.titulo_id)
+        return <li key={link.id}>
+          {title&&onOpenTitle?<button type="button" className="financeOriginLink" onClick={()=>onOpenTitle(title.id,tx.id)}>{title.descricao} ↗</button>:<span>{title?.descricao||'Fatura indisponível'}</span>}
+          <span>{money(Number(link.valor))} aplicado</span>
+          {canEdit&&link.pagamento_id&&<button type="button" className="bankUnlinkInvoice" disabled={busy} title="Desvincular esta fatura" aria-label={'Desvincular '+(title?.descricao||'fatura')} onClick={()=>void unlinkInvoice(link)}>×</button>}
+        </li>
+      })}</ul>
+      <span>Residual da linha: <strong>{money(Math.max(0,Math.abs(Number(tx.valor))-(reconciledTotals[tx.id]||0)))}</strong></span>
+    </div>}
     {screen==='transactions'&&tx.status!=='conciliado'&&<div className="bankTxQuickActions">
       <button className="bankReconcileButton" disabled={!canEdit||busy} onClick={()=>openReconcile(tx)}><Link2 size={15}/>Conciliar</button>
     </div>}

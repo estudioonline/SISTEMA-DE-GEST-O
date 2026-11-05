@@ -552,7 +552,7 @@ function App(){
   const [editingTitle,setEditingTitle]=useState<Titulo|null>(null)
   const [financePanel,setFinancePanel]=useState<string|null>(null)
   const [financePanelReturnModule,setFinancePanelReturnModule]=useState<ModuleKey|null>(null)
-  const [financePanelReturnSubtab,setFinancePanelReturnSubtab]=useState<'faturamento'|null>(null)
+  const [financePanelReturnSubtab,setFinancePanelReturnSubtab]=useState<'faturamento'|'conciliacao'|null>(null)
   const [financeTransactionId,setFinanceTransactionId]=useState<string|null>(null)
   const [financePanelTab,setFinancePanelTab]=useState<'detalhes'|'pagamentos'|'comprovantes'>('detalhes')
   const [financeSubtab,setFinanceSubtab]=useState<'geral'|'vencidos'|'receber'|'pagar'|'faturamento'|'conciliacao'>('geral')
@@ -5689,7 +5689,7 @@ function App(){
         </div>}
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
-        {financeSubtab==='conciliacao'&&<BankReconciliation initialTransactionId={financeTransactionId} onClearTransaction={()=>setFinanceTransactionId(null)} titles={titulos} canEdit={canManageFinance} canClosePeriods={canManageConfig} onChanged={refreshFinance}/>}
+        {financeSubtab==='conciliacao'&&<BankReconciliation onOpenTitle={(id,transactionId)=>{const title=titulos.find(t=>t.id===id);if(!title)return;setFinanceTransactionId(transactionId);setFinancePanelReturnModule(null);setFinancePanelReturnSubtab('conciliacao');setFinanceSubtab(title.tipo);setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-'+title.tipo,'');setFinancePanelTab('pagamentos');selectFinanceTitleInPanel(title)}} initialTransactionId={financeTransactionId} onClearTransaction={()=>setFinanceTransactionId(null)} titles={titulos} canEdit={canManageFinance} canClosePeriods={canManageConfig} onChanged={refreshFinance}/>}
 
       </section>}
       {active==='relatorios'&&<section className="semanticPage reportsPage">

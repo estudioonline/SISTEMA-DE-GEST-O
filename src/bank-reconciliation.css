@@ -1063,3 +1063,9 @@
     font-size:9px;
   }
 }
+
+.bankLinkedInvoices{margin:10px 0 4px;padding:12px;border-top:1px solid var(--border,#334155);font-size:12px}
+.bankLinkedInvoices ul{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+.bankLinkedInvoices li{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 0}
+.bankLinkedInvoices li>.financeOriginLink{margin-right:auto;text-align:left}
+.bankLinkedInvoices .bankUnlinkInvoice{min-width:30px;min-height:30px;color:#ef4444;font-size:20px;line-height:1;border:1px solid #ef444466;border-radius:6px}
