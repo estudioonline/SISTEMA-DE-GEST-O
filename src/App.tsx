@@ -2701,12 +2701,26 @@ function App(){
   }
 
   async function deleteTitle(t:Titulo){
-    if(t.venda_id||t.compra_id||Number(t.valor_pago)>0){setMsg('Título vinculado ou com pagamento não pode ser excluído. Altere o documento de origem.');return}
     if(!(isAdmin&&canManageFinance)){setMsg('Sem permissão para excluir lançamento.');return}
-    if(!await themedConfirm('Excluir este lançamento?'))return
-    const r=await supabase.from('titulos_financeiros').delete().eq('id',t.id)
-    setMsg(r.error?r.error.message:'Lançamento excluído.')
-    if(!r.error)await loadData()
+    if(t.venda_id||t.compra_id||t.funcionario_id||t.fatura_venda_id){
+      setMsg('Este título possui documento de origem e não pode ser excluído por este fluxo.')
+      return
+    }
+    if(t.status!=='cancelado'){
+      setMsg('Cancele o lançamento manual antes de excluí-lo.')
+      return
+    }
+    if(Number(t.valor_pago)>0){
+      setMsg('Este título ainda possui saldo pago. Estorne os pagamentos antes de excluir.')
+      return
+    }
+    if(!await themedConfirm('Excluir definitivamente este lançamento manual cancelado?'))return
+    const {data,error}=await supabase.rpc('excluir_titulo_manual_cancelado',{p_titulo_id:t.id})
+    setMsg(error?error.message:data?'Lançamento excluído.':'Lançamento não encontrado.')
+    if(!error){
+      closeFinancePanel()
+      await refreshFinance()
+    }
   }
 
   // CONFIG
