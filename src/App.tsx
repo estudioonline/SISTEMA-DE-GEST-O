@@ -486,6 +486,9 @@ function App(){
   const [excelToolsOpen,setExcelToolsOpen]=useState(false)
   const [bulkProductEdits,setBulkProductEdits]=useState<Record<string,Partial<{descricao:string;unidade:string;custo:number;preco_venda:number;estoque_minimo:number;ativo:boolean}>>>({})
   const [savingBulkProducts,setSavingBulkProducts]=useState(false)
+  const [bulkAdjustmentOpen,setBulkAdjustmentOpen]=useState(false)
+  const [bulkAdjustmentItems,setBulkAdjustmentItems]=useState<string[]>([])
+  const [bulkAdjustmentPicker,setBulkAdjustmentPicker]=useState('')
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
@@ -1361,9 +1364,9 @@ function App(){
     setBulkProductEdits(current=>({...current,[id]:{...(current[id]||{}),[field]:value}}))
   }
   async function saveBulkProductAdjustments(){
-    if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return}
-    const entries=Object.entries(bulkProductEdits)
-    if(!entries.length){setMsg('Nenhum ajuste em massa foi alterado.');return}
+    if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return false}
+    const entries=Object.entries(bulkProductEdits).filter(([id])=>bulkAdjustmentItems.includes(id))
+    if(!entries.length){setMsg('Nenhuma alteração foi feita neste ajuste.');return false}
     setSavingBulkProducts(true)
     try{
       for(const [id,changes] of entries){
@@ -1374,12 +1377,39 @@ function App(){
         if(result.error)throw result.error
       }
       setBulkProductEdits({})
-      setMsg(entries.length===1?'1 produto/serviço atualizado.':entries.length+' produtos/serviços atualizados em massa.')
+      setMsg(entries.length===1?'Ajuste confirmado: 1 produto/serviço atualizado.':'Ajuste confirmado: '+entries.length+' produtos/serviços atualizados.')
       await loadData()
+      return true
     }catch(error){
       setMsg(error instanceof Error?error.message:String(error))
+      return false
     }finally{
       setSavingBulkProducts(false)
+    }
+  }
+  function startBulkAdjustment(){
+    if(!canManageProducts){setMsg('Sem permissão para editar Produtos / Estoque.');return}
+    setBulkProductEdits({})
+    setBulkAdjustmentItems([])
+    setBulkAdjustmentPicker('')
+    setBulkAdjustmentOpen(true)
+    setMsg('')
+  }
+  function addBulkAdjustmentProduct(id:string){
+    if(!id)return
+    setBulkAdjustmentItems(current=>current.includes(id)?current:[...current,id])
+    setBulkAdjustmentPicker('')
+  }
+  function removeBulkAdjustmentProduct(id:string){
+    setBulkAdjustmentItems(current=>current.filter(item=>item!==id))
+    setBulkProductEdits(current=>{const next={...current};delete next[id];return next})
+  }
+  async function confirmBulkAdjustment(){
+    const saved=await saveBulkProductAdjustments()
+    if(saved){
+      setBulkAdjustmentOpen(false)
+      setBulkAdjustmentItems([])
+      setBulkAdjustmentPicker('')
     }
   }
   function startAdjustStock(p:Produto){if(!canManageProducts){setMsg('Sem permissão para ajustar estoque.');return}setAdjustingProduct(p);setStockNew(String(p.estoque_atual));setStockReason('Ajuste manual');setMsg('')}
@@ -4379,47 +4409,87 @@ function App(){
         </>}
 
         {productSubtab==='massa'&&<>
-          <article className="panel tablePanel productionListPanel">
-            <div className="panelHead">
+          {!bulkAdjustmentOpen?<article className="panel bulkAdjustmentLanding">
+            <div className="bulkAdjustmentLandingText">
+              <div className="bulkAdjustmentIcon"><SlidersHorizontal size={22}/></div>
               <div>
-                <h3>Produtos e serviços · ajustes em massa</h3>
-                <p>Edite vários cadastros na mesma tela. O estoque atual não é alterado por esta ferramenta.</p>
+                <h3>Ajustes em massa de produtos e serviços</h3>
+                <p>Crie um novo ajuste, adicione apenas os itens que deseja alterar e confirme tudo de uma vez. O estoque atual não é alterado por esta ferramenta.</p>
               </div>
-              <div className="productionListActions">
-                <SearchField value={tableSearch['produtos-massa']||''} onChange={v=>setSearch('produtos-massa',v)} placeholder="Pesquisar código, produto ou serviço"/>
-                {Object.keys(bulkProductEdits).length>0&&<button type="button" className="ghost" onClick={()=>setBulkProductEdits({})} disabled={savingBulkProducts}>Descartar</button>}
-                <button type="button" className="primary" onClick={()=>void saveBulkProductAdjustments()} disabled={!canManageProducts||savingBulkProducts||Object.keys(bulkProductEdits).length===0}>
-                  <CheckCircle2 size={16}/>{savingBulkProducts?'Salvando...':`Salvar alterações (${Object.keys(bulkProductEdits).length})`}
+            </div>
+            <button type="button" className="primary bulkAdjustmentNewBtn" onClick={startBulkAdjustment} disabled={!canManageProducts}><Plus size={17}/>Novo ajuste</button>
+          </article>:<article className="panel bulkAdjustmentWorkspace">
+            <div className="bulkAdjustmentHeader">
+              <div>
+                <span className="bulkAdjustmentEyebrow">AJUSTE EM MASSA</span>
+                <h3>Novo ajuste</h3>
+                <p>Pesquise e adicione produtos ou serviços. Depois altere os campos necessários e confirme o ajuste.</p>
+              </div>
+              <button type="button" className="iconBtn" title="Fechar ajuste" onClick={()=>{setBulkAdjustmentOpen(false);setBulkAdjustmentItems([]);setBulkAdjustmentPicker('');setBulkProductEdits({})}} disabled={savingBulkProducts}><X size={18}/></button>
+            </div>
+
+            <div className="bulkAdjustmentPickerRow">
+              <div className="bulkAdjustmentPicker">
+                <span>Adicionar produto / serviço</span>
+                <ProductLookup
+                  products={produtos.filter(p=>!bulkAdjustmentItems.includes(p.id))}
+                  value={bulkAdjustmentPicker}
+                  onSelect={id=>{setBulkAdjustmentPicker(id);addBulkAdjustmentProduct(id)}}
+                  fullWidth
+                />
+              </div>
+              <div className="bulkAdjustmentCounter">
+                <span>Itens no ajuste</span>
+                <strong>{bulkAdjustmentItems.length}</strong>
+              </div>
+            </div>
+
+            <div className="bulkAdjustmentItems">
+              <div className="bulkAdjustmentTableHead">
+                <span>Código</span>
+                <span>Produto / serviço</span>
+                <span>Unidade</span>
+                <span>Custo</span>
+                <span>Preço de venda</span>
+                <span>Estoque mínimo</span>
+                <span>Status</span>
+                <span></span>
+              </div>
+              {bulkAdjustmentItems.map(id=>{
+                const p=produtos.find(item=>item.id===id)
+                if(!p)return null
+                const edit=bulkProductEdits[p.id]||{}
+                return <div className="bulkAdjustmentItemRow" key={p.id}>
+                  <strong>{p.codigo||'—'}</strong>
+                  <input value={edit.descricao??p.descricao} onChange={e=>setBulkProductField(p.id,'descricao',e.target.value)} disabled={savingBulkProducts} aria-label={`Descrição de ${p.codigo||p.descricao}`}/>
+                  <input value={edit.unidade??p.unidade??'UN'} onChange={e=>setBulkProductField(p.id,'unidade',e.target.value)} disabled={savingBulkProducts} aria-label={`Unidade de ${p.codigo||p.descricao}`}/>
+                  <input type="number" min="0" step="0.01" value={edit.custo??Number(p.custo||0)} onChange={e=>setBulkProductField(p.id,'custo',Math.max(0,Number(e.target.value)||0))} disabled={savingBulkProducts} aria-label={`Custo de ${p.codigo||p.descricao}`}/>
+                  <input type="number" min="0" step="0.01" value={edit.preco_venda??Number(p.preco_venda||0)} onChange={e=>setBulkProductField(p.id,'preco_venda',Math.max(0,Number(e.target.value)||0))} disabled={savingBulkProducts} aria-label={`Preço de venda de ${p.codigo||p.descricao}`}/>
+                  {p.tipo_produto==='servico'?<span className="bulkAdjustmentNotApplicable">—</span>:<input type="number" min="0" step="0.01" value={edit.estoque_minimo??Number(p.estoque_minimo||0)} onChange={e=>setBulkProductField(p.id,'estoque_minimo',Math.max(0,Number(e.target.value)||0))} disabled={savingBulkProducts} aria-label={`Estoque mínimo de ${p.codigo||p.descricao}`}/>}
+                  <select value={String(edit.ativo??p.ativo)} onChange={e=>setBulkProductField(p.id,'ativo',e.target.value==='true')} disabled={savingBulkProducts} aria-label={`Status de ${p.codigo||p.descricao}`}><option value="true">Ativo</option><option value="false">Inativo</option></select>
+                  <button type="button" className="iconBtn dangerBtn" title="Remover do ajuste" onClick={()=>removeBulkAdjustmentProduct(p.id)} disabled={savingBulkProducts}><Trash2 size={16}/></button>
+                </div>
+              })}
+              {bulkAdjustmentItems.length===0&&<div className="bulkAdjustmentEmpty">
+                <Package size={24}/>
+                <strong>Nenhum item adicionado</strong>
+                <span>Use a pesquisa acima para anexar produtos ou serviços ao ajuste.</span>
+              </div>}
+            </div>
+
+            <div className="bulkAdjustmentFooter">
+              <div className="bulkAdjustmentFooterInfo">
+                <span>{Object.keys(bulkProductEdits).filter(id=>bulkAdjustmentItems.includes(id)).length} item(ns) com alteração</span>
+                <small>Somente os itens efetivamente modificados serão atualizados.</small>
+              </div>
+              <div className="bulkAdjustmentFooterActions">
+                <button type="button" className="ghost" onClick={()=>{setBulkAdjustmentOpen(false);setBulkAdjustmentItems([]);setBulkAdjustmentPicker('');setBulkProductEdits({})}} disabled={savingBulkProducts}>Cancelar</button>
+                <button type="button" className="primary" onClick={()=>void confirmBulkAdjustment()} disabled={savingBulkProducts||bulkAdjustmentItems.length===0||Object.keys(bulkProductEdits).filter(id=>bulkAdjustmentItems.includes(id)).length===0}>
+                  <CheckCircle2 size={17}/>{savingBulkProducts?'Confirmando...':'Confirmar ajuste'}
                 </button>
               </div>
             </div>
-            <div className="tableWrap"><table className="productionListTable">
-              <thead><tr>
-                <th>Código</th>
-                <th>Produto / serviço</th>
-                <th>Unidade</th>
-                <th>Custo</th>
-                <th>Preço de venda</th>
-                <th>Estoque mínimo</th>
-                <th>Status</th>
-              </tr></thead>
-              <tbody>
-                {produtos.filter(p=>searchMatches('produtos-massa',[p.codigo,p.descricao,p.unidade,p.tipo_produto||''])).map(p=>{
-                  const edit=bulkProductEdits[p.id]||{}
-                  return <tr key={p.id}>
-                    <td><strong>{p.codigo||'—'}</strong></td>
-                    <td><input value={edit.descricao??p.descricao} onChange={e=>setBulkProductField(p.id,'descricao',e.target.value)} disabled={!canManageProducts||savingBulkProducts} aria-label={`Descrição de ${p.codigo||p.descricao}`}/></td>
-                    <td><input value={edit.unidade??p.unidade??'UN'} onChange={e=>setBulkProductField(p.id,'unidade',e.target.value)} disabled={!canManageProducts||savingBulkProducts} aria-label={`Unidade de ${p.codigo||p.descricao}`}/></td>
-                    <td><input type="number" min="0" step="0.01" value={edit.custo??Number(p.custo||0)} onChange={e=>setBulkProductField(p.id,'custo',Math.max(0,Number(e.target.value)||0))} disabled={!canManageProducts||savingBulkProducts} aria-label={`Custo de ${p.codigo||p.descricao}`}/></td>
-                    <td><input type="number" min="0" step="0.01" value={edit.preco_venda??Number(p.preco_venda||0)} onChange={e=>setBulkProductField(p.id,'preco_venda',Math.max(0,Number(e.target.value)||0))} disabled={!canManageProducts||savingBulkProducts} aria-label={`Preço de venda de ${p.codigo||p.descricao}`}/></td>
-                    <td>{p.tipo_produto==='servico'?<span>—</span>:<input type="number" min="0" step="0.01" value={edit.estoque_minimo??Number(p.estoque_minimo||0)} onChange={e=>setBulkProductField(p.id,'estoque_minimo',Math.max(0,Number(e.target.value)||0))} disabled={!canManageProducts||savingBulkProducts} aria-label={`Estoque mínimo de ${p.codigo||p.descricao}`}/>}</td>
-                    <td><select value={String(edit.ativo??p.ativo)} onChange={e=>setBulkProductField(p.id,'ativo',e.target.value==='true')} disabled={!canManageProducts||savingBulkProducts} aria-label={`Status de ${p.codigo||p.descricao}`}><option value="true">Ativo</option><option value="false">Inativo</option></select></td>
-                  </tr>
-                })}
-                {produtos.filter(p=>searchMatches('produtos-massa',[p.codigo,p.descricao,p.unidade,p.tipo_produto||''])).length===0&&<tr className="emptyTableRow"><td colSpan={7}>Nenhum produto ou serviço encontrado.</td></tr>}
-              </tbody>
-            </table></div>
-          </article>
+          </article>}
         </>}
 
         {productSubtab==='grupos'&&<ProductGroupsManager groups={gruposProdutos} subgroups={subgruposProdutos} canEdit={canManageProducts} onReload={loadData} onMessage={setMsg}/>} 
