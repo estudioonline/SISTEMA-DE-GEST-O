@@ -2406,6 +2406,13 @@ function App(){
       setFinancePanelReturnSubtab(null)
     }
   }
+  function selectFinanceTitleInPanel(t:Titulo){
+    setFinancePanel(t.id)
+    setPaymentDate(today())
+    setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))
+    setChangePaymentMethod(false)
+    setEffectivePaymentMethod((t.forma_pagamento as PaymentMethod)||'pix')
+  }
   function openFinancePanel(t:Titulo){
     if(financePanel===t.id){
       closeFinancePanel()
@@ -2413,10 +2420,8 @@ function App(){
     }
     setFinancePanelReturnModule(null)
     setFinancePanelReturnSubtab(null)
-    setFinancePanel(t.id)
     setFinancePanelTab('detalhes')
-    setPaymentDate(today())
-    setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))
+    selectFinanceTitleInPanel(t)
   }
   function openSaleFinancialStatement(v:Venda,returnToBilling=false){
     if(!canViewFinance){setMsg('Seu perfil não possui acesso ao Financeiro.');return}
@@ -3727,6 +3732,17 @@ function App(){
             const balance=Math.max(0,Number(t.valor)-Number(t.valor_pago))
             const linked=Boolean(t.venda_id||t.compra_id||t.fatura_venda_id||t.funcionario_id)
             const origin=t.venda_id?'Venda':t.compra_id?'Compra':t.fatura_venda_id?'Fatura de venda':t.funcionario_id?'RH':'Manual'
+            const invoice=t.fatura_venda_id?faturasVendas.find(f=>f.id===t.fatura_venda_id):undefined
+            const invoiceTitles=t.fatura_venda_id
+              ? financeTitles.filter(item=>item.fatura_venda_id===t.fatura_venda_id).sort((a,b)=>Number(a.parcela_numero||0)-Number(b.parcela_numero||0)||a.vencimento.localeCompare(b.vencimento))
+              : [t]
+            const invoiceSale=t.venda_id?vendas.find(v=>v.id===t.venda_id):undefined
+            const invoiceTotal=invoiceTitles.reduce((sum,item)=>sum+Number(item.valor||0),0)
+            const invoicePaid=invoiceTitles.reduce((sum,item)=>sum+Number(item.valor_pago||0),0)
+            const invoiceBalance=Math.max(0,invoiceTotal-invoicePaid)
+            const invoiceTitle=invoice
+              ? financialInvoiceCode(invoice.numero)+(invoiceSale?' • '+saleCode(invoiceSale.venda_numero):'')
+              : t.descricao
             return <Fragment key={t.id}>
               <tr {...recordRow(()=>{if(financePanel!==t.id)openFinancePanel(t)},t.descricao)} className={'recordRow '+(t.vencimento<today()&&t.status!=='pago'&&t.status!=='cancelado'?'overdueRow':'')}>
                 <td>{t.descricao}</td>
@@ -3742,12 +3758,31 @@ function App(){
                 <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={t.descricao}>
                   <div className="recordDetailBackdrop" onClick={closeFinancePanel}/>
                   <div className="recordDetailSheet">
-                    <div className="recordDetailHeader"><strong>{t.descricao}</strong><button type="button" className="recordDetailClose" onClick={closeFinancePanel}><X size={17}/>Fechar</button></div>
+                    <div className="recordDetailHeader"><strong>{invoiceTitle}</strong><button type="button" className="recordDetailClose" onClick={closeFinancePanel}><X size={17}/>Fechar</button></div>
                     <div className="financeManagePanel">
+                  {invoiceTitles.length>1&&<div className="financeInvoiceNavigator">
+                    <div className="financeInvoiceNavigatorSummary">
+                      <div><span>Fatura</span><strong>{invoiceTitle}</strong></div>
+                      <div><span>Total</span><strong>{money(invoiceTotal)}</strong></div>
+                      <div><span>Recebido</span><strong>{money(invoicePaid)}</strong></div>
+                      <div><span>Saldo</span><strong>{money(invoiceBalance)}</strong></div>
+                    </div>
+                    <div className="financeInvoiceInstallments" aria-label="Parcelas da fatura">
+                      {invoiceTitles.map((item,index)=>{
+                        const itemBalance=Math.max(0,Number(item.valor)-Number(item.valor_pago))
+                        const active=item.id===t.id
+                        return <button type="button" key={item.id} className={active?'financeInvoiceInstallment active':'financeInvoiceInstallment'} onClick={()=>selectFinanceTitleInPanel(item)}>
+                          <span>Parcela {item.parcela_numero||index+1}/{invoiceTitles.length}</span>
+                          <strong>{money(Number(item.valor))}</strong>
+                          <small>{dateBr(item.vencimento)} · {itemBalance<=0?'Pago':financeStatusLabel(item.status)}</small>
+                        </button>
+                      })}
+                    </div>
+                  </div>}
                   <div className="actionPanel">
                     <div className="actionMeta">
-                      <strong>{t.descricao}</strong>
-                      <span>{linked?`Ligado à ${origin.toLowerCase()} • parcela ${t.parcela_numero||1}`:'Lançamento manual'} • saldo {money(balance)}</span>
+                      <strong>{invoiceTitles.length>1?`Parcela ${t.parcela_numero||1}/${invoiceTitles.length}`:t.descricao}</strong>
+                      <span>{linked?`Ligado à ${origin.toLowerCase()} • vencimento ${dateBr(t.vencimento)}`:'Lançamento manual'} • saldo {money(balance)}</span>
                     </div>
                     <div className="rowActions">
                       <button className="ghost" onClick={()=>startEditTitle(t)}><Pencil size={15}/>{linked?'Classificar':'Editar'}</button>
