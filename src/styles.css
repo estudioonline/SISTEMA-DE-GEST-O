@@ -8483,3 +8483,18 @@ small{font-size:11px}
 @media(max-width:600px){
   .salesPage .globalDiscountPreview{grid-template-columns:1fr}
 }
+
+
+/* Produto em linha única nos detalhes da venda */
+.salesPage .saleProductInline{
+  display:inline-block;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  vertical-align:middle;
+  font-weight:700;
+}
+.salesPage button.saleProductInline{
+  text-align:left;
+}
