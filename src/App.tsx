@@ -484,11 +484,12 @@ function App(){
   const [stockReason,setStockReason]=useState('Ajuste manual')
   const [productSubtab,setProductSubtab]=useState<'cadastro'|'movimentos'|'grupos'|'producao'|'servicos'|'massa'>('cadastro')
   const [excelToolsOpen,setExcelToolsOpen]=useState(false)
-  const [bulkProductEdits,setBulkProductEdits]=useState<Record<string,Partial<{descricao:string;unidade:string;custo:number;preco_venda:number;estoque_minimo:number;ativo:boolean}>>>({})
+  const [bulkProductEdits,setBulkProductEdits]=useState<Record<string,Partial<{descricao:string;unidade:string;custo:number;preco_venda:number;estoque_minimo:number;estoque_atual:number;ativo:boolean}>>>({})
   const [savingBulkProducts,setSavingBulkProducts]=useState(false)
   const [bulkAdjustmentOpen,setBulkAdjustmentOpen]=useState(false)
   const [bulkAdjustmentItems,setBulkAdjustmentItems]=useState<string[]>([])
   const [bulkAdjustmentPicker,setBulkAdjustmentPicker]=useState('')
+  const [bulkAdjustmentEditingId,setBulkAdjustmentEditingId]=useState<string|null>(null)
 
   const [editingSale,setEditingSale]=useState<Venda|null>(null)
   const [salePanel,setSalePanel]=useState<string|null>(null)
@@ -1360,7 +1361,7 @@ function App(){
       if(returnSale)await openSaleDetail(returnSale)
     }
   }
-  function setBulkProductField(id:string,field:'descricao'|'unidade'|'custo'|'preco_venda'|'estoque_minimo'|'ativo',value:string|number|boolean){
+  function setBulkProductField(id:string,field:'descricao'|'unidade'|'custo'|'preco_venda'|'estoque_minimo'|'estoque_atual'|'ativo',value:string|number|boolean){
     setBulkProductEdits(current=>({...current,[id]:{...(current[id]||{}),[field]:value}}))
   }
   async function saveBulkProductAdjustments(){
@@ -1370,11 +1371,20 @@ function App(){
     setSavingBulkProducts(true)
     try{
       for(const [id,changes] of entries){
+        const current=produtos.find(p=>p.id===id)
         const payload={...changes}
+        const nextStock=typeof payload.estoque_atual==='number'?payload.estoque_atual:undefined
+        delete payload.estoque_atual
         if(typeof payload.descricao==='string')payload.descricao=payload.descricao.trim()
         if(typeof payload.unidade==='string')payload.unidade=payload.unidade.trim()||'UN'
-        const result=await supabase.from('produtos').update(payload).eq('id',id)
-        if(result.error)throw result.error
+        if(Object.keys(payload).length){
+          const result=await supabase.from('produtos').update(payload).eq('id',id)
+          if(result.error)throw result.error
+        }
+        if(nextStock!==undefined&&current&&Number(current.estoque_atual)!==Number(nextStock)){
+          const stockResult=await supabase.rpc('ajustar_estoque_produto',{p_produto_id:id,p_novo_estoque:Number(nextStock),p_motivo:'Ajuste em massa'})
+          if(stockResult.error)throw stockResult.error
+        }
       }
       setBulkProductEdits({})
       setMsg(entries.length===1?'Ajuste confirmado: 1 produto/serviço atualizado.':'Ajuste confirmado: '+entries.length+' produtos/serviços atualizados.')
@@ -1399,10 +1409,12 @@ function App(){
     if(!id)return
     setBulkAdjustmentItems(current=>current.includes(id)?current:[...current,id])
     setBulkAdjustmentPicker('')
+    setBulkAdjustmentEditingId(id)
   }
   function removeBulkAdjustmentProduct(id:string){
     setBulkAdjustmentItems(current=>current.filter(item=>item!==id))
     setBulkProductEdits(current=>{const next={...current};delete next[id];return next})
+    setBulkAdjustmentEditingId(current=>current===id?null:current)
   }
   async function confirmBulkAdjustment(){
     const saved=await saveBulkProductAdjustments()
@@ -4445,29 +4457,32 @@ function App(){
             </div>
 
             <div className="bulkAdjustmentItems">
-              <div className="bulkAdjustmentTableHead">
+              <div className="bulkAdjustmentTableHead bulkAdjustmentTableHeadSummary">
                 <span>Código</span>
                 <span>Produto / serviço</span>
+                <span>Quantidade</span>
                 <span>Unidade</span>
                 <span>Custo</span>
-                <span>Preço de venda</span>
+                <span>Venda</span>
                 <span>Estoque mínimo</span>
-                <span>Status</span>
-                <span></span>
+                <span>Ações</span>
               </div>
               {bulkAdjustmentItems.map(id=>{
                 const p=produtos.find(item=>item.id===id)
                 if(!p)return null
                 const edit=bulkProductEdits[p.id]||{}
-                return <div className="bulkAdjustmentItemRow" key={p.id}>
+                return <div className="bulkAdjustmentItemRow bulkAdjustmentItemSummary" key={p.id} onDoubleClick={()=>setBulkAdjustmentEditingId(p.id)} title="Clique duplo para editar este item">
                   <strong>{p.codigo||'—'}</strong>
-                  <input value={edit.descricao??p.descricao} onChange={e=>setBulkProductField(p.id,'descricao',e.target.value)} disabled={savingBulkProducts} aria-label={`Descrição de ${p.codigo||p.descricao}`}/>
-                  <input value={edit.unidade??p.unidade??'UN'} onChange={e=>setBulkProductField(p.id,'unidade',e.target.value)} disabled={savingBulkProducts} aria-label={`Unidade de ${p.codigo||p.descricao}`}/>
-                  <input type="number" min="0" step="0.01" value={edit.custo??Number(p.custo||0)} onChange={e=>setBulkProductField(p.id,'custo',Math.max(0,Number(e.target.value)||0))} disabled={savingBulkProducts} aria-label={`Custo de ${p.codigo||p.descricao}`}/>
-                  <input type="number" min="0" step="0.01" value={edit.preco_venda??Number(p.preco_venda||0)} onChange={e=>setBulkProductField(p.id,'preco_venda',Math.max(0,Number(e.target.value)||0))} disabled={savingBulkProducts} aria-label={`Preço de venda de ${p.codigo||p.descricao}`}/>
-                  {p.tipo_produto==='servico'?<span className="bulkAdjustmentNotApplicable">—</span>:<input type="number" min="0" step="0.01" value={edit.estoque_minimo??Number(p.estoque_minimo||0)} onChange={e=>setBulkProductField(p.id,'estoque_minimo',Math.max(0,Number(e.target.value)||0))} disabled={savingBulkProducts} aria-label={`Estoque mínimo de ${p.codigo||p.descricao}`}/>}
-                  <select value={String(edit.ativo??p.ativo)} onChange={e=>setBulkProductField(p.id,'ativo',e.target.value==='true')} disabled={savingBulkProducts} aria-label={`Status de ${p.codigo||p.descricao}`}><option value="true">Ativo</option><option value="false">Inativo</option></select>
-                  <button type="button" className="iconBtn dangerBtn" title="Remover do ajuste" onClick={()=>removeBulkAdjustmentProduct(p.id)} disabled={savingBulkProducts}><Trash2 size={16}/></button>
+                  <span className="bulkAdjustmentProductName">{edit.descricao??p.descricao}</span>
+                  <span>{Number(edit.estoque_atual??p.estoque_atual||0).toLocaleString('pt-BR')}</span>
+                  <span>{String(edit.unidade??p.unidade??'UN')}</span>
+                  <span>{money(Number(edit.custo??p.custo||0))}</span>
+                  <span>{money(Number(edit.preco_venda??p.preco_venda||0))}</span>
+                  <span>{p.tipo_produto==='servico'?'—':Number(edit.estoque_minimo??p.estoque_minimo||0).toLocaleString('pt-BR')}</span>
+                  <div className="bulkAdjustmentRowActions">
+                    <button type="button" className="iconBtn" title="Editar item" onClick={()=>setBulkAdjustmentEditingId(p.id)}><Pencil size={16}/></button>
+                    <button type="button" className="iconBtn dangerBtn" title="Remover do ajuste" onClick={()=>removeBulkAdjustmentProduct(p.id)} disabled={savingBulkProducts}><Trash2 size={16}/></button>
+                  </div>
                 </div>
               })}
               {bulkAdjustmentItems.length===0&&<div className="bulkAdjustmentEmpty">
@@ -4476,6 +4491,36 @@ function App(){
                 <span>Use a pesquisa acima para anexar produtos ou serviços ao ajuste.</span>
               </div>}
             </div>
+
+            {bulkAdjustmentEditingId&&(()=>{
+              const p=produtos.find(item=>item.id===bulkAdjustmentEditingId)
+              if(!p)return null
+              const edit=bulkProductEdits[p.id]||{}
+              return <div className="bulkAdjustmentEditOverlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setBulkAdjustmentEditingId(null)}}>
+                <div className="bulkAdjustmentEditModal" role="dialog" aria-modal="true" aria-label="Editar item do ajuste">
+                  <div className="bulkAdjustmentEditHeader">
+                    <div>
+                      <span className="bulkAdjustmentEyebrow">ITEM DO AJUSTE</span>
+                      <h3>{p.descricao}</h3>
+                      <p>{p.codigo||'Sem código'} · {p.tipo_produto==='servico'?'Serviço':'Produto'}</p>
+                    </div>
+                    <button type="button" className="iconBtn" onClick={()=>setBulkAdjustmentEditingId(null)}><X size={18}/></button>
+                  </div>
+                  <div className="bulkAdjustmentEditGrid">
+                    <label><span>Quantidade / Estoque atual</span><input type="number" step="0.001" value={edit.estoque_atual??Number(p.estoque_atual||0)} onChange={e=>setBulkProductField(p.id,'estoque_atual',Number(e.target.value)||0)} disabled={p.tipo_produto==='servico'}/><small>{p.tipo_produto==='servico'?'Serviços não controlam estoque.':'A alteração será registrada no histórico de estoque.'}</small></label>
+                    <label><span>Unidade de medida</span><input value={edit.unidade??p.unidade??'UN'} onChange={e=>setBulkProductField(p.id,'unidade',e.target.value)}/></label>
+                    <label><span>Preço de custo</span><input type="number" min="0" step="0.01" value={edit.custo??Number(p.custo||0)} onChange={e=>setBulkProductField(p.id,'custo',Math.max(0,Number(e.target.value)||0))}/></label>
+                    <label><span>Preço de venda</span><input type="number" min="0" step="0.01" value={edit.preco_venda??Number(p.preco_venda||0)} onChange={e=>setBulkProductField(p.id,'preco_venda',Math.max(0,Number(e.target.value)||0))}/></label>
+                    <label><span>Estoque mínimo</span><input type="number" min="0" step="0.001" value={edit.estoque_minimo??Number(p.estoque_minimo||0)} onChange={e=>setBulkProductField(p.id,'estoque_minimo',Math.max(0,Number(e.target.value)||0))} disabled={p.tipo_produto==='servico'}/></label>
+                    <label><span>Status</span><select value={String(edit.ativo??p.ativo)} onChange={e=>setBulkProductField(p.id,'ativo',e.target.value==='true')}><option value="true">Ativo</option><option value="false">Inativo</option></select></label>
+                  </div>
+                  <div className="bulkAdjustmentEditActions">
+                    <button type="button" className="ghost" onClick={()=>setBulkAdjustmentEditingId(null)}>Cancelar</button>
+                    <button type="button" className="primary" onClick={()=>setBulkAdjustmentEditingId(null)}><CheckCircle2 size={16}/>Aplicar ao ajuste</button>
+                  </div>
+                </div>
+              </div>
+            })()}
 
             <div className="bulkAdjustmentFooter">
               <div className="bulkAdjustmentFooterInfo">
