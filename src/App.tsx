@@ -4474,11 +4474,11 @@ function App(){
                 return <div className="bulkAdjustmentItemRow bulkAdjustmentItemSummary" key={p.id} onDoubleClick={()=>setBulkAdjustmentEditingId(p.id)} title="Clique duplo para editar este item">
                   <strong>{p.codigo||'—'}</strong>
                   <span className="bulkAdjustmentProductName">{edit.descricao??p.descricao}</span>
-                  <span>{Number(edit.estoque_atual??p.estoque_atual||0).toLocaleString('pt-BR')}</span>
+                  <span>{Number(edit.estoque_atual ?? p.estoque_atual ?? 0).toLocaleString('pt-BR')}</span>
                   <span>{String(edit.unidade??p.unidade??'UN')}</span>
-                  <span>{money(Number(edit.custo??p.custo||0))}</span>
-                  <span>{money(Number(edit.preco_venda??p.preco_venda||0))}</span>
-                  <span>{p.tipo_produto==='servico'?'—':Number(edit.estoque_minimo??p.estoque_minimo||0).toLocaleString('pt-BR')}</span>
+                  <span>{money(Number(edit.custo ?? p.custo ?? 0))}</span>
+                  <span>{money(Number(edit.preco_venda ?? p.preco_venda ?? 0))}</span>
+                  <span>{p.tipo_produto==='servico'?'—':Number(edit.estoque_minimo ?? p.estoque_minimo ?? 0).toLocaleString('pt-BR')}</span>
                   <div className="bulkAdjustmentRowActions">
                     <button type="button" className="iconBtn" title="Editar item" onClick={()=>setBulkAdjustmentEditingId(p.id)}><Pencil size={16}/></button>
                     <button type="button" className="iconBtn dangerBtn" title="Remover do ajuste" onClick={()=>removeBulkAdjustmentProduct(p.id)} disabled={savingBulkProducts}><Trash2 size={16}/></button>
