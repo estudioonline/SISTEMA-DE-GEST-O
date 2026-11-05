@@ -1,5 +1,5 @@
 export type AccessLevel='nenhum'|'visualizar'|'editar'
-export type PermissionModule='dashboard'|'vendas'|'clientes'|'fornecedores'|'produtos'|'compras'|'comissoes'|'financeiro'|'entregas'|'autorizacoes'|'relatorios'|'config'
+export type PermissionModule='dashboard'|'vendas'|'clientes'|'fornecedores'|'produtos'|'compras'|'comissoes'|'financeiro'|'rh'|'entregas'|'autorizacoes'|'relatorios'|'config'
 export type PermissionMap=Record<PermissionModule,AccessLevel>
 
 export const permissionModules:{key:PermissionModule;label:string;editable:boolean;description:string}[]=[
@@ -10,7 +10,8 @@ export const permissionModules:{key:PermissionModule;label:string;editable:boole
   {key:'produtos',label:'Produtos / Estoque',editable:true,description:'Produtos, custos e movimentações'},
   {key:'compras',label:'Compras',editable:true,description:'Cotações, pedidos, recebimentos e NF-e'},
   {key:'comissoes',label:'Comissões',editable:true,description:'Vendedores, apuração e fechamentos'},
-  {key:'financeiro',label:'Financeiro',editable:true,description:'Contas, pagamentos, comprovantes e acesso ao RH'},
+  {key:'financeiro',label:'Financeiro',editable:true,description:'Contas, pagamentos, comprovantes e conciliação'},
+  {key:'rh',label:'RH',editable:true,description:'Funcionários, folha, ponto, benefícios e documentos de RH'},
   {key:'entregas',label:'Entregas',editable:true,description:'Rotas, entregas, ocorrências e comprovantes'},
   {key:'autorizacoes',label:'Autorizações',editable:true,description:'Solicitações e decisões administrativas'},
   {key:'relatorios',label:'Relatórios',editable:false,description:'Consultas e relatórios gerenciais'},
@@ -19,7 +20,7 @@ export const permissionModules:{key:PermissionModule;label:string;editable:boole
 
 const none:PermissionMap={
   dashboard:'nenhum',vendas:'nenhum',clientes:'nenhum',fornecedores:'nenhum',produtos:'nenhum',
-  compras:'nenhum',comissoes:'nenhum',financeiro:'nenhum',entregas:'nenhum',autorizacoes:'nenhum',relatorios:'nenhum',config:'nenhum'
+  compras:'nenhum',comissoes:'nenhum',financeiro:'nenhum',rh:'nenhum',entregas:'nenhum',autorizacoes:'nenhum',relatorios:'nenhum',config:'nenhum'
 }
 
 export const emptyPermissions=():PermissionMap=>({...none})
