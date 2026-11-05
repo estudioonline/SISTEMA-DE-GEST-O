@@ -3965,23 +3965,61 @@ function App(){
       {active==='fechamento'&&<CashClosing canEdit={canEditModule('fechamento')} isAdmin={isAdmin} company={empresa}/>} 
       {active==='documentos'&&<DocumentsLibrary canEdit={canEditModule('documentos')}/>}
       {active==='infra'&&<InfrastructureUsage/>}
-      {active==='dashboard'&&<section>
-        <div className="cards dashboardCards">
-          <article className="card dashboardCard dashboardCardSales"><span>Vendas no mês</span><strong>{money(monthSales)}</strong><small>{vendas.filter(v=>v.status!=='cancelado').length} registros</small></article>
-          {canViewFinance&&<article className="card dashboardCard dashboardCardReceivable"><span>A receber</span><strong>{money(openReceivables)}</strong><small>em aberto</small></article>}
-          {canViewFinance&&<article className="card dashboardCard dashboardCardPayable"><span>A pagar</span><strong>{money(openPayables)}</strong><small>em aberto</small></article>}
-          <article className="card dashboardCard dashboardCardLowStock"><span>Estoque baixo</span><strong>{low}</strong><small>de {produtos.filter(p=>p.ativo).length} produtos ativos</small></article>
+      {active==='dashboard'&&<section className="dashboardPage">
+        <div className="dashboardIntro">
+          <div>
+            <span className="dashboardIntroEyebrow">VISÃO GERAL</span>
+            <h2>Painel executivo</h2>
+            <p>Acompanhe vendas, financeiro, estoque e operação em um único lugar.</p>
+          </div>
+          <div className="dashboardIntroBadge"><TrendingUp size={17}/><span>Indicadores do negócio</span></div>
         </div>
-        <div className="cards compactCards dashboardCards">
-          <article className="card dashboardCard"><span>Clientes</span><strong>{clientes.filter(c=>c.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('clientes');if(clientes.length===0&&canManageClients)startNewClient()}}>{clientes.length===0&&canManageClients?'+ Adicionar Cliente':'Gerenciar'}</button></article>
-          <article className="card dashboardCard"><span>Fornecedores</span><strong>{fornecedores.filter(f=>f.ativo).length}</strong><button className="ghost" onClick={()=>{setActive('fornecedores');if(fornecedores.length===0&&canManageSuppliers)startNewSupplier()}}>{fornecedores.length===0&&canManageSuppliers?'+ Adicionar Fornecedor':'Gerenciar'}</button></article>
-          <article className="card dashboardCard dashboardCardStockValue"><span>Valor em estoque</span><strong>{money(stockValue)}</strong><button className="ghost" onClick={()=>{setActive('produtos');if(produtos.length===0&&canManageProducts)startNewProduct()}}>{produtos.length===0&&canManageProducts?'+ Adicionar Produto':'Gerenciar'}</button></article>
+
+        <div className="dashboardKpiGrid">
+          <button type="button" className="dashboardKpi dashboardKpiSales" onClick={()=>setActive('vendas')}>
+            <span className="dashboardKpiIcon"><ShoppingCart size={20}/></span>
+            <span className="dashboardKpiText"><small>Vendas no mês</small><strong>{money(monthSales)}</strong><em>{vendas.filter(v=>v.status!=='cancelado').length} registro(s)</em></span>
+            <span className="dashboardKpiArrow"><ChevronRight size={18}/></span>
+          </button>
+          {canViewFinance&&<button type="button" className="dashboardKpi dashboardKpiReceivable" onClick={()=>{setActive('financeiro');setFinanceSubtab('receber')}}>
+            <span className="dashboardKpiIcon"><BadgeDollarSign size={20}/></span>
+            <span className="dashboardKpiText"><small>A receber</small><strong>{money(openReceivables)}</strong><em>saldo em aberto</em></span>
+            <span className="dashboardKpiArrow"><ChevronRight size={18}/></span>
+          </button>}
+          {canViewFinance&&<button type="button" className="dashboardKpi dashboardKpiPayable" onClick={()=>{setActive('financeiro');setFinanceSubtab('pagar')}}>
+            <span className="dashboardKpiIcon"><WalletCards size={20}/></span>
+            <span className="dashboardKpiText"><small>A pagar</small><strong>{money(openPayables)}</strong><em>saldo em aberto</em></span>
+            <span className="dashboardKpiArrow"><ChevronRight size={18}/></span>
+          </button>}
+          <button type="button" className="dashboardKpi dashboardKpiLowStock" onClick={()=>setActive('produtos')}>
+            <span className="dashboardKpiIcon"><Package size={20}/></span>
+            <span className="dashboardKpiText"><small>Estoque baixo</small><strong>{low}</strong><em>de {produtos.filter(p=>p.ativo).length} produtos ativos</em></span>
+            <span className="dashboardKpiArrow"><ChevronRight size={18}/></span>
+          </button>
+        </div>
+
+        <div className="dashboardResourceGrid">
+          <button type="button" className="dashboardResourceCard" onClick={()=>{setActive('clientes');if(clientes.length===0&&canManageClients)startNewClient()}}>
+            <span className="dashboardResourceIcon"><Users size={19}/></span>
+            <span><small>Clientes ativos</small><strong>{clientes.filter(c=>c.ativo).length}</strong><em>Ver cadastro de clientes</em></span>
+            <ChevronRight size={17}/>
+          </button>
+          <button type="button" className="dashboardResourceCard" onClick={()=>{setActive('fornecedores');if(fornecedores.length===0&&canManageSuppliers)startNewSupplier()}}>
+            <span className="dashboardResourceIcon"><Building2 size={19}/></span>
+            <span><small>Fornecedores ativos</small><strong>{fornecedores.filter(f=>f.ativo).length}</strong><em>Ver cadastro de fornecedores</em></span>
+            <ChevronRight size={17}/>
+          </button>
+          <button type="button" className="dashboardResourceCard dashboardResourceStock" onClick={()=>{setActive('produtos');if(produtos.length===0&&canManageProducts)startNewProduct()}}>
+            <span className="dashboardResourceIcon"><Boxes size={19}/></span>
+            <span><small>Valor em estoque</small><strong>{money(stockValue)}</strong><em>Consultar produtos e estoque</em></span>
+            <ChevronRight size={17}/>
+          </button>
         </div>
 
         <div className={canViewFinance?'dashboardCharts dashboardChartsThree':'dashboardCharts'}>
-          <article className="panel dashboardChart">
+          <article className="panel dashboardChart dashboardChartSales">
             <div className="dashboardChartHead">
-              <div><span>Desempenho</span><h3>Vendas nos últimos 6 meses</h3></div>
+              <div><span>Desempenho</span><h3>Vendas nos últimos 6 meses</h3><p>Evolução mensal do faturamento em vendas.</p></div>
               <strong>{money(dashboardSalesMonths.reduce((s,m)=>s+m.total,0))}</strong>
             </div>
             <div className="dashboardBarChart" aria-label="Gráfico de vendas dos últimos seis meses">
@@ -3995,7 +4033,7 @@ function App(){
 
           <article className="panel dashboardChart">
             <div className="dashboardChartHead">
-              <div><span>Operação</span><h3>Status das vendas</h3></div>
+              <div><span>Operação</span><h3>Status das vendas</h3><p>Distribuição atual por etapa.</p></div>
               <strong>{vendas.length}</strong>
             </div>
             <div className="dashboardHorizontalChart">
@@ -4008,7 +4046,7 @@ function App(){
 
           {canViewFinance&&<article className="panel dashboardChart">
             <div className="dashboardChartHead">
-              <div><span>Financeiro</span><h3>Valores em aberto</h3></div>
+              <div><span>Financeiro</span><h3>Valores em aberto</h3><p>Comparativo entre recebimentos e pagamentos pendentes.</p></div>
             </div>
             <div className="dashboardFinanceChart">
               {dashboardFinanceData.map(item=><div className="dashboardFinanceColumn" key={item.key}>
