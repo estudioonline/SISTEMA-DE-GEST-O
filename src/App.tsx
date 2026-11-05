@@ -2489,7 +2489,19 @@ function App(){
         const body=new FormData()
         body.append('file',file)
         const {data,error}=await supabase.functions.invoke('finance-document-ai',{body})
-        if(error)throw error
+        if(error){
+          let message=error.message||'Falha ao analisar documento com IA.'
+          const context=(error as unknown as {context?:Response}).context
+          if(context instanceof Response){
+            try{
+              const payload=await context.clone().json() as {message?:string;error?:string}
+              message=payload?.message||payload?.error||message
+            }catch{
+              try{message=(await context.clone().text())||message}catch{}
+            }
+          }
+          throw new Error(message)
+        }
         if(data?.error)throw new Error(data.message||data.error)
         const extracted=data?.data||{}
 
