@@ -2982,7 +2982,7 @@
 
 
 /* Importação de NF-e via XML */
-.nfeModalOverlay{z-index:120}
+.nfeModalOverlay{z-index:8500}
 .nfeModalShell{
   width:min(1180px,96vw);
   max-height:92vh;
