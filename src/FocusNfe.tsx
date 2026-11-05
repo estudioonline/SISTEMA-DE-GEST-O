@@ -151,8 +151,15 @@ export function FocusNfeSale({saleId}:{saleId:string}){
  }
 
  return <section className="fiscalPanel">
-  <button type="button" className="ghost" onClick={()=>setOpened(!opened)} aria-expanded={opened}>NF-e de teste · {opened?'recolher':'abrir emissão'}</button>
-  {opened&&<div className="fiscalSaleCompact">
+  <button type="button" className="primary nfeOpenWorkspaceBtn" onClick={()=>setOpened(true)} aria-expanded={opened}>Emitir Nota Fiscal</button>
+  {opened&&<div className="saleModalOverlay nfeWorkspaceOverlay" role="dialog" aria-modal="true" aria-label="Emitir Nota Fiscal">
+   <div className="saleModalShell nfeWorkspaceShell">
+    <div className="panel nfeWorkspacePanel">
+     <div className="formTitle saleModalTitle nfeWorkspaceHeader">
+      <div><h3>Emitir Nota Fiscal</h3><p>Revise os dados fiscais, gere a prévia DANFE e envie a NF-e para homologação.</p></div>
+      <button type="button" className="iconBtn saleModalClose" onClick={()=>setOpened(false)} aria-label="Fechar emissão de nota fiscal">×</button>
+     </div>
+     <div className="fiscalSaleCompact nfeWorkspaceContent">
    <h4>NF-e · homologação, sem valor fiscal</h4>
    <p>Os dados fiscais são lidos automaticamente dos cadastros do cliente e dos produtos. A venda não repete esses campos.</p>
    {error&&<p role="alert" className="fiscalError">{error}</p>}
@@ -268,6 +275,9 @@ export function FocusNfeSale({saleId}:{saleId:string}){
       </div>
     </div>
    </div>}
+     </div>
+    </div>
+   </div>
   </div>}
  </section>
 }
