@@ -1,3 +1,4 @@
+import {financialInvoiceCode} from './invoiceCode'
 import {jsPDF} from 'jspdf'
 import type {InvoiceCompany} from './invoicePdf'
 import type {Statement,StatementKind,StatementRow} from './entityStatement'
@@ -41,7 +42,7 @@ export function createEntityStatementPdf(data:Data){
    if(y+8+(i===rows.length-1?40:0)>bottom){page();doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(title+' - continuação',left,y);y+=6;tableHeader()}
    if(i%2===0){doc.setFillColor(246,248,251);doc.rect(left,y,width,8,'F')}
    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(31,41,55)
-   const cells=[r.invoice===null?'Sem número':'#'+String(r.invoice).padStart(7,'0'),String(r.installment||1),date(r.due),currency(r.amountCents),currency(r.paidCents),currency(r.balanceCents)]
+   const cells=[r.description.match(/^FAT[0-9]+/i)?.[0].toUpperCase()||(r.invoice===null?'Sem número':financialInvoiceCode(r.invoice)),String(r.installment||1),date(r.due),currency(r.amountCents),currency(r.paidCents),currency(r.balanceCents)]
    cells.forEach((text,i)=>doc.text(text,i<3?edges[i]+2:edges[i+1]-2,y+5,{align:i<3?'left':'right'}));y+=8
   })
   ensure(12);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('Subtotal em aberto',left,y+6);doc.text(currency(total),right-2,y+6,{align:'right'});y+=18

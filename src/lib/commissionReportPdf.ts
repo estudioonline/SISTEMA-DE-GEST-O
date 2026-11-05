@@ -1,3 +1,4 @@
+import { financialInvoiceCode } from './invoiceCode'
 import { jsPDF } from 'jspdf'
 import type { InvoiceCompany } from './invoicePdf'
 
@@ -34,7 +35,6 @@ const muted:[number,number,number]=[102,112,128]
 const border:[number,number,number]=[215,223,233]
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
-const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const dateBr=(value:string)=>{
   if(!value)return '-'
   const d=/^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -183,7 +183,7 @@ export function generateCommissionReportPdf(data:CommissionReportData){
     doc.setFont('helvetica','normal')
     doc.setFontSize(8)
 
-    const fatura=`#${invoiceNo(row.fatura_numero)}${row.parcela_numero?' / '+row.parcela_numero:''}`
+    const fatura=`${financialInvoiceCode(row.fatura_numero)}${row.parcela_numero?' / '+row.parcela_numero:''}`
     doc.text(fatura,14,y+5.1)
     doc.text(dateBr(row.data_pagamento),39,y+5.1)
     doc.text(fitText(doc,row.cliente,50),64,y+5.1)

@@ -1,3 +1,4 @@
+import { financialInvoiceCode } from './invoiceCode'
 import { jsPDF } from 'jspdf'
 import type { InvoiceCompany } from './invoicePdf'
 
@@ -43,7 +44,6 @@ const line:[number,number,number]=[196,205,218]
 
 const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0)
 const num=(v:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v||0)
-const invoiceNo=(n:number|null|undefined)=>String(n||0).padStart(7,'0')
 const paymentLabel=(v:PurchasePdfData['forma_pagamento'])=>v==='pix'?'PIX':v==='cartao'?'CARTÃO':'BOLETO'
 const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'fornecedor'
 
@@ -96,7 +96,7 @@ function drawHeader(doc:jsPDF,data:PurchasePdfData){
 
   doc.setTextColor(...blue)
   doc.setFontSize(18)
-  doc.text(`Compra nº ${invoiceNo(data.fatura_numero)}`,196,45,{align:'right'})
+  doc.text(`Compra nº ${financialInvoiceCode(data.fatura_numero)}`,196,45,{align:'right'})
 }
 
 function drawSupplier(doc:jsPDF,data:PurchasePdfData){
@@ -161,7 +161,7 @@ function drawContinuationHeader(doc:jsPDF,data:PurchasePdfData){
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(13)
-  doc.text(`Compra nº ${invoiceNo(data.fatura_numero)} - continuação`,196,16,{align:'right'})
+  doc.text(`Compra nº ${financialInvoiceCode(data.fatura_numero)} - continuação`,196,16,{align:'right'})
 }
 
 function drawItems(doc:jsPDF,data:PurchasePdfData,startY:number){
@@ -285,7 +285,7 @@ function addFooters(doc:jsPDF,data:PurchasePdfData){
 export function generatePurchaseInvoicePdf(data:PurchasePdfData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
-    title:`Compra ${invoiceNo(data.fatura_numero)}`,
+    title:`Compra ${financialInvoiceCode(data.fatura_numero)}`,
     subject:'Fatura de compra a pagar',
     author:companyName(data)
   })
@@ -298,5 +298,5 @@ export function generatePurchaseInvoicePdf(data:PurchasePdfData){
   drawNotes(doc,data,y)
   addFooters(doc,data)
 
-  doc.save(`${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-${invoiceNo(data.fatura_numero)}.pdf`)
+  doc.save(`${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-${financialInvoiceCode(data.fatura_numero)}.pdf`)
 }

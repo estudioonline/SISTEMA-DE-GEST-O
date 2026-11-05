@@ -1,3 +1,4 @@
+import { financialInvoiceCode } from './invoiceCode'
 import { jsPDF } from 'jspdf'
 
 export type InvoiceCustomer = {
@@ -93,7 +94,6 @@ const line:[number,number,number]=[196,205,218]
 
 const brl=(value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value||0)
 const num=(value:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value||0)
-const invoiceNo=(value:number|null|undefined)=>String(value||0).padStart(7,'0')
 const saleCode=(value:number|null|undefined)=>`S${String(value||0).padStart(5,'0')}`
 const paymentLabel=(value:InvoiceData['forma_pagamento'])=>value==='dinheiro'?'DINHEIRO':value==='pix'?'PIX':value==='cartao'?'CARTÃO':'BOLETO'
 const statusLabel=(value:string)=>value ? value.toUpperCase() : '-'
@@ -101,7 +101,7 @@ const documentKind=(data:InvoiceData)=>data.document_kind||(data.status==='orcam
 const isQuote=(data:InvoiceData)=>documentKind(data)==='orcamento'
 const isFinancialInvoice=(data:InvoiceData)=>documentKind(data)==='fatura'
 const documentLabel=(data:InvoiceData)=>isQuote(data)?'ORÇAMENTO':isFinancialInvoice(data)?'FATURA':'VENDA'
-const documentNumber=(data:InvoiceData)=>data.document_number||(isFinancialInvoice(data)?`FAT${String(data.fatura_numero||0).padStart(5,'0')}`:saleCode(data.venda_numero))
+const documentNumber=(data:InvoiceData)=>data.document_number||(isFinancialInvoice(data)?financialInvoiceCode(data.fatura_numero):saleCode(data.venda_numero))
 const deliveryRouteLabel=(value:string|null|undefined)=>value==='norte'?'NORTE':value==='sul'?'SUL':value==='leste'?'LESTE':value==='interestadual'?'INTERESTADUAL':value==='retirada'?'RETIRADA':'-'
 const safeFilePart=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase().slice(0,60)||'cliente'
 
