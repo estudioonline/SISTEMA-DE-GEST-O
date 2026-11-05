@@ -5240,6 +5240,40 @@ function App(){
                 <div><span>Status da fatura</span><strong>{saleInvoiceStatus(v).label}</strong></div>
                 <div><span>Status do pagamento</span><strong>{paymentStatus.label}</strong></div>
               </div>
+              {canViewFinance&&(()=>{
+                const titles=financialTitlesForSale(v.id).filter(t=>t.status!=='cancelado').sort((a,b)=>Number(a.parcela_numero||0)-Number(b.parcela_numero||0)||a.vencimento.localeCompare(b.vencimento))
+                const paid=titles.filter(t=>Math.round(Number(t.valor_pago)*100)>=Math.round(Number(t.valor)*100))
+                const residual=titles.reduce((sum,t)=>sum+Math.max(0,Math.round(Number(t.valor)*100)-Math.round(Number(t.valor_pago)*100)),0)/100
+                const openTitle=(t:Titulo)=>{
+                  setFinancePanelReturnModule('vendas')
+                  setFinancePanelReturnSubtab(null)
+                  setActive('financeiro')
+                  setFinanceSubtab('receber')
+                  setFinanceStatusFilter('todos')
+                  setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos')
+                  setSearch('financeiro-receber','')
+                  setFinancePanelTab('pagamentos')
+                  selectFinanceTitleInPanel(t)
+                }
+                return <div className="saleInfoGroup" style={{gridColumn:'1 / -1'}}>
+                  <h4>Parcelas e saldo da fatura</h4>
+                  {!titles.length?<p>Nenhuma fatura ativa vinculada a esta venda.</p>:<>
+                    <div><span>Parcelas pagas</span><strong>{paid.length} de {titles.length}</strong></div>
+                    <div><span>Parcelas pendentes (inclui parciais)</span><strong>{titles.length-paid.length}</strong></div>
+                    <div><span>Total residual</span><strong>{money(residual)}</strong></div>
+                    {titles.map(t=>{
+                      const invoice=t.fatura_venda_id?faturasVendas.find(f=>f.id===t.fatura_venda_id):undefined
+                      const remaining=Math.max(0,Math.round(Number(t.valor)*100)-Math.round(Number(t.valor_pago)*100))/100
+                      const label=invoice?financialInvoiceCode(invoice.numero):t.descricao
+                      return <div key={t.id} style={{flexWrap:'wrap',gap:8}}>
+                        <span>{canManageFinance?<button type="button" className="financeOriginLink" onClick={()=>openTitle(t)} title="Abrir fatura no Financeiro">{label}<ExternalLink size={12}/></button>:label} · Parcela {t.parcela_numero||1} · {dateBr(t.vencimento)}</span>
+                        <strong>{remaining===0?'Paga':Number(t.valor_pago)>0?'Parcial':'Pendente'} · Pago {money(Number(t.valor_pago))} · Residual {money(remaining)}</strong>
+                      </div>
+                    })}
+                    {titles.some(t=>t.fatura_venda_id&&faturaVendaItens.filter(i=>i.fatura_id===t.fatura_venda_id).length>1)&&<p>Fatura consolidada: os valores incluem todas as vendas vinculadas à fatura.</p>}
+                  </>}
+                </div>
+              })()}
               <div className="saleNotesBox">
                 <h4>Anotações</h4>
                 <p>{v.observacoes||'Nenhuma anotação registrada.'}</p>
