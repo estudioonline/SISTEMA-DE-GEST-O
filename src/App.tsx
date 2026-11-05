@@ -3912,7 +3912,7 @@ function App(){
 
       {msg&&!(active==='vendas'&&showForm)&&<div className="panel noticePanel">{msg}</div>}
 
-      {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
+      {active==='autorizacoes'&&canViewAuthorizations&&<AuthorizationCenter admin={canManageAuthorizations} products={produtos} clients={clientes} sellers={vendedores} sales={vendas} onChanged={loadData} onOpenSale={canViewModule('vendas')?(id)=>{setActive('vendas');setShowApps(false);setSalePanel(id)}:undefined}/>}
       {active==='rh'&&<HumanResources titles={titulos} canEdit={canEditModule('rh')} company={empresa} onChanged={refreshFinance} onOpen={t=>{closeForms();setActive('financeiro');const target=t.tipo_funcionario==='vale'?'receber':'pagar';setFinanceSubtab(target);setFinanceStatusFilter('todos');setFinanceStart('');setFinanceEnd('');setFinanceCategory('todos');setFinanceCenter('todos');setSearch('financeiro-'+target,'');setFinancePanel(t.id);setFinancePanelTab('pagamentos');setPaymentDate(today());setPaymentAmount(String(Math.max(0,Number(t.valor)-Number(t.valor_pago)).toFixed(2)))}}/>}
       {active==='entregas'&&<DeliveryWorkspace canEdit={canEditModule('entregas')} canOperate={canViewModule('entregas')}/>} 
       {active==='fechamento'&&<CashClosing canEdit={canEditModule('fechamento')} isAdmin={isAdmin} company={empresa}/>} 
