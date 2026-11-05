@@ -1949,6 +1949,13 @@
   display:inline-flex;
   align-items:center;
   gap:8px;
+  cursor:pointer;
+  user-select:none;
+}
+.loginRemember input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
 }
 .loginRememberBox{
   width:22px;
@@ -1963,10 +1970,16 @@
   box-shadow:0 4px 10px rgba(30,130,255,.18);
 }
 .loginForgot{
+  border:0;
+  padding:4px 0;
+  background:transparent;
   color:#075ff1;
+  font:inherit;
   font-weight:650;
-  cursor:default;
+  cursor:pointer;
 }
+.loginForgot:hover:not(:disabled){text-decoration:underline}
+.loginForgot:disabled{opacity:.6;cursor:wait}
 .loginCard .primary.loginSubmit{
   width:100%;
   height:60px;
