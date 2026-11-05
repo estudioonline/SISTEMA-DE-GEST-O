@@ -5457,22 +5457,80 @@ function App(){
           </table></div>
         </div>}
 
-        {billingSale&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label="Criar fatura da venda"><div className="saleModalShell billingModalShell"><form className="panel billingInvoiceForm" onSubmit={createSaleInvoice}>
-          <div className="formTitle saleModalTitle"><div><h3>{billingInvoiceSaleIds.length>1?'Criar fatura consolidada':'Criar fatura — Venda #'+saleCode(billingSale.venda_numero)}</h3><p>{billingInvoiceSaleIds.length>1?billingInvoiceSaleIds.length+' vendas do mesmo cliente em uma única fatura.':'Organize as parcelas antes de gerar o Contas a Receber.'}</p></div><button type="button" className="iconBtn saleModalClose" aria-label="Fechar fatura" disabled={billingBusy} onClick={closeBilling}><X size={18}/></button></div>
-          <div className="billingInvoiceSummary"><div><span>Cliente</span><strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong></div><div><span>{billingInvoiceSaleIds.length>1?'Total das vendas':'Total da venda'}</span><strong>{money(invoiceBillingTotal())}</strong></div><div><span>{billingInvoiceSaleIds.length>1?'Vendas incluídas':'Indicação do vendedor'}</span><strong>{billingInvoiceSaleIds.length>1?vendas.filter(v=>billingInvoiceSaleIds.includes(v.id)).map(v=>saleCode(v.venda_numero)).join(' • '):paymentLabel(billingSale.forma_pagamento)+' • '+billingSale.parcelas+'x'}</strong></div></div>
-          {billingError&&<p className="billingFormError" role="alert">{billingError}</p>}<fieldset disabled={billingBusy} className="billingFieldset"><div className="billingInvoiceControls">
-            <label>Forma de pagamento<select value={billingPayment} onChange={e=>{const method=e.target.value as PaymentMethod;setBillingPayment(method);if(method==='dinheiro')resizeBillingLines(1)}}><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option></select></label>
-            <label>Número de parcelas<select value={billingLines.length} disabled={billingPayment==='dinheiro'} onChange={e=>resizeBillingLines(Number(e.target.value))}>{Array.from({length:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}</select></label>
-            {billingPayment==='boleto'&&<button type="button" className="ghost billingTermsButton" onClick={setBillingTerms306090}>Aplicar 30/60/90</button>}
+        {billingSale&&<div className="saleModalOverlay billingInvoiceOverlay" role="dialog" aria-modal="true" aria-label="Criar fatura da venda">
+          <div className="saleModalShell billingModalShell billingPremiumShell">
+            <form className="panel billingInvoiceForm billingPremiumForm" onSubmit={createSaleInvoice}>
+              <div className="billingPremiumHeader">
+                <div className="billingPremiumBrand">SG</div>
+                <div className="billingPremiumHeaderText">
+                  <h3>{billingInvoiceSaleIds.length>1?'Criar fatura consolidada':'Criar fatura — Venda #'+saleCode(billingSale.venda_numero)}</h3>
+                  <p>{billingInvoiceSaleIds.length>1?billingInvoiceSaleIds.length+' vendas do mesmo cliente em uma única fatura.':'Organize as parcelas antes de gerar o Contas a Receber.'}</p>
+                </div>
+                <button type="button" className="iconBtn saleModalClose billingPremiumClose" aria-label="Fechar fatura" disabled={billingBusy} onClick={closeBilling}><X size={20}/></button>
+              </div>
+
+              <div className="billingInvoiceSummary billingPremiumSummary">
+                <div>
+                  <span className="billingSummaryIcon"><CircleUserRound size={21}/></span>
+                  <span>Cliente</span>
+                  <strong>{clientes.find(c=>c.id===billingSale.cliente_id)?.nome||'Consumidor'}</strong>
+                </div>
+                <div>
+                  <span className="billingSummaryIcon"><BadgeDollarSign size={21}/></span>
+                  <span>{billingInvoiceSaleIds.length>1?'Total das vendas':'Total da venda'}</span>
+                  <strong>{money(invoiceBillingTotal())}</strong>
+                </div>
+                <div>
+                  <span className="billingSummaryIcon"><ReceiptText size={21}/></span>
+                  <span>{billingInvoiceSaleIds.length>1?'Vendas incluídas':'Indicação do vendedor'}</span>
+                  <strong>{billingInvoiceSaleIds.length>1?vendas.filter(v=>billingInvoiceSaleIds.includes(v.id)).map(v=>saleCode(v.venda_numero)).join(' • '):paymentLabel(billingSale.forma_pagamento)+' • '+billingSale.parcelas+'x'}</strong>
+                </div>
+              </div>
+
+              {billingError&&<p className="billingFormError" role="alert">{billingError}</p>}
+              <fieldset disabled={billingBusy} className="billingFieldset billingPremiumFieldset">
+                <div className="billingPremiumSectionTitle"><ReceiptText size={19}/><strong>Condições da fatura</strong><span></span></div>
+
+                <div className="billingInvoiceControls billingPremiumControls">
+                  <label>Forma de pagamento
+                    <select value={billingPayment} onChange={e=>{const method=e.target.value as PaymentMethod;setBillingPayment(method);if(method==='dinheiro')resizeBillingLines(1)}}>
+                      <option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="boleto">Boleto</option>
+                    </select>
+                  </label>
+                  <label>Número de parcelas
+                    <select value={billingLines.length} disabled={billingPayment==='dinheiro'} onChange={e=>resizeBillingLines(Number(e.target.value))}>
+                      {Array.from({length:24},(_,i)=>i+1).map(n=><option key={n} value={n}>{n}x</option>)}
+                    </select>
+                  </label>
+                  {billingPayment==='boleto'&&<button type="button" className="ghost billingTermsButton billingPremiumTerms" onClick={setBillingTerms306090}><ReceiptText size={16}/>Aplicar 30/60/90</button>}
+                </div>
+
+                <div className="billingPremiumSectionTitle"><Layers3 size={19}/><strong>Parcelas</strong><span></span></div>
+
+                <div className="billingLines billingPremiumLines">
+                  <div className="billingLinesHead"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>
+                  {billingLines.map((line,index)=><div className="billingLine" key={line.key}>
+                    <strong>{index+1}/{billingLines.length}</strong>
+                    <input aria-label={`Vencimento da parcela ${index+1}`} type="date" value={line.vencimento} onChange={e=>updateBillingLine(line.key,'vencimento',e.target.value)} required/>
+                    <input aria-label={`Valor da parcela ${index+1}`} type="number" min="0.01" step="0.01" value={line.valor} onChange={e=>updateBillingLine(line.key,'valor',e.target.value)} required/>
+                  </div>)}
+                </div>
+
+                {billingPayment==='dinheiro'&&<div className="billingCashNotice">Pagamento em dinheiro: ao salvar, a fatura será considerada paga e a entrada será registrada automaticamente no diário Dinheiro.</div>}
+
+                <div className="billingPremiumFooter">
+                  <div className="billingInvoiceTotal billingPremiumTotal">
+                    <span>Soma das parcelas</span><i></i><strong>{money(billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0))}</strong>
+                  </div>
+                  <div className="formActions billingPremiumActions">
+                    <button type="button" className="ghost" onClick={closeBilling}>Cancelar</button>
+                    <button className="primary billingPremiumSubmit" disabled={billingBusy}><CheckCircle2 size={18}/>{billingBusy?'Gerando...':'Salvar fatura e gerar lançamentos'}</button>
+                  </div>
+                </div>
+              </fieldset>
+            </form>
           </div>
-          <div className="billingLines">
-            <div className="billingLinesHead"><span>Parcela</span><span>Vencimento</span><span>Valor</span></div>
-            {billingLines.map((line,index)=><div className="billingLine" key={line.key}><strong>{index+1}/{billingLines.length}</strong><input aria-label={`Vencimento da parcela ${index+1}`} type="date" value={line.vencimento} onChange={e=>updateBillingLine(line.key,'vencimento',e.target.value)} required/><input aria-label={`Valor da parcela ${index+1}`} type="number" min="0.01" step="0.01" value={line.valor} onChange={e=>updateBillingLine(line.key,'valor',e.target.value)} required/></div>)}
-          </div>
-          {billingPayment==='dinheiro'&&<div className="billingCashNotice">Pagamento em dinheiro: ao salvar, a fatura será considerada paga e a entrada será registrada automaticamente no diário Dinheiro.</div>}
-          <div className="billingInvoiceTotal"><span>Soma das parcelas</span><strong>{money(billingLines.reduce((sum,line)=>sum+Number(line.valor||0),0))}</strong></div>
-          <div className="formActions"><button type="button" className="ghost" onClick={closeBilling}>Cancelar</button><button className="primary" disabled={billingBusy}>{billingBusy?'Gerando...':'Salvar fatura e gerar lançamentos'}</button></div>
-        </fieldset></form></div></div>}
+        </div>}
         {financeSubtab==='receber'&&<div className="financeGroups financeSingleList">{financeTable('receber')}</div>}
         {financeSubtab==='pagar'&&<div className="financeGroups financeSingleList">{financeTable('pagar')}</div>}
         {financeSubtab==='conciliacao'&&<BankReconciliation titles={titulos} canEdit={canManageFinance} canClosePeriods={canManageConfig} onChanged={refreshFinance}/>}
