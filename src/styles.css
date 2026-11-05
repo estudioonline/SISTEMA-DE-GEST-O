@@ -9727,3 +9727,17 @@ small{font-size:11px}
     width:100%;
   }
 }
+
+/* Borda azul do card de login no modo claro */
+.loginPage:not(.dark) .loginCard{
+  border:1.5px solid #79aef8!important;
+  box-shadow:
+    0 0 0 1px rgba(59,130,246,.06),
+    0 24px 70px rgba(45,82,132,.16)!important;
+}
+.loginPage:not(.dark) .loginCard:focus-within{
+  border-color:#4d94f5!important;
+  box-shadow:
+    0 0 0 3px rgba(59,130,246,.08),
+    0 26px 74px rgba(45,82,132,.18)!important;
+}
