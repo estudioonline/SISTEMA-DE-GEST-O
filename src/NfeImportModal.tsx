@@ -380,7 +380,7 @@ export function NfeImportModal({
         <div className="formTitle saleModalTitle">
           <div>
             <h3>Importar documento de compra</h3>
-            <p>Use XML, PDF ou imagem de NF-e/DANFE. PDF e imagem são lidos por IA; depois do De/Para, a compra entra como recebida e atualiza estoque, custo e financeiro.</p>
+            <p>Use XML, PDF ou imagem de NF-e/DANFE. PDF e imagem são lidos por IA; depois do De/Para, a compra entra como Pedido aprovado. Estoque e custo só são atualizados ao receber a compra.</p>
           </div>
           <button type="button" className="iconBtn saleModalClose" onClick={close} disabled={saving} aria-label="Fechar importação"><X size={18}/></button>
         </div>
@@ -408,7 +408,7 @@ export function NfeImportModal({
           </div>
 
           <div className="panel nfePaymentPanel">
-            <div><strong>Financeiro da compra</strong><span>A NF-e será importada como Pedido recebido.</span></div>
+            <div><strong>Financeiro da compra</strong><span>A NF-e será importada como Pedido aprovado, aguardando recebimento.</span></div>
             <label>Pagamento
               <select value={payment} onChange={e=>changePayment(e.target.value as 'pix'|'cartao'|'boleto')}>
                 <option value="pix">PIX</option>
@@ -465,7 +465,7 @@ export function NfeImportModal({
                 <label>Descrição<input value={item.newDescription} onChange={e=>updateNew(index,'newDescription',e.target.value)}/></label>
                 <label>Unidade<input value={item.newUnit} onChange={e=>updateNew(index,'newUnit',e.target.value)}/></label>
                 <label>Preço de venda<input type="number" min="0" step="0.01" value={item.newSalePrice} onChange={e=>updateNew(index,'newSalePrice',e.target.value)}/></label>
-                <small>O custo inicial será {money(item.valor_unitario)} e o estoque inicial será lançado pela própria NF-e.</small>
+                <small>O custo inicial será {money(item.valor_unitario)}. O produto será criado sem estoque; a entrada ocorrerá ao receber a compra.</small>
               </div>}
             </article>)}
           </div>
@@ -473,7 +473,7 @@ export function NfeImportModal({
           <div className="nfeImportFooter">
             <button type="button" className="ghost" onClick={close} disabled={saving}>Cancelar</button>
             <button type="button" className="primary" onClick={()=>void importNfe()} disabled={saving||mappedCount!==items.length||!installmentsValid}>
-              <FileText size={16}/>{saving?'Importando NF-e...':'Importar NF-e e receber compra'}
+              <FileText size={16}/>{saving?'Importando NF-e...':'Importar NF-e e criar pedido'}
             </button>
           </div>
         </>}

@@ -4702,7 +4702,7 @@ function App(){
         onClose={()=>setShowNfeImport(false)}
         onImported={async result=>{
           setShowNfeImport(false)
-          setMsg(`NF-e importada com sucesso na compra #${invoiceNo(result.fatura_numero)}. Estoque e financeiro atualizados.`)
+          setMsg(`NF-e importada com sucesso na compra #${invoiceNo(result.fatura_numero)}. Pedido aprovado, aguardando recebimento. Financeiro atualizado; estoque será lançado ao receber a compra.`)
           await loadData()
         }}
       />}
