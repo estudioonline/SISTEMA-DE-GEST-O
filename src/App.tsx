@@ -396,6 +396,13 @@ function App(){
   const [showLoginPassword,setShowLoginPassword]=useState(false)
   const [rememberLogin,setRememberLogin]=useState(()=>{try{return localStorage.getItem('sg-auth-remember')==='1'}catch{return false}})
   const [resetBusy,setResetBusy]=useState(false)
+  const [resetModalOpen,setResetModalOpen]=useState(false)
+  const [resetEmail,setResetEmail]=useState('')
+  const [resetSent,setResetSent]=useState(false)
+  const [recoveryMode,setRecoveryMode]=useState(false)
+  const [newPassword,setNewPassword]=useState('')
+  const [confirmNewPassword,setConfirmNewPassword]=useState('')
+  const [passwordUpdateBusy,setPasswordUpdateBusy]=useState(false)
   const [savingCompany,setSavingCompany]=useState(false)
   const [configSection,setConfigSection]=useState<'empresa'|'usuarios'|'integracoes'|'financeiro'>('empresa')
   const dataLoadSequence=useRef(0)
@@ -619,7 +626,7 @@ function App(){
   useEffect(()=>{
     if(!supabaseConfigured){setLoading(false);return}
     supabase.auth.getSession().then(({data,error})=>{if(error)setMsg('Não foi possível recuperar a sessão. Entre novamente.');setSession(data.session);setLoading(false)}).catch(()=>{setMsg('Não foi possível recuperar a sessão.');setLoading(false)})
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setSession(s))
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,s)=>{if(event==='PASSWORD_RECOVERY')setRecoveryMode(true);setSession(s)})
     return ()=>subscription.unsubscribe()
   },[])
 
@@ -1045,19 +1052,48 @@ function App(){
     }catch{setMsg('Não foi possível conectar. Tente novamente.')}finally{setLoginBusy(false)}
   }
 
-  async function recoverPassword(){
+  function openPasswordRecovery(){
+    setResetEmail(email.trim())
+    setResetSent(false)
+    setMsg('')
+    setResetModalOpen(true)
+  }
+
+  async function recoverPassword(e?:FormEvent){
+    e?.preventDefault()
     if(resetBusy)return
-    const target=email.trim()
+    const target=resetEmail.trim()
     if(!target){setMsg('Informe seu e-mail para receber o link de recuperação.');return}
     setResetBusy(true);setMsg('')
     try{
       const redirectTo=`${window.location.origin}${window.location.pathname}`
       const {error}=await supabase.auth.resetPasswordForEmail(target,{redirectTo})
       if(error)throw error
-      setMsg('E-mail de recuperação enviado. Verifique sua caixa de entrada e o spam.')
+      setResetSent(true)
+      setMsg('')
     }catch(error){
       setMsg((error as {message?:string}).message||'Não foi possível enviar o e-mail de recuperação.')
     }finally{setResetBusy(false)}
+  }
+
+  async function updateRecoveredPassword(e:FormEvent){
+    e.preventDefault()
+    if(passwordUpdateBusy)return
+    if(newPassword.length<6){setMsg('A nova senha deve ter pelo menos 6 caracteres.');return}
+    if(newPassword!==confirmNewPassword){setMsg('As senhas não coincidem.');return}
+    setPasswordUpdateBusy(true);setMsg('')
+    try{
+      const {error}=await supabase.auth.updateUser({password:newPassword})
+      if(error)throw error
+      await supabase.auth.signOut()
+      setRecoveryMode(false)
+      setNewPassword('')
+      setConfirmNewPassword('')
+      try{window.history.replaceState({},document.title,window.location.pathname)}catch{/* sem suporte */}
+      setMsg('Senha alterada com sucesso. Entre novamente com sua nova senha.')
+    }catch(error){
+      setMsg((error as {message?:string}).message||'Não foi possível alterar a senha.')
+    }finally{setPasswordUpdateBusy(false)}
   }
 
   function closeForms(){
@@ -2896,6 +2932,26 @@ function App(){
 
   if(loading)return <div className="modulePlaceholder">Carregando...</div>
   if(!supabaseConfigured)return <div className="modulePlaceholder"><div className="panel" style={{maxWidth:620}}><h2>Sistema de Gestão publicado</h2><p>Configuração do Supabase ausente.</p></div></div>
+  if(recoveryMode&&session)return <div className="loginRecoveryPage">
+    <form onSubmit={updateRecoveredPassword} className="loginRecoveryCard">
+      <div className="loginRecoveryIcon"><KeyRound size={30}/></div>
+      <span className="loginRecoveryEyebrow">Recuperação de acesso</span>
+      <h2>Crie uma nova senha</h2>
+      <p>Defina uma nova senha para continuar acessando o Sistema de Gestão.</p>
+      <label className="loginRecoveryField">
+        <span>Nova senha</span>
+        <div className="loginInputWrap"><LockKeyhole size={19}/><input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} minLength={6} autoComplete="new-password" placeholder="Digite a nova senha" required/></div>
+      </label>
+      <label className="loginRecoveryField">
+        <span>Confirmar nova senha</span>
+        <div className="loginInputWrap"><LockKeyhole size={19}/><input type="password" value={confirmNewPassword} onChange={e=>setConfirmNewPassword(e.target.value)} minLength={6} autoComplete="new-password" placeholder="Digite novamente" required/></div>
+      </label>
+      {msg&&<p className="loginRecoveryMsg">{msg}</p>}
+      <button className="primary loginSubmit" disabled={passwordUpdateBusy}><KeyRound size={19}/>{passwordUpdateBusy?'Salvando...':'Alterar senha'}</button>
+      <div className="loginSecure"><span></span><ShieldCheck size={17}/><small>Link de recuperação validado</small><span></span></div>
+    </form>
+  </div>
+
   if(!session)return <div className="loginPage loginPagePremium">
     <section className="loginInfo">
       <div className="loginBrand">
@@ -2943,7 +2999,7 @@ function App(){
           <span className="loginRememberBox">{rememberLogin?'✓':''}</span>
           Lembrar-me
         </label>
-        <button type="button" className="loginForgot" onClick={recoverPassword} disabled={resetBusy}>{resetBusy?'Enviando...':'Esqueci minha senha'}</button>
+        <button type="button" className="loginForgot" onClick={openPasswordRecovery}>Esqueci minha senha</button>
       </div>
 
       <button className="primary loginSubmit" disabled={loginBusy}><LogIn size={21}/>{loginBusy?'Entrando...':'Entrar'}</button>
@@ -2951,6 +3007,39 @@ function App(){
 
       <div className="loginSecure"><span></span><ShieldCheck size={17}/><small>Ambiente seguro</small><span></span></div>
     </form>
+
+    {resetModalOpen&&<div className="loginResetOverlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setResetModalOpen(false)}}>
+      <div className="loginResetModal" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
+        <button type="button" className="loginResetClose" onClick={()=>setResetModalOpen(false)} aria-label="Fechar"><X size={20}/></button>
+        {!resetSent?<>
+          <div className="loginRecoveryIcon"><Mail size={28}/></div>
+          <span className="loginRecoveryEyebrow">Recuperar senha</span>
+          <h2 id="reset-password-title">Esqueceu sua senha?</h2>
+          <p>Informe o e-mail cadastrado no SG. Enviaremos um link seguro para você criar uma nova senha.</p>
+          <form onSubmit={recoverPassword}>
+            <label className="loginRecoveryField">
+              <span>E-mail</span>
+              <div className="loginInputWrap"><Mail size={19}/><input type="email" value={resetEmail} onChange={e=>setResetEmail(e.target.value)} autoComplete="email" placeholder="Digite seu e-mail" required autoFocus/></div>
+            </label>
+            {msg&&<p className="loginRecoveryMsg">{msg}</p>}
+            <button className="primary loginSubmit" disabled={resetBusy}><Mail size={19}/>{resetBusy?'Enviando...':'Enviar link de recuperação'}</button>
+          </form>
+          <button type="button" className="loginRecoveryBack" onClick={()=>setResetModalOpen(false)}>Voltar para o login</button>
+        </>:<>
+          <div className="loginRecoveryIcon loginRecoverySuccess"><CheckCircle2 size={30}/></div>
+          <span className="loginRecoveryEyebrow">E-mail enviado</span>
+          <h2 id="reset-password-title">Confira sua caixa de entrada</h2>
+          <p>Enviamos um link de recuperação para <strong>{resetEmail}</strong>. Abra o e-mail e clique no link para definir uma nova senha.</p>
+          <div className="loginResetSteps">
+            <span><b>1</b> Abra o e-mail recebido</span>
+            <span><b>2</b> Clique no link de recuperação</span>
+            <span><b>3</b> Crie e confirme sua nova senha</span>
+          </div>
+          <button type="button" className="primary loginSubmit" onClick={()=>setResetModalOpen(false)}>Entendi</button>
+          <button type="button" className="loginRecoveryBack" onClick={()=>{setResetSent(false);setMsg('')}}>Reenviar ou trocar e-mail</button>
+        </>}
+      </div>
+    </div>}
 
     <section className="loginVisual" aria-hidden="true">
       <div className="loginDevice">
