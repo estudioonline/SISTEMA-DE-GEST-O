@@ -9025,3 +9025,69 @@ small{font-size:11px}
   }
   .nfeWorkspacePanel{max-height:calc(100vh - 20px)}
 }
+
+/* Refinamento visual dos campos de login */
+.loginField{
+  display:grid!important;
+  gap:8px!important;
+}
+.loginField>span{
+  font-size:14px;
+  font-weight:700;
+  color:#183153;
+}
+.loginInputWrapClean{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  height:58px;
+  padding:0 14px;
+  border-radius:16px;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)!important;
+  border:1px solid #cfe0f5!important;
+  box-shadow:
+    0 6px 18px rgba(34,94,168,.08),
+    inset 0 1px 0 rgba(255,255,255,.9);
+  transition:all .18s ease;
+}
+.loginInputWrapClean:hover{
+  border-color:#b8d2f3!important;
+  box-shadow:
+    0 8px 22px rgba(34,94,168,.10),
+    inset 0 1px 0 rgba(255,255,255,.95);
+}
+.loginInputWrapClean:focus-within{
+  border-color:#4a90ff!important;
+  background:#fff!important;
+  box-shadow:
+    0 0 0 4px rgba(74,144,255,.14),
+    0 10px 24px rgba(34,94,168,.12)!important;
+}
+.loginInputIcon{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(180deg,#eef5ff 0%,#e3efff 100%);
+  color:#5d7493;
+  flex:0 0 auto;
+}
+.loginInputWrapClean input{
+  flex:1;
+  min-width:0;
+  height:auto!important;
+  border:0!important;
+  outline:none!important;
+  background:transparent!important;
+  font-size:15px!important;
+  color:#183153!important;
+  padding:0!important;
+  box-shadow:none!important;
+}
+.loginInputWrapClean input::placeholder{
+  color:#8ca0bb;
+}
+.loginInputWrapClean .loginPasswordToggle{
+  margin-left:auto;
+}
