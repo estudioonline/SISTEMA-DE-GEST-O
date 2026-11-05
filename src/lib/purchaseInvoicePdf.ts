@@ -64,62 +64,69 @@ function companyName(data:PurchasePdfData){
 }
 
 function drawHeader(doc:jsPDF,data:PurchasePdfData){
-  doc.setFillColor(...paleBlue)
-  doc.rect(0,0,210,49,'F')
-  doc.setFillColor(255,255,255)
-  doc.triangle(126,49,145,38,145,49,'F')
-
-  doc.setTextColor(...darkBlue)
+  const leftWidth=94
+  const rightWidth=78
   doc.setFont('helvetica','bold')
-  doc.setFontSize(21)
-  doc.text(companyName(data),12,17)
-
-  doc.setTextColor(...blue)
-  doc.setFontSize(8.5)
-  doc.setCharSpace(1.3)
-  doc.text('CONTAS A PAGAR',12,23)
-  doc.setCharSpace(0)
-
-  const rightX=196
-  const lines=[
+  doc.setFontSize(17)
+  const companyLines=doc.splitTextToSize(companyName(data),leftWidth) as string[]
+  doc.setFont('helvetica','normal')
+  doc.setFontSize(8.2)
+  const addressLines=[
     data.company?.razao_social&&data.company.razao_social!==companyName(data)?data.company.razao_social:'',
     data.company?.endereco||'',
     [data.company?.cidade,data.company?.uf].filter(Boolean).join(' - '),
     data.company?.cep||'',
     'Brasil'
-  ].filter(Boolean)
-
+  ].filter(Boolean).flatMap(value=>doc.splitTextToSize(value,rightWidth) as string[])
+  const height=Math.max(54,18+companyLines.length*6.5,16+addressLines.length*4)
+  doc.setFillColor(...paleBlue)
+  doc.rect(0,0,210,height,'F')
+  doc.setTextColor(...darkBlue)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(17)
+  doc.text(companyLines,12,16)
+  doc.setTextColor(...blue)
+  doc.setFontSize(8.5)
+  doc.text('CONTAS A PAGAR',12,20+companyLines.length*6.5)
   doc.setTextColor(...text)
   doc.setFont('helvetica','normal')
-  doc.setFontSize(9.2)
-  let y=12
-  lines.slice(0,5).forEach(v=>{doc.text(v,rightX,y,{align:'right'});y+=5.2})
-
-  doc.setTextColor(...blue)
-  doc.setFontSize(18)
-  doc.text(`Compra nº ${purchaseCode(data.fatura_numero)}`,196,45,{align:'right'})
-  if(data.status!=='cotacao'){
-    doc.setFontSize(9.2)
-    doc.text(`Fatura ${financialInvoiceCode(data.fatura_numero)}`,196,52,{align:'right'})
-  }
+  doc.setFontSize(8.2)
+  addressLines.forEach((value,index)=>doc.text(value,196,12+index*4,{align:'right'}))
+  return height
 }
 
-function drawSupplier(doc:jsPDF,data:PurchasePdfData){
+function drawSupplier(doc:jsPDF,data:PurchasePdfData,startY:number){
+  const y=startY+10
+  doc.setTextColor(...blue)
+  doc.setFont('helvetica','bold')
+  doc.setFontSize(14)
+  doc.text('Compra '+purchaseCode(data.fatura_numero),12,y)
+  const quote=data.status.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()==='cotacao'
+  if(!quote){
+    doc.setFontSize(10)
+    doc.text('Fatura '+financialInvoiceCode(data.fatura_numero),196,y,{align:'right'})
+  }
+  doc.setTextColor(...muted)
+  doc.setFontSize(8)
+  doc.text('FORNECEDOR',12,y+10)
   doc.setTextColor(...text)
   doc.setFont('helvetica','bold')
   doc.setFontSize(10.5)
-  doc.text(data.fornecedor?.nome||'FORNECEDOR NÃO INFORMADO',12,61)
-
+  const nameLines=doc.splitTextToSize(data.fornecedor?.nome||'FORNECEDOR NÃO INFORMADO',184) as string[]
+  doc.text(nameLines,12,y+16)
+  let nextY=y+16+nameLines.length*4.5
   doc.setFont('helvetica','normal')
-  doc.setFontSize(9.1)
-  let y=67
-  const lines=[
-    data.fornecedor?.documento?`CPF/CNPJ: ${data.fornecedor.documento}`:'',
-    data.fornecedor?.email||'',
-    data.fornecedor?.telefone||''
-  ].filter(Boolean)
-  lines.forEach(v=>{doc.text(v,12,y);y+=5})
-  return Math.max(82,y+4)
+  doc.setFontSize(9)
+  const document=data.fornecedor?.documento||''
+  const digits=document.replace(/\D/g,'')
+  const formattedDocument=digits.length===14?digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):document
+  const details=[formattedDocument?'CPF/CNPJ: '+formattedDocument:'',data.fornecedor?.email||'',data.fornecedor?.telefone||''].filter(Boolean)
+  details.forEach(value=>{
+    const lines=doc.splitTextToSize(value,184) as string[]
+    doc.text(lines,12,nextY)
+    nextY+=lines.length*4.5
+  })
+  return nextY+10
 }
 
 function drawInfo(doc:jsPDF,data:PurchasePdfData,y:number){
@@ -162,7 +169,7 @@ function drawContinuationHeader(doc:jsPDF,data:PurchasePdfData){
   doc.setTextColor(...darkBlue)
   doc.setFont('helvetica','bold')
   doc.setFontSize(12)
-  doc.text(companyName(data),12,10)
+  doc.text(doc.splitTextToSize(companyName(data),110) as string[],12,10)
   doc.setTextColor(...blue)
   doc.setFont('helvetica','normal')
   doc.setFontSize(13)
@@ -172,40 +179,45 @@ function drawContinuationHeader(doc:jsPDF,data:PurchasePdfData){
 function drawItems(doc:jsPDF,data:PurchasePdfData,startY:number){
   let y=drawTableHeader(doc,startY)
   data.items.forEach((item,index)=>{
-    const description=`${item.codigo?`${item.codigo} - `:''}${item.descricao}`
-    const lines=doc.splitTextToSize(description,104) as string[]
-    const rowH=Math.max(7,lines.length*4.1+2)
-
-    if(y+rowH>240){
+    doc.setFont('helvetica','normal')
+    doc.setFontSize(9.1)
+    const descriptionLines=doc.splitTextToSize(item.descricao,86) as string[]
+    doc.setFontSize(7.8)
+    const codeLines=item.codigo?doc.splitTextToSize(item.codigo,86) as string[]:[]
+    const rowH=Math.max(10,descriptionLines.length*4.3+codeLines.length*3.5+5)
+    if(y+rowH>254){
       doc.addPage()
       drawContinuationHeader(doc,data)
       y=drawTableHeader(doc,34)
     }
-
     if(index%2===0){doc.setFillColor(...paleRow);doc.rect(12,y-1,184,rowH,'F')}
-
+    let descriptionY=y+4.3
+    if(codeLines.length){
+      doc.setTextColor(...muted)
+      doc.setFontSize(7.8)
+      doc.text(codeLines,14,descriptionY)
+      descriptionY+=codeLines.length*3.5
+    }
     doc.setTextColor(...text)
-    doc.setFont('helvetica','normal')
     doc.setFontSize(9.1)
-    doc.text(lines,14,y+4.3)
-    doc.text(`${num(item.quantidade)} ${item.unidade}`,130,y+4.3,{align:'right'})
-    doc.text(money(item.custo_unitario),166,y+4.3,{align:'right'})
-    doc.text(money(item.total),196,y+4.3,{align:'right'})
-
+    doc.text(descriptionLines,14,descriptionY)
+    doc.text(num(item.quantidade)+' '+item.unidade,130,y+6,{align:'right'})
+    doc.text(money(item.custo_unitario),164,y+6,{align:'right'})
+    doc.text(money(item.total),194,y+6,{align:'right'})
     doc.setDrawColor(225,230,237)
     doc.setLineWidth(.2)
     doc.line(12,y+rowH-1,196,y+rowH-1)
     y+=rowH
   })
-
-  doc.setFillColor(242,244,248)
-  doc.rect(105,y,91,7,'F')
+  if(y+10>272){doc.addPage();drawContinuationHeader(doc,data);y=34}
+  doc.setFillColor(...paleBlue)
+  doc.rect(105,y,91,9,'F')
   doc.setTextColor(...blue)
   doc.setFont('helvetica','bold')
-  doc.setFontSize(9.5)
-  doc.text('Total a pagar',145,y+4.8,{align:'right'})
-  doc.text(money(data.total),196,y+4.8,{align:'right'})
-  return y+13
+  doc.setFontSize(10)
+  doc.text('Total a pagar',145,y+6,{align:'right'})
+  doc.text(money(data.total),194,y+6,{align:'right'})
+  return y+17
 }
 
 function installmentValue(total:number,installments:number,index:number){
@@ -287,7 +299,7 @@ function addFooters(doc:jsPDF,data:PurchasePdfData){
   }
 }
 
-export function generatePurchaseInvoicePdf(data:PurchasePdfData){
+export function createPurchaseInvoicePdf(data:PurchasePdfData){
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'})
   doc.setProperties({
     title:`Compra ${purchaseCode(data.fatura_numero)}`,
@@ -295,13 +307,17 @@ export function generatePurchaseInvoicePdf(data:PurchasePdfData){
     author:companyName(data)
   })
 
-  drawHeader(doc,data)
-  let y=drawSupplier(doc,data)
+  const headerHeight=drawHeader(doc,data)
+  let y=drawSupplier(doc,data,headerHeight)
   y=drawInfo(doc,data,y)
   y=drawItems(doc,data,y)
   y=drawSchedule(doc,data,y)
   drawNotes(doc,data,y)
   addFooters(doc,data)
 
-  doc.save(`${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-${purchaseCode(data.fatura_numero)}.pdf`)
+  return doc
+}
+
+export function generatePurchaseInvoicePdf(data:PurchasePdfData){
+  createPurchaseInvoicePdf(data).save(`${safeFilePart(data.fornecedor?.nome||'sem-fornecedor')}-${purchaseCode(data.fatura_numero)}.pdf`)
 }
