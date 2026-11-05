@@ -9741,3 +9741,36 @@ small{font-size:11px}
     0 0 0 3px rgba(59,130,246,.08),
     0 26px 74px rgba(45,82,132,.18)!important;
 }
+
+/* Tela extra do novo ajuste em massa */
+.bulkAdjustmentScreenOverlay{
+  position:fixed;
+  inset:0;
+  z-index:2250;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:rgba(6,18,34,.58);
+  backdrop-filter:blur(8px);
+}
+.bulkAdjustmentScreen{
+  width:min(1380px,calc(100vw - 48px));
+  max-height:calc(100vh - 48px);
+  overflow:auto;
+  border-radius:18px;
+  box-shadow:0 32px 100px rgba(0,0,0,.34);
+}
+.dark .bulkAdjustmentScreen{
+  background:#0f1725;
+  border-color:#334155;
+}
+@media(max-width:900px){
+  .bulkAdjustmentScreenOverlay{
+    padding:10px;
+  }
+  .bulkAdjustmentScreen{
+    width:calc(100vw - 20px);
+    max-height:calc(100vh - 20px);
+  }
+}
