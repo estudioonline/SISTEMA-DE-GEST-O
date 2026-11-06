@@ -10667,3 +10667,28 @@ small{font-size:11px}
 .financeOriginLink{display:inline-flex;align-items:center;gap:4px;border:0!important;background:transparent!important;color:#1d4ed8;padding:2px 0!important;font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .financeOriginLink:focus-visible{outline:2px solid #3b82f6;outline-offset:3px;border-radius:3px}
 .dark .financeOriginLink{color:#93c5fd}
+
+
+/* Compra: detalhamento compacto no painel */
+.purchaseCardDetails{margin-top:10px;border:1px solid var(--border-color,#263244);border-radius:12px;overflow:hidden;background:rgba(15,23,42,.28)}
+.purchaseCardSectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border-color,#263244)}
+.purchaseCardSectionHead span{font-size:12px;opacity:.68}
+.purchaseCardItems{width:100%}
+.purchaseCardItem{display:grid;grid-template-columns:minmax(220px,1fr) 110px 130px 130px;align-items:center;gap:14px;padding:9px 12px;border-bottom:1px solid rgba(148,163,184,.12);font-size:13px}
+.purchaseCardItem:last-child{border-bottom:0}
+.purchaseCardItemHead{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.62;background:rgba(148,163,184,.04)}
+.purchaseCardProduct{display:flex;flex-direction:column;gap:2px;min-width:0}
+.purchaseCardProduct strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.purchaseCardProduct small{font-size:11px;opacity:.6}
+.purchaseCardItem>span:nth-child(n+2),.purchaseCardItem>strong{text-align:right}
+.purchaseCardSummary{display:grid;grid-template-columns:1.3fr .8fr .9fr;gap:10px;padding:10px 12px;border-top:1px solid var(--border-color,#263244);background:rgba(148,163,184,.035)}
+.purchaseCardSummary>div{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid rgba(148,163,184,.13);border-radius:9px}
+.purchaseCardSummary span{font-size:11px;opacity:.62}
+.purchaseCardSummary strong{font-size:13px}
+.purchaseCardTotal strong{font-size:16px}
+.purchaseCardEmpty{padding:14px 12px;font-size:12px;opacity:.62}
+@media(max-width:800px){
+  .purchaseCardItem{grid-template-columns:minmax(150px,1fr) 72px 100px}
+  .purchaseCardItemHead span:nth-child(3),.purchaseCardItem>span:nth-child(3){display:none}
+  .purchaseCardSummary{grid-template-columns:1fr}
+}
