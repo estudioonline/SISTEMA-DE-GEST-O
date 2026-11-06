@@ -120,7 +120,7 @@ export function ProductLookup({ products, value, onSelect, fullWidth=false }: {
           {results.slice(0, limit).map(product => <button type="button" key={product.id}
             className={`productLookupResult${product.id === value ? ' isSelected' : ''}`}
             onClick={() => { onSelect(product.id); close() }}>
-            <span className="productLookupName"><small>{product.codigo}</small><strong>{product.descricao}</strong>{product.id === value && <em>Selecionado</em>}</span>
+            <span className="productLookupName"><span className="productLookupMainLine"><small>{product.codigo}</small><strong>{product.descricao}</strong></span>{product.id === value && <em>Selecionado</em>}</span>
             <span className="productLookupStock">Estoque: {Number(product.estoque_atual).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {product.unidade}</span>
             <span className="productLookupPrice" style={{display:'grid',gap:6}}>
               <span><small style={{display:'block',fontSize:11,fontWeight:400,opacity:.75}}>Venda</small>{currency(product.preco_venda)}</span>
