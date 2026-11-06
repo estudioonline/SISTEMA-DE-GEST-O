@@ -534,6 +534,10 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   })
  }
  const selectedReconcileTotal=Object.values(selected).reduce((sum,value)=>sum+Number(value||0),0)
+ const selectedInvoiceBalanceTotal=Object.keys(selected).reduce((sum,id)=>{
+  const title=titles.find(item=>item.id===id)
+  return sum+(title?Math.max(0,Number(title.valor)-Number(title.valor_pago)):0)
+ },0)
  const reconcileBankTotal=reconcileTx?Math.max(0,Math.abs(Number(reconcileTx.valor))-Number(reconciledTotals[reconcileTx.id]||0)):0
  const reconcileAdjustment=Number(adjustValue)||0
  const reconcileAppliedTotal=selectedReconcileTotal+reconcileAdjustment
@@ -541,6 +545,9 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
  const reconcileResidual=reconcileDifference>0.009?reconcileDifference:0
  const reconcileExcess=reconcileDifference<-0.009?Math.abs(reconcileDifference):0
  const reconcileBalanced=Math.abs(reconcileDifference)<=0.009
+ const selectionDifference=reconcileBankTotal-reconcileAdjustment-selectedInvoiceBalanceTotal
+ const selectionNegative=selectionDifference<-0.009
+ const selectionPositive=selectionDifference>0.009
  const selectedTransactionCount=visible.filter(tx=>selectedTransactions[tx.id]&&tx.status!=='conciliado').length
  const deletableVisible=visible.filter(tx=>tx.status!=='conciliado')
  const allVisibleSelected=deletableVisible.length>0&&deletableVisible.every(tx=>selectedTransactions[tx.id])
@@ -703,14 +710,17 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
       </label>
     })}{reconcileCandidates.length===0&&<div className="bankNoCandidates">Nenhum título em aberto encontrado para esta pesquisa.</div>}</div>
     <div className="bankReconcileAdjust"><label>Ajuste<select value={adjustType} onChange={e=>setAdjustType(e.target.value)}><option value="">Sem ajuste</option><option value="juros_passivos">Juros passivos</option><option value="desconto_concedido">Desconto concedido</option><option value="tarifa">Tarifa bancária</option><option value="outro">Outro</option></select></label>{adjustType&&<label>Valor do ajuste<input type="number" min="0" step="0.01" value={adjustValue} onChange={e=>setAdjustValue(e.target.value)}/></label>}<label className="bankReconcileDescription">Descrição da conciliação<input type="text" maxLength={120} value={reconcileDescription} onChange={e=>setReconcileDescription(e.target.value)} placeholder="Ex.: Boletos antecipados"/></label></div>
-    <div className={'bankReconcileBalance '+(reconcileExcess?'excess':reconcileResidual?'residual':'balanced')}>
+    <div className={'bankReconcileBalance '+(selectionNegative?'excess':selectionPositive?'residual':'balanced')}>
       <div><span>Valor da linha do extrato</span><strong>{money(reconcileBankTotal)}</strong></div>
-      <div><span>Faturas selecionadas</span><strong>{money(selectedReconcileTotal)}</strong></div>
+      <div><span>Faturas selecionadas</span><strong>{money(selectedInvoiceBalanceTotal)}</strong></div>
       {reconcileAdjustment>0&&<div><span>Ajuste</span><strong>{money(reconcileAdjustment)}</strong></div>}
-      <div className="bankReconcileDifference"><span>{reconcileExcess?'Excedente ajustado':reconcileResidual?'Residual da linha':'Conciliação fechada'}</span><strong>{reconcileExcess?money(0):reconcileResidual?money(reconcileResidual):money(0)}</strong></div>
-      {reconcileExcess>0&&<small>O sistema limita automaticamente a última fatura selecionada para não ultrapassar o valor do extrato.</small>}
-      {reconcileResidual>0&&<small>Você pode confirmar parcialmente. O saldo restante continuará pendente para uma nova conciliação.</small>}
-      {reconcileBalanced&&<small>O valor do extrato foi totalmente distribuído. A última fatura pode ficar parcialmente paga.</small>}
+      <div className="bankReconcileDifference">
+        <span>{selectionNegative?'Saldo negativo':selectionPositive?'Saldo restante':'Conciliação fechada'}</span>
+        <strong>{selectionNegative?'- '+money(Math.abs(selectionDifference)):selectionPositive?money(selectionDifference):money(0)}</strong>
+      </div>
+      {selectionNegative&&<small>As faturas selecionadas ultrapassam a linha do extrato em {money(Math.abs(selectionDifference))}. A última fatura ficará parcialmente paga e manterá esse saldo em aberto.</small>}
+      {selectionPositive&&<small>Depois das faturas selecionadas, ainda restam {money(selectionDifference)} desta linha para conciliar.</small>}
+      {!selectionNegative&&!selectionPositive&&<small>O valor do extrato foi totalmente distribuído entre as faturas selecionadas.</small>}
     </div>
     <div className="bankModalActions bankReconcileActions"><span>Selecionado {money(selectedReconcileTotal)} / Banco {money(reconcileBankTotal)}</span><div><button onClick={()=>{setReconcileTx(null);setSelected({})}}>Fechar</button><button className="bankPrimary" disabled={!canEdit||busy||!Object.keys(selected).length} onClick={()=>void reconcile(reconcileTx)}>{reconcileResidual>0.009?'Conciliar parcialmente':'Selecionar e conciliar'}</button></div></div>
   </div></div>}
