@@ -537,6 +537,8 @@ function App(){
 
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
   const [purchasePanel,setPurchasePanel]=useState<string|null>(null)
+  const [purchaseDetailItems,setPurchaseDetailItems]=useState<CompraItem[]>([])
+  const [purchaseDetailBusy,setPurchaseDetailBusy]=useState(false)
   const [selectedPurchaseSuggestions,setSelectedPurchaseSuggestions]=useState<Record<string,boolean>>({})
   const [purchaseTab,setPurchaseTab]=useState<'todas'|'a_receber'>('todas')
   const [purchaseSupplier,setPurchaseSupplier]=useState('')
@@ -2173,6 +2175,27 @@ function App(){
     setSelectedPurchaseSuggestions({})
     setMsg(`${suggestions.length} item(ns) de estoque baixo adicionados à compra.`)
   }
+  async function openPurchasePanel(c:Compra){
+    if(purchasePanel===c.id){
+      setPurchasePanel(null)
+      setPurchaseDetailItems([])
+      return
+    }
+    setPurchasePanel(c.id)
+    setPurchaseDetailItems([])
+    setPurchaseDetailBusy(true)
+    const {data,error}=await supabase.from('compra_itens')
+      .select('produto_id,quantidade,custo_unitario,total')
+      .eq('compra_id',c.id)
+    if(error){
+      setMsg(error.message)
+      setPurchaseDetailBusy(false)
+      return
+    }
+    setPurchaseDetailItems((data||[]) as CompraItem[])
+    setPurchaseDetailBusy(false)
+  }
+
   async function startEditPurchase(c:Compra){
     if(!canManagePurchases){setMsg('Você possui somente visualização em Compras.');return}
     if(c.status==='cancelada'){setMsg('Compra cancelada não pode ser editada.');return}
@@ -4885,7 +4908,7 @@ function App(){
               const f=fornecedores.find(x=>x.id===c.fornecedor_id)
               const opened=purchasePanel===c.id
               return <Fragment key={c.id}>
-                <tr {...recordRow(()=>setPurchasePanel(c.id),'compra '+purchaseCode(c.fatura_numero))}>
+                <tr {...recordRow(()=>void openPurchasePanel(c),'compra '+purchaseCode(c.fatura_numero))}>
                   <td><strong>{purchaseCode(c.fatura_numero)}</strong></td>
                   <td>{c.status==='cotacao'?'—':financialInvoiceCode(c.fatura_numero)}</td>
                   <td>{new Date(c.created_at).toLocaleString('pt-BR')}</td>
@@ -4893,7 +4916,7 @@ function App(){
                   <td><span className={`statusBadge status-${c.status==='pedido_recebido'?'faturado':c.status==='cancelada'?'cancelado':c.status==='pedido_aprovado'?'pedido':'orcamento'}`}>{purchaseStatusLabel(c.status)}</span></td>
                   <td>{paymentLabel(c.forma_pagamento)} {Number(c.parcelas)>1?`• ${c.parcelas}x`:''}</td>
                   <td><strong>{money(Number(c.total))}</strong></td>
-                  <td><div className="rowActions">{purchaseTab==='a_receber'&&canManagePurchases&&<button type="button" className="ghost receivePurchaseBtn" onDoubleClick={event=>event.stopPropagation()} onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}<button type="button" className="rowMenuBtn" onClick={()=>setPurchasePanel(opened?null:c.id)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></div></td>
+                  <td><div className="rowActions">{purchaseTab==='a_receber'&&canManagePurchases&&<button type="button" className="ghost receivePurchaseBtn" onDoubleClick={event=>event.stopPropagation()} onClick={()=>void receivePurchase(c)}><CheckCircle2 size={15}/>Receber compra</button>}<button type="button" className="rowMenuBtn" onClick={()=>void openPurchasePanel(c)} title="Opções" aria-label="Abrir opções da compra" aria-expanded={opened}><MoreVertical size={18}/></button></div></td>
                 </tr>
                 {opened&&<tr className="manageRow"><td colSpan={8}>
                   <div className="recordDetailOverlay" role="dialog" aria-modal="true" aria-label={`Compra ${purchaseCode(c.fatura_numero)}`}>
@@ -4912,6 +4935,35 @@ function App(){
                         {canManagePurchases&&<button className="ghost" disabled={c.status==='cancelada'} onClick={()=>void startEditPurchase(c)}><Pencil size={15}/>Editar</button>}
                         {canManagePurchases&&<button className="warningBtn" disabled={c.status==='cancelada'} onClick={()=>void cancelPurchase(c)}><Ban size={15}/>Cancelar</button>}
                         {isAdmin&&canManagePurchases&&<button className="dangerAction" onClick={()=>void deletePurchase(c)}><Trash2 size={15}/>Excluir</button>}
+                      </div>
+                    </div>
+                    <div className="purchaseCardDetails">
+                      <div className="purchaseCardSectionHead">
+                        <strong>Itens da compra</strong>
+                        <span>{purchaseDetailBusy?'Carregando...':`${purchaseDetailItems.length} item(ns)`}</span>
+                      </div>
+                      {purchaseDetailBusy
+                        ? <div className="purchaseCardEmpty">Carregando itens...</div>
+                        : purchaseDetailItems.length===0
+                          ? <div className="purchaseCardEmpty">Nenhum item encontrado nesta compra.</div>
+                          : <div className="purchaseCardItems">
+                              <div className="purchaseCardItem purchaseCardItemHead">
+                                <span>Produto</span><span>Qtd.</span><span>Preço unit.</span><span>Subtotal</span>
+                              </div>
+                              {purchaseDetailItems.map((item,index)=>{
+                                const product=produtos.find(p=>p.id===item.produto_id)
+                                return <div className="purchaseCardItem" key={item.produto_id+'-'+index}>
+                                  <span className="purchaseCardProduct"><strong>{product?.descricao||'Produto'}</strong><small>{product?.codigo||'Sem código'} • {product?.unidade||'UN'}</small></span>
+                                  <span>{Number(item.quantidade).toLocaleString('pt-BR',{maximumFractionDigits:3})} {product?.unidade||'UN'}</span>
+                                  <span>{money(Number(item.custo_unitario))}</span>
+                                  <strong>{money(Number(item.total)||Number(item.quantidade)*Number(item.custo_unitario))}</strong>
+                                </div>
+                              })}
+                            </div>}
+                      <div className="purchaseCardSummary">
+                        <div><span>Forma de pagamento</span><strong>{paymentLabel(c.forma_pagamento)}{Number(c.parcelas)>1?` • ${c.parcelas}x`:''}</strong></div>
+                        <div><span>Subtotal</span><strong>{money(Number(c.total))}</strong></div>
+                        <div className="purchaseCardTotal"><span>Total da compra</span><strong>{money(Number(c.total))}</strong></div>
                       </div>
                     </div>
                     {proofPanel('compra',c.id)}
