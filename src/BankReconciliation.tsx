@@ -289,10 +289,10 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     const fileBank=ofxBankIdentity(text)
     const journalBank=journalBankIdentity(targetJournal)
     if(fileBank.name&&journalBank.code&&fileBank.code!==journalBank.code){
-      throw Error('Este OFX é do '+fileBank.name+' ('+fileBank.code+') e não pode ser importado no diário '+journalBank.name+' ('+journalBank.code+'). Selecione o diário correto.')
+      throw Error('Erro ao importar OFX: o arquivo foi identificado como '+fileBank.name+' ('+fileBank.code+'), mas o diário selecionado é '+journalBank.name+' ('+journalBank.code+'). Motivo: o sistema bloqueia extratos de bancos diferentes para evitar lançar movimentações na conta errada. Selecione o diário '+fileBank.name+' e tente novamente.')
     }
     if(!fileBank.name&&journalBank.code){
-      throw Error('Não foi possível identificar com segurança o banco deste OFX. A importação foi bloqueada para evitar lançar o extrato no diário errado.')
+      throw Error('Erro ao importar OFX: não foi possível identificar com segurança o banco do arquivo. Motivo: sem a identificação do banco, o sistema não consegue confirmar se o extrato pertence ao diário '+journalBank.name+' ('+journalBank.code+'). A importação foi bloqueada para evitar lançamentos no diário errado.')
     }
    }
    const rows=ext==='csv'?parseCsv(text):parseOfx(text)
