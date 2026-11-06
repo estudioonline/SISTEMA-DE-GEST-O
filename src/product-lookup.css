@@ -40,3 +40,9 @@
 .productLookupField svg{color:#64748b}.productLookupField span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.productLookupField strong{font-size:11px;color:#2563eb}
 .dark .productLookupField{background:#111827;border-color:#334155;color:#f8fafc}
 @media(max-width:700px){.productLookupField{grid-template-columns:auto minmax(0,1fr)}.productLookupField strong{display:none}}
+
+
+.productLookupMainLine{display:flex;align-items:baseline;gap:8px;min-width:0}
+.productLookupMainLine small{flex:0 0 auto;min-width:44px;font-variant-numeric:tabular-nums}
+.productLookupMainLine strong{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:640px){.productLookupMainLine{align-items:flex-start}.productLookupMainLine small{min-width:38px}}
