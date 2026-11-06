@@ -1069,3 +1069,20 @@
 .bankLinkedInvoices li{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 0}
 .bankLinkedInvoices li>.financeOriginLink{margin-right:auto;text-align:left}
 .bankLinkedInvoices .bankUnlinkInvoice{min-width:30px;min-height:30px;color:#ef4444;font-size:20px;line-height:1;border:1px solid #ef444466;border-radius:6px}
+
+/* Compact, expandable invoice allocations. */
+.bankRecon .bankTxWithInvoices .bankTxMain{padding-top:7px;padding-right:40px;padding-bottom:24px;row-gap:2px}
+.bankRecon .bankInvoiceToggle{position:absolute;right:8px;top:7px;display:flex;align-items:center;justify-content:center;width:26px;min-height:26px;padding:0;border:0;background:transparent;color:var(--bank-text);z-index:1}
+.bankInvoiceToggle svg{transition:transform .15s}
+.bankInvoiceToggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+.bankRecon .bankInvoiceToggle:focus-visible{outline:2px solid #60a5fa;outline-offset:1px}
+.bankRecon .bankInvoiceSummary{color:var(--bank-muted);font-size:10px}
+.bankRecon .bankLinkedInvoices{margin:0;padding:3px 10px 27px 38px;font-size:11px}
+.bankRecon .bankLinkedInvoices[hidden]{display:none}
+.bankRecon .bankLinkedInvoices ul{margin:2px 0 5px;gap:0}
+.bankRecon .bankLinkedInvoices li{display:grid;grid-template-columns:minmax(0,1fr) auto 24px;align-items:center;gap:10px;min-height:25px;padding:1px 0}
+.bankRecon .bankLinkedInvoices .financeOriginLink{justify-self:start;text-align:left;font-size:11px;min-height:22px;padding:0;border:0;background:transparent;overflow-wrap:anywhere}
+.bankLinkedAmount{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bankRecon .bankLinkedInvoices .bankUnlinkInvoice{width:24px;min-width:24px;min-height:24px;padding:0;color:#ef4444;font-size:17px;line-height:1;border:0;background:transparent;border-radius:4px}
+.bankRecon .bankLinkedInvoices .bankUnlinkInvoice:hover{background:#ef44441a}
+@media(max-width:620px){.bankRecon .bankLinkedInvoices{padding-left:12px}.bankRecon .bankLinkedInvoices li{gap:6px}.bankRecon .bankTxWithInvoices .bankTxMain{padding-right:38px}}

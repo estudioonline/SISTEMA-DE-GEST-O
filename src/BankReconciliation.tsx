@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
-import {ArrowLeft,Banknote,Building2,CheckCircle2,FileText,FileUp,Landmark,Link2,List,RefreshCw,Search,SlidersHorizontal,Trash2,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
+import {ArrowLeft,ChevronDown,Banknote,Building2,CheckCircle2,FileText,FileUp,Landmark,Link2,List,RefreshCw,Search,SlidersHorizontal,Trash2,Undo2,Upload,WalletCards,XCircle} from 'lucide-react'
 import {supabase} from './lib/supabase'
 import {bankBrand,balanceTrend,isPending,sparkPoints} from './lib/bankPresentation'
 import {SearchableSelect} from './SearchableSelect'
@@ -102,6 +102,7 @@ function isManualJournal(j:Pick<Journal,'nome'|'banco'>){
 }
 
 export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChanged,initialTransactionId,onClearTransaction,onOpenTitle}:{onOpenTitle?:(id:string,transactionId:string)=>void;initialTransactionId?:string|null;onClearTransaction?:()=>void;titles:Title[];canEdit:boolean;canClosePeriods?:boolean;onChanged:()=>Promise<void>|void}){
+ const [expandedInvoices,setExpandedInvoices]=useState<Record<string,boolean>>({})
  const [invoiceLinks,setInvoiceLinks]=useState<InvoiceLink[]>([])
  const [journals,setJournals]=useState<Journal[]>([])
  const [transactions,setTransactions]=useState<BankTx[]>([])
@@ -593,16 +594,18 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
    const txImport=tx.importacao_id?imports.find(row=>row.id===tx.importacao_id):null
    const previousImport=index>0?visible[index-1]?.importacao_id:null
    const showStatementHeader=Boolean(txImport&&tx.importacao_id!==previousImport)
+   const linkedInvoices=invoiceLinks.filter(l=>l.transacao_id===tx.id&&l.titulo_id)
+   const invoicesExpanded=Boolean(expandedInvoices[tx.id])
    const statementLabel=txImport?((txJournal?.nome||'Diário')+' Extrato '+(txImport.data_saldo||tx.data_lancamento)):''
-   return <>{showStatementHeader&&<div className="bankStatementGroupHeader"><button type="button" disabled={busy||!txImport?.arquivo_path} onClick={()=>txImport&&void openImportedFile(txImport)} title={txImport?.arquivo_path?'Abrir documento original do extrato':'Documento original não armazenado'}><FileText size={15}/><strong>{statementLabel}</strong></button><span>{txImport?.saldo_extrato!=null?money(Number(txImport.saldo_extrato)):'Saldo não informado no arquivo'}</span></div>}<article className={'bankTx '+(tx.trntype==='CREDIT'?'credit':'debit')+(selectedTransactions[tx.id]?' bankTxSelected':'')} key={tx.id}>
-    <div className="bankTxMain"><label className="bankTxSelect" title={tx.status==='conciliado'?'Desfaça a conciliação antes de excluir':'Selecionar linha para exclusão'}><input type="checkbox" checked={Boolean(selectedTransactions[tx.id])} disabled={!canEdit||busy||tx.status==='conciliado'} onChange={()=>toggleTransactionSelection(tx)}/></label><div className="bankTxDate"><div className="bankTxDateLine"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span></div>{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong>{tx.historico&&!sameBankText(tx.historico,tx.nome)&&<span>{tx.historico}</span>}{tx.importacao_id&&imports.find(row=>row.id===tx.importacao_id)&&<small className="bankTxSource"><FileText size={11}/>{imports.find(row=>row.id===tx.importacao_id)!.arquivo}</small>}</div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
-    {invoiceLinks.some(l=>l.transacao_id===tx.id&&l.titulo_id)&&<div className="bankLinkedInvoices">
-      <strong>Faturas vinculadas</strong>
-      <ul>{invoiceLinks.filter(l=>l.transacao_id===tx.id&&l.titulo_id).map(link=>{
+   return <>{showStatementHeader&&<div className="bankStatementGroupHeader"><button type="button" disabled={busy||!txImport?.arquivo_path} onClick={()=>txImport&&void openImportedFile(txImport)} title={txImport?.arquivo_path?'Abrir documento original do extrato':'Documento original não armazenado'}><FileText size={15}/><strong>{statementLabel}</strong></button><span>{txImport?.saldo_extrato!=null?money(Number(txImport.saldo_extrato)):'Saldo não informado no arquivo'}</span></div>}<article className={'bankTx '+(linkedInvoices.length?'bankTxWithInvoices ':'')+(tx.trntype==='CREDIT'?'credit':'debit')+(selectedTransactions[tx.id]?' bankTxSelected':'')} key={tx.id}>
+    {linkedInvoices.length>0&&<button type="button" className="bankInvoiceToggle" aria-expanded={invoicesExpanded} aria-controls={'invoice-links-'+tx.id} aria-label={invoicesExpanded?'Recolher faturas':'Expandir faturas'} onClick={()=>setExpandedInvoices(prev=>({...prev,[tx.id]:!prev[tx.id]}))}><ChevronDown size={16}/></button>}
+    <div className="bankTxMain"><label className="bankTxSelect" title={tx.status==='conciliado'?'Desfaça a conciliação antes de excluir':'Selecionar linha para exclusão'}><input type="checkbox" checked={Boolean(selectedTransactions[tx.id])} disabled={!canEdit||busy||tx.status==='conciliado'} onChange={()=>toggleTransactionSelection(tx)}/></label><div className="bankTxDate"><div className="bankTxDateLine"><strong>{dateBr(tx.data_lancamento)}</strong><span>{tx.fitid}</span></div>{showingAllJournals&&<small className="bankTxJournal">{txJournal?.nome||'Diário'}</small>}</div><div className="bankTxDesc"><strong>{tx.nome||tx.historico||'Transação bancária'}</strong>{linkedInvoices.length>0&&<small className="bankInvoiceSummary">{linkedInvoices.length} {linkedInvoices.length===1?'parcela vinculada':'parcelas vinculadas'}</small>}{tx.historico&&!sameBankText(tx.historico,tx.nome)&&<span>{tx.historico}</span>}{tx.importacao_id&&imports.find(row=>row.id===tx.importacao_id)&&<small className="bankTxSource"><FileText size={11}/>{imports.find(row=>row.id===tx.importacao_id)!.arquivo}</small>}</div><strong className="bankTxAmount">{tx.valor>0?'+':''}{money(Number(tx.valor))}</strong><span className={'bankStatus '+tx.status}>{tx.status}</span></div>
+    {linkedInvoices.length>0&&<div id={'invoice-links-'+tx.id} className="bankLinkedInvoices" hidden={!invoicesExpanded}>
+      <ul>{linkedInvoices.map(link=>{
         const title=titles.find(t=>t.id===link.titulo_id)
         return <li key={link.id}>
           {title&&onOpenTitle?<button type="button" className="financeOriginLink" onClick={()=>onOpenTitle(title.id,tx.id)}>{title.descricao} ↗</button>:<span>{title?.descricao||'Fatura indisponível'}</span>}
-          <span>{money(Number(link.valor))} aplicado</span>
+          <span className="bankLinkedAmount">{money(Number(link.valor))}</span>
           {canEdit&&link.pagamento_id&&<button type="button" className="bankUnlinkInvoice" disabled={busy} title="Desvincular esta fatura" aria-label={'Desvincular '+(title?.descricao||'fatura')} onClick={()=>void unlinkInvoice(link)}>×</button>}
         </li>
       })}</ul>
