@@ -232,14 +232,15 @@ export function FocusNfeSale({saleId}:{saleId:string}){
         <div className="nfeInstallmentsBox">
           <div className="nfeInstallmentsHead"><strong>Parcelas da cobrança</strong><span>{source?.venda.forma_pagamento==='boleto'?'Editáveis para esta NF-e':(source?.parcelas?.length||0)+' parcela(s)'}</span></div>
           {source?.venda.forma_pagamento==='boleto'?<div className="nfeEditableInstallments">
+            {nfeInstallments.length===0&&<p>Nenhuma cobrança incluída nesta NF-e. A cobrança original da venda será preservada.</p>}
             {nfeInstallments.map((p,index)=><div className="nfeEditableInstallment" key={p.key}>
               <span>{String(index+1).padStart(3,'0')}</span>
               <input type="date" value={p.vencimento} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,vencimento:e.target.value}:row))}/>
               <input type="number" min="0.01" step="0.01" value={p.valor} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,valor:Number(e.target.value)}:row))}/>
-              <button type="button" className="iconBtn" onClick={()=>setNfeInstallments(rows=>rows.length>1?rows.filter(row=>row.key!==p.key):rows)} aria-label="Remover parcela">×</button>
+              <button type="button" className="iconBtn" onClick={()=>setNfeInstallments(rows=>rows.filter(row=>row.key!==p.key))} aria-label="Remover parcela" title="Remover cobrança">×</button>
             </div>)}
             <button type="button" className="ghost" onClick={()=>setNfeInstallments(rows=>[...rows,{key:crypto.randomUUID(),numero:rows.length+1,vencimento:rows.at(-1)?.vencimento||localIsoDate(),valor:0}])}>+ Adicionar parcela</button>
-            <small>A soma das parcelas precisa ser igual ao total da venda. A edição vale para os dados de cobrança enviados nesta NF-e.</small>
+            <small>A soma das parcelas incluídas precisa ser igual ao total da venda. A edição vale somente para os dados de cobrança enviados nesta NF-e.</small>
           </div>:(source?.parcelas?.length||0)>0?<div className="nfeInstallmentsList">{source?.parcelas?.map((p,index)=><div key={p.id}><span>{String(index+1).padStart(3,'0')}</span><span>{new Date(p.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span><strong>{Number(p.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>)}</div>:<p>Pagamento à vista ou sem parcelas de cobrança para a NF-e.</p>}
         </div>
         <div className="nfeVolumesBox">
