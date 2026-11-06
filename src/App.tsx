@@ -3358,6 +3358,17 @@ function App(){
     })
     .filter(s=>s.suggested>0)
     .sort((a,b)=>(a.current-a.minimum)-(b.current-b.minimum))
+  const purchaseSuggestionGroups=Array.from(purchaseSuggestions.reduce((groups,item)=>{
+    const groupId=item.produto.grupo_id||''
+    const group=gruposProdutos.find(g=>g.id===groupId)
+    const key=group?.id||'sem-grupo'
+    const entry=groups.get(key)||{id:key,name:group?.nome||'Sem grupo',items:[] as typeof purchaseSuggestions,total:0}
+    entry.items.push(item)
+    entry.total+=item.suggested*Number(item.produto.custo||0)
+    groups.set(key,entry)
+    return groups
+  },new Map<string,{id:string;name:string;items:typeof purchaseSuggestions;total:number}>()).values())
+    .sort((a,b)=>a.id==='sem-grupo'?1:b.id==='sem-grupo'?-1:a.name.localeCompare(b.name,'pt-BR'))
   const purchaseSuggestionTotal=purchaseSuggestions.reduce((sum,s)=>sum+s.suggested*Number(s.produto.custo||0),0)
   const purchaseTotal=purchaseItems.reduce((s,i)=>s+i.quantidade*i.custo_unitario,0)
 
@@ -4758,7 +4769,14 @@ function App(){
           </div>
           {purchaseSuggestions.length>0&&<div className="tableWrap purchaseSuggestionTable"><table>
             <thead><tr><th>Produto</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Alvo</th><th>Comprar</th><th>Custo estimado</th><th></th></tr></thead>
-            <tbody>{purchaseSuggestions.map(s=><tr key={s.produto.id}>
+            <tbody>{purchaseSuggestionGroups.map(group=><Fragment key={group.id}>
+              <tr><th colSpan={7} scope="colgroup" style={{padding:'12px 10px',borderTop:'2px solid var(--border)',textAlign:'left'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                  <span>{group.name} <small style={{fontWeight:400}}>· {group.items.length} produto(s)</small></span>
+                  <span>Subtotal estimado: {money(group.total)}</span>
+                </div>
+              </th></tr>
+              {group.items.map(s=><tr key={s.produto.id}>
               <td><strong>{s.produto.codigo}</strong><span className="purchaseSuggestionDescription">{s.produto.descricao}</span></td>
               <td><span className="stockLevel stockLevelLow">{s.current.toLocaleString('pt-BR')} {s.produto.unidade}</span></td>
               <td>{s.minimum.toLocaleString('pt-BR')} {s.produto.unidade}</td>
@@ -4766,7 +4784,7 @@ function App(){
               <td><strong className="purchaseSuggestionQty">+{s.suggested.toLocaleString('pt-BR')} {s.produto.unidade}</strong></td>
               <td><strong>{money(s.suggested*Number(s.produto.custo||0))}</strong></td>
               <td><button type="button" className="ghost purchaseSuggestionAdd" onClick={()=>addPurchaseSuggestion(s.produto,s.suggested)}><Plus size={15}/>Adicionar</button></td>
-            </tr>)}</tbody>
+            </tr>)}</Fragment>)}</tbody>
           </table></div>}
         </article>}
 
