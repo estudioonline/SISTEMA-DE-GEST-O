@@ -651,3 +651,27 @@
 .app.light .documentsExpiryBadge.expiry-warning{background:#fef3c7;border-color:#fcd34d;color:#92400e}
 .app.light .documentsExpiryBadge.expiry-today,.app.light .documentsExpiryBadge.expiry-expired{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
 @media(max-width:900px){.documentsExpiryBadge{white-space:normal;text-align:left}}
+
+
+/* Central de Monitoramento */
+.infraMonitorPanel{margin-top:18px}
+.infraMonitorColumns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.infraMonitorSection{min-width:0}
+.infraMonitorSection .infraSubhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.infraMonitorSection .infraSubhead>strong{display:inline-flex;align-items:center;gap:7px}
+.infraMonitorUpdated{font-size:10px;color:var(--ds-muted)}
+.infraMonitorList{display:grid;gap:7px}
+.infraMonitorRow{display:flex;align-items:center;gap:9px;min-width:0;padding:10px 11px;border:1px solid var(--ds-border);border-radius:10px;background:var(--ds-surface-soft);color:var(--ds-text);text-decoration:none}
+a.infraMonitorRow:hover{border-color:var(--ds-accent);text-decoration:none}
+.infraMonitorDot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#94a3b8}
+.infraMonitorDot.isOk{background:#16a34a}
+.infraMonitorDot.isError{background:#dc2626}
+.infraMonitorDot.isRunning{background:#d97706;box-shadow:0 0 0 3px rgba(217,119,6,.13)}
+.infraMonitorText{display:grid;gap:3px;min-width:0;flex:1}
+.infraMonitorText strong{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.infraMonitorText small{font-size:9px;color:var(--ds-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.infraMonitorRow>b{font-size:9px;color:var(--ds-muted);font-weight:650;white-space:nowrap}
+.infraMonitorRow>svg{flex:0 0 auto;color:var(--ds-muted)}
+.app.light .infraMonitorRow{background:#f8fafc}
+@media(max-width:900px){.infraMonitorColumns{grid-template-columns:1fr}}
+@media(max-width:520px){.infraMonitorRow{gap:7px;padding:9px}.infraMonitorRow>b{max-width:82px;overflow:hidden;text-overflow:ellipsis}}
