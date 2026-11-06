@@ -537,6 +537,7 @@ function App(){
 
   const [editingPurchase,setEditingPurchase]=useState<Compra|null>(null)
   const [purchasePanel,setPurchasePanel]=useState<string|null>(null)
+  const [selectedPurchaseSuggestions,setSelectedPurchaseSuggestions]=useState<Record<string,boolean>>({})
   const [purchaseTab,setPurchaseTab]=useState<'todas'|'a_receber'>('todas')
   const [purchaseSupplier,setPurchaseSupplier]=useState('')
   const [purchaseStatus,setPurchaseStatus]=useState('cotacao')
@@ -2153,13 +2154,13 @@ function App(){
     })
     setMsg(`${produto.descricao} adicionado à compra sugerida.`)
   }
-  function addAllPurchaseSuggestions(){
+  function addPurchaseSuggestions(suggestions= purchaseSuggestions){
     if(!canManagePurchases){setMsg('Sem permissão para criar compras.');return}
-    if(!purchaseSuggestions.length)return
+    if(!suggestions.length)return
     if(!showForm){resetPurchaseForm();setShowForm(true)}
     setPurchaseItems(items=>{
       let next=items.filter(i=>i.produto_id)
-      for(const suggestion of purchaseSuggestions){
+      for(const suggestion of suggestions){
         const idx=next.findIndex(i=>i.produto_id===suggestion.produto.id)
         if(idx>=0){
           next=next.map((i,index)=>index===idx?{...i,quantidade:Number((i.quantidade+suggestion.suggested).toFixed(3)),custo_unitario:Number(suggestion.produto.custo||i.custo_unitario)}:i)
@@ -2169,7 +2170,8 @@ function App(){
       }
       return next.length?next:[newPurchaseItem()]
     })
-    setMsg(`${purchaseSuggestions.length} item(ns) de estoque baixo adicionados à compra.`)
+    setSelectedPurchaseSuggestions({})
+    setMsg(`${suggestions.length} item(ns) de estoque baixo adicionados à compra.`)
   }
   async function startEditPurchase(c:Compra){
     if(!canManagePurchases){setMsg('Você possui somente visualização em Compras.');return}
@@ -3369,6 +3371,7 @@ function App(){
     return groups
   },new Map<string,{id:string;name:string;items:typeof purchaseSuggestions;total:number}>()).values())
     .sort((a,b)=>a.id==='sem-grupo'?1:b.id==='sem-grupo'?-1:a.name.localeCompare(b.name,'pt-BR'))
+  const selectedSuggestions=purchaseSuggestions.filter(item=>selectedPurchaseSuggestions[item.produto.id])
   const purchaseSuggestionTotal=purchaseSuggestions.reduce((sum,s)=>sum+s.suggested*Number(s.produto.custo||0),0)
   const purchaseTotal=purchaseItems.reduce((s,i)=>s+i.quantidade*i.custo_unitario,0)
 
@@ -4764,19 +4767,22 @@ function App(){
             </div>
             {purchaseSuggestions.length>0&&<div className="purchaseSuggestionActions">
               <div><span>Custo estimado</span><strong>{money(purchaseSuggestionTotal)}</strong></div>
-              <button type="button" className="primary" onClick={addAllPurchaseSuggestions}><ShoppingCart size={16}/>Adicionar todos</button>
+              <button type="button" className="primary" disabled={!selectedSuggestions.length||!canManagePurchases} onClick={()=>addPurchaseSuggestions(selectedSuggestions)}><Plus size={16}/>Incluir selecionados ({selectedSuggestions.length})</button>
+              <button type="button" className="ghost" onClick={()=>addPurchaseSuggestions()}><ShoppingCart size={16}/>Adicionar todos</button>
             </div>}
           </div>
-          {purchaseSuggestions.length>0&&<div className="tableWrap purchaseSuggestionTable"><table>
-            <thead><tr><th>Produto</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Alvo</th><th>Comprar</th><th>Custo estimado</th><th></th></tr></thead>
-            <tbody>{purchaseSuggestionGroups.map(group=><Fragment key={group.id}>
-              <tr><th colSpan={7} scope="colgroup" style={{padding:'12px 10px',borderTop:'2px solid var(--border)',textAlign:'left'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-                  <span>{group.name} <small style={{fontWeight:400}}>· {group.items.length} produto(s)</small></span>
-                  <span>Subtotal estimado: {money(group.total)}</span>
-                </div>
-              </th></tr>
-              {group.items.map(s=><tr key={s.produto.id}>
+          {purchaseSuggestionGroups.map(group=><details key={group.id} style={{border:'1px solid var(--border)',borderRadius:8,marginTop:8,overflow:'hidden'}}>
+            <summary style={{cursor:'pointer',padding:'12px 14px',fontWeight:600}}>
+              {group.name} · {group.items.length} produto(s)
+              <span style={{marginLeft:16,fontSize:12,fontWeight:400}}>Subtotal: {money(group.total)} · {group.items.filter(item=>selectedPurchaseSuggestions[item.produto.id]).length} selecionado(s)</span>
+            </summary>
+            <div className="tableWrap purchaseSuggestionTable"><table>
+              <thead><tr>
+                <th><input type="checkbox" aria-label={'Selecionar todos de '+group.name} checked={group.items.every(item=>selectedPurchaseSuggestions[item.produto.id])} onChange={e=>{const checked=e.target.checked;setSelectedPurchaseSuggestions(prev=>{const next={...prev};group.items.forEach(item=>{next[item.produto.id]=checked});return next})}}/></th>
+                <th>Produto</th><th>Estoque atual</th><th>Estoque mínimo</th><th>Alvo</th><th>Comprar</th><th>Custo estimado</th><th></th>
+              </tr></thead>
+              <tbody>{group.items.map(s=><tr key={s.produto.id}>
+              <td><input type="checkbox" aria-label={'Selecionar '+s.produto.descricao} checked={Boolean(selectedPurchaseSuggestions[s.produto.id])} onChange={e=>{const checked=e.target.checked;setSelectedPurchaseSuggestions(prev=>({...prev,[s.produto.id]:checked}))}}/></td>
               <td><strong>{s.produto.codigo}</strong><span className="purchaseSuggestionDescription">{s.produto.descricao}</span></td>
               <td><span className="stockLevel stockLevelLow">{s.current.toLocaleString('pt-BR')} {s.produto.unidade}</span></td>
               <td>{s.minimum.toLocaleString('pt-BR')} {s.produto.unidade}</td>
@@ -4784,8 +4790,9 @@ function App(){
               <td><strong className="purchaseSuggestionQty">+{s.suggested.toLocaleString('pt-BR')} {s.produto.unidade}</strong></td>
               <td><strong>{money(s.suggested*Number(s.produto.custo||0))}</strong></td>
               <td><button type="button" className="ghost purchaseSuggestionAdd" onClick={()=>addPurchaseSuggestion(s.produto,s.suggested)}><Plus size={15}/>Adicionar</button></td>
-            </tr>)}</Fragment>)}</tbody>
-          </table></div>}
+            </tr>)}</tbody>
+            </table></div>
+          </details>)} 
         </article>}
 
         {showForm&&<div className="saleModalOverlay" role="dialog" aria-modal="true" aria-label={editingPurchase?'Editar compra':'Nova compra'}><div className="saleModalShell"><form className="panel saleForm purchaseForm saleModalForm" onSubmit={savePurchase}>
