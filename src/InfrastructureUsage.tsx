@@ -36,6 +36,9 @@ type CommitItem = {
   commit: { message: string; author: { name: string; date: string } | null }
 }
 
+type WorkflowRun = { id:number; name:string; status:string; conclusion:string|null; html_url:string; created_at:string; head_branch:string; head_sha:string }
+type AuditLog = { id:number; tabela:string; acao:'INSERT'|'UPDATE'|'DELETE'; usuario_id:string|null; ocorrido_em:string }
+
 type AiUsageLog = {
   id:string
   origem:'financeiro'|'compras'
@@ -72,6 +75,9 @@ export function InfrastructureUsage() {
   const [commits, setCommits] = useState<CommitItem[]>([])
   const [security, setSecurity] = useState<SecurityMetrics | null>(null)
   const [aiUsage, setAiUsage] = useState<AiUsageLog[]>([])
+  const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const [auditUnavailable, setAuditUnavailable] = useState(false)
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')
 
@@ -79,13 +85,15 @@ export function InfrastructureUsage() {
     setBusy(true)
     setError('')
     try {
-      const [infraResult, securityResult, aiUsageResult, repoResponse, participationResponse, commitsResponse] = await Promise.all([
+      const [infraResult, securityResult, aiUsageResult, repoResponse, participationResponse, commitsResponse, workflowsResponse, auditResult] = await Promise.all([
         supabase.rpc('monitoramento_infraestrutura_erp'),
         supabase.rpc('monitoramento_seguranca_erp'),
         supabase.from('ai_usage_logs').select('*').order('created_at',{ascending:false}).limit(500),
         fetch(api, { headers: { Accept: 'application/vnd.github+json' } }),
         fetch(api + '/stats/participation', { headers: { Accept: 'application/vnd.github+json' } }),
         fetch(api + '/commits?per_page=6', { headers: { Accept: 'application/vnd.github+json' } }),
+        fetch(api + '/actions/runs?per_page=8', { headers: { Accept: 'application/vnd.github+json' } }),
+        supabase.from('auditoria_log').select('id,tabela,acao,usuario_id,ocorrido_em').order('ocorrido_em',{ascending:false}).limit(20),
       ])
       if (infraResult.error) throw infraResult.error
       if (!repoResponse.ok) throw new Error('GitHub indisponível (' + repoResponse.status + ').')
@@ -100,6 +108,13 @@ export function InfrastructureUsage() {
 
       if (commitsResponse.ok) setCommits(await commitsResponse.json() as CommitItem[])
       else setCommits([])
+
+      if (workflowsResponse.ok) {
+        const workflowJson = await workflowsResponse.json() as { workflow_runs?: WorkflowRun[] }
+        setWorkflowRuns(workflowJson.workflow_runs || [])
+      } else setWorkflowRuns([])
+      setAuditUnavailable(Boolean(auditResult.error))
+      setAuditLogs(auditResult.error ? [] : (auditResult.data || []) as AuditLog[])
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar o monitoramento.')
     } finally {
@@ -216,6 +231,46 @@ export function InfrastructureUsage() {
         <p className="infraNote">Os limites acima são referências do plano Free. Egress, MAU, Edge Functions e Realtime não são medidos por este painel; consulte o Usage oficial do Supabase para o consumo mensal completo.</p>
       </article>
     </div>
+
+
+    <article className="panel infraMonitorPanel">
+      <div className="infraProviderHead">
+        <div className="infraProviderTitle"><span className="infraLogo"><Activity size={24}/></span><div><h3>Central de Monitoramento</h3><p>Execuções do GitHub Actions e trilha de auditoria do SG.</p></div></div>
+        <span className="infraMonitorUpdated">Atualizado junto com o painel</span>
+      </div>
+      <div className="infraMonitorColumns">
+        <section className="infraMonitorSection">
+          <div className="infraSubhead"><strong><Github size={16}/> GitHub Actions</strong><a className="ghost infraLink" href={'https://github.com/' + repo + '/actions'} target="_blank" rel="noreferrer">Ver execuções<ExternalLink size={14}/></a></div>
+          <div className="infraMonitorList">
+            {workflowRuns.map(run=>{
+              const ok=run.conclusion==='success'
+              const failed=run.conclusion==='failure'
+              const running=run.status==='in_progress'||run.status==='queued'
+              return <a className="infraMonitorRow" href={run.html_url} target="_blank" rel="noreferrer" key={run.id}>
+                <span className={'infraMonitorDot '+(ok?'isOk':failed?'isError':running?'isRunning':'isNeutral')}/>
+                <span className="infraMonitorText"><strong>{run.name}</strong><small>{run.head_branch} · {short(run.head_sha)} · {dateTime(run.created_at)}</small></span>
+                <b>{running?'Em execução':ok?'Sucesso':failed?'Falhou':run.conclusion||run.status}</b>
+                <ExternalLink size={13}/>
+              </a>
+            })}
+            {!workflowRuns.length&&<div className="infraEmpty">Nenhuma execução encontrada ou histórico indisponível.</div>}
+          </div>
+        </section>
+        <section className="infraMonitorSection">
+          <div className="infraSubhead"><strong><FileText size={16}/> Auditoria do banco</strong><span>20 eventos recentes</span></div>
+          <div className="infraMonitorList">
+            {auditLogs.map(row=><div className="infraMonitorRow" key={row.id}>
+              <span className={'infraMonitorDot '+(row.acao==='DELETE'?'isError':row.acao==='INSERT'?'isOk':'isNeutral')}/>
+              <span className="infraMonitorText"><strong>{row.tabela} · {row.acao}</strong><small>{dateTime(row.ocorrido_em)} · {row.usuario_id?'Usuário identificado':'Ação de sistema'}</small></span>
+              <b>#{row.id}</b>
+            </div>)}
+            {auditUnavailable&&<div className="infraEmpty">Auditoria não disponível para esta conta. Verifique a permissão de leitura da tabela.</div>}
+            {!auditUnavailable&&!auditLogs.length&&<div className="infraEmpty">Nenhum evento recente registrado.</div>}
+          </div>
+        </section>
+      </div>
+      <p className="infraNote">A auditoria consulta a tabela interna <code>auditoria_log</code> com limite de 20 registros. O histórico de Actions mostra até 8 execuções recentes. Isso reduz consultas amplas ao Logs Explorer; não substitui os logs técnicos detalhados das Edge Functions.</p>
+    </article>
 
     <article className="panel infraAiPanel">
       <div className="infraProviderHead">
