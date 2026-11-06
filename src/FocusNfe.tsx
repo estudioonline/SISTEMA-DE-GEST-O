@@ -100,7 +100,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
    const dadosFiscais=action==='emit'?{
     modalidade_frete:Number(freightMode),
     observacao_nfe:nfeObservation.trim(),
-    parcelas:nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)}),
+    parcelas:nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)})),
     volumes:nfeVolumes.map(v=>({quantidade:Number(v.quantidade),peso_liquido:Number(v.peso_liquido),peso_bruto:Number(v.peso_bruto)}))
    }:{}
    const r=await focus(action,{venda_id:saleId,dados_fiscais:dadosFiscais})
@@ -129,7 +129,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
    const dadosFiscais={
     modalidade_frete:Number(freightMode),
     observacao_nfe:nfeObservation.trim(),
-    parcelas:nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)}),
+    parcelas:nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)})),
     volumes:nfeVolumes.map(v=>({quantidade:Number(v.quantidade),peso_liquido:Number(v.peso_liquido),peso_bruto:Number(v.peso_bruto)}))
    }
    const r=await fetch(supabaseUrl+'/functions/v1/focus-nfe',{method:'POST',headers:{Authorization:'Bearer '+data.session?.access_token,apikey:supabasePublishableKey,'Content-Type':'application/json'},body:JSON.stringify({action:'preview',venda_id:saleId,dados_fiscais:dadosFiscais})})
