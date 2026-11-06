@@ -154,9 +154,9 @@ function drawTableHeader(doc:jsPDF,y:number){
   doc.setFont('helvetica','normal')
   doc.setFontSize(9.2)
   doc.text('Descrição',14,y)
-  doc.text('Quantidade',130,y,{align:'right'})
+  doc.text('Quantidade',136,y,{align:'right'})
   doc.text('Custo unitário',166,y,{align:'right'})
-  doc.text('Valor',196,y,{align:'right'})
+  doc.text('Valor',194,y,{align:'right'})
   doc.setDrawColor(...line)
   doc.setLineWidth(.3)
   doc.line(12,y+2,196,y+2)
@@ -176,34 +176,50 @@ function drawContinuationHeader(doc:jsPDF,data:PurchasePdfData){
   doc.text(`Compra nº ${purchaseCode(data.fatura_numero)} - continuação`,196,16,{align:'right'})
 }
 
+function fitSingleLine(doc:jsPDF,value:string,maxWidth:number,fontSize:number,minFontSize=6.2){
+  let size=fontSize
+  doc.setFontSize(size)
+  while(doc.getTextWidth(value)>maxWidth&&size>minFontSize){
+    size=Math.max(minFontSize,size-.2)
+    doc.setFontSize(size)
+  }
+  if(doc.getTextWidth(value)<=maxWidth)return {text:value,size}
+  let text=value
+  while(text.length>1&&doc.getTextWidth(text+'…')>maxWidth)text=text.slice(0,-1)
+  return {text:text+'…',size}
+}
+
 function drawItems(doc:jsPDF,data:PurchasePdfData,startY:number){
   let y=drawTableHeader(doc,startY)
+  const rowH=12
   data.items.forEach((item,index)=>{
-    doc.setFont('helvetica','normal')
-    doc.setFontSize(9.1)
-    const descriptionLines=doc.splitTextToSize(item.descricao,86) as string[]
-    doc.setFontSize(7.8)
-    const codeLines=item.codigo?doc.splitTextToSize(item.codigo,86) as string[]:[]
-    const rowH=Math.max(10,descriptionLines.length*4.3+codeLines.length*3.5+5)
     if(y+rowH>254){
       doc.addPage()
       drawContinuationHeader(doc,data)
       y=drawTableHeader(doc,34)
     }
     if(index%2===0){doc.setFillColor(...paleRow);doc.rect(12,y-1,184,rowH,'F')}
-    let descriptionY=y+4.3
-    if(codeLines.length){
-      doc.setTextColor(...muted)
-      doc.setFontSize(7.8)
-      doc.text(codeLines,14,descriptionY)
-      descriptionY+=codeLines.length*3.5
-    }
+
+    const description=fitSingleLine(doc,item.descricao,104,9.1)
+    doc.setFont('helvetica','normal')
+    doc.setFontSize(description.size)
     doc.setTextColor(...text)
-    doc.setFontSize(9.1)
-    doc.text(descriptionLines,14,descriptionY)
-    doc.text(num(item.quantidade)+' '+item.unidade,130,y+6,{align:'right'})
-    doc.text(money(item.custo_unitario),164,y+6,{align:'right'})
-    doc.text(money(item.total),194,y+6,{align:'right'})
+    const descriptionY=item.codigo?y+8.2:y+7
+
+    if(item.codigo){
+      const code=fitSingleLine(doc,item.codigo,104,7.2,6)
+      doc.setFontSize(code.size)
+      doc.setTextColor(...muted)
+      doc.text(code.text,14,y+3.6)
+    }
+    doc.setFontSize(description.size)
+    doc.setTextColor(...text)
+    doc.text(description.text,14,descriptionY)
+
+    doc.setFontSize(8.7)
+    doc.text(num(item.quantidade)+' '+item.unidade,136,y+7,{align:'right'})
+    doc.text(money(item.custo_unitario),166,y+7,{align:'right'})
+    doc.text(money(item.total),194,y+7,{align:'right'})
     doc.setDrawColor(225,230,237)
     doc.setLineWidth(.2)
     doc.line(12,y+rowH-1,196,y+rowH-1)
