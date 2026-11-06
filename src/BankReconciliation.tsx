@@ -56,6 +56,27 @@ function parseOfxStatementMeta(text:string){
  const balance=Number(rawBalance)
  return {saldo:Number.isFinite(balance)?balance:null,data_saldo:ofxDate(rawDate)||null}
 }
+function ofxBankIdentity(text:string){
+ const bankBlock=(text.match(/<BANKACCTFROM>([\s\S]*?)(?:<\/BANKACCTFROM>|$)/i)||[])[1]||''
+ const bankId=tag(bankBlock,'BANKID')||tag(text,'BANKID')
+ const org=tag(text,'ORG')
+ const fid=tag(text,'FID')
+ const raw=[bankId,org,fid].filter(Boolean).join(' ')
+ const key=normalize(raw)
+ if(/(^|\s)341(\s|$)|itau/.test(key))return {code:'341',name:'Itaú',raw}
+ if(/(^|\s)237(\s|$)|bradesco/.test(key))return {code:'237',name:'Bradesco',raw}
+ if(/(^|\s)033(\s|$)|santander/.test(key))return {code:'033',name:'Santander',raw}
+ if(/(^|\s)077(\s|$)|(^|\s)77(\s|$)|banco inter|\binter\b/.test(key))return {code:'077',name:'Inter',raw}
+ return {code:bankId||'',name:'',raw}
+}
+function journalBankIdentity(journal:Pick<Journal,'nome'|'banco'>){
+ const key=normalize((journal.banco||'')+' '+journal.nome)
+ if(/(^|\s)341(\s|$)|itau/.test(key))return {code:'341',name:'Itaú'}
+ if(/(^|\s)237(\s|$)|bradesco/.test(key))return {code:'237',name:'Bradesco'}
+ if(/(^|\s)033(\s|$)|santander/.test(key))return {code:'033',name:'Santander'}
+ if(/(^|\s)077(\s|$)|(^|\s)77(\s|$)|banco inter|\binter\b/.test(key))return {code:'077',name:'Inter'}
+ return {code:'',name:journal.banco||journal.nome}
+}
 function parseOfx(text:string){
  const blocks=text.split(/<STMTTRN>/i).slice(1)
  return blocks.map((block,index)=>{
@@ -263,6 +284,17 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
   uploadLock.current=true;setBusy(true);setMessage('')
   try{
    const text=await file.text(),ext=file.name.toLowerCase().split('.').pop()
+   if(ext==='ofx'||ext==='qfx'){
+    if(!targetJournal)throw Error('Diário bancário não encontrado.')
+    const fileBank=ofxBankIdentity(text)
+    const journalBank=journalBankIdentity(targetJournal)
+    if(fileBank.name&&journalBank.code&&fileBank.code!==journalBank.code){
+      throw Error('Este OFX é do '+fileBank.name+' ('+fileBank.code+') e não pode ser importado no diário '+journalBank.name+' ('+journalBank.code+'). Selecione o diário correto.')
+    }
+    if(!fileBank.name&&journalBank.code){
+      throw Error('Não foi possível identificar com segurança o banco deste OFX. A importação foi bloqueada para evitar lançar o extrato no diário errado.')
+    }
+   }
    const rows=ext==='csv'?parseCsv(text):parseOfx(text)
    const statementMeta=ext==='csv'?{saldo:null as number|null,data_saldo:null as string|null}:parseOfxStatementMeta(text)
    if(!rows.length)throw Error('Nenhuma transação válida encontrada no arquivo.')
