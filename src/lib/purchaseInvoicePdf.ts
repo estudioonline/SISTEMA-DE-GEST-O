@@ -153,7 +153,8 @@ function drawTableHeader(doc:jsPDF,y:number){
   doc.setTextColor(...text)
   doc.setFont('helvetica','normal')
   doc.setFontSize(9.2)
-  doc.text('Descrição',14,y)
+  doc.text('Código',14,y)
+  doc.text('Descrição',32,y)
   doc.text('Quantidade',136,y,{align:'right'})
   doc.text('Custo unitário',166,y,{align:'right'})
   doc.text('Valor',194,y,{align:'right'})
@@ -200,21 +201,15 @@ function drawItems(doc:jsPDF,data:PurchasePdfData,startY:number){
     }
     if(index%2===0){doc.setFillColor(...paleRow);doc.rect(12,y-1,184,rowH,'F')}
 
-    const description=fitSingleLine(doc,item.descricao,104,9.1)
+    const code=fitSingleLine(doc,item.codigo||'-',16,8,6.4)
+    const description=fitSingleLine(doc,item.descricao,99,9.1)
     doc.setFont('helvetica','normal')
+    doc.setFontSize(code.size)
+    doc.setTextColor(...muted)
+    doc.text(code.text,14,y+7)
     doc.setFontSize(description.size)
     doc.setTextColor(...text)
-    const descriptionY=item.codigo?y+8.2:y+7
-
-    if(item.codigo){
-      const code=fitSingleLine(doc,item.codigo,104,7.2,6)
-      doc.setFontSize(code.size)
-      doc.setTextColor(...muted)
-      doc.text(code.text,14,y+3.6)
-    }
-    doc.setFontSize(description.size)
-    doc.setTextColor(...text)
-    doc.text(description.text,14,descriptionY)
+    doc.text(description.text,32,y+7)
 
     doc.setFontSize(8.7)
     doc.text(num(item.quantidade)+' '+item.unidade,136,y+7,{align:'right'})
