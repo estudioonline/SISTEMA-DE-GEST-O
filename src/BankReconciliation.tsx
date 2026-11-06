@@ -603,9 +603,16 @@ export function BankReconciliation({titles,canEdit,canClosePeriods=false,onChang
     {linkedInvoices.length>0&&<div id={'invoice-links-'+tx.id} className="bankLinkedInvoices" hidden={!invoicesExpanded}>
       <ul>{linkedInvoices.map(link=>{
         const title=titles.find(t=>t.id===link.titulo_id)
+        const remaining=title?Math.max(0,Math.round(Number(title.valor)*100)-Math.round(Number(title.valor_pago)*100))/100:null
         return <li key={link.id}>
           {title&&onOpenTitle?<button type="button" className="financeOriginLink" onClick={()=>onOpenTitle(title.id,tx.id)}>{title.descricao} ↗</button>:<span>{title?.descricao||'Fatura indisponível'}</span>}
-          <span className="bankLinkedAmount">{money(Number(link.valor))}</span>
+          <span className="bankLinkedAmount" style={{whiteSpace:'normal'}}>
+            <span>{money(Number(link.valor))} aplicado</span>
+            {title&&remaining!==null&&<small style={{display:'block',fontSize:10,color:title.status==='cancelado'?'var(--bank-muted)':remaining>0?'#d99a20':'#10b981'}}>
+              {title.status==='cancelado'?'Cancelada':remaining===0?'Paga integralmente':Number(title.valor_pago)>0?'Paga parcialmente':'Pendente'}
+              {title.status!=='cancelado'&&remaining>0&&<> · Falta {money(remaining)}</>}
+            </small>}
+          </span>
           {canEdit&&link.pagamento_id&&<button type="button" className="bankUnlinkInvoice" disabled={busy} title="Desvincular esta fatura" aria-label={'Desvincular '+(title?.descricao||'fatura')} onClick={()=>void unlinkInvoice(link)}>×</button>}
         </li>
       })}</ul>
