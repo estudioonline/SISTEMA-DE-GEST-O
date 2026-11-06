@@ -100,7 +100,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
    const dadosFiscais=action==='emit'?{
     modalidade_frete:Number(freightMode),
     observacao_nfe:nfeObservation.trim(),
-    parcelas:source?.venda.forma_pagamento==='boleto'?nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)})):undefined,
+    parcelas:nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)}),
     volumes:nfeVolumes.map(v=>({quantidade:Number(v.quantidade),peso_liquido:Number(v.peso_liquido),peso_bruto:Number(v.peso_bruto)}))
    }:{}
    const r=await focus(action,{venda_id:saleId,dados_fiscais:dadosFiscais})
@@ -129,7 +129,7 @@ export function FocusNfeSale({saleId}:{saleId:string}){
    const dadosFiscais={
     modalidade_frete:Number(freightMode),
     observacao_nfe:nfeObservation.trim(),
-    parcelas:source.venda.forma_pagamento==='boleto'?nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)})):undefined,
+    parcelas:nfeInstallments.map((p,index)=>({numero:index+1,vencimento:p.vencimento,valor:Number(p.valor)}),
     volumes:nfeVolumes.map(v=>({quantidade:Number(v.quantidade),peso_liquido:Number(v.peso_liquido),peso_bruto:Number(v.peso_bruto)}))
    }
    const r=await fetch(supabaseUrl+'/functions/v1/focus-nfe',{method:'POST',headers:{Authorization:'Bearer '+data.session?.access_token,apikey:supabasePublishableKey,'Content-Type':'application/json'},body:JSON.stringify({action:'preview',venda_id:saleId,dados_fiscais:dadosFiscais})})
@@ -230,18 +230,24 @@ export function FocusNfeSale({saleId}:{saleId:string}){
           <div><span>Itens</span><strong>{source?.itens.length??0}</strong></div>
         </div>
         <div className="nfeInstallmentsBox">
-          <div className="nfeInstallmentsHead"><strong>Parcelas da cobrança</strong><span>{source?.venda.forma_pagamento==='boleto'?'Editáveis para esta NF-e':(source?.parcelas?.length||0)+' parcela(s)'}</span></div>
-          {source?.venda.forma_pagamento==='boleto'?<div className="nfeEditableInstallments">
-            {nfeInstallments.length===0&&<p>Nenhuma cobrança incluída nesta NF-e. A cobrança original da venda será preservada.</p>}
+          <div className="nfeInstallmentsHead"><strong>Parcelas da cobrança</strong><span>{nfeInstallments.length} cobrança(s) nesta NF-e</span></div>
+          <div className="nfeEditableInstallments">
+            {nfeInstallments.length===0&&<p>Nenhuma cobrança será incluída nesta NF-e. A cobrança original da venda será preservada.</p>}
             {nfeInstallments.map((p,index)=><div className="nfeEditableInstallment" key={p.key}>
               <span>{String(index+1).padStart(3,'0')}</span>
-              <input type="date" value={p.vencimento} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,vencimento:e.target.value}:row))}/>
-              <input type="number" min="0.01" step="0.01" value={p.valor} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,valor:Number(e.target.value)}:row))}/>
-              <button type="button" className="iconBtn" onClick={()=>setNfeInstallments(rows=>rows.filter(row=>row.key!==p.key))} aria-label="Remover parcela" title="Remover cobrança">×</button>
+              {source?.venda.forma_pagamento==='boleto'?<>
+                <input type="date" value={p.vencimento} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,vencimento:e.target.value}:row))}/>
+                <input type="number" min="0.01" step="0.01" value={p.valor} onChange={e=>setNfeInstallments(rows=>rows.map(row=>row.key===p.key?{...row,valor:Number(e.target.value)}:row))}/>
+              </>:<>
+                <span>{new Date(p.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                <strong>{Number(p.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong>
+              </>}
+              <button type="button" className="iconBtn" onClick={()=>setNfeInstallments(rows=>rows.filter(row=>row.key!==p.key))} aria-label="Remover cobrança" title="Remover cobrança desta NF-e">×</button>
             </div>)}
-            <button type="button" className="ghost" onClick={()=>setNfeInstallments(rows=>[...rows,{key:crypto.randomUUID(),numero:rows.length+1,vencimento:rows.at(-1)?.vencimento||localIsoDate(),valor:0}])}>+ Adicionar parcela</button>
-            <small>A soma das parcelas incluídas precisa ser igual ao total da venda. A edição vale somente para os dados de cobrança enviados nesta NF-e.</small>
-          </div>:(source?.parcelas?.length||0)>0?<div className="nfeInstallmentsList">{source?.parcelas?.map((p,index)=><div key={p.id}><span>{String(index+1).padStart(3,'0')}</span><span>{new Date(p.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span><strong>{Number(p.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></div>)}</div>:<p>Pagamento à vista ou sem parcelas de cobrança para a NF-e.</p>}
+            {source?.venda.forma_pagamento==='boleto'&&<button type="button" className="ghost" onClick={()=>setNfeInstallments(rows=>[...rows,{key:crypto.randomUUID(),numero:rows.length+1,vencimento:rows.at(-1)?.vencimento||localIsoDate(),valor:0}])}>+ Adicionar parcela</button>}
+            <small>Remover aqui afeta somente esta NF-e. A cobrança original da venda permanece no financeiro.</small>
+            {source?.venda.forma_pagamento==='boleto'&&<small>A soma das parcelas incluídas precisa ser igual ao total da venda.</small>}
+          </div>
         </div>
         <div className="nfeVolumesBox">
           <div className="nfeInstallmentsHead"><strong>Volumes transportados</strong><span>{nfeVolumes.length} volume(s)</span></div>
