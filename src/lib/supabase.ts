@@ -1,9 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
+import { createDemoClient } from './demoClient'
+
+export const demoMode = import.meta.env.VITE_DEMO_MODE === 'true'
 
 export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 export const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
-export const supabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey)
+export const supabaseConfigured = demoMode || Boolean(supabaseUrl && supabasePublishableKey)
 
 const rememberKey='sg-auth-remember'
 
@@ -33,7 +36,7 @@ function browserStorage(){
   }
 }
 
-export const supabase = createClient(
+const realClient = () => createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabasePublishableKey || 'placeholder',
   {
@@ -45,3 +48,5 @@ export const supabase = createClient(
     }
   }
 )
+
+export const supabase: ReturnType<typeof realClient> = demoMode ? createDemoClient() : realClient()
